@@ -8,7 +8,7 @@ aislado, reproducible y reversible.
 ## Entradas públicas
 
 - `GET modules/admin/whatsapp.php`: requiere sesión Zynervox y nivel 7, 8 o 9.
-- `installer/whatsapp.sh init|up|status|credentials|install-proxy|down`.
+- `installer/whatsapp.sh init|up|status|credentials|install-proxy|remove-proxy|backup|restore|down`.
 - Variables generadas en `whatsapp/.env`; nunca se versionan.
 
 ## Salidas públicas

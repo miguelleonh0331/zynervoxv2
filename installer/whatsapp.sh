@@ -6,7 +6,7 @@ WHATSAPP_DIR="$ROOT/whatsapp"
 ENV_FILE="$WHATSAPP_DIR/.env"
 COMPOSE=(docker compose --env-file "$ENV_FILE" -f "$WHATSAPP_DIR/compose.yml")
 
-usage() { echo "Uso: $0 init|up|status|credentials|install-proxy|down"; }
+usage() { echo "Uso: $0 init|up|status|credentials|install-proxy|remove-proxy|backup <archivo>|restore <archivo>|down"; }
 
 require_runtime() {
   command -v docker >/dev/null 2>&1 || { echo "Falta Docker" >&2; exit 1; }
@@ -92,6 +92,33 @@ case "$action" in
     sudo chown root:www-data /etc/zynervox/whatsapp.conf
     sudo chmod 0640 /etc/zynervox/whatsapp.conf
     echo "WHATSAPP_PROXY_READY path=$WHATSAPP_BASE_PATH port=$WHATSAPP_PORT"
+    ;;
+  remove-proxy)
+    if command -v a2disconf >/dev/null 2>&1; then
+      sudo a2disconf zynervox-whatsapp >/dev/null 2>&1 || true
+      sudo rm -f /etc/apache2/conf-available/zynervox-whatsapp.conf
+      sudo rm -f /etc/zynervox/whatsapp.conf
+      sudo apache2ctl configtest
+      sudo systemctl reload apache2
+    fi
+    echo "WHATSAPP_PROXY_REMOVED"
+    ;;
+  backup)
+    require_runtime; load_env
+    output="${2:-}"
+    [[ -n "$output" ]] || { usage; exit 2; }
+    umask 077
+    "${COMPOSE[@]}" exec -T db mysqldump -uroot -p"$WHATSAPP_DB_ROOT_PASSWORD" \
+      --single-transaction --routines --events --triggers "$WHATSAPP_DB_NAME" | gzip > "$output"
+    echo "WHATSAPP_BACKUP_READY file=$output"
+    ;;
+  restore)
+    require_runtime; load_env
+    input="${2:-}"
+    [[ -f "$input" ]] || { echo "Backup no encontrado: $input" >&2; exit 2; }
+    gzip -dc "$input" | "${COMPOSE[@]}" exec -T db \
+      mysql -uroot -p"$WHATSAPP_DB_ROOT_PASSWORD" "$WHATSAPP_DB_NAME"
+    echo "WHATSAPP_RESTORE_OK file=$input"
     ;;
   down) require_runtime; load_env; "${COMPOSE[@]}" down ;;
   *) usage; exit 2 ;;

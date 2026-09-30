@@ -53,6 +53,7 @@ localmente en `whatsapp/.env`.
 sudo ./installer/whatsapp.sh init
 sudo ./installer/whatsapp.sh install-proxy
 sudo ./installer/whatsapp.sh credentials
+sudo ./installer/whatsapp.sh backup /ruta/whatsapp.sql.gz
 ```
 
 También puede instalar web y WhatsApp en una sola ejecución:
@@ -64,3 +65,4 @@ sudo WEB_ROOT=/var/www/html/zynervox URL_PATH=/zynervox \
 
 Apache publica Zynerwaba bajo `/zynerwabav2/`; el botón **WhatsApp** de Zynervox
 abre esa bandeja. Las sesiones permanecen separadas en esta primera integración.
+`remove-proxy` retira la publicación Apache y `down` conserva los volúmenes.

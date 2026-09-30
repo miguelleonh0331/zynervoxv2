@@ -159,3 +159,22 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-09-30 21:23 - whatsapp_AGENT - whatsapp
+
+Tipo: feature
+
+Resumen:
+Backup, restauración y retirada reversible del proxy
+
+Motivo:
+Completar ciclo operativo y recuperación del módulo
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido

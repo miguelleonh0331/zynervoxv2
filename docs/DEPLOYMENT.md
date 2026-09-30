@@ -57,6 +57,7 @@ contraseña aleatoria.
 sudo ./installer/whatsapp.sh init
 sudo ./installer/whatsapp.sh install-proxy
 sudo ./installer/whatsapp.sh status
+sudo ./installer/whatsapp.sh backup /ruta/whatsapp.sql.gz
 ```
 
 El gestor descarga Zynerwaba `2.0.0` por digest, levanta MySQL 8.4 y selecciona el
@@ -65,3 +66,4 @@ primer puerto local libre desde `3022`. Los volúmenes `zynervox_whatsapp_mysql`
 
 Validar `/zynerwabav2/`, login, sesión, empresas, líneas, recepción y envío antes
 de promover una versión. `down` retira contenedores y conserva ambos volúmenes.
+Usar `remove-proxy` para retirar la ruta Apache sin borrar datos.
