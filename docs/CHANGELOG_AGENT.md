@@ -178,3 +178,22 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-09-30 21:26 - whatsapp_AGENT - whatsapp
+
+Tipo: test
+
+Resumen:
+Integración verificada en cloud-peru sobre commit 97e38eb
+
+Motivo:
+Confirmar HTTP, proxy, Socket.IO, login, sesión, backup, restauración y aislamiento
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido

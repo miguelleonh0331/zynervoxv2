@@ -45,3 +45,10 @@ independiente, sin mezclar su base MySQL con `asterisk` ni duplicar su lógica.
 
 Primera integración: portal y despliegue reproducible con sesiones separadas.
 Siguiente incremento: SSO/API de identidad y vista omnicanal nativa en Zynervox.
+
+## Pruebas
+
+- `cloud-peru`, ruta `/var/www/html/zynervoxv2-whatsapp-test`.
+- Imagen, MySQL, 63 tablas, proxy, HTTP LAN y Socket.IO verificados.
+- Login Zynervox y Zynerwaba, sesión tras reinicio, backup y restauración: OK.
+- Envío/recepción Meta pendiente de configurar credenciales y líneas de prueba.
