@@ -64,3 +64,22 @@ Contrato:
 
 Riesgos:
 Sin VICIdial el login y la operación no pueden probarse.
+
+### 2026-09-30 19:20 - ARCHITECT_AGENT - installer
+
+Tipo: feature
+
+Resumen:
+Instalador web-first con diagnóstico PARTIAL y modo strict.
+
+Motivo:
+Permitir pruebas visuales en hosts Ubuntu sin VICIdial completo.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido

@@ -56,3 +56,27 @@ GitHub contiene código, migraciones, contratos y scripts; datos y secretos se r
 
 Seguimiento:
 Validar en un Ubuntu limpio antes de uso productivo.
+
+### ADR-0003 - Instalación web progresiva
+
+Fecha: 2026-09-30
+
+Estado: aceptada
+
+Contexto:
+Un host puede carecer de VICIdial o Asterisk y aun necesitar inspeccionar la interfaz web.
+
+Decisión:
+Desplegar primero la web y tratar telefonía, migraciones y validación estricta como integraciones opcionales.
+
+Motivo:
+La ausencia de la plataforma completa no debe impedir extraer y servir los archivos web.
+
+Alternativas evaluadas:
+- (ninguna registrada)
+
+Impacto:
+(pendiente)
+
+Seguimiento:
+(ninguno)
