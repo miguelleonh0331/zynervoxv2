@@ -4,12 +4,18 @@ namespace Config;
 
 class Config {
     private static $settings = [];
-    private static $configFile = '/etc/astguiclient.conf';
+    private static $configFile = null;
 
     public static function load() {
         if (!empty(self::$settings)) {
             return self::$settings;
         }
+
+        self::$configFile = getenv('ZYNERVOX_CONFIG_FILE') ?: (
+            file_exists('/etc/zynervox/astguiclient.conf')
+                ? '/etc/zynervox/astguiclient.conf'
+                : '/etc/astguiclient.conf'
+        );
 
         if (!file_exists(self::$configFile)) {
             // Para pruebas en entornos donde el archivo no existe físicamente (como Windows con Z:)

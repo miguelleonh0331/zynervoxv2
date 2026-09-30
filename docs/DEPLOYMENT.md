@@ -37,3 +37,16 @@ reales como smoke test.
 
 Respaldar/restaurar por separado MariaDB, `/var/lib/asterisk/sounds`, grabaciones,
 certificados, carriers, secretos y configuración particular del servidor.
+
+## MariaDB aislada
+
+Si el host no tiene una MariaDB/VICIdial compatible:
+
+```bash
+./installer/database.sh init
+./installer/database.sh install-config
+```
+
+Se crea `database/.env`, se levanta `zynervox-mariadb` en el primer puerto local
+libre desde `3307`, se importa el esquema vacío y se genera un administrador con
+contraseña aleatoria.

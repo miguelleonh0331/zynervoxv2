@@ -27,7 +27,10 @@ for extension in curl json mbstring mysqli pdo_mysql session xml zip; do
 done
 
 [[ -f "$WEB_ROOT/index.php" ]] || { echo "FALTA archivo: $WEB_ROOT/index.php"; fail=1; }
-[[ -f /etc/astguiclient.conf ]] || { echo "AVISO: falta /etc/astguiclient.conf"; warn=1; }
+if [[ ! -f /etc/astguiclient.conf && ! -f /etc/zynervox/astguiclient.conf ]]; then
+  echo "AVISO: falta configuración de base"
+  warn=1
+fi
 python3 -c 'import pymysql, num2words' 2>/dev/null || { echo "AVISO: faltan módulos Python opcionales"; warn=1; }
 if command -v apache2ctl >/dev/null 2>&1 && ! apache2ctl configtest; then
   echo "AVISO: configuración Apache inválida"

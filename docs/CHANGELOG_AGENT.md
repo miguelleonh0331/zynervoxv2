@@ -83,3 +83,41 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-09-30 20:05 - ARCHITECT_AGENT - installer
+
+Tipo: feature
+
+Resumen:
+Añadidos Compose MariaDB, esquema sanitizado y gestor de inicialización, credenciales, backup y restauración.
+
+Motivo:
+Permitir instalación reproducible sobre hosts con MySQL incompatible.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
+
+### 2026-09-30 20:05 - ARCHITECT_AGENT - core
+
+Tipo: feature
+
+Resumen:
+Configuración de base aislada con fallback compatible a astguiclient.conf.
+
+Motivo:
+Conectar PHP a MariaDB Docker sin alterar la configuración VICIdial del host.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido

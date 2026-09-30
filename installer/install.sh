@@ -22,9 +22,11 @@ done
 [[ -f /etc/os-release ]] || { echo "Linux no compatible" >&2; exit 1; }
 source /etc/os-release
 [[ "${ID:-}" == "ubuntu" ]] || { echo "Solo Ubuntu está soportado" >&2; exit 1; }
+DB_CONFIG=/etc/astguiclient.conf
+[[ -f /etc/zynervox/astguiclient.conf ]] && DB_CONFIG=/etc/zynervox/astguiclient.conf
 
 if [[ $DRY_RUN -eq 1 ]]; then
-  [[ -f /etc/astguiclient.conf ]] && integration=available || integration=partial
+  [[ -f "$DB_CONFIG" ]] && integration=available || integration=partial
   echo "DRY_RUN web=$WEB_ROOT asterisk=$ASTERISK_ROOT url=$URL_PATH migrations=$APPLY_MIGRATIONS integration=$integration skip_packages=$SKIP_PACKAGES"
   exit 0
 fi
@@ -47,7 +49,7 @@ else
   echo "AVISO: instalación de paquetes omitida por --skip-packages" >&2
 fi
 
-if [[ -f /etc/astguiclient.conf ]] && command -v asterisk >/dev/null 2>&1 && command -v mysql >/dev/null 2>&1; then
+if [[ -f "$DB_CONFIG" ]] && command -v asterisk >/dev/null 2>&1 && command -v mysql >/dev/null 2>&1; then
   install -d -o root -g www-data -m 0750 "$ASTERISK_ROOT"
   cp -a "$ROOT/asterisk/synervox/." "$ASTERISK_ROOT/"
   chown -R root:www-data "$ASTERISK_ROOT"
@@ -67,10 +69,10 @@ if [[ "$WEB_ROOT" != "/var/www/html${URL_PATH}" ]] && command -v a2enconf >/dev/
 fi
 
 if [[ $APPLY_MIGRATIONS -eq 1 ]]; then
-  if [[ -f /etc/astguiclient.conf ]]; then
+  if [[ -f "$DB_CONFIG" ]]; then
     php "$ROOT/installer/migrate.php" "$WEB_ROOT" "$ASTERISK_ROOT/modules/migrations"
   else
-    echo "AVISO: migraciones omitidas; falta /etc/astguiclient.conf" >&2
+    echo "AVISO: migraciones omitidas; falta configuración de base" >&2
   fi
 fi
 

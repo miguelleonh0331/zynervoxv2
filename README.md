@@ -24,5 +24,21 @@ reinicios indirectos de servicios existentes.
 Variables opcionales: `WEB_ROOT`, `ASTERISK_ROOT` y `URL_PATH`. El instalador no
 incluye contraseñas, bases, audios, grabaciones ni datos de producción.
 
+## MariaDB aislada
+
+La base compatible puede ejecutarse sin reemplazar MySQL del host:
+
+```bash
+./installer/database.sh init
+./installer/database.sh credentials
+./installer/database.sh install-config
+sudo WEB_ROOT=/var/www/html/zynervox URL_PATH=/zynervox ./installer/install.sh --skip-packages
+```
+
+El contenedor escucha solo en `127.0.0.1`, usando el primer puerto libre desde
+`3307`. Las contraseñas se generan en
+`database/.env`, excluido de Git. El esquema contiene 364 tablas y crea un usuario
+administrador nuevo; no incluye datos ni credenciales de Kamatera.
+
 La copia de preparación en Kamatera vive en `/var/www/html/zynervoxv2` y no está
 conectada a Apache ni Asterisk. Producción continúa en `/var/www/html/zynervox`.

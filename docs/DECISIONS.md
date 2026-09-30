@@ -80,3 +80,27 @@ Impacto:
 
 Seguimiento:
 (ninguno)
+
+### ADR-0004 - MariaDB aislada para instalaciones portables
+
+Fecha: 2026-09-30
+
+Estado: aceptada
+
+Contexto:
+Los hosts pueden tener MySQL incompatible o puertos ocupados y Zynervox requiere el esquema VICIdial.
+
+Decisión:
+Ejecutar MariaDB 10.11 en Docker, enlazada solo a localhost, con puerto libre automático, volumen persistente y esquema sin datos.
+
+Motivo:
+Mantiene compatibilidad sin reemplazar la base existente ni publicar información de producción.
+
+Alternativas evaluadas:
+- (ninguna registrada)
+
+Impacto:
+(pendiente)
+
+Seguimiento:
+(ninguno)
