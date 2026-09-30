@@ -52,3 +52,15 @@ Siguiente incremento: SSO/API de identidad y vista omnicanal nativa en Zynervox.
 - Imagen, MySQL, 63 tablas, proxy, HTTP LAN y Socket.IO verificados.
 - Login Zynervox y Zynerwaba, sesión tras reinicio, backup y restauración: OK.
 - Envío/recepción Meta pendiente de configurar credenciales y líneas de prueba.
+
+El smoke test reproducible usa las credenciales locales sin mostrarlas:
+
+```bash
+sudo WHATSAPP_TEST_PROXY_URL=http://127.0.0.1/zynerwabav2 \
+  WHATSAPP_TEST_RESTART=1 \
+  ./src/features/whatsapp/tests/smoke.sh
+```
+
+`WHATSAPP_TEST_RESTART=1` comprueba persistencia de sesión recreando solo el proceso
+de la aplicación; omitirlo para una verificación no disruptiva. La prueba no sustituye
+el E2E con Meta, que necesita una empresa, línea y destinatario exclusivos de laboratorio.
