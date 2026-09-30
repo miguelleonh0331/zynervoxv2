@@ -197,3 +197,23 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-09-30 22:10 - whatsapp_AGENT - whatsapp
+
+Tipo: test
+
+Resumen:
+Smoke test reproducible para contenedores, esquema, HTTP, login, sesión, Socket.IO y persistencia
+
+Motivo:
+Versionar la verificación que antes existía solo como artefacto temporal del laboratorio
+
+Archivos modificados:
+- src/features/whatsapp/tests/smoke.sh
+- src/features/whatsapp/README.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- el reinicio es opcional y se activa solo con WHATSAPP_TEST_RESTART=1
