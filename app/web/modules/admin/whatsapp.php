@@ -5,6 +5,17 @@ use Includes\Auth;
 
 Auth::checkAccess([7, 8, 9]);
 $basePath = '/zynerwabav2/';
+$configFile = '/etc/zynervox/whatsapp.conf';
+if (is_readable($configFile)) {
+    foreach (file($configFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        if (strpos($line, 'WHATSAPP_BASE_PATH=') === 0) {
+            $configured = substr($line, strlen('WHATSAPP_BASE_PATH='));
+            if (preg_match('#^/[A-Za-z0-9._/-]+$#', $configured)) {
+                $basePath = rtrim($configured, '/') . '/';
+            }
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">

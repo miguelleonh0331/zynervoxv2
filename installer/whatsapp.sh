@@ -24,11 +24,12 @@ generate_env() {
     done
   fi
   umask 077
+  local base_path="${WHATSAPP_BASE_PATH_OVERRIDE:-/zynerwabav2}"
   cat > "$ENV_FILE" <<EOF
 ZYNERWABA_IMAGE=miguelleonh0331/zynerwabav2:2.0.0@sha256:b6e3ac4ba9115435b151482c6d8c06fbbfe96a572c77cc1e83778c3e68e4c624
 WHATSAPP_BIND=127.0.0.1
 WHATSAPP_PORT=$port
-WHATSAPP_BASE_PATH=/zynerwabav2
+WHATSAPP_BASE_PATH=$base_path
 WHATSAPP_DB_NAME=zynerwabav2
 WHATSAPP_DB_USER=zynerwabav2
 WHATSAPP_DB_PASSWORD=$(openssl rand -hex 24)
@@ -85,6 +86,11 @@ case "$action" in
     sudo a2enconf zynervox-whatsapp >/dev/null
     sudo apache2ctl configtest
     sudo systemctl reload apache2
+    sudo install -d -o root -g www-data -m 0750 /etc/zynervox
+    printf 'WHATSAPP_BASE_PATH=%s\n' "$WHATSAPP_BASE_PATH" | \
+      sudo tee /etc/zynervox/whatsapp.conf >/dev/null
+    sudo chown root:www-data /etc/zynervox/whatsapp.conf
+    sudo chmod 0640 /etc/zynervox/whatsapp.conf
     echo "WHATSAPP_PROXY_READY path=$WHATSAPP_BASE_PATH port=$WHATSAPP_PORT"
     ;;
   down) require_runtime; load_env; "${COMPOSE[@]}" down ;;
