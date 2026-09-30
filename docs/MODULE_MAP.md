@@ -2,7 +2,7 @@
 
 Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 
-Última generación: 2026-09-30 18:54
+Última generación: 2026-09-30 21:18
 
 ## Módulos
 
@@ -16,7 +16,13 @@ Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 | ivr_builder | src/features/ivr_builder | _DEFAULT_MODULE_AGENT.md | (sin descripción) | src/features/ivr_builder/CONTRACT.md |
 | reporting | src/features/reporting | _DEFAULT_MODULE_AGENT.md | (sin descripción) | src/features/reporting/CONTRACT.md |
 | telephony | src/features/telephony | telephony_AGENT.md | (sin descripción) | src/features/telephony/CONTRACT.md |
+| whatsapp | src/features/whatsapp | whatsapp_AGENT.md | Incorporar la operación WhatsApp a Zynervox reutilizando Zynerwaba v2 como servicio | src/features/whatsapp/CONTRACT.md |
 
 ## Dependencias entre módulos
 
-_Ningún módulo declara dependencias todavía en su CONTRACT.md._
+| Módulo | Depende de | Estado |
+|---|---|---|
+| whatsapp | Contrato de autenticación Zynervox mediante `Includes\Auth` | módulo inexistente |
+| whatsapp | Imagen `miguelleonh0331/zynerwabav2:2.0.0` y digest publicado | módulo inexistente |
+| whatsapp | MySQL 8.4 y el esquema saneado versionado | módulo inexistente |
+| whatsapp | Apache como proxy de la ruta pública | módulo inexistente |

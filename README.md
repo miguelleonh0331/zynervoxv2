@@ -42,3 +42,25 @@ administrador nuevo; no incluye datos ni credenciales de Kamatera.
 
 La copia de preparación en Kamatera vive en `/var/www/html/zynervoxv2` y no está
 conectada a Apache ni Asterisk. Producción continúa en `/var/www/html/zynervox`.
+
+## WhatsApp omnicanal
+
+Zynerwaba se ejecuta como servicio independiente con MySQL 8.4, sin compartir la
+base `asterisk`. La imagen se fija por etiqueta y digest; sus secretos se generan
+localmente en `whatsapp/.env`.
+
+```bash
+sudo ./installer/whatsapp.sh init
+sudo ./installer/whatsapp.sh install-proxy
+sudo ./installer/whatsapp.sh credentials
+```
+
+También puede instalar web y WhatsApp en una sola ejecución:
+
+```bash
+sudo WEB_ROOT=/var/www/html/zynervox URL_PATH=/zynervox \
+  ./installer/install.sh --skip-packages --with-whatsapp
+```
+
+Apache publica Zynerwaba bajo `/zynerwabav2/`; el botón **WhatsApp** de Zynervox
+abre esa bandeja. Las sesiones permanecen separadas en esta primera integración.

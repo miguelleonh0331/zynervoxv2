@@ -12,6 +12,7 @@ function renderSupSidebar($activePage = 'campaigns') {
         ['key' => 'reports',   'href' => '../admin/reports.php',   'icon' => 'chart',     'label' => 'Reportes'],
         ['key' => 'filters',   'href' => '../admin/filters.php',   'icon' => 'filters',   'label' => 'Filters'],
         ['key' => 'monitor',   'href' => '../admin/monitor.php',   'icon' => 'quality',   'label' => 'Monitor'],
+        ['key' => 'whatsapp',  'href' => '../admin/whatsapp.php',  'icon' => 'whatsapp',  'label' => 'WhatsApp'],
         ['key' => 'campaign_monitor', 'href' => '../admin/campaign_monitor.php', 'icon' => 'campaign_monitor', 'label' => 'Monitor Campañas'],
     ];
     $roleLabel = ($_SESSION['user_level'] ?? 0) == 7 ? 'GTR' : 'Supervisor';

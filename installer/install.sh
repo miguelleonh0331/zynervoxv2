@@ -8,12 +8,14 @@ URL_PATH="${URL_PATH:-/zynervox}"
 APPLY_MIGRATIONS=0
 DRY_RUN=0
 SKIP_PACKAGES=0
+WITH_WHATSAPP=0
 
 for arg in "$@"; do
   case "$arg" in
     --apply-migrations) APPLY_MIGRATIONS=1 ;;
     --dry-run) DRY_RUN=1 ;;
     --skip-packages) SKIP_PACKAGES=1 ;;
+    --with-whatsapp) WITH_WHATSAPP=1 ;;
     *) echo "Argumento desconocido: $arg" >&2; exit 2 ;;
   esac
 done
@@ -27,7 +29,7 @@ DB_CONFIG=/etc/astguiclient.conf
 
 if [[ $DRY_RUN -eq 1 ]]; then
   [[ -f "$DB_CONFIG" ]] && integration=available || integration=partial
-  echo "DRY_RUN web=$WEB_ROOT asterisk=$ASTERISK_ROOT url=$URL_PATH migrations=$APPLY_MIGRATIONS integration=$integration skip_packages=$SKIP_PACKAGES"
+  echo "DRY_RUN web=$WEB_ROOT asterisk=$ASTERISK_ROOT url=$URL_PATH migrations=$APPLY_MIGRATIONS integration=$integration skip_packages=$SKIP_PACKAGES whatsapp=$WITH_WHATSAPP"
   exit 0
 fi
 
@@ -74,6 +76,11 @@ if [[ $APPLY_MIGRATIONS -eq 1 ]]; then
   else
     echo "AVISO: migraciones omitidas; falta configuración de base" >&2
   fi
+fi
+
+if [[ $WITH_WHATSAPP -eq 1 ]]; then
+  bash "$ROOT/installer/whatsapp.sh" init
+  bash "$ROOT/installer/whatsapp.sh" install-proxy
 fi
 
 if command -v apache2ctl >/dev/null 2>&1; then
