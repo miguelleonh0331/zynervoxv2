@@ -1,7 +1,8 @@
 # Zynervox v2
 
 Paquete portable para instalar la interfaz de call center Zynervox sobre un
-servidor Ubuntu que ya dispone de Asterisk/VICIdial y `/etc/astguiclient.conf`.
+servidor Ubuntu que ya dispone de Asterisk/VICIdial, su esquema base completo y
+`/etc/astguiclient.conf`. Asterisk y MySQL sin las tablas VICIdial no son suficientes.
 
 ## Instalación
 

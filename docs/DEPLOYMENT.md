@@ -2,7 +2,8 @@
 
 ## Requisitos
 
-Servidor Ubuntu con Asterisk/VICIdial funcional y `/etc/astguiclient.conf`. Hacer
+Servidor Ubuntu con Asterisk/VICIdial funcional, tablas base `vicidial_*`, `phones`
+y `/etc/astguiclient.conf`. Asterisk/MySQL solos no satisfacen este requisito. Hacer
 backup de MariaDB y de `/etc/asterisk` antes de activar una versión nueva.
 
 ## Instalación nueva
@@ -16,6 +17,9 @@ sudo ./installer/install.sh --apply-migrations
 
 El modo `--dry-run` no escribe. Sin `--apply-migrations` se despliegan archivos pero
 no se cambia la base. El instalador no elimina archivos desconocidos del destino.
+
+Si falta VICIdial, detener la instalación. No crear tablas parciales: autenticación,
+campañas, agentes y telefonía dependen del esquema completo y de sus valores iniciales.
 
 ## Verificación
 

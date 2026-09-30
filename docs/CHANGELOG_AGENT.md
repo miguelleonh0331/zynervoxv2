@@ -45,3 +45,22 @@ Contrato:
 
 Riesgos:
 El instalador aún requiere prueba completa en un servidor limpio.
+
+### 2026-09-30 19:04 - installer_AGENT - installer
+
+Tipo: docs
+
+Resumen:
+Aclarar dependencia obligatoria de VICIdial
+
+Motivo:
+Cloud Perú tiene Asterisk y MySQL pero carece del esquema y astguiclient.conf
+
+Archivos modificados:
+- README.md, docs/DEPLOYMENT.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+Sin VICIdial el login y la operación no pueden probarse.
