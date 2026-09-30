@@ -121,3 +121,79 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-09-30 21:18 - ARCHITECT_AGENT - whatsapp
+
+Tipo: feature
+
+Resumen:
+Módulo WhatsApp, portal, stack Zynerwaba y proxy reproducible
+
+Motivo:
+Convertir Zynervox en portal omnicanal manteniendo límites de servicio
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
+
+### 2026-09-30 21:18 - ARCHITECT_AGENT - installer
+
+Tipo: feature
+
+Resumen:
+Instalador opcional --with-whatsapp y gestor de ciclo de vida
+
+Motivo:
+Desplegar y verificar Zynerwaba desde el repositorio
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
+
+### 2026-09-30 21:23 - whatsapp_AGENT - whatsapp
+
+Tipo: feature
+
+Resumen:
+Backup, restauración y retirada reversible del proxy
+
+Motivo:
+Completar ciclo operativo y recuperación del módulo
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
+
+### 2026-09-30 21:26 - whatsapp_AGENT - whatsapp
+
+Tipo: test
+
+Resumen:
+Integración verificada en cloud-peru sobre commit 97e38eb
+
+Motivo:
+Confirmar HTTP, proxy, Socket.IO, login, sesión, backup, restauración y aislamiento
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido

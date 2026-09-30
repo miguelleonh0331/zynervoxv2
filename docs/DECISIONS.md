@@ -104,3 +104,27 @@ Impacto:
 
 Seguimiento:
 (ninguno)
+
+### ADR-0005 - Zynerwaba como servicio WhatsApp aislado
+
+Fecha: 2026-09-30
+
+Estado: aceptada
+
+Contexto:
+Zynervox necesita operación omnicanal y Zynerwaba ya implementa WhatsApp multiempresa sobre MySQL 8.4.
+
+Decisión:
+Integrar Zynerwaba por proxy y contrato, con imagen fijada por digest, base, credenciales y volúmenes separados de asterisk.
+
+Motivo:
+Reutiliza funciones probadas sin acoplar tablas ni comprometer compatibilidad VICIdial.
+
+Alternativas evaluadas:
+- (ninguna registrada)
+
+Impacto:
+(pendiente)
+
+Seguimiento:
+(ninguno)
