@@ -1,0 +1,66 @@
+<?php
+
+namespace Includes;
+
+use Includes\Database;
+use PDO;
+
+require_once __DIR__ . '/Database.php';
+
+class Audit {
+    
+    public static function logAccess($user, $action, $details = '') {
+        $db = Database::getInstance();
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        try {
+            $stmt = $db->prepare("INSERT INTO vox_sphere_access_log (user, action, ip_address, details) VALUES (:user, :action, :ip, :details)");
+            return $stmt->execute(['user' => $user, 'action' => $action, 'ip' => $ip, 'details' => $details]);
+        } catch (\PDOException $e) { return false; }
+    }
+
+    public static function logTableChange($user, $action, $table, $idField, $idValue, $extraCriteria = []) {
+        $db = Database::getInstance();
+        $logTable = "vox_sphere_{$table}_log";
+        
+        try {
+            // Construir WHERE dinámico para identificar el registro único
+            $where = "$idField = :id_val";
+            $params = ['id_val' => $idValue];
+            
+            foreach ($extraCriteria as $field => $val) {
+                $where .= " AND $field = :$field";
+                $params[$field] = $val;
+            }
+
+            // Obtener el registro actual para el snapshot
+            $stmt = $db->prepare("SELECT * FROM $table WHERE $where");
+            $stmt->execute($params);
+            $data = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$data) return false;
+
+            // Añadir campos de auditoría al snapshot
+            $data['audit_user'] = $user;
+            $data['audit_action'] = $action;
+
+            $columns = implode(", ", array_keys($data));
+            $placeholders = ":" . implode(", :", array_keys($data));
+            
+            $sql = "INSERT INTO $logTable ($columns) VALUES ($placeholders)";
+            return $db->prepare($sql)->execute($data);
+        } catch (\PDOException $e) { return false; }
+    }
+
+    public static function getRecent($table = 'access', $limit = 50) {
+        $db = Database::getInstance();
+        $tableName = ($table == 'access') ? 'vox_sphere_access_log' : "vox_sphere_{$table}_log";
+        $orderField = ($table == 'access') ? 'event_time' : 'audit_timestamp';
+        
+        try {
+            $stmt = $db->prepare("SELECT * FROM $tableName ORDER BY $orderField DESC LIMIT :limit");
+            $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll();
+        } catch (\PDOException $e) { return []; }
+    }
+}
