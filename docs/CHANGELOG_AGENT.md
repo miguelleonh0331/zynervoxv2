@@ -217,3 +217,24 @@ Contrato:
 
 Riesgos:
 - el reinicio es opcional y se activa solo con WHATSAPP_TEST_RESTART=1
+
+### 2026-09-30 22:25 - whatsapp_AGENT - whatsapp
+
+Tipo: test
+
+Resumen:
+Gate E2E Meta documentado y verificación negativa del token del webhook en el smoke test
+
+Motivo:
+Definir evidencia suficiente para aprobar recepción, envío, estados, aislamiento e idempotencia
+
+Archivos modificados:
+- src/features/whatsapp/tests/smoke.sh
+- src/features/whatsapp/tests/META_E2E.md
+- src/features/whatsapp/README.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- el E2E exige recursos Meta exclusivos de laboratorio y consentimiento del destinatario

@@ -61,6 +61,13 @@ socket_code="$(curl --max-time 15 -sS -o "$socket_body" -b "$cookies" -w '%{http
   exit 1
 }
 
+webhook_code="$(http_code \
+  "$direct_url/webhook/meta?hub.verify_token=smoke-invalid&hub.challenge=1&hub.mode=subscribe")"
+[[ "$webhook_code" == 403 ]] || {
+  echo "El webhook aceptó un verify_token inválido ($webhook_code)" >&2
+  exit 1
+}
+
 if [[ "$restart_app" == 1 ]]; then
   docker restart zynervox-whatsapp-app >/dev/null
   for _ in $(seq 1 60); do
@@ -73,5 +80,5 @@ if [[ "$restart_app" == 1 ]]; then
   }
 fi
 
-printf 'WHATSAPP_SMOKE_OK tables=%s login=200 session=200 socket=200 restart=%s\n' \
+printf 'WHATSAPP_SMOKE_OK tables=%s login=200 session=200 socket=200 webhook_invalid=403 restart=%s\n' \
   "$tables" "$restart_app"
