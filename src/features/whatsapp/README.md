@@ -64,3 +64,4 @@ sudo WHATSAPP_TEST_PROXY_URL=http://127.0.0.1/zynerwabav2 \
 `WHATSAPP_TEST_RESTART=1` comprueba persistencia de sesión recreando solo el proceso
 de la aplicación; omitirlo para una verificación no disruptiva. La prueba no sustituye
 el E2E con Meta, que necesita una empresa, línea y destinatario exclusivos de laboratorio.
+El procedimiento y la evidencia obligatoria están en `tests/META_E2E.md`.
