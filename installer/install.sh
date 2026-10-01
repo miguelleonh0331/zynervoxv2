@@ -59,20 +59,22 @@ else
   echo "AVISO: instalación de paquetes omitida por --skip-packages" >&2
 fi
 
-if [[ $INSTALL_DOCKER -eq 1 ]] && ! command -v docker >/dev/null 2>&1; then
-  case "${ID:-}" in
-    ubuntu|debian)
-      export DEBIAN_FRONTEND=noninteractive
-      apt-get update && apt-get install -y docker.io docker-compose-v2
-      ;;
-    opensuse*|sles)
-      if ! zypper --non-interactive --no-refresh install --no-recommends docker docker-compose; then
-        command -v docker >/dev/null 2>&1 && command -v docker-compose >/dev/null 2>&1 || exit 1
-        echo "AVISO: zypper informó repositorios inválidos, pero Docker y Compose quedaron instalados" >&2
-      fi
-      ;;
-    *) echo "Instalación automática de Docker no soportada en ${ID:-desconocido}" >&2; exit 1 ;;
-  esac
+if [[ $INSTALL_DOCKER -eq 1 ]]; then
+  if ! command -v docker >/dev/null 2>&1; then
+    case "${ID:-}" in
+      ubuntu|debian)
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update && apt-get install -y docker.io docker-compose-v2
+        ;;
+      opensuse*|sles)
+        if ! zypper --non-interactive --no-refresh install --no-recommends docker docker-compose; then
+          command -v docker >/dev/null 2>&1 && command -v docker-compose >/dev/null 2>&1 || exit 1
+          echo "AVISO: zypper informó repositorios inválidos, pero Docker y Compose quedaron instalados" >&2
+        fi
+        ;;
+      *) echo "Instalación automática de Docker no soportada en ${ID:-desconocido}" >&2; exit 1 ;;
+    esac
+  fi
   systemctl enable --now docker
 fi
 
