@@ -438,3 +438,22 @@ Contrato:
 
 Riesgos:
 Cambio visual sin alterar endpoints ni datos
+
+### 2026-10-01 16:30 - ARCHITECT_AGENT - agent
+
+Tipo: feature
+
+Resumen:
+Incorporar app/web/agc/zynervox.php desde Kamatera para migración y pruebas progresivas del AGC.
+
+Motivo:
+Versionar el AGC por archivos y validarlo primero en el ambiente aislado.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
