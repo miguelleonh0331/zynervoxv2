@@ -57,8 +57,8 @@ flowchart LR
 2. El navegador intercambia los claims mediante `POST /api/sso/zynervox`.
 3. Zynerwaba crea o actualiza la identidad enlazada `zv_<usuario>` y guarda la sesión.
 4. El superadministrador crea empresas, administradores, números y credenciales Meta; los demás roles no ven esa sección.
-5. La interfaz consulta contactos, mensajes, campañas, usuarios y líneas según el rol y la empresa efectiva.
-6. Socket.IO actualiza mensajes y contactos en tiempo real.
+5. El administrador de empresa gestiona usuarios y consulta sus líneas.
+6. Las operaciones de contactos, mensajes y campañas quedan fuera de este panel y tendrán una ruta propia.
 
 ## Decisiones y variantes
 
