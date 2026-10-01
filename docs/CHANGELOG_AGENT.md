@@ -514,3 +514,22 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-10-01 16:46 - ARCHITECT_AGENT - agent
+
+Tipo: docs
+
+Resumen:
+Registrar mirmidon como laboratorio VICIdial aislado para AGC y listar recursos visuales pendientes.
+
+Motivo:
+La prueba requiere esquema VICIdial completo sin tocar /srv/www/htdocs/agc productivo.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
