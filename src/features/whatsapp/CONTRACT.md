@@ -7,7 +7,8 @@ aislado, reproducible y reversible.
 
 ## Entradas públicas
 
-- `GET modules/admin/whatsapp.php`: requiere sesión Zynervox y nivel 7, 8 o 9.
+- `GET modules/admin/whatsapp.php`: interfaz nativa; requiere sesión Zynervox y nivel 7, 8 o 9.
+- `POST /api/sso/zynervox`: intercambia claims firmados de 60 segundos por una sesión Zynerwaba.
 - `installer/whatsapp.sh init|up|status|credentials|install-proxy|remove-proxy|backup|restore|down`.
 - Variables generadas en `whatsapp/.env`; nunca se versionan.
 
@@ -24,7 +25,7 @@ aislado, reproducible y reversible.
 - Ningún puerto libre entre 3022 y 3099.
 - Imagen o base no saludables.
 - `apache2ctl configtest` inválido; en ese caso no se recarga Apache.
-- Login independiente requerido mientras no exista SSO contractual.
+- Firma SSO inválida, vencida o sin secreto local: HTTP 403.
 
 ## Dependencias permitidas
 
@@ -37,7 +38,7 @@ aislado, reproducible y reversible.
 
 - Tablas internas de Zynerwaba desde PHP Zynervox.
 - Base `asterisk` para datos WhatsApp.
-- Credenciales compartidas o publicadas.
+- Contraseñas compartidas o publicadas; SSO usa un secreto de instalación independiente.
 - Imágenes móviles sin etiqueta y digest.
 
 ## Garantías
@@ -46,7 +47,8 @@ aislado, reproducible y reversible.
 - La imagen se verifica por digest.
 - Los secretos se generan con `openssl` y quedan fuera de Git.
 - `down` conserva persistencia.
-- El portal no evita la autenticación propia de Zynerwaba.
+- Zynervox no recibe contraseñas Zynerwaba ni accede a sus tablas.
+- La identidad se crea/actualiza en Zynerwaba solo tras validar HMAC-SHA256 y expiración.
 
 ## Cambios de contrato
 

@@ -39,6 +39,7 @@ services:
       INITIAL_ADMIN_PASSWORD: ${WHATSAPP_ADMIN_PASSWORD}
       SESSION_SECRET: ${WHATSAPP_SESSION_SECRET}
       CREDENTIALS_KEY: ${WHATSAPP_CREDENTIALS_KEY}
+      ZYNERVOX_SSO_SECRET: ${ZYNERVOX_SSO_SECRET}
     depends_on:
       db:
         condition: service_healthy

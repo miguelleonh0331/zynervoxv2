@@ -5,6 +5,8 @@
 // Publica en ctx: credentialsForLine, empresaAudit.
 
 const { encryptSecret, decryptSecret } = require('../../shared/crypto');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 
 function register(ctx) {
   const { db, api, requireSuperadmin, requireAdmin, resolveEmpresaId } = ctx;
@@ -50,6 +52,58 @@ function register(ctx) {
       'INSERT INTO empresa_audit (empresa_id, actor_user_id, accion, detalle) VALUES (?,?,?,?)'
     ).run(empresaId, actorUserId ?? null, accion, detalle ? JSON.stringify(detalle) : null);
   }
+
+  // SSO firmado desde Zynervox. No comparte contraseñas: acepta únicamente
+  // claims de corta duración autenticados con un secreto local de instalación.
+  sa.post('/sso/zynervox', async (req, res) => {
+    try {
+      const secret = process.env.ZYNERVOX_SSO_SECRET || '';
+      const { payload, signature } = req.body || {};
+      if (secret.length < 32 || typeof payload !== 'string' || typeof signature !== 'string') {
+        return res.status(403).json({ error: 'SSO no configurado' });
+      }
+      const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+      const supplied = Buffer.from(signature, 'hex');
+      const valid = supplied.length === expected.length / 2 &&
+        crypto.timingSafeEqual(supplied, Buffer.from(expected, 'hex'));
+      if (!valid) return res.status(403).json({ error: 'Firma SSO inválida' });
+
+      const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+      const now = Math.floor(Date.now() / 1000);
+      if (!claims.exp || claims.exp < now || claims.exp > now + 90) {
+        return res.status(403).json({ error: 'Token SSO vencido' });
+      }
+      const sourceUser = String(claims.user || '').trim();
+      if (!/^[A-Za-z0-9._-]{1,40}$/.test(sourceUser)) {
+        return res.status(400).json({ error: 'Usuario SSO inválido' });
+      }
+      const level = Number(claims.level);
+      const role = level >= 9 ? 'superadmin' : level >= 8 ? 'supervisor' : 'admin';
+      const empresaId = role === 'superadmin' ? null : Number(claims.empresa_id || 0);
+      if (role !== 'superadmin') {
+        const empresa = await db.prepare("SELECT id FROM empresas WHERE id=? AND estado='activa'").get(empresaId);
+        if (!empresa) return res.status(403).json({ error: 'Empresa SSO no disponible' });
+      }
+      const username = `zv_${sourceUser}`.slice(0, 40);
+      const displayName = String(claims.name || sourceUser).slice(0, 100);
+      const passwordHash = bcrypt.hashSync(crypto.randomBytes(32).toString('hex'), 10);
+      await db.prepare(
+        `INSERT INTO users (username,password_hash,display_name,role,empresa_id,active)
+         VALUES (?,?,?,?,?,1)
+         ON DUPLICATE KEY UPDATE display_name=VALUES(display_name), role=VALUES(role),
+           empresa_id=VALUES(empresa_id), active=1`
+      ).run(username, passwordHash, displayName, role, empresaId);
+      const user = await db.prepare('SELECT id,username,display_name,role,empresa_id FROM users WHERE username=?').get(username);
+      req.session.userId = user.id;
+      req.session.save((error) => {
+        if (error) return res.status(500).json({ error: 'No se pudo crear la sesión SSO' });
+        res.json({ user });
+      });
+    } catch (err) {
+      console.error('[sso] zynervox:', err.message);
+      res.status(500).json({ error: 'Error de SSO' });
+    }
+  });
 
   // ------------------------------------------------------------------ API
 

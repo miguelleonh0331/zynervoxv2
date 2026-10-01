@@ -14,7 +14,7 @@ permanecen servicios nativos del host, salvo la opción de ejecutar solo MariaDB
 en Docker para mantener compatibilidad sin reemplazar MySQL existente.
 
 WhatsApp se integra como servicio externo por contrato: Apache publica
-`/zynerwabav2/` hacia un puerto local y Zynervox aporta navegación y autorización
-de entrada. Ningún módulo PHP consulta las tablas internas de Zynerwaba. La primera
-versión conserva sesiones independientes; SSO y bandeja nativa requieren un contrato
-de identidad/API posterior.
+`/zynerwabav2/` hacia un puerto local y Zynervox presenta una interfaz nativa que
+consume su API. Un intercambio HMAC de corta duración convierte la sesión Zynervox
+en una sesión Zynerwaba sin compartir contraseñas. Ningún módulo PHP consulta las
+tablas internas de Zynerwaba; el contenedor continúa siendo la fuente de verdad.

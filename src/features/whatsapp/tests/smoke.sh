@@ -46,6 +46,19 @@ if [[ -n "$proxy_url" ]]; then
   [[ "$(http_code "${proxy_url%/}/")" == 200 ]] || { echo "Proxy WhatsApp no disponible" >&2; exit 1; }
 fi
 
+[[ ${#ZYNERVOX_SSO_SECRET} -ge 32 ]] || { echo "SSO Zynervox no configurado" >&2; exit 1; }
+sso_exp="$(( $(date +%s) + 60 ))"
+sso_payload="$(printf '{\"user\":\"smoke_sso\",\"name\":\"Smoke SSO\",\"level\":9,\"empresa_id\":1,\"exp\":%s}' "$sso_exp" | openssl base64 -A | tr '+/' '-_' | tr -d '=')"
+sso_signature="$(printf '%s' "$sso_payload" | openssl dgst -sha256 -hmac "$ZYNERVOX_SSO_SECRET" -hex | awk '{print $2}')"
+sso_code="$(curl --max-time 15 -sS -o "$temp_dir/sso" -c "$temp_dir/sso-cookies" -w '%{http_code}' \
+  -H 'Content-Type: application/json' \
+  --data "{\"payload\":\"$sso_payload\",\"signature\":\"$sso_signature\"}" \
+  "$direct_url/api/sso/zynervox")"
+[[ "$sso_code" == 200 ]] && grep -Fq '"username":"zv_smoke_sso"' "$temp_dir/sso" || {
+  echo "SSO Zynervox falló ($sso_code)" >&2
+  exit 1
+}
+
 login_body="$temp_dir/login"
 login_code="$(curl --max-time 15 -sS -o "$login_body" -c "$cookies" -w '%{http_code}' \
   --data-urlencode "username=$WHATSAPP_ADMIN_USER" \
@@ -92,5 +105,5 @@ if [[ "$restart_app" == 1 ]]; then
   }
 fi
 
-printf 'WHATSAPP_SMOKE_OK tables=%s login=200 session=200 socket=200 webhook_invalid=403 restart=%s\n' \
+printf 'WHATSAPP_SMOKE_OK tables=%s login=200 sso=200 session=200 socket=200 webhook_invalid=403 restart=%s\n' \
   "$tables" "$restart_app"

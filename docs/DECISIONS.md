@@ -128,3 +128,27 @@ Impacto:
 
 Seguimiento:
 (ninguno)
+
+### ADR-0006 - SSO firmado e interfaz WhatsApp nativa
+
+Fecha: 2026-10-01
+
+Estado: aceptada
+
+Contexto:
+El iframe exigía una segunda sesión y no permitía una experiencia omnicanal propia de Zynervox.
+
+Decisión:
+Mantener Zynerwaba como motor Docker y consumir su API desde una interfaz Zynervox, intercambiando identidad mediante claims HMAC de corta duración.
+
+Motivo:
+Separa responsabilidades, evita compartir contraseñas y permite evolucionar llamadas y WhatsApp sobre una experiencia unificada.
+
+Alternativas evaluadas:
+- Mantener iframe; fusionar ambos proyectos en un monolito.
+
+Impacto:
+Cambia el contrato whatsapp, el instalador, la configuración del contenedor y el portal PHP.
+
+Seguimiento:
+Validar E2E con Meta cuando existan línea y destinatario exclusivos de laboratorio.

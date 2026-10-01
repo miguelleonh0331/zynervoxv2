@@ -44,8 +44,9 @@ independiente, sin mezclar su base MySQL con `asterisk` ni duplicar su lógica.
 
 ## Estado
 
-Primera integración: portal y despliegue reproducible con sesiones separadas.
-Siguiente incremento: SSO/API de identidad y vista omnicanal nativa en Zynervox.
+Integración nativa: Zynervox presenta conversaciones, usuarios, campañas y líneas,
+consume la API de Zynerwaba y establece sesión mediante claims HMAC de corta duración.
+Zynerwaba permanece como motor Docker aislado y fuente de verdad de WhatsApp.
 
 ## Pruebas
 
@@ -74,3 +75,5 @@ Los overrides de la bandeja y gestión consumen `/api/my-lines`, que respeta el
 contexto de empresa del administrador sin exigir privilegios de superadministrador.
 El override backend de `empresas` aplica `requireSuperadmin` por ruta, evitando que
 su router global intercepte `/api/my-lines` y los módulos registrados después.
+También publica `/api/sso/zynervox`; el secreto se genera durante `init`, se entrega
+al contenedor por entorno y a PHP mediante `/etc/zynervox/whatsapp.conf` con permisos restringidos.
