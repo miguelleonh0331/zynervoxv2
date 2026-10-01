@@ -67,7 +67,7 @@ if [[ $INSTALL_DOCKER -eq 1 ]]; then
         apt-get update && apt-get install -y docker.io docker-compose-v2
         ;;
       opensuse*|sles)
-        if ! zypper --non-interactive --no-refresh install --no-recommends docker docker-compose; then
+        if ! zypper --non-interactive --no-refresh install --no-recommends docker docker-compose docker-runc; then
           command -v docker >/dev/null 2>&1 && command -v docker-compose >/dev/null 2>&1 || exit 1
           echo "AVISO: zypper informó repositorios inválidos, pero Docker y Compose quedaron instalados" >&2
         fi
@@ -75,7 +75,18 @@ if [[ $INSTALL_DOCKER -eq 1 ]]; then
       *) echo "Instalación automática de Docker no soportada en ${ID:-desconocido}" >&2; exit 1 ;;
     esac
   fi
+  if [[ "${ID:-}" == opensuse* || "${ID:-}" == sles ]]; then
+    if ! PATH="/usr/sbin:/usr/bin:$PATH" runc --version >/dev/null 2>&1; then
+      if ! zypper --non-interactive --no-refresh install --no-recommends docker-runc; then
+        PATH="/usr/sbin:/usr/bin:$PATH" runc --version >/dev/null 2>&1 || exit 1
+      fi
+    fi
+    PATH="/usr/sbin:/usr/bin:$PATH" runc --version >/dev/null 2>&1 || {
+      echo "Runtime OCI runc incompatible con el sistema" >&2; exit 1;
+    }
+  fi
   systemctl enable --now docker
+  systemctl restart docker
 fi
 
 if [[ -f "$DB_CONFIG" ]] && command -v asterisk >/dev/null 2>&1 && command -v mysql >/dev/null 2>&1; then
