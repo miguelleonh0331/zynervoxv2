@@ -26,7 +26,9 @@ incluye contraseñas, bases, audios, grabaciones ni datos de producción.
 
 La instalación integral de una sola orden, compatible con Ubuntu y ViciBox/openSUSE,
 está documentada en `docs/INSTALL_ONE_COMMAND.md`. Puede instalar Docker cuando se
-usa `--install-docker`; nunca reemplaza una ruta web existente.
+usa `--install-docker`; nunca reemplaza una ruta web existente. La ejecución
+validada en Mirmidon está registrada en
+`docs/DEPLOYMENT_MIRMIDON_2026-10-01.md`.
 
 ## MariaDB aislada
 

@@ -27,6 +27,27 @@ Contrato:
 Riesgos:
 - ninguno conocido
 
+### 2026-10-01 18:30 - ARCHITECT_AGENT - release,mirmidon,whatsapp
+
+Tipo: test
+
+Resumen:
+Completar el despliegue híbrido aislado en mirmidon y aprobar web, AGC, WhatsApp, SSO, persistencia y protección de producción.
+
+Motivo:
+Conservar evidencia reproducible antes de promover la versión.
+
+Archivos modificados:
+- docs/DEPLOYMENT_MIRMIDON_2026-10-01.md
+- README.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- módulos Python opcionales pendientes para pruebas específicas de Bot IVR
+- publicación de la imagen integrada en Docker Hub pendiente de autenticación
+
 ### 2026-09-30 18:54 - ARCHITECT_AGENT - transversal
 
 Tipo: refactor
