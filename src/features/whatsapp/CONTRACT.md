@@ -10,6 +10,8 @@ aislado, reproducible y reversible.
 - `GET modules/admin/whatsapp.php`: interfaz nativa; requiere sesión Zynervox y nivel 7, 8 o 9.
 - `POST /api/sso/zynervox`: intercambia claims firmados de 60 segundos por una sesión Zynerwaba.
 - `GET|POST|PATCH|DELETE /api/users`: administra operadores y supervisores dentro de la empresa efectiva.
+- `POST|DELETE /api/broadcast-lists`: administra listas simples de teléfonos por empresa.
+- `GET /api/broadcasts`: consulta envíos y su progreso dentro de la empresa efectiva.
 - `installer/whatsapp.sh init|up|status|credentials|install-proxy|remove-proxy|backup|restore|down`.
 - Variables generadas en `whatsapp/.env`; nunca se versionan.
 

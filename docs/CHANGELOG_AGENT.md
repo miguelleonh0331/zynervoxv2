@@ -362,3 +362,22 @@ Contrato:
 
 Riesgos:
 Override temporal hasta consolidar una imagen nueva
+
+### 2026-10-01 11:56 - ARCHITECT_AGENT - whatsapp
+
+Tipo: feature
+
+Resumen:
+Operación nativa de listas y envíos de campañas
+
+Motivo:
+Completar el flujo de campaña sin depender de la interfaz interna de Zynerwaba
+
+Archivos modificados:
+- app/web/modules/admin/whatsapp.php; whatsapp/overrides/src/features/empresas/index.js; src/features/whatsapp/CONTRACT.md; src/features/whatsapp/tests/smoke.sh
+
+Contrato:
+- sin cambios
+
+Riesgos:
+El inicio real exige credenciales Meta y plantilla aprobada

@@ -190,6 +190,46 @@ function register(ctx) {
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  sa.post('/broadcast-lists', requireAdmin, async (req, res) => {
+    try {
+      const empresaId = resolveEmpresaId(req);
+      if (!empresaId) return res.status(400).json({ error: 'Falta contexto de empresa' });
+      const name = String(req.body?.name || '').trim();
+      const phones = [...new Set((Array.isArray(req.body?.phones) ? req.body.phones : [])
+        .map((phone) => String(phone).replace(/\D/g, '')).filter((phone) => /^\d{7,20}$/.test(phone)))];
+      if (!name || !phones.length) return res.status(400).json({ error: 'Nombre y teléfonos válidos son obligatorios' });
+      const result = await db.prepare(
+        'INSERT INTO broadcast_lists (name,description,created_by_user_id,empresa_id) VALUES (?,?,?,?)'
+      ).run(name, req.body?.description || null, req.user.id, empresaId);
+      for (const phone of phones) await db.prepare('INSERT INTO broadcast_list_contacts (list_id,phone) VALUES (?,?)').run(result.lastInsertRowid, phone);
+      res.status(201).json({ id: result.lastInsertRowid, contactos: phones.length });
+    } catch (err) {
+      if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Nombre de lista ya registrado' });
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  sa.delete('/broadcast-lists/:listId', requireAdmin, async (req, res) => {
+    try {
+      const empresaId = resolveEmpresaId(req);
+      const result = await db.prepare('DELETE FROM broadcast_lists WHERE id=? AND empresa_id=?').run(Number(req.params.listId), empresaId);
+      if (!result.changes) return res.status(404).json({ error: 'Lista no encontrada' });
+      res.json({ ok: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  sa.get('/broadcasts', requireAdmin, async (req, res) => {
+    try {
+      const empresaId = resolveEmpresaId(req);
+      if (!empresaId) return res.status(400).json({ error: 'Falta contexto de empresa' });
+      const rows = await db.prepare(
+        `SELECT b.*,l.name AS line_name FROM broadcasts b JOIN \`lines\` l ON l.id=b.line_id
+         WHERE l.empresa_id=? ORDER BY b.id DESC LIMIT 100`
+      ).all(empresaId);
+      res.json(rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   // ------------------------------------------------------------------ API
 
   sa.get('/empresas', requireSuperadmin, async (_req, res) => {

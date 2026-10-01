@@ -58,6 +58,10 @@ sso_code="$(curl --max-time 15 -sS -o "$temp_dir/sso" -c "$temp_dir/sso-cookies"
   echo "SSO Zynervox falló ($sso_code)" >&2
   exit 1
 }
+sso_invalid_code="$(http_code -H 'Content-Type: application/json' \
+  --data "{\"payload\":\"$sso_payload\",\"signature\":\"00\"}" \
+  "$direct_url/api/sso/zynervox")"
+[[ "$sso_invalid_code" == 403 ]] || { echo "SSO aceptó una firma inválida ($sso_invalid_code)" >&2; exit 1; }
 
 login_body="$temp_dir/login"
 login_code="$(curl --max-time 15 -sS -o "$login_body" -c "$cookies" -w '%{http_code}' \
@@ -105,5 +109,8 @@ if [[ "$restart_app" == 1 ]]; then
   }
 fi
 
-printf 'WHATSAPP_SMOKE_OK tables=%s login=200 sso=200 session=200 socket=200 webhook_invalid=403 restart=%s\n' \
+docker exec zynervox-whatsapp-db sh -lc \
+  'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" -e "DELETE FROM users WHERE username='\''zv_smoke_sso'\'' AND role='\''superadmin'\''"' >/dev/null
+
+printf 'WHATSAPP_SMOKE_OK tables=%s login=200 sso=200 sso_invalid=403 session=200 socket=200 webhook_invalid=403 restart=%s\n' \
   "$tables" "$restart_app"

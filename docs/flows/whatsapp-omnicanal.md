@@ -4,7 +4,7 @@
 - Criticidad: Alta
 - Responsable: Zynervox
 - Última verificación: 2026-10-01
-- Versión verificada: `feature/native-whatsapp-api-integration`
+- Versión verificada: `feature/native-whatsapp-api-integration` (`7f9daa1`)
 
 ## Propósito
 
@@ -104,8 +104,8 @@ El secreto no se versiona ni se envía al navegador. Solo la firma sale de PHP. 
 
 | Prueba/comando | Cobertura | Último resultado |
 |---|---|---|
-| `smoke.sh` | firma SSO, login, sesión, socket y persistencia | Pendiente de despliegue de esta rama |
-| navegador | UI y flujos API | Pendiente de despliegue de esta rama |
+| `smoke.sh` | firma SSO, login, sesión, socket y persistencia | Aprobado: `sso=200`, sesión y reinicio OK |
+| navegador | UI y flujos API | Aprobado: sesión única, empresas, contactos, campañas, usuarios y líneas |
 
 ## Evidencia pendiente
 
