@@ -2,8 +2,10 @@
 
 ## Objetivo del proyecto
 
-Zynervox v2 — contexto global del proyecto y reglas generales que deben respetar
-humanos y agentes de IA. Completar con el objetivo real del sistema.
+Zynervox v2 centraliza la administración y operación de canales de atención.
+Integra telefonía VICIdial/Asterisk y WhatsApp mediante servicios aislados, con
+control multiempresa, despliegues reproducibles y separación estricta de datos.
+Este archivo define las reglas generales que deben respetar humanos y agentes de IA.
 
 ## Arquitectura general
 

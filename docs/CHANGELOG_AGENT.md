@@ -438,3 +438,22 @@ Contrato:
 
 Riesgos:
 Cambio visual sin alterar endpoints ni datos
+
+### 2026-10-01 12:38 - ARCHITECT_AGENT - whatsapp
+
+Tipo: docs
+
+Resumen:
+Alinear documentación de mantenimiento, flujo, roadmap, actualización y rollback con main b038cf5.
+
+Motivo:
+Preparar la reconstrucción de la imagen Docker y el siguiente release Git con trazabilidad.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido

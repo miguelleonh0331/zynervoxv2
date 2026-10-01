@@ -176,3 +176,27 @@ Cambia la navegación del módulo WhatsApp sin eliminar APIs ni datos operativos
 
 Seguimiento:
 Diseñar e implementar el módulo Operaciones WhatsApp en una tarea separada.
+
+### ADR-0008 - Versionado coordinado de Git e imagen WhatsApp
+
+Fecha: 2026-10-01
+
+Estado: aceptada
+
+Contexto:
+La integración todavía aplica overrides versionados sobre una imagen base y debe convertirse en un artefacto reproducible.
+
+Decisión:
+Publicar la próxima imagen Zynerwaba con etiqueta y digest inmutables, vinculados al mismo tag de Git, después de smoke, validación de roles, rollback y gate Meta cuando corresponda.
+
+Motivo:
+Evita deriva entre código, contenedor y despliegues, y permite recuperar una versión exacta.
+
+Alternativas evaluadas:
+- (ninguna registrada)
+
+Impacto:
+(pendiente)
+
+Seguimiento:
+(ninguno)

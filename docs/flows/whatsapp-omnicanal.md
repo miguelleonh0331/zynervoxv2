@@ -4,7 +4,7 @@
 - Criticidad: Alta
 - Responsable: Zynervox
 - Última verificación: 2026-10-01
-- Versión verificada: `feature/native-whatsapp-api-integration` (`08e48e6`)
+- Versión verificada: `main` (`b038cf5`)
 
 ## Propósito
 
@@ -106,14 +106,16 @@ El secreto no se versiona ni se envía al navegador. Solo la firma sale de PHP. 
 | Prueba/comando | Cobertura | Último resultado |
 |---|---|---|
 | `smoke.sh` | firma válida/inválida, login, sesión, socket y persistencia | Aprobado: `sso=200`, `sso_invalid=403`, sesión y reinicio OK |
-| navegador | UI y flujos API | Aprobado: sesión única, empresas, contactos, campañas, listas, usuarios y líneas |
+| navegador | UI administrativa y roles | Aprobado: sesión única; superadmin administra empresas, responsables y líneas; admin de empresa administra usuarios y líneas |
 
 ## Evidencia pendiente
 
 - Envío y recepción reales requieren credenciales Meta y línea exclusiva de laboratorio.
+- Conversaciones, contactos, campañas, listas y envíos requieren el futuro módulo separado de Operaciones WhatsApp.
 
 ## Historial
 
 | Fecha | Cambio operativo | Evidencia/versión |
 |---|---|---|
 | 2026-10-01 | Primera integración nativa con SSO firmado | rama de integración |
+| 2026-10-01 | Administración separada de operaciones y formularios reorganizados | `main` (`b038cf5`) |
