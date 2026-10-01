@@ -12,6 +12,7 @@ aislado, reproducible y reversible.
 - `GET|POST|PATCH|DELETE /api/users`: administra operadores y supervisores dentro de la empresa efectiva.
 - `POST|DELETE /api/broadcast-lists`: administra listas simples de teléfonos por empresa.
 - `GET /api/broadcasts`: consulta envíos y su progreso dentro de la empresa efectiva.
+- La vista `Empresas` solo aparece para `superadmin` y consume el CRUD `/api/empresas/:id/...`.
 - `installer/whatsapp.sh init|up|status|credentials|install-proxy|remove-proxy|backup|restore|down`.
 - Variables generadas en `whatsapp/.env`; nunca se versionan.
 
