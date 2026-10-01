@@ -304,3 +304,23 @@ Contrato:
 
 Riesgos:
 - el override debe retirarse cuando una imagen Zynerwaba posterior incluya la corrección
+
+### 2026-10-01 07:25 - ARCHITECT_AGENT - whatsapp
+
+Tipo: fix
+
+Resumen:
+Administradores de empresa visibles, contados y editables desde el panel de superadministración
+
+Motivo:
+Los administradores se guardaban en MySQL, pero el resumen mostraba cero y la recarga cerraba el panel
+
+Archivos modificados:
+- whatsapp/overrides/src/features/empresas/index.js
+- whatsapp/overrides/views/empresas/index.html
+
+Contrato:
+- se reutilizan GET, POST, PATCH y DELETE de `/api/empresas/:id/admins`
+
+Riesgos:
+- el override debe revisarse al actualizar la imagen Zynerwaba
