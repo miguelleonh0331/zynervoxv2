@@ -381,3 +381,22 @@ Contrato:
 
 Riesgos:
 El inicio real exige credenciales Meta y plantilla aprobada
+
+### 2026-10-01 12:06 - ARCHITECT_AGENT - whatsapp
+
+Tipo: fix
+
+Resumen:
+Restaurar administración multiempresa en la interfaz nativa
+
+Motivo:
+El superadministrador necesitaba crear empresas, administradores, números y credenciales sin volver al panel interno
+
+Archivos modificados:
+- app/web/modules/admin/whatsapp.php; src/features/whatsapp/README.md; src/features/whatsapp/CONTRACT.md; docs/flows/whatsapp-omnicanal.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+Las credenciales Meta se guardan cifradas y nunca se muestran

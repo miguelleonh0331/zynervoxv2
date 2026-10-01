@@ -47,6 +47,8 @@ independiente, sin mezclar su base MySQL con `asterisk` ni duplicar su lógica.
 Integración nativa: Zynervox presenta conversaciones, usuarios, campañas y líneas,
 consume la API de Zynerwaba y establece sesión mediante claims HMAC de corta duración.
 Zynerwaba permanece como motor Docker aislado y fuente de verdad de WhatsApp.
+El superadministrador dispone además de una vista `Empresas` para crear tenants,
+administradores, números y credenciales Meta sin abandonar Zynervox.
 
 ## Pruebas
 

@@ -56,8 +56,9 @@ flowchart LR
 1. PHP valida nivel 7, 8 o 9 y firma claims sin contraseña.
 2. El navegador intercambia los claims mediante `POST /api/sso/zynervox`.
 3. Zynerwaba crea o actualiza la identidad enlazada `zv_<usuario>` y guarda la sesión.
-4. La interfaz consulta empresas, contactos, mensajes, campañas, usuarios y líneas según el rol.
-5. Socket.IO actualiza mensajes y contactos en tiempo real.
+4. El superadministrador crea empresas, administradores, números y credenciales Meta; los demás roles no ven esa sección.
+5. La interfaz consulta contactos, mensajes, campañas, usuarios y líneas según el rol y la empresa efectiva.
+6. Socket.IO actualiza mensajes y contactos en tiempo real.
 
 ## Decisiones y variantes
 
