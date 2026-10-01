@@ -54,7 +54,8 @@ install -d -o root -g root -m 0755 "$RUNTIME/annex" "$DATA/annex"
 install -d -o root -g "$WEB_GROUP" -m 0750 "$LOG"
 getent group "$INSTANCE" >/dev/null 2>&1 || groupadd --system "$INSTANCE"
 id "$INSTANCE" >/dev/null 2>&1 || useradd --system --gid "$INSTANCE" --home-dir "$RUNTIME" --shell /usr/sbin/nologin "$INSTANCE"
-install -d -o "$INSTANCE" -g "$INSTANCE" -m 0750 "$RUNTIME/control" "$RUNTIME/control/proxy-accounts" "$RUNTIME/control/secrets" "$DATA/control"
+install -d -o "$INSTANCE" -g "$INSTANCE" -m 0750 "$RUNTIME/control" "$RUNTIME/control/proxy-accounts" "$RUNTIME/control/secrets"
+install -d -o "$INSTANCE" -g "$WEB_GROUP" -m 0750 "$DATA/control"
 
 install -m 0755 "$VENDOR/services/annex/zypad_annex" "$RUNTIME/annex/zypad_annex"
 install -m 0755 "$VENDOR/services/annex/zypad_annex_daemon.py" "$RUNTIME/annex/zypad_annex_daemon.py"
@@ -66,16 +67,17 @@ if [[ ! -x "$RUNTIME/control/.venv/bin/python" ]]; then
     "$PYTHON" -m venv "$RUNTIME/control/.venv"
 fi
 "$RUNTIME/control/.venv/bin/pip" install --disable-pip-version-check -r "$VENDOR/requirements.txt"
-chown -R "$INSTANCE":"$INSTANCE" "$RUNTIME/control" "$DATA/control"
+chown -R "$INSTANCE":"$INSTANCE" "$RUNTIME/control"
+chown "$INSTANCE":"$WEB_GROUP" "$DATA/control"
 
-for secret in "$DATA/internal_token" "$DATA/control.token" "$RUNTIME/control/secrets/tts_jobs_token"; do
+for secret in "$DATA/internal_token" "$DATA/control/control.token" "$RUNTIME/control/secrets/tts_jobs_token"; do
     [[ -s "$secret" ]] || openssl rand -hex 32 > "$secret"
 done
 touch "$LOG/audit.log"
 chown root:"$WEB_GROUP" "$DATA/internal_token" "$LOG/audit.log"
-chown "$INSTANCE":"$WEB_GROUP" "$DATA/control.token"
+chown "$INSTANCE":"$WEB_GROUP" "$DATA/control/control.token"
 chown "$INSTANCE":"$INSTANCE" "$RUNTIME/control/secrets/tts_jobs_token"
-chmod 0640 "$DATA/internal_token" "$DATA/control.token" "$RUNTIME/control/secrets/tts_jobs_token"
+chmod 0640 "$DATA/internal_token" "$DATA/control/control.token" "$RUNTIME/control/secrets/tts_jobs_token"
 chmod 0660 "$LOG/audit.log"
 
 cat > "$CONFIG_PHP" <<EOF
@@ -84,7 +86,7 @@ return [
     'annex_url' => 'http://127.0.0.1:${FARM_ANNEX_PORT}/',
     'control_url' => 'http://127.0.0.1:${FARM_CONTROL_PORT}',
     'internal_token' => '${DATA}/internal_token',
-    'control_token' => '${DATA}/control.token',
+    'control_token' => '${DATA}/control/control.token',
     'audit_log' => '${LOG}/audit.log',
 ];
 EOF
