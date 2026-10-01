@@ -13,3 +13,13 @@ enmascaradas. No se incluye ninguna key real.
 
 Origen: `https://github.com/miguelleonh0331/stt-providers`, commit
 `fdbe4caf22c0345f42b67e884d74dc7c99dc75c5`.
+
+## Mantenimiento
+
+- Salud: abrir `stt_providers_admin.php?action=list` con sesión administrativa.
+- Backup: `mysqldump <base_stt> > stt-providers.sql` y guardar por separado la
+  configuración protegida `/etc/zynervox/<instancia>.*`.
+- Restauración: importar el dump en una base vacía y ejecutar nuevamente el
+  instalador para reparar web, permisos y configuración.
+- Retirada: quitar la web y configuración; eliminar base/usuario solamente tras
+  respaldo y confirmación expresa.

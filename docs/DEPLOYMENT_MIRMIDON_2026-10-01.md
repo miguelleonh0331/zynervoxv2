@@ -74,7 +74,7 @@ volúmenes y datos.
 ## Extensión Farm y Stt Providers
 
 Rama probada: `feature/farm-stt-modules`
-Commits funcionales: `7788f74`, `dc2673b`
+Commit final instalado: `1b40c3a68e888234c0151d3cd87fd41337d62df8`
 
 Artefactos instalados:
 

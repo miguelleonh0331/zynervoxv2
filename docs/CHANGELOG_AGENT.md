@@ -649,3 +649,22 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-10-01 21:57 - ARCHITECT_AGENT - farm,stt_providers
+
+Tipo: docs
+
+Resumen:
+Documentar backup, restauracion y retiro seguro de ambos modulos.
+
+Motivo:
+Completar el procedimiento de mantenimiento del despliegue portable.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
