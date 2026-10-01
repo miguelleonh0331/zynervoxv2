@@ -457,3 +457,22 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-10-01 16:31 - ARCHITECT_AGENT - agent
+
+Tipo: docs
+
+Resumen:
+Documentar el primer despliegue AGC y sus tres dependencias PHP pendientes.
+
+Motivo:
+Mantener el estado de laboratorio reproducible antes de migrar el siguiente archivo.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
