@@ -76,14 +76,35 @@ if [[ $INSTALL_DOCKER -eq 1 ]]; then
     esac
   fi
   if [[ "${ID:-}" == opensuse* || "${ID:-}" == sles ]]; then
-    if ! PATH="/usr/sbin:/usr/bin:$PATH" runc --version >/dev/null 2>&1; then
+    if ! /usr/sbin/docker-runc --version >/dev/null 2>&1; then
       if ! zypper --non-interactive --no-refresh install --no-recommends docker-runc; then
-        PATH="/usr/sbin:/usr/bin:$PATH" runc --version >/dev/null 2>&1 || exit 1
+        /usr/sbin/docker-runc --version >/dev/null 2>&1 || exit 1
       fi
     fi
-    PATH="/usr/sbin:/usr/bin:$PATH" runc --version >/dev/null 2>&1 || {
+    /usr/sbin/docker-runc --version >/dev/null 2>&1 || {
       echo "Runtime OCI runc incompatible con el sistema" >&2; exit 1;
     }
+    install -d -o root -g root -m 0755 /etc/docker
+    [[ ! -f /etc/docker/daemon.json || -f /etc/docker/daemon.json.pre-zynervox ]] || \
+      cp -a /etc/docker/daemon.json /etc/docker/daemon.json.pre-zynervox
+    python3 - /etc/docker/daemon.json <<'PY'
+import json
+import os
+import sys
+
+path = sys.argv[1]
+config = {}
+if os.path.exists(path):
+    with open(path, encoding="utf-8") as handle:
+        config = json.load(handle)
+config.setdefault("runtimes", {})["vicibox-runc"] = {"path": "/usr/sbin/docker-runc"}
+config["default-runtime"] = "vicibox-runc"
+temporary = path + ".zynervox.tmp"
+with open(temporary, "w", encoding="utf-8") as handle:
+    json.dump(config, handle, indent=2, sort_keys=True)
+    handle.write("\n")
+os.replace(temporary, path)
+PY
   fi
   systemctl enable --now docker
   systemctl restart docker

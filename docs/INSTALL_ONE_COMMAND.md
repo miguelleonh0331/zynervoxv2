@@ -47,7 +47,9 @@ clon Git válido y no elimina datos, volúmenes ni archivos ajenos.
 - Secretos: `whatsapp/.env`, modo privado y excluido de Git.
 - Persistencia: volúmenes Compose exclusivos del nombre del proyecto.
 - ViciBox/openSUSE: `docker-runc` se instala explícitamente y se valida contra la
-  glibc del host antes de crear contenedores.
+  glibc del host antes de crear contenedores. Docker usa el runtime explícito
+  `vicibox-runc`; la configuración anterior queda en
+  `/etc/docker/daemon.json.pre-zynervox` para rollback.
 
 ## Gates de aprobación
 
