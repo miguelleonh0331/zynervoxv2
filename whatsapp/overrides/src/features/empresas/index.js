@@ -105,6 +105,75 @@ function register(ctx) {
     }
   });
 
+  // Usuarios operativos de la empresa. Completa el contrato que el frontend
+  // Zynerwaba consume, manteniendo el aislamiento por empresa y por rol.
+  sa.get('/users', requireAdmin, async (req, res) => {
+    try {
+      const empresaId = resolveEmpresaId(req);
+      if (!empresaId) return res.status(400).json({ error: 'Falta contexto de empresa' });
+      const users = await db.prepare(
+        `SELECT u.id,u.username,u.display_name,u.role,u.active,u.created_at,
+          (SELECT COUNT(*) FROM contacts c WHERE c.owner_user_id=u.id) AS contact_count
+         FROM users u WHERE u.empresa_id=? ORDER BY u.id`
+      ).all(empresaId);
+      for (const user of users) {
+        user.lines = await db.prepare(
+          'SELECT l.id,l.name,l.color,l.phone_number_id FROM user_lines ul JOIN `lines` l ON l.id=ul.line_id WHERE ul.user_id=? ORDER BY l.id'
+        ).all(user.id);
+      }
+      res.json(users);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  sa.post('/users', requireAdmin, async (req, res) => {
+    try {
+      const empresaId = resolveEmpresaId(req);
+      if (!empresaId) return res.status(400).json({ error: 'Falta contexto de empresa' });
+      const { username, password, display_name, role, line_ids } = req.body || {};
+      if (!username || !password || String(password).length < 8) {
+        return res.status(400).json({ error: 'Usuario y contraseña de 8 caracteres son obligatorios' });
+      }
+      if (!['agent', 'supervisor'].includes(role)) return res.status(400).json({ error: 'Rol inválido' });
+      const ids = [...new Set((Array.isArray(line_ids) ? line_ids : []).map(Number).filter(Number.isInteger))];
+      if (ids.length) {
+        const valid = await db.prepare(`SELECT id FROM \`lines\` WHERE empresa_id=? AND id IN (${ids.map(() => '?').join(',')})`).all(empresaId, ...ids);
+        if (valid.length !== ids.length) return res.status(400).json({ error: 'Línea inválida para la empresa' });
+      }
+      const result = await db.prepare(
+        'INSERT INTO users (username,password_hash,display_name,role,empresa_id,active) VALUES (?,?,?,?,?,1)'
+      ).run(String(username).trim(), bcrypt.hashSync(String(password), 10), display_name || username, role, empresaId);
+      for (const lineId of ids) await db.prepare('INSERT INTO user_lines (user_id,line_id) VALUES (?,?)').run(result.lastInsertRowid, lineId);
+      await empresaAudit(empresaId, req.user.id, 'usuario_operativo_creado', { id: result.lastInsertRowid, role });
+      res.status(201).json({ id: result.lastInsertRowid });
+    } catch (err) {
+      if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'usuario ya existe' });
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  sa.patch('/users/:userId', requireAdmin, async (req, res) => {
+    try {
+      const empresaId = resolveEmpresaId(req);
+      const userId = Number(req.params.userId);
+      const target = await db.prepare("SELECT id FROM users WHERE id=? AND empresa_id=? AND role IN ('agent','supervisor')").get(userId, empresaId);
+      if (!target) return res.status(404).json({ error: 'Usuario no encontrado' });
+      const sets = [], params = [];
+      if ('display_name' in (req.body || {})) { sets.push('display_name=?'); params.push(req.body.display_name); }
+      if ('active' in (req.body || {})) { sets.push('active=?'); params.push(req.body.active ? 1 : 0); }
+      if (req.body && req.body.password) { sets.push('password_hash=?'); params.push(bcrypt.hashSync(String(req.body.password), 10)); }
+      if (sets.length) await db.prepare(`UPDATE users SET ${sets.join(',')} WHERE id=?`).run(...params, userId);
+      if (Array.isArray(req.body?.line_ids)) {
+        const ids = [...new Set(req.body.line_ids.map(Number).filter(Number.isInteger))];
+        const valid = ids.length ? await db.prepare(`SELECT id FROM \`lines\` WHERE empresa_id=? AND id IN (${ids.map(() => '?').join(',')})`).all(empresaId, ...ids) : [];
+        if (valid.length !== ids.length) return res.status(400).json({ error: 'Línea inválida para la empresa' });
+        await db.prepare('DELETE FROM user_lines WHERE user_id=?').run(userId);
+        for (const lineId of ids) await db.prepare('INSERT INTO user_lines (user_id,line_id) VALUES (?,?)').run(userId, lineId);
+      }
+      await empresaAudit(empresaId, req.user.id, 'usuario_operativo_editado', { id: userId });
+      res.json({ ok: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   // ------------------------------------------------------------------ API
 
   sa.get('/empresas', requireSuperadmin, async (_req, res) => {

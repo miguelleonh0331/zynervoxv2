@@ -343,3 +343,22 @@ Contrato:
 
 Riesgos:
 La imagen base se extiende mediante overrides hasta publicar una versión consolidada
+
+### 2026-10-01 11:48 - ARCHITECT_AGENT - whatsapp
+
+Tipo: fix
+
+Resumen:
+Completar API multiempresa de usuarios operativos
+
+Motivo:
+La imagen 2.0.0 no publicaba /api/users aunque el frontend y la integración nativa lo consumen
+
+Archivos modificados:
+- whatsapp/overrides/src/features/empresas/index.js; src/features/whatsapp/CONTRACT.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+Override temporal hasta consolidar una imagen nueva
