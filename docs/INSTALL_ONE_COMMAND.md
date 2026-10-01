@@ -46,10 +46,11 @@ clon Git válido y no elimina datos, volúmenes ni archivos ajenos.
 - Puerto: primer puerto loopback libre entre 3022 y 3099.
 - Secretos: `whatsapp/.env`, modo privado y excluido de Git.
 - Persistencia: volúmenes Compose exclusivos del nombre del proyecto.
-- ViciBox/openSUSE: `docker-runc` se instala explícitamente y se valida contra la
-  glibc del host antes de crear contenedores. Docker usa el runtime explícito
+- ViciBox/openSUSE: se instala `runc` oficial 1.5.2 bajo un SHA-256 fijado y se
+  valida antes de crear contenedores. Docker usa el runtime explícito
   `vicibox-runc`; la configuración anterior queda en
   `/etc/docker/daemon.json.pre-zynervox` para rollback.
+  Fuente: `https://github.com/opencontainers/runc/releases/tag/v1.5.2`.
 
 ## Gates de aprobación
 

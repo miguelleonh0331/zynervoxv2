@@ -67,7 +67,7 @@ if [[ $INSTALL_DOCKER -eq 1 ]]; then
         apt-get update && apt-get install -y docker.io docker-compose-v2
         ;;
       opensuse*|sles)
-        if ! zypper --non-interactive --no-refresh install --no-recommends docker docker-compose docker-runc; then
+        if ! zypper --non-interactive --no-refresh install --no-recommends docker docker-compose; then
           command -v docker >/dev/null 2>&1 && command -v docker-compose >/dev/null 2>&1 || exit 1
           echo "AVISO: zypper informó repositorios inválidos, pero Docker y Compose quedaron instalados" >&2
         fi
@@ -76,12 +76,19 @@ if [[ $INSTALL_DOCKER -eq 1 ]]; then
     esac
   fi
   if [[ "${ID:-}" == opensuse* || "${ID:-}" == sles ]]; then
-    if ! /usr/sbin/docker-runc --version >/dev/null 2>&1; then
-      if ! zypper --non-interactive --no-refresh install --no-recommends docker-runc; then
-        /usr/sbin/docker-runc --version >/dev/null 2>&1 || exit 1
-      fi
+    runc_version=1.5.2
+    runc_sha256=599f6f94ff8c5057241eff0d54c3c74f95c34935b6457b33fe545defc61e9488
+    runc_path=/usr/local/sbin/zynervox-runc
+    if [[ ! -x "$runc_path" ]] || [[ "$(sha256sum "$runc_path" | awk '{print $1}')" != "$runc_sha256" ]]; then
+      runc_temp="$(mktemp)"
+      trap 'rm -f "$runc_temp"' EXIT
+      curl -fsSL "https://github.com/opencontainers/runc/releases/download/v${runc_version}/runc.amd64" -o "$runc_temp"
+      printf '%s  %s\n' "$runc_sha256" "$runc_temp" | sha256sum -c -
+      install -o root -g root -m 0755 "$runc_temp" "$runc_path"
+      rm -f "$runc_temp"
+      trap - EXIT
     fi
-    /usr/sbin/docker-runc --version >/dev/null 2>&1 || {
+    "$runc_path" --version >/dev/null 2>&1 && "$runc_path" features >/dev/null 2>&1 || {
       echo "Runtime OCI runc incompatible con el sistema" >&2; exit 1;
     }
     install -d -o root -g root -m 0755 /etc/docker
@@ -97,7 +104,7 @@ config = {}
 if os.path.exists(path):
     with open(path, encoding="utf-8") as handle:
         config = json.load(handle)
-config.setdefault("runtimes", {})["vicibox-runc"] = {"path": "/usr/sbin/docker-runc"}
+    config.setdefault("runtimes", {})["vicibox-runc"] = {"path": "/usr/local/sbin/zynervox-runc"}
 config["default-runtime"] = "vicibox-runc"
 temporary = path + ".zynervox.tmp"
 with open(temporary, "w", encoding="utf-8") as handle:
