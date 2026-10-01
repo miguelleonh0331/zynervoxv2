@@ -261,3 +261,25 @@ Contrato:
 
 Riesgos:
 - el override debe revisarse al actualizar la imagen Zynerwaba
+
+### 2026-10-01 00:45 - ARCHITECT_AGENT - whatsapp
+
+Tipo: fix
+
+Resumen:
+La bandeja y gestión de administradores usan `/api/my-lines`
+
+Motivo:
+QA detectó respuestas 403 al cargar líneas y crear contactos con un administrador de empresa
+
+Archivos modificados:
+- whatsapp/overrides/public/app.js
+- whatsapp/overrides/views/gestion/index.html
+- whatsapp/compose.yml
+- src/features/whatsapp/README.md
+
+Contrato:
+- sin cambios; se consume la ruta de líneas ya definida para administradores
+
+Riesgos:
+- los overrides deben revisarse al actualizar la imagen Zynerwaba
