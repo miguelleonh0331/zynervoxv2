@@ -133,6 +133,9 @@ function register(ctx) {
       if (!username || !password || String(password).length < 8) {
         return res.status(400).json({ error: 'Usuario y contraseña de 8 caracteres son obligatorios' });
       }
+      if (!/^[A-Za-z0-9._-]{3,40}$/.test(String(username))) {
+        return res.status(400).json({ error: 'Formato de usuario inválido' });
+      }
       if (!['agent', 'supervisor'].includes(role)) return res.status(400).json({ error: 'Rol inválido' });
       const ids = [...new Set((Array.isArray(line_ids) ? line_ids : []).map(Number).filter(Number.isInteger))];
       if (ids.length) {
@@ -170,6 +173,19 @@ function register(ctx) {
         for (const lineId of ids) await db.prepare('INSERT INTO user_lines (user_id,line_id) VALUES (?,?)').run(userId, lineId);
       }
       await empresaAudit(empresaId, req.user.id, 'usuario_operativo_editado', { id: userId });
+      res.json({ ok: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  sa.delete('/users/:userId', requireAdmin, async (req, res) => {
+    try {
+      const empresaId = resolveEmpresaId(req);
+      const userId = Number(req.params.userId);
+      const target = await db.prepare("SELECT id FROM users WHERE id=? AND empresa_id=? AND role IN ('agent','supervisor')").get(userId, empresaId);
+      if (!target) return res.status(404).json({ error: 'Usuario no encontrado' });
+      await db.prepare('DELETE FROM user_lines WHERE user_id=?').run(userId);
+      await db.prepare('DELETE FROM users WHERE id=?').run(userId);
+      await empresaAudit(empresaId, req.user.id, 'usuario_operativo_eliminado', { id: userId });
       res.json({ ok: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
