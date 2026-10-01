@@ -1130,7 +1130,7 @@ if ($action !== '') {
   @media(max-width:620px){body{padding:14px}.top{display:block}.top button{margin-top:12px}.fields,.account-fields,.assign-fields{grid-template-columns:1fr}.assigned-row{grid-template-columns:1fr}.filter-bar{display:block}.filter-bar select{width:100%;margin-top:5px}}
 </style>
 </head>
-<body>
+<body class="stt-native">
   <div class="top">
     <div>
       <h1>Proveedores STT</h1>

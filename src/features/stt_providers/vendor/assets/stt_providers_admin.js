@@ -29,13 +29,14 @@
 
   async function request(action, data = null) {
     const options = {cache: 'no-store'};
-    let url = 'stt_providers_admin.php?action=' + encodeURIComponent(action);
+    const endpoint = window.ZYNERVOX_STT_ENDPOINT || 'stt_providers_admin.php';
+    let url = endpoint + '?action=' + encodeURIComponent(action);
     if (data !== null) {
       const body = new URLSearchParams({...data, csrf: CSRF});
       options.method = 'POST';
       options.headers = {'Content-Type': 'application/x-www-form-urlencoded'};
       options.body = body;
-      url = 'stt_providers_admin.php';
+      url = endpoint;
       body.set('action', action);
     }
     const response = await fetch(url, options);
@@ -486,7 +487,7 @@
       body.append('provider', testTarget.provider);
       body.append('id', testTarget.id);
       body.append('audio', file, file.name);
-      const response = await fetch('stt_providers_admin.php', {method: 'POST', body, cache: 'no-store'});
+      const response = await fetch(window.ZYNERVOX_STT_ENDPOINT || 'stt_providers_admin.php', {method: 'POST', body, cache: 'no-store'});
       let payload;
       try { payload = await response.json(); }
       catch (error) { throw new Error('Respuesta invalida del servidor'); }

@@ -9,7 +9,7 @@
     <title>Synervox Control Plane V2</title>
     <link rel="stylesheet" href="monitor/styles.css?v=<?=filemtime(__DIR__.'/monitor/styles.css')?>" />
   </head>
-  <body>
+  <body class="farm-native">
     <header class="topbar">
       <div>
         <p class="eyebrow">SYNERV0X · HUMAN SUPERVISION</p>

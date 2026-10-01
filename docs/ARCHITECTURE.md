@@ -22,6 +22,7 @@ una ruta separada. Un intercambio HMAC de corta duración convierte la sesión Z
 en una sesión Zynerwaba sin compartir contraseñas. Ningún módulo PHP consulta las
 tablas internas de Zynerwaba; el contenedor continúa siendo la fuente de verdad.
 
-Farm y Stt Providers reutilizan la sesión administrativa de Zynervox. Farm delega
+Farm y Stt Providers se renderizan como vistas nativas sin iframe y reutilizan la
+sesión administrativa de Zynervox. Farm delega
 privilegios a servicios locales aislados; Stt Providers usa un usuario MariaDB
 limitado a su base. Ninguno vive dentro del Docker de WhatsApp.

@@ -668,3 +668,22 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-10-01 22:04 - ARCHITECT_AGENT - farm
+
+Tipo: fix
+
+Resumen:
+Se eliminaron los iframe de Farm y STT y se integraron vistas nativas aisladas.
+
+Motivo:
+Corregir ancho, navegación y scroll duplicados en el panel administrativo.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido

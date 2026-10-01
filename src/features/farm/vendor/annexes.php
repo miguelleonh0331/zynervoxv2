@@ -44,7 +44,7 @@ main{max-width:1100px;margin:0 auto;padding:20px;display:grid;gap:16px}
 .flota-toolbar{margin-top:14px}
 </style>
 </head>
-<body>
+<body class="farm-native">
 <header class="topbar">
   <div>
     <p class="eyebrow">SYNERV0X · HUMAN SUPERVISION</p>

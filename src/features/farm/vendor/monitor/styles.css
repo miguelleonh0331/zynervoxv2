@@ -1,4 +1,5 @@
-:root {
+@scope (.farm-native) {
+:scope {
   color-scheme: dark;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: #090c12;
@@ -15,7 +16,7 @@
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 8% -5%, rgba(114,128,255,.18), transparent 32rem), radial-gradient(circle at 100% 0, rgba(68,217,202,.08), transparent 30rem), #090c12; }
+:scope { margin: 0; min-height: 100%; background: radial-gradient(circle at 8% -5%, rgba(114,128,255,.18), transparent 32rem), radial-gradient(circle at 100% 0, rgba(68,217,202,.08), transparent 30rem), #090c12; }
 button, input, select { font: inherit; }
 button { border: 1px solid transparent; border-radius: 9px; padding: 9px 13px; color: #fff; cursor: pointer; transition: 120ms ease; }
 button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.1); }
@@ -124,7 +125,7 @@ input[type="number"] { width: 62px; background: #0a0f18; border: 1px solid var(-
 .actions { display: grid; grid-template-columns: repeat(3,1fr); gap: 5px; }
 .actions button { padding: 7px 5px; font-size: 10px; }
 
-body.modal-open { overflow: hidden; }
+:scope.modal-open { overflow: hidden; }
 .worker-modal[hidden] { display: none; }
 .worker-modal { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 24px; }
 .modal-backdrop { position: absolute; inset: 0; background: rgba(2,5,10,.78); backdrop-filter: blur(5px); }
@@ -202,7 +203,7 @@ body.modal-open { overflow: hidden; }
 }
 
 /* Paleta ZynerVox: solo presentación; no modifica el comportamiento del panel. */
-:root {
+:scope {
   color-scheme: light;
   background: #f4eee7;
   color: #30313d;
@@ -217,7 +218,7 @@ body.modal-open { overflow: hidden; }
   --amber: #eea52b;
 }
 
-body {
+:scope {
   background:
     linear-gradient(135deg, rgba(57, 59, 72, .98) 0 42%, rgba(246, 239, 231, .98) 42% 100%),
     #f4eee7;
@@ -257,3 +258,4 @@ input[type="number"], .worker-toolbar input, .worker-toolbar select, .blocked-ed
 .live-world-map { border-color: #cbb49d; background: linear-gradient(#4a4c59, #343641); }
 .modal-backdrop { background: rgba(33, 34, 43, .72); }
 .modal-close { background: #4a4c59; }
+}

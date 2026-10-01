@@ -248,3 +248,27 @@ Impacto:
 
 Seguimiento:
 (ninguno)
+
+### ADR-0011 - Vistas administrativas nativas para Farm y STT
+
+Fecha: 2026-10-01
+
+Estado: aceptada
+
+Contexto:
+Los iframe anidados reducían el área útil y duplicaban navegación y scroll.
+
+Decisión:
+Renderizar Farm y Stt Providers directamente dentro del layout administrativo, con CSS aislado y endpoints configurables.
+
+Motivo:
+Mantiene una sola interfaz Zynervox sin alterar servicios ni almacenamiento aislado.
+
+Alternativas evaluadas:
+- (ninguna registrada)
+
+Impacto:
+(pendiente)
+
+Seguimiento:
+(ninguno)

@@ -9,7 +9,7 @@ cuentas/API keys STT sobre un esquema MariaDB exclusivo.
 
 - Página `modules/admin/stt_providers.php` para usuarios nivel 9.
 - Acciones JSON y multipart documentadas por el módulo upstream.
-- UI embebida y JSON con claves siempre enmascaradas.
+- UI nativa dentro del panel y JSON con claves siempre enmascaradas.
 - Cuatro tablas propias en la base configurada fuera de Git.
 
 ## Dependencias permitidas

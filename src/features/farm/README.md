@@ -6,7 +6,8 @@ administrativa de Zynervox.
 - `vendor/`: snapshot saneado de `anexos-proxys`.
 - `vendor/auth.php`: puente con la sesión Zynervox y CSRF propio.
 - `installer/farm.sh`: instala la web y dos servicios systemd aislados.
-- `app/web/modules/admin/farm.php`: shell visual dentro del menú principal.
+- `app/web/modules/admin/farm.php`: vista nativa con pestañas Anexos y Monitor,
+  sin iframe ni navegación duplicada.
 
 Puertos, rutas, usuario systemd y tokens se generan por instancia. SIP y TTS
 externos quedan vacíos hasta configurarlos expresamente. El módulo no administra

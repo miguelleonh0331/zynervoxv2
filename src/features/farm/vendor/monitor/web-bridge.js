@@ -2,7 +2,8 @@
   const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
   async function request(route, options = {}) {
     const [path, query = ''] = route.split('?');
-    const response = await fetch(`proxy_gateway.php?route=${encodeURIComponent(path)}${query ? `&${query}` : ''}`, {
+    const endpoint = window.ZYNERVOX_FARM_PROXY_API || 'proxy_gateway.php';
+    const response = await fetch(`${endpoint}?route=${encodeURIComponent(path)}${query ? `&${query}` : ''}`, {
       method: options.method || 'GET',
       headers: {'Content-Type':'application/json', 'X-CSRF-Token':csrf},
       body: options.body === undefined ? undefined : JSON.stringify(options.body),

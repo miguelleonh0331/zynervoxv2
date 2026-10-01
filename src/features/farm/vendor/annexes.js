@@ -8,7 +8,7 @@ function showMsg(text, ok) {
 }
 
 async function api(action, agent, password, extra) {
-  const res = await fetch('api.php', {
+  const res = await fetch(window.ZYNERVOX_FARM_API || 'api.php', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content },
     body: JSON.stringify(Object.assign({ action, agent, password }, extra || {}))
