@@ -38,7 +38,16 @@ WHATSAPP_ADMIN_USER=admin
 WHATSAPP_ADMIN_PASSWORD=$(openssl rand -hex 12)
 WHATSAPP_SESSION_SECRET=$(openssl rand -hex 32)
 WHATSAPP_CREDENTIALS_KEY=$(openssl rand -hex 32)
+ZYNERVOX_SSO_SECRET=$(openssl rand -hex 32)
+ZYNERVOX_EMPRESA_ID=1
 EOF
+}
+
+ensure_sso_env() {
+  command -v openssl >/dev/null 2>&1 || { echo "Falta openssl" >&2; exit 1; }
+  umask 077
+  grep -q '^ZYNERVOX_SSO_SECRET=' "$ENV_FILE" || printf 'ZYNERVOX_SSO_SECRET=%s\n' "$(openssl rand -hex 32)" >> "$ENV_FILE"
+  grep -q '^ZYNERVOX_EMPRESA_ID=' "$ENV_FILE" || printf 'ZYNERVOX_EMPRESA_ID=1\n' >> "$ENV_FILE"
 }
 
 load_env() {
@@ -88,7 +97,7 @@ const mysql = require("mysql2/promise");
 action="${1:-}"
 case "$action" in
   init)
-    require_runtime; generate_env; load_env
+    require_runtime; generate_env; ensure_sso_env; load_env
     "${COMPOSE[@]}" up -d
     wait_app
     sync_initial_admin
@@ -112,7 +121,8 @@ case "$action" in
     sudo apache2ctl configtest
     sudo systemctl reload apache2
     sudo install -d -o root -g www-data -m 0750 /etc/zynervox
-    printf 'WHATSAPP_BASE_PATH=%s\n' "$WHATSAPP_BASE_PATH" | \
+    printf 'WHATSAPP_BASE_PATH=%s\nZYNERVOX_SSO_SECRET=%s\nZYNERVOX_EMPRESA_ID=%s\n' \
+      "$WHATSAPP_BASE_PATH" "$ZYNERVOX_SSO_SECRET" "$ZYNERVOX_EMPRESA_ID" | \
       sudo tee /etc/zynervox/whatsapp.conf >/dev/null
     sudo chown root:www-data /etc/zynervox/whatsapp.conf
     sudo chmod 0640 /etc/zynervox/whatsapp.conf

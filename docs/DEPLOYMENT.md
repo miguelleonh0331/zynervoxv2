@@ -64,6 +64,10 @@ El gestor descarga Zynerwaba `2.0.0` por digest, levanta MySQL 8.4 y selecciona 
 primer puerto local libre desde `3022`. Los volúmenes `zynervox_whatsapp_mysql` y
 `zynervox_whatsapp_data` no se comparten con MariaDB/VICIdial.
 
+`init` genera `ZYNERVOX_SSO_SECRET`; `install-proxy` instala el mismo valor en
+`/etc/zynervox/whatsapp.conf` con acceso limitado a `root:www-data`. Repetir ambos
+comandos al actualizar una instalación anterior para activar la sesión única.
+
 Validar `/zynerwabav2/`, login, sesión, empresas, líneas, recepción y envío antes
 de promover una versión. `down` retira contenedores y conserva ambos volúmenes.
 Usar `remove-proxy` para retirar la ruta Apache sin borrar datos.

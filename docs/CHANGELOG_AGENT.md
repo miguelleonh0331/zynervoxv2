@@ -324,3 +324,60 @@ Contrato:
 
 Riesgos:
 - el override debe revisarse al actualizar la imagen Zynerwaba
+
+### 2026-10-01 07:41 - ARCHITECT_AGENT - whatsapp
+
+Tipo: feature
+
+Resumen:
+Interfaz nativa WhatsApp con SSO firmado y consumo API
+
+Motivo:
+Unificar sesión y operación omnicanal sin acoplar bases de datos
+
+Archivos modificados:
+- app/web/modules/admin/whatsapp.php; installer/whatsapp.sh; whatsapp/compose.yml; whatsapp/overrides/src/features/empresas/index.js; src/features/whatsapp/tests/smoke.sh
+
+Contrato:
+- sin cambios
+
+Riesgos:
+La imagen base se extiende mediante overrides hasta publicar una versión consolidada
+
+### 2026-10-01 11:48 - ARCHITECT_AGENT - whatsapp
+
+Tipo: fix
+
+Resumen:
+Completar API multiempresa de usuarios operativos
+
+Motivo:
+La imagen 2.0.0 no publicaba /api/users aunque el frontend y la integración nativa lo consumen
+
+Archivos modificados:
+- whatsapp/overrides/src/features/empresas/index.js; src/features/whatsapp/CONTRACT.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+Override temporal hasta consolidar una imagen nueva
+
+### 2026-10-01 11:56 - ARCHITECT_AGENT - whatsapp
+
+Tipo: feature
+
+Resumen:
+Operación nativa de listas y envíos de campañas
+
+Motivo:
+Completar el flujo de campaña sin depender de la interfaz interna de Zynerwaba
+
+Archivos modificados:
+- app/web/modules/admin/whatsapp.php; whatsapp/overrides/src/features/empresas/index.js; src/features/whatsapp/CONTRACT.md; src/features/whatsapp/tests/smoke.sh
+
+Contrato:
+- sin cambios
+
+Riesgos:
+El inicio real exige credenciales Meta y plantilla aprobada
