@@ -111,7 +111,7 @@ case "$action" in
   init)
     require_runtime; generate_env; ensure_sso_env; load_env
     compose build --pull app
-    compose up -d
+    compose up -d --force-recreate
     wait_app
     sync_initial_admin
     echo "WHATSAPP_READY host=$WHATSAPP_BIND port=$WHATSAPP_PORT path=$WHATSAPP_BASE_PATH"
