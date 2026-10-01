@@ -46,12 +46,22 @@ if [[ -n "$proxy_url" ]]; then
   [[ "$(http_code "${proxy_url%/}/")" == 200 ]] || { echo "Proxy WhatsApp no disponible" >&2; exit 1; }
 fi
 
-login_code="$(curl --max-time 15 -sS -o /dev/null -c "$cookies" -w '%{http_code}' \
+login_body="$temp_dir/login"
+login_code="$(curl --max-time 15 -sS -o "$login_body" -c "$cookies" -w '%{http_code}' \
   --data-urlencode "username=$WHATSAPP_ADMIN_USER" \
   --data-urlencode "password=$WHATSAPP_ADMIN_PASSWORD" \
   "$direct_url/api/login")"
 [[ "$login_code" == 200 ]] || { echo "Login WhatsApp falló ($login_code)" >&2; exit 1; }
-[[ "$(http_code -b "$cookies" "$direct_url/api/me")" == 200 ]] || { echo "Sesión WhatsApp inválida" >&2; exit 1; }
+grep -Fq "\"username\":\"$WHATSAPP_ADMIN_USER\"" "$login_body" || {
+  echo "Login WhatsApp no devolvió un usuario autenticado" >&2
+  exit 1
+}
+me_body="$temp_dir/me"
+me_code="$(curl --max-time 15 -sS -o "$me_body" -b "$cookies" -w '%{http_code}' "$direct_url/api/me")"
+[[ "$me_code" == 200 ]] && grep -Fq "\"username\":\"$WHATSAPP_ADMIN_USER\"" "$me_body" || {
+  echo "Sesión WhatsApp inválida" >&2
+  exit 1
+}
 
 socket_body="$temp_dir/socket"
 socket_code="$(curl --max-time 15 -sS -o "$socket_body" -b "$cookies" -w '%{http_code}' \
@@ -74,7 +84,9 @@ if [[ "$restart_app" == 1 ]]; then
     curl --max-time 5 -fsS "$direct_url/" >/dev/null 2>&1 && break
     sleep 1
   done
-  [[ "$(http_code -b "$cookies" "$direct_url/api/me")" == 200 ]] || {
+  restart_me="$temp_dir/restart-me"
+  restart_code="$(curl --max-time 15 -sS -o "$restart_me" -b "$cookies" -w '%{http_code}' "$direct_url/api/me")"
+  [[ "$restart_code" == 200 ]] && grep -Fq "\"username\":\"$WHATSAPP_ADMIN_USER\"" "$restart_me" || {
     echo "La sesión no sobrevivió al reinicio" >&2
     exit 1
   }

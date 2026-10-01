@@ -238,3 +238,26 @@ Contrato:
 
 Riesgos:
 - el E2E exige recursos Meta exclusivos de laboratorio y consentimiento del destinatario
+
+### 2026-10-01 00:20 - ARCHITECT_AGENT - whatsapp
+
+Tipo: fix
+
+Resumen:
+Compatibilidad de administradores y líneas con el backend Zynerwaba 2.0.0, sincronización de credencial inicial y smoke autenticado real
+
+Motivo:
+QA real detectó endpoints frontend obsoletos y un falso positivo al aceptar `/api/me` con `user:null`
+
+Archivos modificados:
+- whatsapp/overrides/views/empresas/index.html
+- whatsapp/compose.yml
+- installer/whatsapp.sh
+- src/features/whatsapp/tests/smoke.sh
+- src/features/whatsapp/README.md
+
+Contrato:
+- sin cambios; se alinea el frontend con las rutas ya declaradas por Zynerwaba
+
+Riesgos:
+- el override debe revisarse al actualizar la imagen Zynerwaba
