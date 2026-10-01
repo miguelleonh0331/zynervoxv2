@@ -4,13 +4,22 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WHATSAPP_DIR="$ROOT/whatsapp"
 ENV_FILE="$WHATSAPP_DIR/.env"
-COMPOSE=(docker compose --env-file "$ENV_FILE" -f "$WHATSAPP_DIR/compose.yml")
 
 usage() { echo "Uso: $0 init|up|status|credentials|install-proxy|remove-proxy|backup <archivo>|restore <archivo>|down"; }
 
 require_runtime() {
   command -v docker >/dev/null 2>&1 || { echo "Falta Docker" >&2; exit 1; }
-  docker compose version >/dev/null 2>&1 || { echo "Falta Docker Compose" >&2; exit 1; }
+  if docker compose version >/dev/null 2>&1; then
+    COMPOSE_BIN=(docker compose)
+  elif command -v docker-compose >/dev/null 2>&1; then
+    COMPOSE_BIN=(docker-compose)
+  else
+    echo "Falta Docker Compose" >&2; exit 1
+  fi
+}
+
+compose() {
+  "${COMPOSE_BIN[@]}" --env-file "$ENV_FILE" -p "$COMPOSE_PROJECT_NAME" -f "$WHATSAPP_DIR/compose.yml" "$@"
 }
 
 generate_env() {
@@ -25,8 +34,10 @@ generate_env() {
   fi
   umask 077
   local base_path="${WHATSAPP_BASE_PATH_OVERRIDE:-/zynerwabav2}"
+  local project_name="${WHATSAPP_COMPOSE_PROJECT_OVERRIDE:-zynervox-whatsapp}"
   cat > "$ENV_FILE" <<EOF
-ZYNERWABA_IMAGE=miguelleonh0331/zynerwabav2:2.0.0@sha256:b6e3ac4ba9115435b151482c6d8c06fbbfe96a572c77cc1e83778c3e68e4c624
+COMPOSE_PROJECT_NAME=$project_name
+ZYNERWABA_IMAGE=miguelleonh0331/zynerwabav2:2.1.0-zynervox
 WHATSAPP_BIND=127.0.0.1
 WHATSAPP_PORT=$port
 WHATSAPP_BASE_PATH=$base_path
@@ -59,6 +70,7 @@ load_env() {
   [[ "$WHATSAPP_BASE_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]] || { echo "WHATSAPP_BASE_PATH inválido" >&2; exit 1; }
   [[ "$WHATSAPP_DB_NAME" =~ ^[A-Za-z0-9_]+$ ]] || { echo "WHATSAPP_DB_NAME inválido" >&2; exit 1; }
   [[ "$WHATSAPP_DB_USER" =~ ^[A-Za-z0-9_]+$ ]] || { echo "WHATSAPP_DB_USER inválido" >&2; exit 1; }
+  [[ "$COMPOSE_PROJECT_NAME" =~ ^[a-z0-9][a-z0-9_-]+$ ]] || { echo "COMPOSE_PROJECT_NAME inválido" >&2; exit 1; }
 }
 
 wait_app() {
@@ -71,7 +83,7 @@ wait_app() {
 }
 
 sync_initial_admin() {
-  "${COMPOSE[@]}" exec -T app node -e '
+  compose exec -T app node -e '
 const bcrypt = require("bcryptjs");
 const mysql = require("mysql2/promise");
 (async () => {
@@ -98,13 +110,14 @@ action="${1:-}"
 case "$action" in
   init)
     require_runtime; generate_env; ensure_sso_env; load_env
-    "${COMPOSE[@]}" up -d
+    compose build --pull app
+    compose up -d
     wait_app
     sync_initial_admin
     echo "WHATSAPP_READY host=$WHATSAPP_BIND port=$WHATSAPP_PORT path=$WHATSAPP_BASE_PATH"
     ;;
-  up) require_runtime; load_env; "${COMPOSE[@]}" up -d; wait_app ;;
-  status) require_runtime; load_env; "${COMPOSE[@]}" ps ;;
+  up) require_runtime; load_env; compose up -d --build; wait_app ;;
+  status) require_runtime; load_env; compose ps ;;
   credentials)
     load_env
     printf 'WHATSAPP_ADMIN_USER=%s\nWHATSAPP_ADMIN_PASSWORD=%s\nWHATSAPP_PATH=%s\n' \
@@ -112,26 +125,44 @@ case "$action" in
     ;;
   install-proxy)
     load_env
-    command -v a2enconf >/dev/null 2>&1 || { echo "Falta Apache" >&2; exit 1; }
-    sudo a2enmod proxy proxy_http headers >/dev/null
+    web_group=www-data
+    getent group "$web_group" >/dev/null || web_group=www
+    getent group "$web_group" >/dev/null || web_group=root
+    command -v a2enmod >/dev/null 2>&1 && sudo a2enmod proxy proxy_http headers >/dev/null
+    proxy_slug="$(printf '%s' "$WHATSAPP_BASE_PATH" | tr -c 'A-Za-z0-9' '-' | sed 's/^-*//;s/-*$//')"
+    proxy_name="zynervox-whatsapp-${proxy_slug:-default}"
+    if command -v a2enconf >/dev/null 2>&1; then
+      proxy_file="/etc/apache2/conf-available/${proxy_name}.conf"
+    elif [[ -d /etc/apache2/conf.d ]]; then
+      proxy_file="/etc/apache2/conf.d/${proxy_name}.conf"
+    else
+      echo "No se encontró directorio de configuración Apache" >&2; exit 1
+    fi
     sed -e "s|__BASE_PATH__|$WHATSAPP_BASE_PATH|g" -e "s|__PORT__|$WHATSAPP_PORT|g" \
       "$ROOT/installer/apache-whatsapp.conf.template" | \
-      sudo tee /etc/apache2/conf-available/zynervox-whatsapp.conf >/dev/null
-    sudo a2enconf zynervox-whatsapp >/dev/null
+      sudo tee "$proxy_file" >/dev/null
+    command -v a2enconf >/dev/null 2>&1 && sudo a2enconf "$proxy_name" >/dev/null
     sudo apache2ctl configtest
     sudo systemctl reload apache2
-    sudo install -d -o root -g www-data -m 0750 /etc/zynervox
+    sudo install -d -o root -g "$web_group" -m 0750 /etc/zynervox
     printf 'WHATSAPP_BASE_PATH=%s\nZYNERVOX_SSO_SECRET=%s\nZYNERVOX_EMPRESA_ID=%s\n' \
       "$WHATSAPP_BASE_PATH" "$ZYNERVOX_SSO_SECRET" "$ZYNERVOX_EMPRESA_ID" | \
       sudo tee /etc/zynervox/whatsapp.conf >/dev/null
-    sudo chown root:www-data /etc/zynervox/whatsapp.conf
+    sudo chown root:"$web_group" /etc/zynervox/whatsapp.conf
     sudo chmod 0640 /etc/zynervox/whatsapp.conf
     echo "WHATSAPP_PROXY_READY path=$WHATSAPP_BASE_PATH port=$WHATSAPP_PORT"
     ;;
   remove-proxy)
+    load_env
+    proxy_slug="$(printf '%s' "$WHATSAPP_BASE_PATH" | tr -c 'A-Za-z0-9' '-' | sed 's/^-*//;s/-*$//')"
+    proxy_name="zynervox-whatsapp-${proxy_slug:-default}"
     if command -v a2disconf >/dev/null 2>&1; then
-      sudo a2disconf zynervox-whatsapp >/dev/null 2>&1 || true
-      sudo rm -f /etc/apache2/conf-available/zynervox-whatsapp.conf
+      sudo a2disconf "$proxy_name" >/dev/null 2>&1 || true
+      sudo rm -f "/etc/apache2/conf-available/${proxy_name}.conf"
+    elif [[ -d /etc/apache2/conf.d ]]; then
+      sudo rm -f "/etc/apache2/conf.d/${proxy_name}.conf"
+    fi
+    if command -v apache2ctl >/dev/null 2>&1; then
       sudo rm -f /etc/zynervox/whatsapp.conf
       sudo apache2ctl configtest
       sudo systemctl reload apache2
@@ -143,7 +174,7 @@ case "$action" in
     output="${2:-}"
     [[ -n "$output" ]] || { usage; exit 2; }
     umask 077
-    "${COMPOSE[@]}" exec -T db mysqldump -uroot -p"$WHATSAPP_DB_ROOT_PASSWORD" \
+    compose exec -T db mysqldump -uroot -p"$WHATSAPP_DB_ROOT_PASSWORD" \
       --single-transaction --routines --events --triggers "$WHATSAPP_DB_NAME" | gzip > "$output"
     echo "WHATSAPP_BACKUP_READY file=$output"
     ;;
@@ -151,10 +182,10 @@ case "$action" in
     require_runtime; load_env
     input="${2:-}"
     [[ -f "$input" ]] || { echo "Backup no encontrado: $input" >&2; exit 2; }
-    gzip -dc "$input" | "${COMPOSE[@]}" exec -T db \
+    gzip -dc "$input" | compose exec -T db \
       mysql -uroot -p"$WHATSAPP_DB_ROOT_PASSWORD" "$WHATSAPP_DB_NAME"
     echo "WHATSAPP_RESTORE_OK file=$input"
     ;;
-  down) require_runtime; load_env; "${COMPOSE[@]}" down ;;
+  down) require_runtime; load_env; compose down ;;
   *) usage; exit 2 ;;
 esac

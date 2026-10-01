@@ -552,3 +552,22 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-10-01 17:01 - ARCHITECT_AGENT - agent,whatsapp,installer
+
+Tipo: feature
+
+Resumen:
+Preparar release híbrido con AGC completo saneado, imagen WhatsApp integrada, Compose aislado y bootstrap de una sola orden.
+
+Motivo:
+Validar el despliegue integral en mirmidon sin tocar producción.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido

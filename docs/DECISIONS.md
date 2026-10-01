@@ -200,3 +200,27 @@ Impacto:
 
 Seguimiento:
 (ninguno)
+
+### ADR-0009 - Release híbrido instalable y aislamiento por proyecto Compose
+
+Fecha: 2026-10-01
+
+Estado: aceptada
+
+Contexto:
+Zynervox necesita desplegarse en servidores con VICIdial existente y ejecutar WhatsApp sin montar parches de runtime ni colisionar con otros contenedores.
+
+Decisión:
+Distribuir web y AGC completos por Git, construir Zynerwaba desde un Dockerfile con base fijada por digest y aislar nombres, redes y volúmenes mediante COMPOSE_PROJECT_NAME.
+
+Motivo:
+Permite una instalación reproducible de una sola ejecución, conserva los servicios del host y elimina la deriva entre overrides e imagen.
+
+Alternativas evaluadas:
+- (ninguna registrada)
+
+Impacto:
+(pendiente)
+
+Seguimiento:
+(ninguno)

@@ -90,7 +90,8 @@ El secreto no se versiona ni se envía al navegador. Solo la firma sale de PHP. 
 
 - Error SSO: prefijo `[sso] zynervox` en logs del contenedor.
 - Verificación: `src/features/whatsapp/tests/smoke.sh`.
-- Recuperación: reinstalar proxy, reiniciar solo `zynervox-whatsapp-app` y repetir smoke.
+- Recuperación: reinstalar proxy, reiniciar solo el servicio Compose `app` del
+  proyecto correspondiente y repetir smoke.
 
 ## Implementación
 

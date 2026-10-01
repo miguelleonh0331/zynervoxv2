@@ -20,8 +20,8 @@ aislado, reproducible y reversible.
 ## Salidas públicas
 
 - Ruta `/zynerwabav2/` servida por Apache hacia el puerto local elegido.
-- Contenedores `zynervox-whatsapp-app` y `zynervox-whatsapp-db`.
-- Volúmenes `zynervox_whatsapp_data` y `zynervox_whatsapp_mysql`.
+- Servicios Compose `app` y `db`, nombrados y aislados por `COMPOSE_PROJECT_NAME`.
+- Volúmenes `whatsapp_data` y `whatsapp_mysql`, prefijados por el proyecto Compose.
 - Credenciales consultables localmente mediante `credentials`.
 
 ## Errores posibles
@@ -35,7 +35,8 @@ aislado, reproducible y reversible.
 ## Dependencias permitidas
 
 - Contrato de autenticación Zynervox mediante `Includes\Auth`.
-- Imagen `miguelleonh0331/zynerwabav2:2.0.0` y digest publicado.
+- Imagen integrada `miguelleonh0331/zynerwabav2:2.1.0-zynervox`, construida
+  sobre `miguelleonh0331/zynerwabav2:2.0.0` fijada por digest.
 - MySQL 8.4 y el esquema saneado versionado.
 - Apache como proxy de la ruta pública.
 

@@ -17,6 +17,8 @@ también admite `ZYNERVOX_CONFIG_FILE` y `/etc/zynervox/astguiclient.conf`.
 Laboratorio VICIdial: mirmidon, ruta aislada
 `/srv/www/htdocs/zynervox-agc-test/agc`. Con `zynervox.php`,
 `dbconnect_mysqli.php` y `functions.php` responde HTTP 200 y genera el login.
-Permanecen pendientes los recursos visuales referenciados: `css/style.css`,
-`css/custom.css`, `calendar_db.js`, `confetti.php`, `calendar.css` e imágenes.
-La ruta productiva `/srv/www/htdocs/agc` no se modifica.
+El paquete portable incorpora la carpeta AGC operativa completa: PHP, JavaScript,
+CSS, imágenes y audios. Se excluyen 53 backups históricos, `.freebuff` y dos
+archivos locales que no pertenecen al origen remoto. La configuración y las
+credenciales permanecen fuera de Git. La ruta productiva `/srv/www/htdocs/agc`
+no se modifica.

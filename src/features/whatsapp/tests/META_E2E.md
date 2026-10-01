@@ -28,7 +28,7 @@ escriben en este repositorio, comandos, capturas, logs ni documentos de evidenci
 6. Responder desde la bandeja dentro de la ventana de servicio.
 7. Confirmar el identificador Meta y la progresión `sent`/`delivered`; confirmar
    `read` cuando el destinatario abra el mensaje.
-8. Reiniciar solo `zynervox-whatsapp-app` y comprobar que conversación, estados y
+8. Reiniciar solo el servicio Compose `app` y comprobar que conversación, estados y
    sesión persisten.
 9. Repetir el evento entrante con el mismo identificador y comprobar idempotencia:
    no debe crearse un segundo mensaje.

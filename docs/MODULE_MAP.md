@@ -2,7 +2,7 @@
 
 Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 
-Última generación: 2026-09-30 21:18
+Última generación: 2026-10-01 17:01
 
 ## Módulos
 
@@ -23,6 +23,6 @@ Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 | Módulo | Depende de | Estado |
 |---|---|---|
 | whatsapp | Contrato de autenticación Zynervox mediante `Includes\Auth` | módulo inexistente |
-| whatsapp | Imagen `miguelleonh0331/zynerwabav2:2.0.0` y digest publicado | módulo inexistente |
+| whatsapp | Imagen integrada `miguelleonh0331/zynerwabav2:2.1.0-zynervox`, construida | módulo inexistente |
 | whatsapp | MySQL 8.4 y el esquema saneado versionado | módulo inexistente |
 | whatsapp | Apache como proxy de la ruta pública | módulo inexistente |

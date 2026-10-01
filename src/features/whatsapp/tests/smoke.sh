@@ -20,6 +20,16 @@ restart_app="${WHATSAPP_TEST_RESTART:-0}"
 temp_dir="$(mktemp -d)"
 trap 'rm -rf "$temp_dir"' EXIT
 cookies="$temp_dir/cookies"
+compose_project="${COMPOSE_PROJECT_NAME:-zynervox-whatsapp}"
+
+service_container() {
+  local service="$1" container
+  container="$(docker ps -aq \
+    --filter "label=com.docker.compose.project=$compose_project" \
+    --filter "label=com.docker.compose.service=$service" | head -n 1)"
+  [[ -n "$container" ]] || { echo "Contenedor no encontrado: $compose_project/$service" >&2; exit 1; }
+  printf '%s' "$container"
+}
 
 require_healthy() {
   local container="$1" status
@@ -34,10 +44,12 @@ http_code() {
   curl --max-time 15 -sS -o /dev/null -w '%{http_code}' "$@"
 }
 
-require_healthy zynervox-whatsapp-db
-require_healthy zynervox-whatsapp-app
+db_container="$(service_container db)"
+app_container="$(service_container app)"
+require_healthy "$db_container"
+require_healthy "$app_container"
 
-tables="$(docker exec zynervox-whatsapp-db sh -lc \
+tables="$(docker exec "$db_container" sh -lc \
   'mysql -N -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE();"')"
 [[ "$tables" =~ ^[1-9][0-9]*$ ]] || { echo "Esquema WhatsApp vacío" >&2; exit 1; }
 
@@ -96,7 +108,7 @@ webhook_code="$(http_code \
 }
 
 if [[ "$restart_app" == 1 ]]; then
-  docker restart zynervox-whatsapp-app >/dev/null
+  docker restart "$app_container" >/dev/null
   for _ in $(seq 1 60); do
     curl --max-time 5 -fsS "$direct_url/" >/dev/null 2>&1 && break
     sleep 1
@@ -109,7 +121,7 @@ if [[ "$restart_app" == 1 ]]; then
   }
 fi
 
-docker exec zynervox-whatsapp-db sh -lc \
+docker exec "$db_container" sh -lc \
   'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" -e "DELETE FROM users WHERE username='\''zv_smoke_sso'\'' AND role='\''superadmin'\''"' >/dev/null
 
 printf 'WHATSAPP_SMOKE_OK tables=%s login=200 sso=200 sso_invalid=403 session=200 socket=200 webhook_invalid=403 restart=%s\n' \

@@ -24,6 +24,10 @@ reinicios indirectos de servicios existentes.
 Variables opcionales: `WEB_ROOT`, `ASTERISK_ROOT` y `URL_PATH`. El instalador no
 incluye contraseñas, bases, audios, grabaciones ni datos de producción.
 
+La instalación integral de una sola orden, compatible con Ubuntu y ViciBox/openSUSE,
+está documentada en `docs/INSTALL_ONE_COMMAND.md`. Puede instalar Docker cuando se
+usa `--install-docker`; nunca reemplaza una ruta web existente.
+
 ## MariaDB aislada
 
 La base compatible puede ejecutarse sin reemplazar MySQL del host:
@@ -46,8 +50,10 @@ conectada a Apache ni Asterisk. Producción continúa en `/var/www/html/zynervox
 ## WhatsApp omnicanal
 
 Zynerwaba se ejecuta como servicio independiente con MySQL 8.4, sin compartir la
-base `asterisk`. La imagen se fija por etiqueta y digest; sus secretos se generan
-localmente en `whatsapp/.env`.
+base `asterisk`. La imagen `miguelleonh0331/zynerwabav2:2.1.0-zynervox` se
+construye desde el Dockerfile del repositorio y ya contiene los parches; no usa
+overrides montados en runtime. Sus secretos se generan localmente en
+`whatsapp/.env`, excluido de Git.
 
 ```bash
 sudo ./installer/whatsapp.sh init

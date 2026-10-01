@@ -16,6 +16,9 @@ sudo ./installer/install.sh --apply-migrations
 ```
 
 `--skip-packages` permite desplegar solo los archivos sin alterar paquetes del host.
+`--install-docker` instala y habilita Docker cuando falta. En openSUSE requiere
+`zypper`; en Ubuntu/Debian usa `apt`. Para el despliegue completo y aislado consulte
+`INSTALL_ONE_COMMAND.md`.
 
 Sin `--apply-migrations` no se cambia la base. Si falta VICIdial, la web se instala
 y el diagnóstico devuelve `PARTIAL`. No crear tablas parciales: autenticación,
@@ -60,9 +63,10 @@ sudo ./installer/whatsapp.sh status
 sudo ./installer/whatsapp.sh backup /ruta/whatsapp.sql.gz
 ```
 
-El gestor descarga Zynerwaba `2.0.0` por digest, levanta MySQL 8.4 y selecciona el
-primer puerto local libre desde `3022`. Los volúmenes `zynervox_whatsapp_mysql` y
-`zynervox_whatsapp_data` no se comparten con MariaDB/VICIdial.
+El gestor construye la imagen integrada sobre Zynerwaba `2.0.0` fijada por digest,
+levanta MySQL 8.4 y selecciona el primer puerto local libre desde `3022`. Los
+volúmenes se prefijan con `COMPOSE_PROJECT_NAME` y no se comparten con
+MariaDB/VICIdial ni con otra instalación.
 
 `init` genera `ZYNERVOX_SSO_SECRET`; `install-proxy` instala el mismo valor en
 `/etc/zynervox/whatsapp.conf` con acceso limitado a `root:www-data`. Repetir ambos
@@ -76,8 +80,8 @@ Usar `remove-proxy` para retirar la ruta Apache sin borrar datos.
 
 1. Trabajar en una rama y mantener `main` desplegable.
 2. Ejecutar `backup` y guardar el commit actual y el digest de la imagen activa.
-3. Construir y publicar la nueva imagen con una etiqueta inmutable; nunca reutilizar
-   una etiqueta publicada.
+3. Construir la nueva imagen con una etiqueta inmutable; nunca reutilizar una
+   etiqueta publicada. Publicarla cuando exista autenticación segura al registro.
 4. Actualizar etiqueta y digest juntos en `whatsapp/compose.yml`.
 5. Desplegar primero en un servidor de laboratorio aislado.
 6. Ejecutar `smoke.sh`, validar roles en navegador y completar `META_E2E.md` cuando
