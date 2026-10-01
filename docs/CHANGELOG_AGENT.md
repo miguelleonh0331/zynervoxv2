@@ -476,3 +476,22 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-10-01 16:33 - ARCHITECT_AGENT - agent
+
+Tipo: feature
+
+Resumen:
+Agregar dbconnect_mysqli.php y functions.php como dependencias iniciales de la consola AGC.
+
+Motivo:
+Resolver el primer HTTP 500 sin versionar astguiclient.conf ni credenciales.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido

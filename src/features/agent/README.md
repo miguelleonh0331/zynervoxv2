@@ -8,6 +8,7 @@ Kamatera. Sus dependencias vecinas se incorporarán de forma controlada; hasta
 entonces la ruta de laboratorio puede informar archivos AGC faltantes.
 
 Estado inicial de laboratorio (`ad1306e`): desplegado y accesible por Apache,
-pero responde HTTP 500 porque todavía faltan `dbconnect_mysqli.php`,
-`functions.php` y `options.php`. No copiar esos archivos sin revisar primero sus
-dependencias y secretos.
+pero respondió HTTP 500 porque faltaban `dbconnect_mysqli.php` y `functions.php`.
+`options.php` es opcional y tampoco existe en el AGC original de Kamatera.
+`dbconnect_mysqli.php` obtiene la conexión desde `/etc/astguiclient.conf`; ese
+archivo y sus credenciales permanecen fuera de Git.
