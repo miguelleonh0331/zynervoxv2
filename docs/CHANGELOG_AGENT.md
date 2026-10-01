@@ -630,3 +630,22 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-10-01 18:54 - ARCHITECT_AGENT - farm,stt_providers
+
+Tipo: test
+
+Resumen:
+Validar autenticacion, CSRF, servicios Farm, CRUD STT, enmascarado y limpieza en mirmidon.
+
+Motivo:
+Conservar evidencia del despliegue aislado antes de promover.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido

@@ -13,7 +13,7 @@ PYTHON="${FARM_PYTHON:-$(command -v python3.11 || command -v python3)}"
 [[ "$INSTANCE" =~ ^[a-z0-9][a-z0-9-]{2,40}$ ]] || { echo "FARM_INSTANCE inválido" >&2; exit 2; }
 [[ $EUID -eq 0 ]] || { echo "Ejecutar como root" >&2; exit 1; }
 "$PYTHON" -c 'import sys; raise SystemExit(sys.version_info < (3, 10))' || { echo "Farm requiere Python 3.10+" >&2; exit 1; }
-for command in ss openssl systemctl baresip ffmpeg; do
+for command in ss openssl systemctl baresip ffmpeg curl; do
     command -v "$command" >/dev/null 2>&1 || { echo "Falta dependencia Farm: $command" >&2; exit 1; }
 done
 
@@ -151,4 +151,22 @@ EOF
 
 systemctl daemon-reload
 systemctl enable --now "$ANNEX_SERVICE" "$CONTROL_SERVICE"
+for _ in $(seq 1 30); do
+    curl -fsS -X POST -H 'Content-Type: application/json' -d '{"action":"status"}' \
+      "http://127.0.0.1:${FARM_ANNEX_PORT}/" >/dev/null 2>&1 && break
+    sleep 1
+done
+curl -fsS -X POST -H 'Content-Type: application/json' -d '{"action":"status"}' \
+  "http://127.0.0.1:${FARM_ANNEX_PORT}/" >/dev/null
+for _ in $(seq 1 30); do
+    if [[ -s "$DATA/control/control.token" ]]; then
+        token="$(cat "$DATA/control/control.token")"
+        curl -fsS -H "X-Control-Token: $token" \
+          "http://127.0.0.1:${FARM_CONTROL_PORT}/api/snapshot" >/dev/null 2>&1 && break
+    fi
+    sleep 1
+done
+token="$(cat "$DATA/control/control.token")"
+curl -fsS -H "X-Control-Token: $token" \
+  "http://127.0.0.1:${FARM_CONTROL_PORT}/api/snapshot" >/dev/null
 echo "FARM_READY instance=$INSTANCE annex_port=$FARM_ANNEX_PORT control_port=$FARM_CONTROL_PORT"

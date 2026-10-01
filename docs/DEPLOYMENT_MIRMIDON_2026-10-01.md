@@ -70,3 +70,35 @@ b7bcc2d12d5ee364d0a395819a08ebba71a4a70ef58f05933317e47b16377617  /etc/astguicli
 Usar el comando de `INSTALL_ONE_COMMAND.md`. En una instalación interrumpida,
 inspeccionar las rutas y agregar `ZYNERVOX_RESUME=1`; la reanudación conserva
 volúmenes y datos.
+
+## Extensión Farm y Stt Providers
+
+Rama probada: `feature/farm-stt-modules`  
+Commits funcionales: `7788f74`, `dc2673b`
+
+Artefactos instalados:
+
+- Farm: `/opt/zynervoxv2-deploy-test-farm` y
+  `/var/lib/zynervoxv2-deploy-test-farm`;
+- servicios `zynervoxv2-deploy-test-farm-annex.service` y
+  `zynervoxv2-deploy-test-farm-control.service`;
+- puertos loopback Farm `8811` y `8766`;
+- Stt Providers: base `zynervoxv2_deploy_test_stt`, cuatro tablas y usuario
+  limitado a esa base;
+- configuración protegida bajo `/etc/zynervox`.
+
+Pruebas aprobadas:
+
+- rechazo sin sesión: wrappers HTTP 302 y API STT HTTP 401;
+- acceso con administrador principal: shell, Farm y STT HTTP 200;
+- Farm: daemon, control plane, sesión y CSRF operativos;
+- reinicio de ambos servicios Farm sin pérdida de configuración;
+- creación/eliminación de cuenta y key STT sintéticas;
+- la API STT nunca devolvió la key completa y la base quedó vacía al finalizar;
+- WhatsApp repitió su smoke completo con persistencia;
+- Apache, MariaDB, Asterisk y Docker continuaron activos;
+- hashes productivos de VICIdial y `astguiclient.conf` sin cambios.
+
+La creación real de anexos Farm queda bloqueada mientras
+`ZYPAD_ASTERISK_HOST` esté vacío. Es un control de seguridad deliberado; su E2E
+requiere un PBX de laboratorio autorizado. No se usaron API keys STT reales.
