@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPOSITORY_URL="${ZYNERVOX_REPOSITORY_URL:-https://github.com/miguelleonh0331/zynervoxv2.git}"
-REF="${ZYNERVOX_REF:-release/zynervoxv2-deploy-test}"
+REF="${ZYNERVOX_REF:-main}"
 SOURCE_DIR="${ZYNERVOX_SOURCE_DIR:-/opt/zynervoxv2-deploy-test-source}"
 WEB_ROOT="${WEB_ROOT:-/var/www/html/zynervoxv2-deploy-test}"
 URL_PATH="${URL_PATH:-/zynervoxv2-deploy-test}"
@@ -14,8 +14,13 @@ command -v git >/dev/null 2>&1 || { echo "Falta git" >&2; exit 1; }
 if [[ -e "$SOURCE_DIR" || -e "$WEB_ROOT" ]]; then
   [[ "$RESUME" == 1 ]] || { echo "La instalación ya existe; use ZYNERVOX_RESUME=1 para reanudar" >&2; exit 1; }
   [[ -d "$SOURCE_DIR/.git" ]] || { echo "La ruta fuente no es un clon Git válido: $SOURCE_DIR" >&2; exit 1; }
-  git -C "$SOURCE_DIR" fetch origin "$REF:refs/remotes/origin/$REF"
-  git -C "$SOURCE_DIR" checkout -B "$REF" "origin/$REF"
+  git -C "$SOURCE_DIR" fetch origin --tags
+  if git -C "$SOURCE_DIR" rev-parse -q --verify "refs/tags/$REF" >/dev/null; then
+    git -C "$SOURCE_DIR" checkout --detach "refs/tags/$REF"
+  else
+    git -C "$SOURCE_DIR" fetch origin "$REF:refs/remotes/origin/$REF"
+    git -C "$SOURCE_DIR" checkout -B "$REF" "origin/$REF"
+  fi
 else
   git clone --depth 1 --branch "$REF" "$REPOSITORY_URL" "$SOURCE_DIR"
 fi

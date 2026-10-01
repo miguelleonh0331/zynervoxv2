@@ -20,9 +20,9 @@ la conexión VICIdial desde `/etc/astguiclient.conf` o
 Ejecutar como una sola orden sobre una ruta que no exista:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/miguelleonh0331/zynervoxv2/release/zynervoxv2-deploy-test/installer/bootstrap.sh | \
+curl -fsSL https://raw.githubusercontent.com/miguelleonh0331/zynervoxv2/v2.2.0-rc2/installer/bootstrap.sh | \
 sudo env \
-  ZYNERVOX_REF=release/zynervoxv2-deploy-test \
+  ZYNERVOX_REF=v2.2.0-rc2 \
   ZYNERVOX_SOURCE_DIR=/opt/zynervoxv2-deploy-test-source \
   WEB_ROOT=/srv/www/htdocs/zynervoxv2-deploy-test \
   URL_PATH=/zynervoxv2-deploy-test \
