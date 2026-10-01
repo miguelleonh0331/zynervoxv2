@@ -57,7 +57,9 @@ function register(ctx) {
     try {
       const rows = await db.prepare(
         `SELECT e.*, c.access_token_hint,
-                (SELECT COUNT(*) FROM \`lines\` l WHERE l.empresa_id=e.id) AS lines_count
+                (SELECT COUNT(*) FROM \`lines\` l WHERE l.empresa_id=e.id) AS lineas,
+                (SELECT COUNT(*) FROM users u WHERE u.empresa_id=e.id AND u.role='admin') AS usuarios,
+                CASE WHEN c.access_token_enc IS NULL THEN 'pendientes' ELSE 'configuradas' END AS credenciales_estado
          FROM empresas e
          LEFT JOIN empresa_credenciales c ON c.empresa_id=e.id
          ORDER BY e.id`

@@ -59,7 +59,7 @@ window.usuarios=async id=>{
     box.innerHTML=`<div style="margin-top:10px;padding:12px;background:#f8f9fb;border:1px solid #e5e7eb;border-radius:10px">
       <strong>Administradores de empresa</strong>
       <div class="muted" style="margin:4px 0 8px">El superadministrador crea los administradores iniciales. Cada administrador gestiona después los operadores y recursos de su propia empresa.</div>
-      ${users.length?users.map(u=>`<div class="muted">• <strong>${escapeHtml(u.username)}</strong> — administrador ${u.active?'':'(inactivo)'}</div>`).join(''):'<div class="muted">Todavía no hay administradores.</div>'}
+      ${users.length?users.map(u=>adminRow(u,id)).join(''):'<div class="muted">Todavía no hay administradores.</div>'}
       <form onsubmit="crearUsuario(event,${id})" style="margin-top:10px">
         <label class="field"><span>Usuario</span><input name="username" placeholder="usuario" pattern="[a-zA-Z0-9._-]{3,40}" required></label>
         <label class="field"><span>Nombre visible</span><input name="display_name" required></label>
@@ -69,14 +69,17 @@ window.usuarios=async id=>{
       </form><div class="muted" id="msg-usr-${id}"></div></div>`;
   }catch(e){box.innerHTML='<div class="bad">'+e.message+'</div>'}
 };
+function adminRow(user,empresaId){const id=Number(user.id),username=escapeHtml(user.username),displayName=escapeHtml(user.display_name);return `<form onsubmit="guardarAdministrador(event,${empresaId},${id})" style="margin-top:10px;padding:10px;border:1px solid #e5e7eb;border-radius:8px"><div><strong>${username}</strong></div><label class="field"><span>Nombre visible</span><input name="display_name" value="${displayName}" required></label><label class="field"><span>Nueva contraseña</span><input name="password" type="password" minlength="8" placeholder="Dejar vacía para conservarla"></label><label class="field"><span>Estado</span><select name="active"><option value="true" ${user.active?'selected':''}>Activo</option><option value="false" ${user.active?'':'selected'}>Inactivo</option></select></label><button type="submit">Guardar cambios</button> <button type="button" class="danger" onclick="eliminarAdministrador(${empresaId},${id},'${username}')">Eliminar</button><div class="bad" role="alert"></div></form>`}
 window.crearUsuario=async(event,id)=>{
   event.preventDefault();
   const form=event.target;
   const body=Object.fromEntries(new FormData(form));
   body.line_ids=[];
-  try{await api('/empresas/'+id+'/admins',{method:'POST',body:JSON.stringify(body)});document.querySelector('#panel-'+id).dataset.open='';await usuarios(id);load()}
+  try{await api('/empresas/'+id+'/admins',{method:'POST',body:JSON.stringify(body)});await load();await usuarios(id)}
   catch(e){document.querySelector('#msg-usr-'+id).innerHTML='<span class="bad">'+e.message+'</span>'}
 };
+window.guardarAdministrador=async(event,empresaId,userId)=>{event.preventDefault();const form=event.target,body=Object.fromEntries(new FormData(form)),error=form.querySelector('[role="alert"]');body.active=body.active==='true';if(!body.password)delete body.password;error.textContent='';try{await api('/empresas/'+empresaId+'/admins/'+userId,{method:'PATCH',body:JSON.stringify(body)});await load();await usuarios(empresaId)}catch(e){error.textContent=e.message}};
+window.eliminarAdministrador=async(empresaId,userId,username)=>{if(!confirm('¿Eliminar al administrador '+username+'?'))return;try{await api('/empresas/'+empresaId+'/admins/'+userId,{method:'DELETE'});await load();await usuarios(empresaId)}catch(e){alert(e.message)}};
 document.querySelector('#createForm').onsubmit=async e=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.target));await api('/empresas',{method:'POST',body:JSON.stringify(body)});e.target.reset();load()};
 window.credentials=id=>{const form=document.querySelector('#credentialsForm');form.reset();form.empresa_id.value=id;document.querySelector('#credentials').showModal()};
 window.toggle=async(id,estado)=>{await api('/empresas/'+id,{method:'PATCH',body:JSON.stringify({estado})});load()};
