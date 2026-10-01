@@ -10,6 +10,8 @@
 - Asterisk 20 con PJSIP.
 - Python 3 con PyMySQL y num2words.
 - JavaScript nativo; Node.js solo para el componente legado `vicidial-js`.
+- Farm: Python 3.10+, systemd, baresip, ffmpeg y PHP, sin Docker.
+- Stt Providers: PHP 7.4+, PDO MySQL y cURL sobre MariaDB nativa aislada.
 
 El despliegue es híbrido: web, AGC, PHP y Asterisk viven en el host; Zynerwaba y
 su MySQL usan un proyecto Compose aislado con volúmenes propios.

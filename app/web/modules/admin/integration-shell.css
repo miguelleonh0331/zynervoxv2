@@ -1,0 +1,24 @@
+.integration-shell {
+    margin-left: 255px;
+    min-height: 100vh;
+    background: #f4f1eb;
+    display: flex;
+    flex-direction: column;
+}
+.integration-head {
+    padding: 18px 24px 14px;
+    background: #fff;
+    border-bottom: 1px solid #ddd8cf;
+}
+.integration-head h1 { margin: 0; font-size: 22px; color: #242630; }
+.integration-head p { margin: 4px 0 0; color: #687080; }
+.integration-frame {
+    width: 100%;
+    flex: 1;
+    min-height: calc(100vh - 82px);
+    border: 0;
+    background: #fff;
+}
+@media (max-width: 900px) {
+    .integration-shell { margin-left: 0; padding-top: 58px; }
+}

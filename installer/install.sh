@@ -9,7 +9,11 @@ APPLY_MIGRATIONS=0
 DRY_RUN=0
 SKIP_PACKAGES=0
 WITH_WHATSAPP=0
+WITH_FARM=0
+WITH_STT_PROVIDERS=0
 INSTALL_DOCKER=0
+FARM_INSTANCE="${FARM_INSTANCE:-zynervox-farm}"
+STT_INSTANCE="${STT_INSTANCE:-zynervox-stt}"
 
 for arg in "$@"; do
   case "$arg" in
@@ -17,6 +21,8 @@ for arg in "$@"; do
     --dry-run) DRY_RUN=1 ;;
     --skip-packages) SKIP_PACKAGES=1 ;;
     --with-whatsapp) WITH_WHATSAPP=1 ;;
+    --with-farm) WITH_FARM=1 ;;
+    --with-stt-providers) WITH_STT_PROVIDERS=1 ;;
     --install-docker) INSTALL_DOCKER=1 ;;
     *) echo "Argumento desconocido: $arg" >&2; exit 2 ;;
   esac
@@ -33,7 +39,7 @@ DB_CONFIG=/etc/astguiclient.conf
 
 if [[ $DRY_RUN -eq 1 ]]; then
   [[ -f "$DB_CONFIG" ]] && integration=available || integration=partial
-  echo "DRY_RUN web=$WEB_ROOT asterisk=$ASTERISK_ROOT url=$URL_PATH migrations=$APPLY_MIGRATIONS integration=$integration skip_packages=$SKIP_PACKAGES whatsapp=$WITH_WHATSAPP install_docker=$INSTALL_DOCKER os=${ID:-unknown} web_group=$WEB_GROUP"
+  echo "DRY_RUN web=$WEB_ROOT asterisk=$ASTERISK_ROOT url=$URL_PATH migrations=$APPLY_MIGRATIONS integration=$integration skip_packages=$SKIP_PACKAGES whatsapp=$WITH_WHATSAPP farm=$WITH_FARM stt_providers=$WITH_STT_PROVIDERS install_docker=$INSTALL_DOCKER os=${ID:-unknown} web_group=$WEB_GROUP"
   exit 0
 fi
 
@@ -149,6 +155,14 @@ if [[ $WITH_WHATSAPP -eq 1 ]]; then
   bash "$ROOT/installer/whatsapp.sh" install-proxy
 fi
 
+if [[ $WITH_FARM -eq 1 ]]; then
+  WEB_ROOT="$WEB_ROOT" WEB_GROUP="$WEB_GROUP" bash "$ROOT/installer/farm.sh"
+fi
+
+if [[ $WITH_STT_PROVIDERS -eq 1 ]]; then
+  WEB_ROOT="$WEB_ROOT" WEB_GROUP="$WEB_GROUP" bash "$ROOT/installer/stt-providers.sh"
+fi
+
 if command -v apache2ctl >/dev/null 2>&1; then
   if apache2ctl configtest; then
     systemctl reload apache2
@@ -156,5 +170,6 @@ if command -v apache2ctl >/dev/null 2>&1; then
     echo "AVISO: Apache tiene errores previos; archivos web conservados sin recargar" >&2
   fi
 fi
-WEB_ROOT="$WEB_ROOT" bash "$ROOT/installer/check.sh"
+WEB_ROOT="$WEB_ROOT" CHECK_FARM="$WITH_FARM" CHECK_STT_PROVIDERS="$WITH_STT_PROVIDERS" \
+  FARM_INSTANCE="$FARM_INSTANCE" STT_INSTANCE="$STT_INSTANCE" bash "$ROOT/installer/check.sh"
 echo "INSTALACION_OK web=$WEB_ROOT url_path=$URL_PATH"

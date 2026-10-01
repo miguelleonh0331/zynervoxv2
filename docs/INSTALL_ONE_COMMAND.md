@@ -8,6 +8,8 @@ El despliegue híbrido instala:
 - componentes propios de Asterisk en una ruta configurable;
 - Zynerwaba y MySQL en contenedores, con imagen, red y volúmenes aislados;
 - proxy Apache y secreto SSO generado durante la instalación.
+- Farm con servicios systemd, datos y puertos loopback exclusivos;
+- Stt Providers con base y usuario MariaDB exclusivos.
 
 No incluye bases, contactos, grabaciones ni credenciales productivas. El AGC lee
 la conexión VICIdial desde `/etc/astguiclient.conf` o
@@ -27,6 +29,8 @@ sudo env \
   ASTERISK_ROOT=/etc/asterisk/synervox-deploy-test \
   WHATSAPP_BASE_PATH_OVERRIDE=/zynervoxv2-deploy-test-whatsapp \
   WHATSAPP_COMPOSE_PROJECT_OVERRIDE=zynervoxv2-deploy-test \
+  FARM_INSTANCE_OVERRIDE=zynervoxv2-deploy-test-farm \
+  STT_INSTANCE_OVERRIDE=zynervoxv2-deploy-test-stt \
   bash
 ```
 
@@ -46,6 +50,8 @@ clon Git válido y no elimina datos, volúmenes ni archivos ajenos.
 - Puerto: primer puerto loopback libre entre 3022 y 3099.
 - Secretos: `whatsapp/.env`, modo privado y excluido de Git.
 - Persistencia: volúmenes Compose exclusivos del nombre del proyecto.
+- Farm: `/opt/<instancia>`, `/var/lib/<instancia>` y dos unidades systemd.
+- Stt Providers: base/usuario propios y configuración protegida en `/etc/zynervox`.
 - ViciBox/openSUSE: se instala `runc` oficial 1.5.2 bajo un SHA-256 fijado y se
   valida antes de crear contenedores. Docker usa el runtime explícito
   `vicibox-runc`; la configuración anterior queda en
@@ -60,6 +66,8 @@ clon Git válido y no elimina datos, volúmenes ni archivos ajenos.
 4. Contenedores se recrean sin perder datos.
 5. Rutas, procesos y servicios productivos conservan estado y hashes.
 6. El E2E Meta se ejecuta solo con empresa, línea y destinatario de laboratorio.
+7. Farm rechaza acceso sin sesión y sus dos servicios responden en loopback.
+8. Stt Providers rechaza acceso sin sesión y devuelve un listado válido autenticado.
 
 ## Retirada segura
 

@@ -6,6 +6,8 @@ STRICT=0
 [[ "${1:-}" == "--strict" ]] && STRICT=1
 fail=0
 warn=0
+CHECK_FARM="${CHECK_FARM:-0}"
+CHECK_STT_PROVIDERS="${CHECK_STT_PROVIDERS:-0}"
 
 for command in php python3; do
   if ! command -v "$command" >/dev/null 2>&1; then
@@ -27,6 +29,17 @@ for extension in curl json mbstring mysqli pdo_mysql session xml zip; do
 done
 
 [[ -f "$WEB_ROOT/index.php" ]] || { echo "FALTA archivo: $WEB_ROOT/index.php"; fail=1; }
+[[ -f "$WEB_ROOT/modules/admin/farm.php" ]] || { echo "FALTA módulo Farm"; fail=1; }
+[[ -f "$WEB_ROOT/modules/admin/stt_providers.php" ]] || { echo "FALTA módulo Stt Providers"; fail=1; }
+if [[ "$CHECK_FARM" == 1 ]]; then
+  for service in "${FARM_INSTANCE:-zynervox-farm}-annex.service" "${FARM_INSTANCE:-zynervox-farm}-control.service"; do
+    systemctl is-active --quiet "$service" || { echo "FALTA servicio activo: $service"; fail=1; }
+  done
+  [[ -f "$WEB_ROOT/modules/admin/farm_app/config.local.php" ]] || { echo "FALTA configuración Farm"; fail=1; }
+fi
+if [[ "$CHECK_STT_PROVIDERS" == 1 ]]; then
+  [[ -f "$WEB_ROOT/modules/admin/stt_providers_app/config/db.php" ]] || { echo "FALTA configuración Stt Providers"; fail=1; }
+fi
 if [[ ! -f /etc/astguiclient.conf && ! -f /etc/zynervox/astguiclient.conf ]]; then
   echo "AVISO: falta configuración de base"
   warn=1

@@ -5,6 +5,10 @@ servidor Ubuntu que ya dispone de Asterisk/VICIdial, su esquema base completo y
 `/etc/astguiclient.conf`. Asterisk y MySQL sin las tablas VICIdial no son suficientes.
 Si esas integraciones faltan, el instalador conserva la web y reporta estado parcial.
 
+Incluye los módulos administrativos WhatsApp, Farm y Stt Providers. WhatsApp se
+ejecuta en Docker; Farm y Stt Providers se integran en el host y reutilizan el
+login principal de Zynervox.
+
 ## Instalación
 
 ```bash

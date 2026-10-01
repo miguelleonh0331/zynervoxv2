@@ -592,3 +592,41 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-10-01 18:44 - ARCHITECT_AGENT - farm
+
+Tipo: feature
+
+Resumen:
+Integrar Farm autenticado con servicios systemd aislados.
+
+Motivo:
+Incorporar anexos y proxies al menu principal sin tocar servicios productivos.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
+
+### 2026-10-01 18:44 - ARCHITECT_AGENT - stt_providers
+
+Tipo: feature
+
+Resumen:
+Integrar Stt Providers autenticado con base MariaDB propia.
+
+Motivo:
+Administrar proveedores STT desde Zynervox sin compartir secretos ni bases.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido

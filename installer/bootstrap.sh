@@ -23,5 +23,7 @@ fi
 export WEB_ROOT URL_PATH ASTERISK_ROOT
 export WHATSAPP_BASE_PATH_OVERRIDE="${WHATSAPP_BASE_PATH_OVERRIDE:-${URL_PATH}-whatsapp}"
 export WHATSAPP_COMPOSE_PROJECT_OVERRIDE="${WHATSAPP_COMPOSE_PROJECT_OVERRIDE:-zynervoxv2-deploy-test}"
+export FARM_INSTANCE="${FARM_INSTANCE_OVERRIDE:-zynervoxv2-deploy-test-farm}"
+export STT_INSTANCE="${STT_INSTANCE_OVERRIDE:-zynervoxv2-deploy-test-stt}"
 
-exec "$SOURCE_DIR/installer/install.sh" --skip-packages --install-docker --with-whatsapp
+exec "$SOURCE_DIR/installer/install.sh" --skip-packages --install-docker --with-whatsapp --with-farm --with-stt-providers

@@ -5,6 +5,8 @@
 - `installer`: instalación, migración y diagnóstico.
 - `database`: MariaDB 10.11 aislada, esquema sanitizado y volumen persistente.
 - `whatsapp`: Zynerwaba y MySQL 8.4 aislados, esquema propio y persistencia separada.
+- `farm`: panel PHP y dos servicios systemd loopback para anexos y proxies.
+- `stt_providers`: panel PHP y esquema MariaDB propio para cuentas/API keys STT.
 - `/etc/zynervox/astguiclient.conf` o `/etc/astguiclient.conf`: conexión MariaDB.
 - `/var/lib/asterisk/sounds`: audios, cachés y grabaciones; nunca se versiona.
 
@@ -19,3 +21,7 @@ nativo que consume su API. Las operaciones de conversaciones y campañas tendrá
 una ruta separada. Un intercambio HMAC de corta duración convierte la sesión Zynervox
 en una sesión Zynerwaba sin compartir contraseñas. Ningún módulo PHP consulta las
 tablas internas de Zynerwaba; el contenedor continúa siendo la fuente de verdad.
+
+Farm y Stt Providers reutilizan la sesión administrativa de Zynervox. Farm delega
+privilegios a servicios locales aislados; Stt Providers usa un usuario MariaDB
+limitado a su base. Ninguno vive dentro del Docker de WhatsApp.

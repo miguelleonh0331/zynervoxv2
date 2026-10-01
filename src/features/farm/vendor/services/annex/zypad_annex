@@ -1,0 +1,425 @@
+#!/usr/bin/env python3
+"""Pool portable de anexos SIP (baresip, un proceso/puerto por anexo).
+
+El destino se configura con ZYPAD_ASTERISK_HOST. Si queda vacio, crear anexos
+falla de forma segura y no se intenta registrar contra ningun PBX.
+
+Por que baresip y no SIPp (agent_3003.py): SIPp usa DOS procesos/puertos
+(uno para REGISTER, otro para escuchar llamadas). Con nat=force_rport,comedia
+(necesario para NAT real) Asterisk manda el INVITE al puerto del ultimo
+REGISTER en vez del puerto real de escucha -- la llamada nunca contesta.
+baresip es un solo proceso/puerto real, sin ese problema.
+
+Uso: zypad_annex create|delete|start|stop|stop_all|status|create_range ...
+"""
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+ASTERISK_HOST = os.getenv("ZYPAD_ASTERISK_HOST", "").strip()
+DATA_DIR = Path(os.getenv("ZYPAD_DATA_DIR", "/var/lib/zypad_pool"))
+SYSTEMD_DIR = Path(os.getenv("ZYPAD_SYSTEMD_DIR", "/etc/systemd/system"))
+POOL_JSON = DATA_DIR / "pool.json"
+SERVICE_PREFIX = os.getenv("ZYPAD_SERVICE_PREFIX", "zypad-baresip-")
+AGENT_RE = re.compile(r"4\d{3}")
+
+# Config base = salida real de "baresip -t N" (default generado), validada a
+# mano el 2026-08-18 -- solo se sustituyen 4 valores (puerto SIP, audio in/out,
+# rango RTP). NO inventar directivas nuevas: varias que probamos a mano
+# (audio_txmode=rtp, dns_fallback=yes, sip_verify_server=yes) no existen en
+# esta version de baresip y tiran "Invalid argument" al arrancar.
+CONFIG_TEMPLATE = """\
+poll_method\t\tepoll
+
+sip_listen\t\t0.0.0.0:{sip_port}
+sip_cafile\t\t/etc/ssl/certs/ca-certificates.crt
+
+call_local_timeout\t120
+call_max_calls\t\t4
+call_hold_other_calls\tyes
+
+audio_player\t\taufile,{out_wav}
+audio_source\t\taufile,{silence_wav}
+audio_alert\t\taufile,{out_wav}
+audio_level\t\tno
+ausrc_format\t\ts16
+auplay_format\t\ts16
+auenc_format\t\ts16
+audec_format\t\ts16
+audio_buffer\t\t20-160
+
+video_size\t\t640x480
+video_bitrate\t\t1000000
+video_fps\t\t30.00
+video_fullscreen\tno
+videnc_format\t\tyuv420p
+
+rtp_tos\t\t\t184
+rtp_ports\t\t{rtp_start}-{rtp_end}
+rtcp_mux\t\tno
+jitter_buffer_type\tfixed
+jitter_buffer_delay\t5-10
+rtp_stats\t\tno
+
+module_path\t\t/usr/lib/baresip/modules
+
+module\t\t\tstdio.so
+module\t\t\tg711.so
+module\t\t\tausine.so
+module\t\t\taufile.so
+module\t\t\talsa.so
+module\t\t\tstun.so
+module\t\t\tturn.so
+module\t\t\tice.so
+
+module_tmp\t\tuuid.so
+module_tmp\t\taccount.so
+
+module_app\t\tauloop.so
+module_app\t\tcontact.so
+module_app\t\tdebug_cmd.so
+module_app\t\tmenu.so
+module_app\t\tvidloop.so
+
+http_listen\t\t0.0.0.0:8000
+ctrl_tcp_listen\t\t0.0.0.0:4444
+
+opus_bitrate\t\t28000
+vumeter_stderr\t\tyes
+video_selfview\t\twindow
+"""
+
+
+def fail(message, code=2):
+    print(json.dumps({"ok": False, "error": message}))
+    raise SystemExit(code)
+
+
+def run(command, check=True):
+    return subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=check).stdout
+
+
+def validate_agent(value):
+    if not AGENT_RE.fullmatch(value or ""):
+        fail("anexo invalido: use formato 4XXX (4000-4999)")
+    return value
+
+
+def validate_password(value):
+    if not re.fullmatch(r"[A-Za-z0-9_.@-]{4,40}", value or ""):
+        fail("password invalido: use 4 a 40 caracteres seguros")
+    return value
+
+
+def read_pool():
+    try:
+        data = json.loads(POOL_JSON.read_text(encoding="utf-8"))
+    except Exception:
+        data = {}
+    agents = data.get("agents")
+    return [str(item) for item in agents] if isinstance(agents, list) else []
+
+
+def write_pool(agents):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    POOL_JSON.write_text(json.dumps({"agents": sorted(set(agents))}, indent=4) + "\n", encoding="utf-8")
+
+
+def agent_dir(agent):
+    return DATA_DIR / agent
+
+
+def service_path(agent):
+    return SYSTEMD_DIR / f"{SERVICE_PREFIX}{agent}.service"
+
+
+def service_active(agent):
+    return run(["/usr/bin/systemctl", "is-active", f"{SERVICE_PREFIX}{agent}.service"], check=False).strip() == "active"
+
+
+def ports_for(agent):
+    n = int(agent) - 4000  # 0..999
+    sip_port = 11000 + n
+    rtp_start = 12000 + n * 10
+    rtp_end = rtp_start + 9
+    ctrl_port = 13000 + n
+    return sip_port, rtp_start, rtp_end, ctrl_port
+
+
+class AnnexError(Exception):
+    pass
+
+
+SILENCE_WAV = DATA_DIR / "silence8k.wav"
+
+
+def ensure_silence_wav():
+    if SILENCE_WAV.exists():
+        return
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    import wave
+    w = wave.open(str(SILENCE_WAV), "w")
+    w.setnchannels(1)
+    w.setsampwidth(2)
+    w.setframerate(8000)
+    w.writeframes(b"\x00\x00" * 8000 * 5)
+    w.close()
+
+
+def create_one(agent, password):
+    if not ASTERISK_HOST:
+        raise AnnexError("ZYPAD_ASTERISK_HOST no configurado; conexion SIP deshabilitada")
+    if agent_dir(agent).exists() or service_path(agent).exists():
+        raise AnnexError("anexo ya tiene recursos; eliminelo antes de recrearlo")
+    ensure_silence_wav()
+    sip_port, rtp_start, rtp_end, ctrl_port = ports_for(agent)
+    adir = agent_dir(agent)
+    adir.mkdir(parents=True, exist_ok=True)
+    out_wav = adir / "out.wav"
+
+    (adir / "accounts").write_text(
+        f"<sip:{agent}@{ASTERISK_HOST}>;auth_pass={password};regint=60;answermode=auto\n",
+        encoding="utf-8",
+    )
+    (adir / "config").write_text(
+        CONFIG_TEMPLATE.format(
+            sip_port=sip_port,
+            rtp_start=rtp_start,
+            rtp_end=rtp_end,
+            ctrl_port=ctrl_port,
+            out_wav=out_wav,
+            silence_wav=SILENCE_WAV,
+        ),
+        encoding="utf-8",
+    )
+    (adir / "contacts").write_text("", encoding="utf-8")
+
+    service = f"""[Unit]
+Description=Zypad baresip annex {agent} (pre-answer pool, real device, single port)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/baresip -f {adir}
+Restart=always
+RestartSec=3
+StandardInput=null
+User=root
+
+[Install]
+WantedBy=multi-user.target
+"""
+    service_path(agent).write_text(service, encoding="utf-8")
+    pool = read_pool()
+    if agent not in pool:
+        pool.append(agent)
+    write_pool(pool)
+    run(["/usr/bin/systemctl", "daemon-reload"])
+    run(["/usr/bin/systemctl", "enable", f"{SERVICE_PREFIX}{agent}.service"])
+    return {
+        "ok": True,
+        "action": "create",
+        "agent": agent,
+        "ports": {"sip": sip_port, "rtp": f"{rtp_start}-{rtp_end}"},
+        "note": "creado detenido; usa start para encenderlo",
+    }
+
+
+def create(agent, password):
+    try:
+        result = create_one(agent, password)
+    except AnnexError as exc:
+        fail(str(exc))
+        return
+    print(json.dumps(result))
+
+
+def create_range(start_agent, end_agent, password_mode):
+    start_agent = validate_agent(start_agent)
+    end_agent = validate_agent(end_agent)
+    lo, hi = int(start_agent), int(end_agent)
+    if lo > hi:
+        fail("rango invalido: inicio mayor que fin")
+    if hi - lo > 49:
+        fail("rango demasiado grande: maximo 50 anexos por lote")
+    fixed_password = None
+    if password_mode not in ("", None):
+        validate_password(password_mode)
+        fixed_password = password_mode
+    results = []
+    for num in range(lo, hi + 1):
+        agent = str(num)
+        password = fixed_password if fixed_password else agent
+        try:
+            results.append(create_one(agent, password))
+        except AnnexError as exc:
+            results.append({"ok": False, "agent": agent, "error": str(exc)})
+    ok_count = sum(1 for r in results if r.get("ok"))
+    print(json.dumps({
+        "ok": ok_count > 0,
+        "action": "create_range",
+        "created": ok_count,
+        "total": len(results),
+        "results": results,
+    }))
+
+
+def delete(agent):
+    service = f"{SERVICE_PREFIX}{agent}.service"
+    run(["/usr/bin/systemctl", "disable", "--now", service], check=False)
+    service_path(agent).unlink(missing_ok=True)
+    shutil.rmtree(agent_dir(agent), ignore_errors=True)
+    write_pool([item for item in read_pool() if item != agent])
+    run(["/usr/bin/systemctl", "daemon-reload"])
+    print(json.dumps({"ok": True, "action": "delete", "agent": agent}))
+
+
+def start(agent):
+    if not service_path(agent).exists():
+        fail("anexo no existe; creelo primero")
+    run(["/usr/bin/systemctl", "start", f"{SERVICE_PREFIX}{agent}.service"])
+    time.sleep(2)
+    active = service_active(agent)
+    print(json.dumps({"ok": True, "action": "start", "agent": agent, "service_active": active}))
+
+
+def stop(agent):
+    if not service_path(agent).exists():
+        fail("anexo no existe")
+    run(["/usr/bin/systemctl", "stop", f"{SERVICE_PREFIX}{agent}.service"])
+    print(json.dumps({"ok": True, "action": "stop", "agent": agent}))
+
+
+def stop_all():
+    results = []
+    for agent in sorted(read_pool()):
+        if not service_path(agent).exists():
+            continue
+        if not service_active(agent):
+            results.append({"ok": True, "agent": agent, "skipped": "ya estaba detenido"})
+            continue
+        run(["/usr/bin/systemctl", "stop", f"{SERVICE_PREFIX}{agent}.service"])
+        results.append({"ok": True, "agent": agent})
+    stopped = sum(1 for r in results if r.get("ok") and "skipped" not in r)
+    print(json.dumps({"ok": True, "action": "stop_all", "stopped": stopped, "total": len(results), "results": results}))
+
+
+def status_all():
+    result = []
+    for agent in sorted(read_pool()):
+        result.append({
+            "agent": agent,
+            "service_active": "active" if service_active(agent) else "inactive",
+        })
+    print(json.dumps({"ok": True, "agents": result}))
+
+
+# "service_active" solo dice si baresip vive; el journal permite distinguir
+# un registro correcto de un timeout de REGISTER.
+# (este segundo caso es justo "error de registro por reinicio SIP": el REGISTER
+# choca mientras Asterisk esta recargando su stack SIP, y se resuelve solo en
+# el siguiente intento -- regint=60 en el archivo "accounts" de cada anexo).
+REG_OK_RE = re.compile(r"\{.*\}\s+200 OK")
+REG_ERR_RE = re.compile(r"reg:\s+sip:\S+\s+\(prio\s+\d+\):\s+Register:\s+(.+)")
+
+
+def registration_status(agent, active):
+    """Solo lee logs (journalctl), nunca toca el servicio. Si esta apagado no
+    tiene caso mirar el log viejo -- se reporta 'apagado' directo.
+
+    IMPORTANTE (corregido 2026-09-06): baresip solo IMPRIME el resultado del
+    registro cuando cambia (exito->fallo o fallo->exito), no en cada renovacion
+    exitosa (regint=60). Un anexo puede llevar dias registrado bien sin una
+    sola linea nueva -- mirar solo las ultimas ~80 lineas (unos minutos) daba
+    "desconocido" para casi todos. Se lee en reversa (mas nuevo primero) con
+    una ventana amplia y se toma el PRIMER match, que ya es el mas reciente."""
+    if not active:
+        return {"state": "apagado", "detail": None, "since": None}
+    out = run(
+        ["/usr/bin/journalctl", "-u", f"{SERVICE_PREFIX}{agent}.service",
+         "-r", "-n", "4000", "--no-pager", "--output=short-iso"],
+        check=False,
+    )
+    for line in out.splitlines():  # -r: del mas nuevo al mas viejo
+        if REG_OK_RE.search(line):
+            return {"state": "registrado", "detail": None, "since": line[:19]}
+        match = REG_ERR_RE.search(line)
+        if match:
+            return {"state": "error", "detail": match.group(1).strip(), "since": line[:19]}
+    return {"state": "desconocido", "detail": "sin eventos de registro en el historial disponible", "since": None}
+
+
+def status_detail_all():
+    result = []
+    for agent in sorted(read_pool()):
+        active = service_active(agent)
+        info = registration_status(agent, active)
+        result.append({
+            "agent": agent,
+            "service_active": "active" if active else "inactive",
+            "reg_state": info["state"],
+            "reg_detail": info["detail"],
+            "reg_since": info["since"],
+        })
+    print(json.dumps({"ok": True, "agents": result}))
+
+
+def start_all():
+    results = []
+    for agent in sorted(read_pool()):
+        if not service_path(agent).exists():
+            continue
+        if service_active(agent):
+            results.append({"ok": True, "agent": agent, "skipped": "ya estaba encendido"})
+            continue
+        run(["/usr/bin/systemctl", "start", f"{SERVICE_PREFIX}{agent}.service"])
+        results.append({"ok": True, "agent": agent})
+    started = sum(1 for r in results if r.get("ok") and "skipped" not in r)
+    print(json.dumps({"ok": True, "action": "start_all", "started": started, "total": len(results), "results": results}))
+
+
+def main():
+    if len(sys.argv) < 2:
+        fail("uso: zypad_annex create|create_range|delete|start|stop|stop_all|start_all|status|status_detail [ANEXO|INICIO FIN] [PASSWORD]")
+    action = sys.argv[1]
+    if action == "status":
+        status_all()
+        return
+    if action == "status_detail":
+        status_detail_all()
+        return
+    if action == "stop_all":
+        stop_all()
+        return
+    if action == "start_all":
+        start_all()
+        return
+    if action == "create_range":
+        if len(sys.argv) < 4:
+            fail("uso: zypad_annex create_range INICIO FIN [PASSWORD]")
+        password_mode = sys.argv[4] if len(sys.argv) > 4 else ""
+        create_range(sys.argv[2], sys.argv[3], password_mode)
+        return
+    if len(sys.argv) < 3:
+        fail("falta anexo")
+    agent = validate_agent(sys.argv[2])
+    if action == "create":
+        password = validate_password(sys.argv[3] if len(sys.argv) > 3 else agent)
+        create(agent, password)
+    elif action == "delete":
+        delete(agent)
+    elif action == "start":
+        start(agent)
+    elif action == "stop":
+        stop(agent)
+    else:
+        fail("accion invalida")
+
+
+if __name__ == "__main__":
+    main()

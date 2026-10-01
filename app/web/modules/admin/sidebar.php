@@ -23,6 +23,8 @@ function _svgIcon($name) {
         'campaign_monitor' => '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>',
         'checklist' => '<path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>',
         'whatsapp'  => '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"></path>',
+        'farm'      => '<path d="M3 21V10l9-7 9 7v11"></path><path d="M7 21v-7h10v7"></path><path d="M7 10h10"></path>',
+        'stt'       => '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line>',
     ];
     $body = $icons[$name] ?? '';
     return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' . $body . '</svg>';
@@ -55,6 +57,8 @@ function renderSidebar($activePage = 'home', $rootPrefix = '../../') {
         ['key' => 'bot_ivr',     'href' => 'bot_ivr/index.php',              'icon' => 'bot',        'label' => 'Bot IVR',            'built' => true],
         ['key' => 'ivr_builder', 'href' => 'ivr_builder/index.php',          'icon' => 'bot',        'label' => 'IVR Builder',        'built' => true],
         ['key' => 'whatsapp',    'href' => 'modules/admin/whatsapp.php',     'icon' => 'whatsapp',   'label' => 'WhatsApp',           'built' => true],
+        ['key' => 'farm',        'href' => 'modules/admin/farm.php',         'icon' => 'farm',       'label' => 'Farm',               'built' => true],
+        ['key' => 'stt_providers','href' => 'modules/admin/stt_providers.php','icon' => 'stt',       'label' => 'Stt Providers',      'built' => true],
         ['key' => 'usergroups',  'href' => 'modules/admin/usergroups.php',   'icon' => 'usergroups', 'label' => 'User Groups (Grupos)', 'built' => true],
         ['key' => 'remote',      'href' => 'modules/admin/remoteagents.php', 'icon' => 'remote',     'label' => 'Agents GSM',         'built' => true],
         ['key' => 'phones',      'href' => 'modules/admin/phones.php',       'icon' => 'phones',     'label' => 'Anexos/Teléfonos',   'built' => true],

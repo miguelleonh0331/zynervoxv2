@@ -20,6 +20,13 @@ sudo ./installer/install.sh --apply-migrations
 `zypper`; en Ubuntu/Debian usa `apt`. Para el despliegue completo y aislado consulte
 `INSTALL_ONE_COMMAND.md`.
 
+Para instalar los tres módulos administrativos junto con la web:
+
+```bash
+sudo ./installer/install.sh --skip-packages --install-docker \
+  --with-whatsapp --with-farm --with-stt-providers
+```
+
 Sin `--apply-migrations` no se cambia la base. Si falta VICIdial, la web se instala
 y el diagnóstico devuelve `PARTIAL`. No crear tablas parciales: autenticación,
 campañas, agentes y telefonía dependen del esquema completo y sus datos iniciales.
@@ -108,3 +115,24 @@ La versión no se promueve si falla el smoke test, el aislamiento multiempresa, 
 inicio de sesión por SSO o el rollback ensayado. El E2E Meta puede quedar pendiente
 solo en versiones de laboratorio; una versión declarada operativa exige completar
 `src/features/whatsapp/tests/META_E2E.md`.
+
+## Farm
+
+`installer/farm.sh` instala el snapshot versionado de `anexos-proxys`, genera una
+instancia systemd propia y elige puertos loopback libres. Los tokens, anexos,
+proxies y auditoría viven fuera del repositorio. `ZYPAD_ASTERISK_HOST` y
+`TTS_API_URL` quedan vacíos: el despliegue no contacta producción por defecto.
+
+Variables principales: `FARM_INSTANCE`, `FARM_PYTHON`, `FARM_ANNEX_PORT` y
+`FARM_CONTROL_PORT`. Python debe ser 3.10 o superior. Verificar ambos servicios,
+sus endpoints locales y la ruta autenticada `modules/admin/farm.php`.
+
+## Stt Providers
+
+`installer/stt-providers.sh` crea una base y usuario MariaDB exclusivos, aplica
+las cuatro tablas del módulo y genera su configuración fuera de Git. La UI y API
+exigen una sesión Zynervox nivel 9. Variables principales: `STT_INSTANCE`,
+`STT_DB_NAME` y `STT_DB_USER`.
+
+No introducir API keys reales en pruebas de instalación. Validar listado vacío,
+CSRF, rechazo sin sesión y persistencia con datos sintéticos.

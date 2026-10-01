@@ -224,3 +224,27 @@ Impacto:
 
 Seguimiento:
 (ninguno)
+
+### ADR-0010 - Integrar Farm y Stt Providers fuera del Docker WhatsApp
+
+Fecha: 2026-10-01
+
+Estado: aceptada
+
+Contexto:
+Zynervox requiere dos modulos administrativos de repositorios independientes.
+
+Decisión:
+Versionar snapshots saneados, reutilizar la sesion Zynervox y desplegar Farm con systemd y STT con MariaDB aislada.
+
+Motivo:
+Evita mezclar ciclos de vida, secretos y persistencia con el contenedor WhatsApp.
+
+Alternativas evaluadas:
+- (ninguna registrada)
+
+Impacto:
+(pendiente)
+
+Seguimiento:
+(ninguno)
