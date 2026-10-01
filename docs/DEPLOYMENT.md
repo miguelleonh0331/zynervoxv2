@@ -71,6 +71,8 @@ MariaDB/VICIdial ni con otra instalación.
 `init` genera `ZYNERVOX_SSO_SECRET`; `install-proxy` instala el mismo valor en
 `/etc/zynervox/whatsapp.conf` con acceso limitado a `root:www-data`. Repetir ambos
 comandos al actualizar una instalación anterior para activar la sesión única.
+El proxy usa `ProxyPass`/`ProxyPassReverse` y no exige `mod_headers`; `BASE_PATH`
+se entrega directamente al contenedor.
 
 Validar `/zynerwabav2/`, login, sesión, empresas, líneas, recepción y envío antes
 de promover una versión. `down` retira contenedores y conserva ambos volúmenes.
