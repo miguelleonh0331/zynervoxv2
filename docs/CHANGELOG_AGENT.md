@@ -238,3 +238,69 @@ Contrato:
 
 Riesgos:
 - el E2E exige recursos Meta exclusivos de laboratorio y consentimiento del destinatario
+
+### 2026-10-01 00:20 - ARCHITECT_AGENT - whatsapp
+
+Tipo: fix
+
+Resumen:
+Compatibilidad de administradores y líneas con el backend Zynerwaba 2.0.0, sincronización de credencial inicial y smoke autenticado real
+
+Motivo:
+QA real detectó endpoints frontend obsoletos y un falso positivo al aceptar `/api/me` con `user:null`
+
+Archivos modificados:
+- whatsapp/overrides/views/empresas/index.html
+- whatsapp/compose.yml
+- installer/whatsapp.sh
+- src/features/whatsapp/tests/smoke.sh
+- src/features/whatsapp/README.md
+
+Contrato:
+- sin cambios; se alinea el frontend con las rutas ya declaradas por Zynerwaba
+
+Riesgos:
+- el override debe revisarse al actualizar la imagen Zynerwaba
+
+### 2026-10-01 00:45 - ARCHITECT_AGENT - whatsapp
+
+Tipo: fix
+
+Resumen:
+La bandeja y gestión de administradores usan `/api/my-lines`
+
+Motivo:
+QA detectó respuestas 403 al cargar líneas y crear contactos con un administrador de empresa
+
+Archivos modificados:
+- whatsapp/overrides/public/app.js
+- whatsapp/overrides/views/gestion/index.html
+- whatsapp/compose.yml
+- src/features/whatsapp/README.md
+
+Contrato:
+- sin cambios; se consume la ruta de líneas ya definida para administradores
+
+Riesgos:
+- los overrides deben revisarse al actualizar la imagen Zynerwaba
+
+### 2026-10-01 01:05 - ARCHITECT_AGENT - whatsapp
+
+Tipo: fix
+
+Resumen:
+Guardia superadmin limitada a las rutas de empresas sin interceptar el resto del API
+
+Motivo:
+El router global bloqueaba `/api/my-lines`, contactos y módulos posteriores para administradores válidos
+
+Archivos modificados:
+- whatsapp/overrides/src/features/empresas/index.js
+- whatsapp/compose.yml
+- src/features/whatsapp/README.md
+
+Contrato:
+- sin cambios; se restaura la autorización documentada del backend
+
+Riesgos:
+- el override debe retirarse cuando una imagen Zynerwaba posterior incluya la corrección

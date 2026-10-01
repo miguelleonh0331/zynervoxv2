@@ -1,0 +1,2938 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <base href="__APP_BASE__/" />
+    <title>Gestión comercial · Zynerwaba</title>
+    <style>
+      :root {
+        --ink: #182338;
+        --muted: #667085;
+        --line: #dfe4ea;
+        --bg: #f3f5f7;
+        --paper: #fff;
+        --orange: #f58220;
+        --orange-soft: #fff3e9;
+        --navy: #101a2d;
+        --green: #18a66a;
+        --red: #d64545;
+        --shadow: 0 8px 25px rgba(16, 26, 45, 0.07);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          14px/1.45 system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+        color: inherit;
+      }
+      button,
+      a {
+        transition: 0.18s;
+      }
+      .shell {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 228px 1fr;
+      }
+      .sidebar {
+        background: var(--navy);
+        color: #fff;
+        padding: 24px 16px;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+      }
+      .brand {
+        display: flex;
+        gap: 11px;
+        align-items: center;
+        padding: 0 10px 24px;
+      }
+      .brand-mark {
+        width: 35px;
+        height: 35px;
+        border-radius: 10px;
+        background: var(--orange);
+        display: grid;
+        place-items: center;
+        font-weight: 900;
+        font-size: 18px;
+      }
+      .brand strong {
+        display: block;
+        font-size: 16px;
+      }
+      .brand small {
+        color: #aeb8ca;
+      }
+      .nav {
+        display: grid;
+        gap: 5px;
+      }
+      .nav button {
+        border: 0;
+        background: transparent;
+        color: #b9c2d1;
+        text-align: left;
+        padding: 11px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .nav button:hover,
+      .nav button:focus-visible {
+        background: #1b2942;
+        color: #fff;
+        outline: none;
+      }
+      .nav button.active {
+        background: #25334b;
+        color: #fff;
+        box-shadow: inset 3px 0 var(--orange);
+      }
+      .nav .ico {
+        width: 25px;
+        display: inline-block;
+      }
+      .sidebar-foot {
+        position: absolute;
+        bottom: 22px;
+        left: 26px;
+        color: #8390a5;
+        font-size: 12px;
+      }
+      .main {
+        min-width: 0;
+      }
+      .topbar {
+        height: 72px;
+        background: #fff;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        padding: 0 30px;
+        gap: 18px;
+      }
+      .topbar h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+      .back {
+        margin-left: auto;
+        color: var(--ink);
+        text-decoration: none;
+        font-weight: 650;
+      }
+      .user {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        border-left: 1px solid var(--line);
+        padding-left: 17px;
+      }
+      .avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: var(--orange-soft);
+        color: #b84e00;
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+      }
+      .content {
+        padding: 24px 30px 40px;
+        max-width: 1600px;
+      }
+      .view {
+        display: none;
+      }
+      .view.active {
+        display: block;
+        animation: in 0.24s ease;
+      }
+      @keyframes in {
+        from {
+          opacity: 0;
+          transform: translateY(4px);
+        }
+      }
+      .section-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 18px;
+      }
+      .section-head h2 {
+        margin: 0;
+        font-size: 24px;
+        letter-spacing: -0.02em;
+      }
+      .section-head p {
+        margin: 4px 0 0;
+        color: var(--muted);
+      }
+      .btn {
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 7px;
+        padding: 9px 13px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .btn:hover {
+        border-color: #b8c0cb;
+        transform: translateY(-1px);
+      }
+      .btn:focus-visible,
+      input:focus-visible,
+      select:focus-visible,
+      textarea:focus-visible {
+        outline: 3px solid rgba(245, 130, 32, 0.25);
+        outline-offset: 1px;
+      }
+      .btn.primary {
+        background: var(--orange);
+        border-color: var(--orange);
+        color: #fff;
+      }
+      .btn.danger {
+        color: var(--red);
+      }
+      .btn.archive-action {
+        margin-right: auto;
+        color: var(--red);
+        border-color: rgba(220, 38, 38, 0.28);
+        background: #fff8f8;
+      }
+      .btn.archive-action:hover {
+        border-color: var(--red);
+        background: #fff1f1;
+      }
+      .btn:disabled {
+        cursor: wait;
+        opacity: 0.62;
+        transform: none;
+      }
+      .pulse {
+        background: var(--navy);
+        color: #fff;
+        border-radius: 12px;
+        padding: 20px 22px;
+        display: grid;
+        grid-template-columns: 1.3fr repeat(3, 1fr);
+        gap: 14px;
+        box-shadow: var(--shadow);
+        position: relative;
+        overflow: hidden;
+      }
+      .pulse:after {
+        content: "";
+        position: absolute;
+        width: 220px;
+        height: 220px;
+        border: 50px solid rgba(245, 130, 32, 0.12);
+        border-radius: 50%;
+        right: -85px;
+        top: -105px;
+      }
+      .pulse-intro {
+        position: relative;
+        z-index: 1;
+      }
+      .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 11px;
+        font-weight: 800;
+        color: var(--orange);
+      }
+      .pulse-intro h3 {
+        margin: 5px 0;
+        font-size: 20px;
+      }
+      .pulse-intro p {
+        margin: 0;
+        color: #aeb8ca;
+      }
+      .metric {
+        position: relative;
+        z-index: 1;
+        border-left: 1px solid #334057;
+        padding: 5px 16px;
+      }
+      .metric b {
+        display: block;
+        font-size: 28px;
+      }
+      .metric span {
+        color: #acb6c7;
+        font-size: 12px;
+      }
+      .metric.alert b {
+        color: #ffae68;
+      }
+      .kpis {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin: 14px 0;
+      }
+      .card {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        box-shadow: 0 3px 12px rgba(16, 26, 45, 0.035);
+      }
+      .kpi {
+        padding: 17px;
+      }
+      .kpi span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .kpi b {
+        display: block;
+        font-size: 25px;
+        margin-top: 5px;
+      }
+      .split {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: 15px;
+      }
+      .panel {
+        padding: 18px;
+      }
+      .panel h3 {
+        margin: 0 0 14px;
+        font-size: 16px;
+      }
+      .alert-list {
+        display: grid;
+        gap: 8px;
+      }
+      .alert-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 11px;
+        background: #fafbfc;
+        border-left: 3px solid var(--orange);
+        border-radius: 4px;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .toolbar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .board-wrap {
+        overflow: auto;
+        padding-bottom: 10px;
+      }
+      .board {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(250px, 1fr);
+        gap: 12px;
+        min-height: 430px;
+      }
+      .stage {
+        background: #e9edf1;
+        border-radius: 9px;
+        padding: 4px 9px 12px;
+        border-top: 4px solid var(--stage);
+      }
+      .stage-head {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 3px;
+        font-weight: 800;
+      }
+      .stage-total {
+        font-weight: 500;
+        color: var(--muted);
+      }
+      .opp {
+        background: #fff;
+        border: 1px solid #dce1e7;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 8px;
+        box-shadow: 0 2px 5px rgba(20, 30, 50, 0.04);
+        cursor: pointer;
+      }
+      .opp:hover {
+        border-color: var(--stage);
+        transform: translateY(-1px);
+      }
+      .opp-title {
+        font-weight: 750;
+      }
+      .opp-person {
+        color: var(--muted);
+        font-size: 12px;
+        margin: 3px 0 10px;
+      }
+      .opp-foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .money {
+        font-weight: 850;
+      }
+      .owner {
+        width: 27px;
+        height: 27px;
+        border-radius: 50%;
+        background: #e9edf4;
+        display: grid;
+        place-items: center;
+        font-size: 10px;
+        font-weight: 800;
+      }
+      .table-wrap {
+        overflow: auto;
+      }
+      .data {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .data th {
+        text-align: left;
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background: #f8f9fb;
+      }
+      .data th,
+      .data td {
+        padding: 12px;
+        border-bottom: 1px solid var(--line);
+        white-space: nowrap;
+      }
+      .data tr:hover td {
+        background: #fffaf6;
+      }
+      .status {
+        display: inline-flex;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 750;
+        background: #edf0f4;
+      }
+      .status.pending,
+      .status.scheduled {
+        background: #fff2e6;
+        color: #a94a00;
+      }
+      .status.done,
+      .status.active {
+        background: #e8f7f0;
+        color: #087a4b;
+      }
+      .status.failed,
+      .status.cancelled {
+        background: #fdecec;
+        color: #a72828;
+      }
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+      .field {
+        display: grid;
+        gap: 5px;
+      }
+      .field.full {
+        grid-column: 1/-1;
+      }
+      .field label {
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .field input,
+      .field select,
+      .field textarea {
+        border: 1px solid #ccd3dc;
+        border-radius: 7px;
+        background: #fff;
+        padding: 9px 10px;
+        min-width: 0;
+      }
+      .field textarea {
+        resize: vertical;
+        min-height: 72px;
+      }
+      .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      .preview {
+        background: var(--navy);
+        color: #fff;
+        border-radius: 9px;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 14px;
+      }
+      .preview b {
+        font-size: 25px;
+      }
+      .steps {
+        display: grid;
+        gap: 9px;
+      }
+      .step {
+        display: grid;
+        grid-template-columns: 52px 120px 1fr 34px;
+        gap: 8px;
+        align-items: center;
+      }
+      .step-no {
+        font-weight: 800;
+        color: var(--orange);
+      }
+      .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(9, 16, 28, 0.58);
+        z-index: 20;
+        display: none;
+        place-items: center;
+        padding: 18px;
+      }
+      .modal.open {
+        display: grid;
+      }
+      .dialog {
+        background: #fff;
+        border-radius: 12px;
+        width: min(620px, 100%);
+        max-height: 90vh;
+        overflow: auto;
+        box-shadow: 0 25px 80px rgba(0, 0, 0, 0.28);
+      }
+      .dialog-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--line);
+        padding: 17px 20px;
+      }
+      .dialog-head h3 {
+        margin: 0;
+      }
+      .dialog-body {
+        padding: 20px;
+      }
+      .dialog-foot {
+        padding: 15px 20px;
+        border-top: 1px solid var(--line);
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+      .close {
+        border: 0;
+        background: transparent;
+        font-size: 22px;
+        cursor: pointer;
+      }
+      .toast {
+        position: fixed;
+        right: 24px;
+        bottom: 24px;
+        z-index: 30;
+        padding: 13px 16px;
+        background: var(--navy);
+        color: #fff;
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        transform: translateY(80px);
+        opacity: 0;
+        transition: 0.25s;
+      }
+      .toast.show {
+        transform: none;
+        opacity: 1;
+      }
+      .toast.error {
+        background: #9f2d2d;
+      }
+      .empty {
+        text-align: center;
+        padding: 46px 20px;
+        color: var(--muted);
+      }
+      .empty b {
+        display: block;
+        color: var(--ink);
+        margin-bottom: 4px;
+      }
+      .loading {
+        padding: 28px;
+        color: var(--muted);
+      }
+      .bar {
+        height: 7px;
+        border-radius: 4px;
+        background: #edf0f3;
+        overflow: hidden;
+        min-width: 100px;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        background: var(--green);
+      }
+      .mobile-menu {
+        display: none;
+        border: 0;
+        background: transparent;
+        font-size: 22px;
+      }
+      .builder-row {
+        display: grid;
+        grid-template-columns: 145px 1fr 38px;
+        gap: 8px;
+        align-items: center;
+        padding: 9px;
+        background: #f7f9fb;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+      .secret-box {
+        background: #101a2d;
+        color: #fff;
+        padding: 14px;
+        border-radius: 8px;
+        font:
+          13px ui-monospace,
+          monospace;
+        word-break: break-all;
+      }
+      .notice {
+        padding: 11px 13px;
+        border-left: 3px solid var(--orange);
+        background: var(--orange-soft);
+        border-radius: 5px;
+      }
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+      }
+      .code-result {
+        min-height: 130px;
+        white-space: pre-wrap;
+        background: #101a2d;
+        color: #dce6f5;
+        border-radius: 8px;
+        padding: 14px;
+        overflow: auto;
+      }
+      .drawer-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(9, 16, 28, 0.62);
+        z-index: 14;
+      }
+      .skeleton {
+        background: linear-gradient(
+          90deg,
+          #e9edf1 25%,
+          #f5f7f9 45%,
+          #e9edf1 65%
+        );
+        background-size: 250% 100%;
+        animation: shimmer 1.4s infinite;
+        border-radius: 6px;
+        color: transparent !important;
+      }
+      @keyframes shimmer {
+        to {
+          background-position: -250% 0;
+        }
+      }
+      .board-loading {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(250px, 1fr);
+        gap: 12px;
+      }
+      .board-loading > div {
+        height: 330px;
+        padding: 15px;
+        background: #e9edf1;
+        border-radius: 9px;
+      }
+      .board-loading i {
+        display: block;
+        height: 72px;
+        margin: 12px 0;
+        background: #fff;
+      }
+      @media (max-width: 900px) {
+        body.drawer-open {
+          overflow: hidden;
+        }
+        .shell {
+          grid-template-columns: 1fr;
+        }
+        .sidebar {
+          position: fixed;
+          z-index: 15;
+          width: min(84vw, 300px);
+          transform: translateX(-100%);
+          transition: 0.2s;
+        }
+        .sidebar.open {
+          transform: none;
+        }
+        .drawer-backdrop.open {
+          display: block;
+        }
+        .mobile-menu {
+          display: block;
+        }
+        .topbar {
+          padding: 0 16px;
+        }
+        .content {
+          padding: 18px 16px;
+        }
+        .pulse {
+          grid-template-columns: 1fr 1fr;
+        }
+        .pulse-intro {
+          grid-column: 1/-1;
+        }
+        .metric {
+          border-left: 0;
+          padding: 6px;
+        }
+        .kpis {
+          grid-template-columns: 1fr 1fr;
+        }
+        .split {
+          grid-template-columns: 1fr;
+        }
+        .filter-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      @media (max-width: 560px) {
+        .topbar h1 {
+          font-size: 16px;
+        }
+        .back {
+          font-size: 0;
+        }
+        .back:after {
+          content: "Bandeja";
+          font-size: 13px;
+        }
+        .user span {
+          display: none;
+        }
+        .pulse,
+        .kpis {
+          grid-template-columns: 1fr;
+        }
+        .metric {
+          border-top: 1px solid #334057;
+        }
+        .form-grid,
+        .filter-grid {
+          grid-template-columns: 1fr;
+        }
+        .field.full {
+          grid-column: auto;
+        }
+        .step {
+          grid-template-columns: 44px 1fr 34px;
+        }
+        .step input {
+          grid-column: 2;
+        }
+        .section-head {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .content {
+          padding: 16px 12px;
+        }
+        .board {
+          grid-auto-columns: 82vw;
+        }
+        .dialog-foot {
+          flex-wrap: wrap;
+        }
+        .dialog-foot .archive-action {
+          flex: 1 0 100%;
+          margin-right: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      window.__APP_BASE__ = "__APP_BASE__";
+    </script>
+    <div class="shell">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <div class="brand-mark">Z</div>
+          <div>
+            <strong>Zynerwaba</strong><small>Centro de operaciones</small>
+          </div>
+        </div>
+        <nav class="nav" aria-label="Secciones">
+          <button class="active" data-view="summary">
+            <span class="ico">◫</span>Resumen</button
+          ><button data-view="crm"><span class="ico">◇</span>CRM</button
+          ><button data-view="tasks"><span class="ico">✓</span>Tareas</button
+          ><button data-view="segments">
+            <span class="ico">◉</span>Segmentos</button
+          ><button data-view="followups">
+            <span class="ico">↻</span>Seguimientos</button
+          ><button data-view="schedule">
+            <span class="ico">◷</span>Programación</button
+          ><button data-view="reports">
+            <span class="ico">▥</span>Informes</button
+          ><button data-view="audit">
+            <span class="ico">⌁</span>Auditoría
+          </button>
+        </nav>
+        <div class="sidebar-foot">Consola comercial · v1.0</div>
+      </aside>
+      <main class="main">
+        <header class="topbar">
+          <button class="mobile-menu" id="menuBtn" aria-label="Abrir menú">
+            ☰
+          </button>
+          <h1>Gestión comercial</h1>
+          <a class="back" href="./">← Volver a la bandeja</a>
+          <div class="user">
+            <div class="avatar" id="avatar">—</div>
+            <span id="userName">Cargando…</span>
+          </div>
+        </header>
+        <div class="content">
+          <section class="view active" id="summary">
+            <div class="section-head">
+              <div>
+                <h2>Resumen operativo</h2>
+                <p>Señales que requieren atención ahora mismo.</p>
+              </div>
+              <button class="btn" onclick="loadOverview()">Actualizar</button>
+            </div>
+            <div class="pulse">
+              <div class="pulse-intro">
+                <div class="eyebrow">Pulso operativo</div>
+                <h3 id="pulseTitle">Sincronizando operación…</h3>
+                <p id="pulseText">Calculando carga y cumplimiento de SLA.</p>
+              </div>
+              <div class="metric alert">
+                <b id="mBreach">—</b><span>SLA vencidos</span>
+              </div>
+              <div class="metric">
+                <b id="mOpen">—</b><span>Conversaciones activas</span>
+              </div>
+              <div class="metric">
+                <b id="mUnassigned">—</b><span>Sin responsable</span>
+              </div>
+            </div>
+            <div class="kpis">
+              <div class="card kpi">
+                <span>Dentro del SLA</span><b id="kSla">—</b>
+              </div>
+              <div class="card kpi">
+                <span>Espera promedio</span><b id="kWait">—</b>
+              </div>
+              <div class="card kpi">
+                <span>Tareas pendientes</span><b id="kTasks">—</b>
+              </div>
+              <div class="card kpi">
+                <span>Oportunidades</span><b id="kOpps">—</b>
+              </div>
+            </div>
+            <div class="split">
+              <div class="card panel">
+                <h3>Alertas de atención</h3>
+                <div class="alert-list" id="alerts">
+                  <div class="loading">Cargando alertas…</div>
+                </div>
+              </div>
+              <div class="card panel">
+                <h3>Distribución de carga</h3>
+                <div id="workload" class="alert-list">
+                  <div class="loading">Calculando…</div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section class="view" id="crm">
+            <div class="section-head">
+              <div>
+                <h2>Pipeline comercial</h2>
+                <p>Oportunidades organizadas por etapa y valor.</p>
+              </div>
+              <button class="btn primary" onclick="openOpportunity()">
+                + Nueva oportunidad
+              </button>
+            </div>
+            <div class="board-wrap">
+              <div class="board-loading" id="board">
+                <div>
+                  <b class="skeleton">Cargando etapa</b><i class="skeleton"></i
+                  ><i class="skeleton"></i>
+                </div>
+                <div>
+                  <b class="skeleton">Cargando etapa</b><i class="skeleton"></i>
+                </div>
+                <div>
+                  <b class="skeleton">Cargando etapa</b><i class="skeleton"></i
+                  ><i class="skeleton"></i>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section class="view" id="tasks">
+            <div class="section-head">
+              <div>
+                <h2>Tareas</h2>
+                <p>Compromisos comerciales y próximos contactos.</p>
+              </div>
+              <button class="btn primary" onclick="openModal('taskModal')">
+                + Nueva tarea
+              </button>
+            </div>
+            <div class="card table-wrap">
+              <table class="data">
+                <thead>
+                  <tr>
+                    <th>Estado</th>
+                    <th>Tarea</th>
+                    <th>Contacto</th>
+                    <th>Responsable</th>
+                    <th>Vencimiento</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="taskRows">
+                  <tr>
+                    <td colspan="6" class="loading">Cargando tareas…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section class="view" id="segments">
+            <div class="section-head">
+              <div>
+                <h2>Segmentos dinámicos</h2>
+                <p>Construye audiencias que se actualizan solas.</p>
+              </div>
+            </div>
+            <div class="split">
+              <div class="card panel">
+                <h3>Constructor de audiencia</h3>
+                <div class="filter-grid">
+                  <div class="field">
+                    <label for="segName">Nombre</label
+                    ><input id="segName" placeholder="Clientes por reactivar" />
+                  </div>
+                  <div class="field">
+                    <label for="segStatus">Estado</label
+                    ><select id="segStatus">
+                      <option value="">Cualquiera</option>
+                      <option value="new">Nuevo</option>
+                      <option value="open">En atención</option>
+                      <option value="waiting">En espera</option>
+                      <option value="pending">Pendiente</option>
+                      <option value="closed">Cerrado</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="segLine">Línea</label
+                    ><select id="segLine">
+                      <option value="">Todas</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="segTag">Etiqueta</label
+                    ><select id="segTag">
+                      <option value="">Todas</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="segOwner">Responsable</label
+                    ><select id="segOwner">
+                      <option value="">Todos</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="segResponse">Respondió</label
+                    ><select id="segResponse">
+                      <option value="">Indistinto</option>
+                      <option value="true">Sí</option>
+                      <option value="false">No</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="segDays">Interacción en últimos días</label
+                    ><input
+                      id="segDays"
+                      type="number"
+                      min="1"
+                      placeholder="30"
+                    />
+                  </div>
+                </div>
+                <div class="preview">
+                  <div>
+                    <small>Contactos coincidentes</small
+                    ><b id="previewCount">—</b>
+                  </div>
+                  <div class="toolbar">
+                    <button class="btn" onclick="previewSegment()">
+                      Previsualizar</button
+                    ><button class="btn primary" onclick="saveSegment()">
+                      Guardar segmento
+                    </button>
+                  </div>
+                </div>
+                <div id="previewContacts"></div>
+              </div>
+              <div class="card panel">
+                <h3>Segmentos guardados</h3>
+                <div id="segmentList" class="alert-list">
+                  <div class="loading">Cargando…</div>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section class="view" id="followups">
+            <div class="section-head">
+              <div>
+                <h2>Seguimientos</h2>
+                <p>
+                  Secuencias automáticas que se detienen cuando el cliente
+                  responde.
+                </p>
+              </div>
+              <button class="btn primary" onclick="openModal('followModal')">
+                + Crear flujo
+              </button>
+            </div>
+            <div class="card table-wrap">
+              <table class="data">
+                <thead>
+                  <tr>
+                    <th>Flujo</th>
+                    <th>Estado</th>
+                    <th>Pasos</th>
+                    <th>Contactos activos</th>
+                    <th>Regla</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="followRows">
+                  <tr>
+                    <td colspan="6" class="loading">Cargando flujos…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section class="view" id="schedule">
+            <div class="section-head">
+              <div>
+                <h2>Programación</h2>
+                <p>Agenda campañas para una fecha y audiencia definidas.</p>
+              </div>
+              <button class="btn primary" onclick="openModal('scheduleModal')">
+                + Programar envío
+              </button>
+            </div>
+            <div class="card table-wrap">
+              <table class="data">
+                <thead>
+                  <tr>
+                    <th>Envío</th>
+                    <th>Campaña</th>
+                    <th>Lista</th>
+                    <th>Fecha</th>
+                    <th>Zona</th>
+                    <th>Estado</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="scheduleRows">
+                  <tr>
+                    <td colspan="7" class="loading">Cargando agenda…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section class="view" id="reports">
+            <div class="section-head">
+              <div>
+                <h2>Informes de rendimiento</h2>
+                <p>Actividad y respuesta del equipo comercial.</p>
+              </div>
+              <select class="btn" id="reportDays" onchange="loadReports()">
+                <option value="7">Últimos 7 días</option>
+                <option value="30" selected>Últimos 30 días</option>
+                <option value="90">Últimos 90 días</option>
+              </select>
+            </div>
+            <div class="kpis">
+              <div class="card kpi">
+                <span>Conversaciones</span><b id="rTotal">—</b>
+              </div>
+              <div class="card kpi">
+                <span>Resueltas</span><b id="rResolved">—</b>
+              </div>
+              <div class="card kpi">
+                <span>Mensajes enviados</span><b id="rSent">—</b>
+              </div>
+              <div class="card kpi">
+                <span>Mensajes leídos</span><b id="rRead">—</b>
+              </div>
+            </div>
+            <div class="card table-wrap">
+              <table class="data">
+                <thead>
+                  <tr>
+                    <th>Agente</th>
+                    <th>Conversaciones</th>
+                    <th>Resueltas</th>
+                    <th>Respuestas</th>
+                    <th>Primera respuesta</th>
+                    <th>Resolución</th>
+                  </tr>
+                </thead>
+                <tbody id="agentRows">
+                  <tr>
+                    <td colspan="6" class="loading">Cargando informe…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section class="view" id="audit">
+            <div class="section-head">
+              <div>
+                <h2>Auditoría</h2>
+                <p>Trazabilidad de cambios y acciones administrativas.</p>
+              </div>
+              <a class="btn" id="auditExport" href="#">Exportar CSV</a>
+            </div>
+            <div class="card table-wrap">
+              <table class="data">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Usuario</th>
+                    <th>Acción</th>
+                    <th>Entidad</th>
+                    <th>Detalle</th>
+                    <th>IP</th>
+                  </tr>
+                </thead>
+                <tbody id="auditRows">
+                  <tr>
+                    <td colspan="6" class="loading">Cargando auditoría…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+    <div class="drawer-backdrop" id="drawerBackdrop" aria-hidden="true"></div>
+    <div class="modal" id="oppModal">
+      <form class="dialog" onsubmit="saveOpportunity(event)">
+        <div class="dialog-head">
+          <h3 id="oppModalTitle">Nueva oportunidad</h3>
+          <button
+            type="button"
+            class="close"
+            onclick="closeModal('oppModal')"
+            aria-label="Cerrar"
+          >
+            ×
+          </button>
+        </div>
+        <div class="dialog-body form-grid">
+          <input type="hidden" id="oppId" />
+          <div class="field full">
+            <label for="oppContact">Contacto</label
+            ><select id="oppContact" required></select>
+          </div>
+          <div class="field full">
+            <label for="oppTitle">Título</label
+            ><input
+              id="oppTitle"
+              required
+              placeholder="Venta de plan comercial"
+            />
+          </div>
+          <div class="field">
+            <label for="oppStage">Etapa</label
+            ><select id="oppStage" required></select>
+          </div>
+          <div class="field">
+            <label for="oppOwner">Responsable</label
+            ><select id="oppOwner"></select>
+          </div>
+          <div class="field">
+            <label for="oppValue">Valor</label
+            ><input id="oppValue" type="number" min="0" step="0.01" value="0" />
+          </div>
+          <div class="field">
+            <label for="oppCurrency">Moneda</label
+            ><select id="oppCurrency">
+              <option>PEN</option>
+              <option>USD</option>
+              <option>EUR</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="oppSource">Origen</label
+            ><input id="oppSource" placeholder="WhatsApp, referido…" />
+          </div>
+          <div class="field">
+            <label for="oppNextAt">Próxima acción</label
+            ><input id="oppNextAt" type="datetime-local" />
+          </div>
+          <div class="field full">
+            <label for="oppNext">Nota de próxima acción</label
+            ><textarea
+              id="oppNext"
+              placeholder="Llamar para confirmar propuesta"
+            ></textarea>
+          </div>
+        </div>
+        <div class="dialog-foot">
+          <button
+            type="button"
+            class="btn archive-action"
+            id="archiveOpportunityBtn"
+            onclick="archiveOpportunity()"
+            hidden
+          >
+            Archivar oportunidad
+          </button>
+          <button type="button" class="btn" onclick="closeModal('oppModal')">
+            Cancelar</button
+          ><button class="btn primary">Guardar oportunidad</button>
+        </div>
+      </form>
+    </div>
+    <div class="modal" id="taskModal">
+      <form class="dialog" onsubmit="saveTask(event)">
+        <div class="dialog-head">
+          <h3>Nueva tarea</h3>
+          <button type="button" class="close" onclick="closeModal('taskModal')">
+            ×
+          </button>
+        </div>
+        <div class="dialog-body form-grid">
+          <div class="field full">
+            <label for="taskTitle">Título</label
+            ><input
+              id="taskTitle"
+              required
+              placeholder="Enviar propuesta actualizada"
+            />
+          </div>
+          <div class="field">
+            <label for="taskContact">Contacto</label
+            ><select id="taskContact">
+              <option value="">Sin contacto</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="taskOwner">Responsable</label
+            ><select id="taskOwner"></select>
+          </div>
+          <div class="field">
+            <label for="taskDue">Vencimiento</label
+            ><input id="taskDue" type="datetime-local" />
+          </div>
+          <div class="field">
+            <label for="taskType">Tipo</label
+            ><select id="taskType">
+              <option value="followup">Seguimiento</option>
+              <option value="call">Llamada</option>
+              <option value="meeting">Reunión</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label for="taskDesc">Descripción</label
+            ><textarea id="taskDesc"></textarea>
+          </div>
+        </div>
+        <div class="dialog-foot">
+          <button type="button" class="btn" onclick="closeModal('taskModal')">
+            Cancelar</button
+          ><button class="btn primary">Crear tarea</button>
+        </div>
+      </form>
+    </div>
+    <div class="modal" id="followModal">
+      <form class="dialog" onsubmit="saveFollowup(event)">
+        <div class="dialog-head">
+          <h3>Nuevo flujo de seguimiento</h3>
+          <button
+            type="button"
+            class="close"
+            onclick="closeModal('followModal')"
+          >
+            ×
+          </button>
+        </div>
+        <div class="dialog-body">
+          <div class="form-grid">
+            <div class="field">
+              <label for="flowName">Nombre</label
+              ><input
+                id="flowName"
+                required
+                placeholder="Reactivación 3 días"
+              />
+            </div>
+            <div class="field">
+              <label for="flowActive">Activación</label
+              ><select id="flowActive">
+                <option value="1">Activo</option>
+                <option value="0">Borrador</option>
+              </select>
+            </div>
+          </div>
+          <p><strong>Pasos de la secuencia</strong></p>
+          <div class="steps" id="flowSteps"></div>
+          <button type="button" class="btn" onclick="addStep()">
+            + Añadir paso
+          </button>
+          <p>
+            <label
+              ><input type="checkbox" id="flowStop" checked /> Detener cuando el
+              contacto responda</label
+            >
+          </p>
+        </div>
+        <div class="dialog-foot">
+          <button type="button" class="btn" onclick="closeModal('followModal')">
+            Cancelar</button
+          ><button class="btn primary">Crear flujo</button>
+        </div>
+      </form>
+    </div>
+    <div class="modal" id="scheduleModal">
+      <form class="dialog" onsubmit="saveSchedule(event)">
+        <div class="dialog-head">
+          <h3>Programar envío</h3>
+          <button
+            type="button"
+            class="close"
+            onclick="closeModal('scheduleModal')"
+          >
+            ×
+          </button>
+        </div>
+        <div class="dialog-body form-grid">
+          <div class="field full">
+            <label for="sendName">Nombre</label
+            ><input
+              id="sendName"
+              required
+              placeholder="Recordatorio clientes agosto"
+            />
+          </div>
+          <div class="field">
+            <label for="sendCampaign">Campaña</label
+            ><select id="sendCampaign" required></select>
+          </div>
+          <div class="field">
+            <label for="sendList">Lista</label
+            ><select id="sendList" required></select>
+          </div>
+          <div class="field">
+            <label for="sendAt">Fecha y hora</label
+            ><input id="sendAt" type="datetime-local" required />
+          </div>
+          <div class="field">
+            <label for="sendTz">Zona horaria</label
+            ><input id="sendTz" value="America/Lima" required />
+          </div>
+        </div>
+        <div class="dialog-foot">
+          <button
+            type="button"
+            class="btn"
+            onclick="closeModal('scheduleModal')"
+          >
+            Cancelar</button
+          ><button class="btn primary">Programar</button>
+        </div>
+      </form>
+    </div>
+    <div class="modal" id="enrollModal">
+      <form class="dialog" onsubmit="enrollContact(event)">
+        <div class="dialog-head">
+          <h3>Enrolar contacto</h3>
+          <button
+            type="button"
+            class="close"
+            onclick="closeModal('enrollModal')"
+          >
+            ×
+          </button>
+        </div>
+        <div class="dialog-body">
+          <input type="hidden" id="enrollFlowId" />
+          <div class="field">
+            <label for="enrollContact"
+              >Contacto que iniciará el seguimiento</label
+            ><select id="enrollContact" required></select>
+          </div>
+          <p class="muted">
+            El flujo comenzará según la demora configurada en su primer paso.
+          </p>
+          <div id="enrollFeedback" aria-live="polite"></div>
+        </div>
+        <div class="dialog-foot">
+          <button type="button" class="btn" onclick="closeModal('enrollModal')">
+            Cancelar</button
+          ><button class="btn primary" id="enrollSubmit">
+            Enrolar contacto
+          </button>
+        </div>
+      </form>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script>
+      const BASE = window.__APP_BASE__,
+        state = {
+          me: null,
+          lines: [],
+          users: [],
+          contacts: [],
+          stages: [],
+          opps: [],
+          tasks: [],
+          campaigns: [],
+          lists: [],
+          tags: [],
+        };
+      const $ = (id) => document.getElementById(id),
+        esc = (s) =>
+          String(s ?? "").replace(
+            /[&<>"']/g,
+            (c) =>
+              ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;",
+              })[c],
+          );
+      async function api(path, opt = {}) {
+        const r = await fetch(`${BASE}/api${path}`, {
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            ...(opt.headers || {}),
+          },
+          ...opt,
+        });
+        if (!r.ok) {
+          let e;
+          try {
+            e = await r.json();
+          } catch {
+            e = { error: `Error ${r.status}` };
+          }
+          throw Error(e.error || "No se pudo completar la operación");
+        }
+        return r.headers.get("content-type")?.includes("json")
+          ? r.json()
+          : r.text();
+      }
+      function toast(msg, error = false) {
+        const t = $("toast");
+        t.textContent = msg;
+        t.className = "toast show" + (error ? " error" : "");
+        clearTimeout(t._x);
+        t._x = setTimeout(() => (t.className = "toast"), 3200);
+      }
+      function err(target, e, cols = 1, retry = "location.reload()") {
+        $(target).innerHTML =
+          `<tr><td colspan="${cols}" class="empty"><b>No pudimos cargar esta información</b>${esc(e.message)} <button class="btn" onclick="${retry}">Reintentar</button></td></tr>`;
+      }
+      function openModal(id) {
+        $(id).classList.add("open");
+        $(id).querySelector("input,select,button")?.focus();
+      }
+      function closeModal(id) {
+        $(id).classList.remove("open");
+      }
+      function setDrawer(open) {
+        const wasOpen = $("sidebar").classList.contains("open");
+        $("sidebar").classList.toggle("open", open);
+        $("drawerBackdrop").classList.toggle("open", open);
+        document.body.classList.toggle("drawer-open", open);
+        $("menuBtn").setAttribute("aria-expanded", String(open));
+        $("drawerBackdrop").setAttribute("aria-hidden", String(!open));
+        if (open && !wasOpen)
+          $("sidebar").querySelector("button:not([hidden])")?.focus();
+        else if (!open && wasOpen) $("menuBtn").focus();
+      }
+      document.querySelectorAll(".nav button").forEach(
+        (b) =>
+          (b.onclick = () => {
+            document
+              .querySelectorAll(".nav button")
+              .forEach((x) => x.classList.remove("active"));
+            document
+              .querySelectorAll(".view")
+              .forEach((x) => x.classList.remove("active"));
+            b.classList.add("active");
+            $(b.dataset.view).classList.add("active");
+            setDrawer(false);
+          }),
+      );
+      $("menuBtn").setAttribute("aria-expanded", "false");
+      $("menuBtn").setAttribute("aria-controls", "sidebar");
+      $("menuBtn").onclick = () =>
+        setDrawer(!$("sidebar").classList.contains("open"));
+      $("drawerBackdrop").onclick = () => setDrawer(false);
+      document.querySelectorAll(".modal").forEach((m) =>
+        m.addEventListener("click", (e) => {
+          if (e.target === m) closeModal(m.id);
+        }),
+      );
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          document
+            .querySelectorAll(".modal.open")
+            .forEach((m) => closeModal(m.id));
+          if ($("sidebar").classList.contains("open")) setDrawer(false);
+        }
+      });
+      function optionize(id, rows, label = "name", empty) {
+        $(id).innerHTML =
+          (empty ? `<option value="">${empty}</option>` : "") +
+          rows
+            .map(
+              (x) =>
+                `<option value="${x.id}">${esc(x[label] || x.name || x.phone)}</option>`,
+            )
+            .join("");
+      }
+      function applyAccess(canAdmin, canSupervise) {
+        document
+          .querySelectorAll("[data-admin]")
+          .forEach((x) => (x.hidden = !canAdmin));
+        if (!canAdmin) {
+          document
+            .querySelectorAll(
+              '.nav button[data-view="segments"],.nav button[data-view="followups"],.nav button[data-view="schedule"],.nav button[data-view="audit"]',
+            )
+            .forEach((x) => (x.hidden = true));
+          if (!canSupervise)
+            document
+              .querySelectorAll(
+                '.nav button[data-view="summary"],.nav button[data-view="reports"]',
+              )
+              .forEach((x) => (x.hidden = true));
+          document
+            .querySelectorAll(".nav button,.view")
+            .forEach((x) => x.classList.remove("active"));
+          const firstView = canSupervise ? "summary" : "crm";
+          document
+            .querySelector(`.nav button[data-view="${firstView}"]`)
+            .classList.add("active");
+          $(firstView).classList.add("active");
+        }
+      }
+      async function init() {
+        const [meResult, ctxResult, contactsResult] = await Promise.allSettled([
+          api("/me"),
+          api("/management-context"),
+          api("/contacts"),
+        ]);
+        if (meResult.status === "rejected") {
+          $("userName").textContent = "Sesión no disponible";
+          $("board").className = "";
+          $("board").innerHTML =
+            '<div class="empty"><b>No se pudo validar la sesión</b>Recarga la página o vuelve a iniciar sesión. <button class="btn" onclick="location.reload()">Reintentar</button></div>';
+          toast(meResult.reason.message, true);
+          return;
+        }
+        const me = meResult.value,
+          ctx = ctxResult.status === "fulfilled" ? ctxResult.value : {},
+          contacts =
+            contactsResult.status === "fulfilled" ? contactsResult.value : [];
+        const {
+          lines = [],
+          users = [],
+          campaigns = [],
+          lists = [],
+          tags = [],
+          can_admin = false,
+          can_supervise = false,
+        } = ctx;
+        Object.assign(state, {
+          me,
+          lines,
+          users,
+          contacts,
+          campaigns,
+          lists,
+          tags,
+          canAdmin: !!can_admin,
+          canSupervise: !!can_supervise,
+        });
+        applyAccess(state.canAdmin, state.canSupervise);
+        const u = me.user || me;
+        $("userName").textContent =
+          u.display_name || u.name || u.email || "Usuario";
+        $("avatar").textContent = (u.display_name || u.name || "U")
+          .split(/\s+/)
+          .map((x) => x[0])
+          .slice(0, 2)
+          .join("")
+          .toUpperCase();
+        optionize("segLine", lines, "name", "Todas");
+        optionize("segTag", tags, "name", "Todas");
+        optionize("segOwner", users, "display_name", "Todos");
+        optionize("oppContact", contacts, "name");
+        optionize("taskContact", contacts, "name", "Sin contacto");
+        optionize("enrollContact", contacts, "name");
+        optionize("oppOwner", users, "display_name", "Sin asignar");
+        optionize("taskOwner", users, "display_name");
+        optionize("sendCampaign", campaigns, "name");
+        optionize("sendList", lists, "name");
+        $("auditExport").href = `${BASE}/api/audit/export.csv`;
+        if (ctxResult.status === "rejected")
+          toast(`Catálogos limitados: ${ctxResult.reason.message}`, true);
+        if (contactsResult.status === "rejected")
+          toast(
+            `Contactos no disponibles: ${contactsResult.reason.message}`,
+            true,
+          );
+        const loaders = [loadCrm(), loadTasks()];
+        if (state.canAdmin)
+          loaders.push(
+            loadOverview(),
+            loadSegments(),
+            loadFollowups(),
+            loadSchedule(),
+            loadReports(),
+            loadAudit(),
+          );
+        else if (state.canSupervise)
+          loaders.push(loadOverview(), loadReports());
+        await Promise.allSettled(loaders);
+      }
+      async function loadOverview() {
+        try {
+          const [o, t, p] = await Promise.all([
+            api("/operations/overview"),
+            api("/tasks"),
+            api("/crm/opportunities"),
+          ]);
+          const c = o.conversations || [],
+            wait =
+              c.reduce((a, x) => a + (x.waiting_minutes || 0), 0) /
+              (c.length || 1),
+            good = c.filter((x) => !x.sla_breached).length;
+          $("mBreach").textContent = o.breached;
+          $("mOpen").textContent = c.length;
+          $("mUnassigned").textContent = o.unassigned;
+          $("kSla").textContent =
+            `${Math.round((good / (c.length || 1)) * 100)}%`;
+          $("kWait").textContent = `${Math.round(wait)} min`;
+          $("kTasks").textContent = t.filter(
+            (x) => x.status === "pending",
+          ).length;
+          $("kOpps").textContent = p.length;
+          $("pulseTitle").textContent = o.breached
+            ? `${o.breached} conversaciones fuera de SLA`
+            : "Operación bajo control";
+          $("pulseText").textContent = o.breached
+            ? "Prioriza las conversaciones con mayor tiempo de espera."
+            : "No hay incumplimientos críticos en este momento.";
+          const alerts = c
+            .filter((x) => x.sla_breached)
+            .sort((a, b) => b.waiting_minutes - a.waiting_minutes)
+            .slice(0, 6);
+          $("alerts").innerHTML = alerts.length
+            ? alerts
+                .map(
+                  (x) =>
+                    `<div class="alert-row"><div><b>${esc(x.name || x.phone)}</b><div class="muted">${esc(x.owner_name || "Sin responsable")}</div></div><strong>${x.waiting_minutes} min</strong></div>`,
+                )
+                .join("")
+            : '<div class="empty"><b>Todo al día</b>No hay alertas SLA activas.</div>';
+          const owners = {};
+          c.forEach((x) => {
+            const n = x.owner_name || "Sin responsable";
+            owners[n] = (owners[n] || 0) + 1;
+          });
+          const max = Math.max(1, ...Object.values(owners));
+          $("workload").innerHTML = Object.keys(owners).length
+            ? Object.entries(owners)
+                .map(
+                  ([n, v]) =>
+                    `<div><div style="display:flex;justify-content:space-between"><span>${esc(n)}</span><b>${v}</b></div><div class="bar"><i style="width:${(v / max) * 100}%"></i></div></div>`,
+                )
+                .join("")
+            : '<div class="empty">Sin conversaciones activas.</div>';
+        } catch (e) {
+          $("pulseTitle").textContent = "No se pudo cargar el pulso";
+          $("pulseText").textContent = e.message;
+          $("alerts").innerHTML =
+            `<div class="empty"><b>Resumen no disponible</b>${esc(e.message)} <button class="btn" onclick="loadOverview()">Reintentar</button></div>`;
+          $("workload").innerHTML =
+            '<div class="empty">La carga se actualizará al reintentar.</div>';
+        }
+      }
+      async function loadCrm() {
+        try {
+          [state.stages, state.opps] = await Promise.all([
+            api("/crm/stages"),
+            api("/crm/opportunities"),
+          ]);
+          optionize("oppStage", state.stages);
+          $("board").className = "board";
+          $("board").innerHTML = state.stages
+            .map((s) => {
+              const rows = state.opps.filter((o) => o.stage_id === s.id),
+                total = rows.reduce((a, x) => a + (+x.value || 0), 0);
+              return `<div class="stage" style="--stage:${esc(s.color)}"><div class="stage-head"><span>${esc(s.name)} · ${rows.length}</span><span class="stage-total">${total.toLocaleString("es-PE")} PEN</span></div>${
+                rows
+                  .map(
+                    (o) =>
+                      `<article class="opp" onclick="openOpportunity(${o.id})"><div class="opp-title">${esc(o.title)}</div><div class="opp-person">${esc(o.contact_name)} · ${esc(o.next_action || "Sin próxima acción")}</div><div class="opp-foot"><span class="money">${(+o.value || 0).toLocaleString("es-PE")} ${esc(o.currency)}</span><span class="owner" title="${esc(o.owner_name || "Sin asignar")}">${esc(
+                        (o.owner_name || "—")
+                          .split(/\s+/)
+                          .map((x) => x[0])
+                          .slice(0, 2)
+                          .join(""),
+                      )}</span></div></article>`,
+                  )
+                  .join("") ||
+                '<div class="empty"><b>Etapa vacía</b>Sin oportunidades todavía.</div>'
+              }</div>`;
+            })
+            .join("");
+        } catch (e) {
+          $("board").className = "";
+          $("board").innerHTML =
+            `<div class="empty"><b>No se pudo cargar el pipeline</b>${esc(e.message)} <button class="btn" onclick="loadCrm()">Reintentar</button></div>`;
+        }
+      }
+      function openOpportunity(id) {
+        const o = state.opps.find((x) => x.id === id);
+        $("oppModalTitle").textContent = o
+          ? "Editar oportunidad"
+          : "Nueva oportunidad";
+        $("archiveOpportunityBtn").hidden = !o;
+        $("archiveOpportunityBtn").disabled = false;
+        $("archiveOpportunityBtn").textContent = "Archivar oportunidad";
+        $("oppId").value = o?.id || "";
+        $("oppContact").value = o?.contact_id || "";
+        $("oppContact").disabled = !!o;
+        $("oppTitle").value = o?.title || "";
+        $("oppStage").value = o?.stage_id || state.stages[0]?.id || "";
+        $("oppOwner").value = o?.owner_user_id || "";
+        $("oppValue").value = o?.value || 0;
+        $("oppCurrency").value = o?.currency || "PEN";
+        $("oppSource").value = o?.source || "";
+        $("oppNext").value = o?.next_action || "";
+        $("oppNextAt").value = (o?.next_action_at || "")
+          .replace(" ", "T")
+          .slice(0, 16);
+        openModal("oppModal");
+      }
+      async function saveOpportunity(e) {
+        e.preventDefault();
+        const id = $("oppId").value,
+          body = {
+            contact_id: +$("oppContact").value,
+            title: $("oppTitle").value,
+            stage_id: +$("oppStage").value,
+            owner_user_id: +$("oppOwner").value || null,
+            value: +$("oppValue").value,
+            currency: $("oppCurrency").value,
+            source: $("oppSource").value,
+            next_action: $("oppNext").value,
+            next_action_at: $("oppNextAt").value || null,
+          };
+        try {
+          await api(`/crm/opportunities${id ? "/" + id : ""}`, {
+            method: id ? "PATCH" : "POST",
+            body: JSON.stringify(body),
+          });
+          closeModal("oppModal");
+          toast("Oportunidad guardada");
+          await loadCrm();
+          loadOverview();
+        } catch (x) {
+          toast(x.message, true);
+        }
+      }
+      async function archiveOpportunity() {
+        const id = $("oppId").value;
+        if (!id) return;
+        const confirmed = window.confirm(
+          "Esta oportunidad saldrá del tablero. El contacto, sus conversaciones y el historial permanecerán disponibles. ¿Deseas archivarla?",
+        );
+        if (!confirmed) return;
+        const button = $("archiveOpportunityBtn");
+        button.disabled = true;
+        button.textContent = "Archivando…";
+        try {
+          await api(`/crm/opportunities/${id}/archive`, { method: "POST" });
+          closeModal("oppModal");
+          toast("Oportunidad archivada");
+          await loadCrm();
+          loadOverview();
+        } catch (x) {
+          toast(x.message, true);
+          button.disabled = false;
+          button.textContent = "Archivar oportunidad";
+        }
+      }
+      async function loadTasks() {
+        try {
+          state.tasks = await api("/tasks");
+          $("taskRows").innerHTML = state.tasks.length
+            ? state.tasks
+                .map(
+                  (t) =>
+                    `<tr><td><span class="status ${t.status}">${t.status === "pending" ? "Pendiente" : t.status === "done" ? "Completada" : "Cancelada"}</span></td><td><b>${esc(t.title)}</b><div class="muted">${esc(t.description || "")}</div></td><td>${esc(t.contact_name || "—")}</td><td>${esc(t.assigned_name || "—")}</td><td>${fmt(t.due_at)}</td><td>${t.status === "pending" ? `<button class="btn" onclick="doneTask(${t.id})">Completar</button>` : ""}</td></tr>`,
+                )
+                .join("")
+            : '<tr><td colspan="6" class="empty"><b>Sin tareas</b>No hay compromisos pendientes.</td></tr>';
+        } catch (e) {
+          err("taskRows", e, 6, "loadTasks()");
+        }
+      }
+      async function saveTask(e) {
+        e.preventDefault();
+        try {
+          await api("/tasks", {
+            method: "POST",
+            body: JSON.stringify({
+              title: $("taskTitle").value,
+              contact_id: +$("taskContact").value || null,
+              assigned_user_id: +$("taskOwner").value || null,
+              due_at: $("taskDue").value || null,
+              task_type: $("taskType").value,
+              description: $("taskDesc").value,
+            }),
+          });
+          closeModal("taskModal");
+          e.target.reset();
+          toast("Tarea creada");
+          loadTasks();
+          loadOverview();
+        } catch (x) {
+          toast(x.message, true);
+        }
+      }
+      async function doneTask(id) {
+        try {
+          await api(`/tasks/${id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ status: "done" }),
+          });
+          toast("Tarea completada");
+          loadTasks();
+          loadOverview();
+        } catch (e) {
+          toast(e.message, true);
+        }
+      }
+      function segmentFilters() {
+        const r = {};
+        if ($("segStatus").value) r.status = $("segStatus").value;
+        if ($("segLine").value) r.line_id = +$("segLine").value;
+        if ($("segTag").value) r.tag_id = +$("segTag").value;
+        if ($("segOwner").value) r.owner_user_id = +$("segOwner").value;
+        if ($("segResponse").value)
+          r.responded = $("segResponse").value === "true";
+        if ($("segDays").value) r.last_interaction_days = +$("segDays").value;
+        return r;
+      }
+      async function previewSegment() {
+        try {
+          const r = await api("/segments/preview", {
+            method: "POST",
+            body: JSON.stringify({ filters: segmentFilters() }),
+          });
+          $("previewCount").textContent = r.count.toLocaleString("es-PE");
+          $("previewContacts").innerHTML = r.contacts
+            .slice(0, 5)
+            .map(
+              (c) =>
+                `<div class="alert-row"><span>${esc(c.name || c.phone)}</span><span class="muted">${esc(c.workflow_status)}</span></div>`,
+            )
+            .join("");
+        } catch (e) {
+          toast(e.message, true);
+        }
+      }
+      async function saveSegment() {
+        if (!$("segName").value.trim())
+          return toast("Escribe un nombre para el segmento", true);
+        try {
+          const r = await api("/segments", {
+            method: "POST",
+            body: JSON.stringify({
+              name: $("segName").value,
+              filters: segmentFilters(),
+            }),
+          });
+          toast(`Segmento guardado: ${r.count} contactos`);
+          $("segName").value = "";
+          loadSegments();
+        } catch (e) {
+          toast(e.message, true);
+        }
+      }
+      async function loadSegments() {
+        try {
+          const r = await api("/segments");
+          $("segmentList").innerHTML = r.length
+            ? r
+                .map(
+                  (s) =>
+                    `<div class="alert-row"><div><b>${esc(s.name)}</b><div class="muted">${Object.keys(s.filters || {}).length} filtros</div></div><a class="btn" href="${BASE}/api/segments/${s.id}/export.csv">CSV</a></div>`,
+                )
+                .join("")
+            : '<div class="empty"><b>Sin segmentos</b>Crea tu primera audiencia dinámica.</div>';
+        } catch (e) {
+          $("segmentList").innerHTML =
+            `<div class="empty"><b>No se pudieron cargar los segmentos</b>${esc(e.message)} <button class="btn" onclick="loadSegments()">Reintentar</button></div>`;
+        }
+      }
+      function addStep() {
+        const n = $("flowSteps").children.length + 1,
+          d = document.createElement("div");
+        d.className = "step";
+        d.innerHTML = `<span class="step-no">#${n}</span><select aria-label="Tipo de paso"><option value="message">Mensaje</option><option value="task">Tarea</option><option value="tag">Etiqueta</option></select><input aria-label="Contenido" placeholder="Mensaje o título de tarea" required><button type="button" class="btn danger" aria-label="Eliminar" onclick="this.parentElement.remove()">×</button><input type="number" min="0" value="1440" aria-label="Demora en minutos">`;
+        $("flowSteps").appendChild(d);
+      }
+      async function saveFollowup(e) {
+        e.preventDefault();
+        const steps = [...$("flowSteps").children].map((x) => {
+          const type = x.querySelector("select").value,
+            text = x.querySelector("input[placeholder]").value;
+          return {
+            action_type: type,
+            delay_minutes: +x.querySelector("input[type=number]").value || 0,
+            payload:
+              type === "message"
+                ? { body: text }
+                : type === "task"
+                  ? { title: text }
+                  : { tag_id: +text },
+          };
+        });
+        if (!steps.length) return toast("Añade al menos un paso", true);
+        try {
+          await api("/followups", {
+            method: "POST",
+            body: JSON.stringify({
+              name: $("flowName").value,
+              active: $("flowActive").value === "1",
+              stop_on_reply: $("flowStop").checked,
+              steps,
+            }),
+          });
+          closeModal("followModal");
+          toast("Flujo creado");
+          loadFollowups();
+        } catch (x) {
+          toast(x.message, true);
+        }
+      }
+      function openEnroll(id) {
+        $("enrollFlowId").value = id;
+        $("enrollFeedback").textContent = "";
+        $("enrollSubmit").disabled = false;
+        openModal("enrollModal");
+      }
+      async function enrollContact(e) {
+        e.preventDefault();
+        const button = $("enrollSubmit");
+        button.disabled = true;
+        button.textContent = "Enrolando…";
+        $("enrollFeedback").textContent = "Procesando enrolamiento…";
+        try {
+          await api(`/followups/${+$("enrollFlowId").value}/enroll`, {
+            method: "POST",
+            body: JSON.stringify({ contact_id: +$("enrollContact").value }),
+          });
+          $("enrollFeedback").innerHTML =
+            '<p style="color:var(--green);font-weight:700">Contacto enrolado correctamente.</p>';
+          toast("Contacto enrolado");
+          await loadFollowups();
+          setTimeout(() => closeModal("enrollModal"), 700);
+        } catch (x) {
+          $("enrollFeedback").innerHTML =
+            `<p style="color:var(--red);font-weight:700">${esc(x.message)}</p>`;
+        } finally {
+          button.disabled = false;
+          button.textContent = "Enrolar contacto";
+        }
+      }
+      async function loadFollowups() {
+        try {
+          const r = await api("/followups");
+          $("followRows").innerHTML = r.length
+            ? r
+                .map(
+                  (f) =>
+                    `<tr><td><b>${esc(f.name)}</b></td><td><span class="status ${f.active ? "active" : ""}">${f.active ? "Activo" : "Borrador"}</span></td><td>${f.steps}</td><td>${f.active_enrollments}</td><td>${f.stop_on_reply ? "Se detiene al responder" : "Secuencia completa"}</td><td><button class="btn" ${f.active ? "" : `disabled title="Activa el flujo para enrolar"`} onclick="openEnroll(${f.id})">Enrolar</button></td></tr>`,
+                )
+                .join("")
+            : '<tr><td colspan="6" class="empty"><b>Sin flujos</b>Crea una secuencia de seguimiento.</td></tr>';
+        } catch (e) {
+          $("followRows").innerHTML =
+            `<tr><td colspan="6" class="empty"><b>No se pudieron cargar los flujos</b>${esc(e.message)} <button class="btn" onclick="loadFollowups()">Reintentar</button></td></tr>`;
+        }
+      }
+      async function saveSchedule(e) {
+        e.preventDefault();
+        try {
+          await api("/scheduled-sends", {
+            method: "POST",
+            body: JSON.stringify({
+              name: $("sendName").value,
+              campaign_id: +$("sendCampaign").value,
+              list_id: +$("sendList").value,
+              scheduled_at: $("sendAt").value,
+              timezone: $("sendTz").value,
+            }),
+          });
+          closeModal("scheduleModal");
+          e.target.reset();
+          $("sendTz").value = "America/Lima";
+          toast("Envío programado");
+          loadSchedule();
+        } catch (x) {
+          toast(x.message, true);
+        }
+      }
+      async function loadSchedule() {
+        try {
+          const r = await api("/scheduled-sends");
+          $("scheduleRows").innerHTML = r.length
+            ? r
+                .map(
+                  (s) =>
+                    `<tr><td><b>${esc(s.name)}</b></td><td>${esc(s.campaign_name)}</td><td>${esc(s.list_name)}</td><td>${fmt(s.scheduled_at)}</td><td>${esc(s.timezone)}</td><td><span class="status ${s.status}">${esc(s.status)}</span></td><td>${s.status === "scheduled" ? `<button class="btn danger" onclick="cancelSend(${s.id})">Cancelar</button>` : ""}</td></tr>`,
+                )
+                .join("")
+            : '<tr><td colspan="7" class="empty"><b>Agenda vacía</b>No hay campañas programadas.</td></tr>';
+        } catch (e) {
+          err("scheduleRows", e, 7, "loadSchedule()");
+        }
+      }
+      async function cancelSend(id) {
+        try {
+          await api(`/scheduled-sends/${id}/cancel`, {
+            method: "POST",
+            body: "{}",
+          });
+          toast("Envío cancelado");
+          loadSchedule();
+        } catch (e) {
+          toast(e.message, true);
+        }
+      }
+      async function loadReports() {
+        try {
+          const r = await api(
+              `/reports/performance?days=${$("reportDays").value}`,
+            ),
+            c = r.conversations || {},
+            b = r.campaigns || {};
+          $("rTotal").textContent = c.total || 0;
+          $("rResolved").textContent = c.resolved || 0;
+          $("rSent").textContent = b.sent || 0;
+          $("rRead").textContent = b.read_count || 0;
+          $("agentRows").innerHTML = r.agents?.length
+            ? r.agents
+                .map(
+                  (a) =>
+                    `<tr><td><b>${esc(a.display_name)}</b></td><td>${a.conversations}</td><td>${a.resolved}</td><td>${a.replies}</td><td>${a.avg_first_response_minutes == null ? "—" : a.avg_first_response_minutes + " min"}</td><td><div class="bar"><i style="width:${Math.min(100, (a.resolved / (a.conversations || 1)) * 100)}%"></i></div></td></tr>`,
+                )
+                .join("")
+            : '<tr><td colspan="6" class="empty"><b>Sin actividad</b>No hay datos para este periodo.</td></tr>';
+        } catch (e) {
+          err("agentRows", e, 6, "loadReports()");
+        }
+      }
+      async function loadAudit() {
+        try {
+          const r = await api("/audit?limit=500");
+          $("auditRows").innerHTML = r.length
+            ? r
+                .map(
+                  (a) =>
+                    `<tr><td>${fmt(a.created_at)}</td><td>${esc(a.user_name || "Sistema")}</td><td><b>${esc(a.action)}</b></td><td>${esc(a.entity_type || "—")} ${esc(a.entity_id || "")}</td><td title="${esc(a.detail_json || "")}">${esc((a.detail_json || "—").slice(0, 60))}</td><td>${esc(a.ip || "—")}</td></tr>`,
+                )
+                .join("")
+            : '<tr><td colspan="6" class="empty"><b>Sin registros</b>Aún no hay acciones auditadas.</td></tr>';
+        } catch (e) {
+          err("auditRows", e, 6, "loadAudit()");
+        }
+      }
+      function fmt(v) {
+        if (!v) return "—";
+        const d = new Date(
+          String(v).includes("T") ? v : v.replace(" ", "T") + "Z",
+        );
+        return isNaN(d)
+          ? esc(v)
+          : d.toLocaleString("es-PE", {
+              dateStyle: "short",
+              timeStyle: "short",
+            });
+      }
+      addStep();
+      init();
+    </script>
+    <script>
+      /* MC-13..16: módulos administrativos cargados como extensión autocontenida. */
+      document.head.insertAdjacentHTML(
+        "beforeend",
+        "<style>.nav{overflow:auto;max-height:calc(100vh - 125px)}.sidebar{overflow:hidden}.nav button{padding-top:9px;padding-bottom:9px}.sidebar-foot{display:none}@media(max-width:760px){.two-col{grid-template-columns:1fr}.builder-row{grid-template-columns:1fr!important}.builder-row button{justify-self:end}}</style>",
+      );
+      const extViews = `
+<section class="view" id="automations"><div class="section-head"><div><h2>Automatizaciones</h2><p>Flujos que reaccionan a mensajes entrantes y ejecutan acciones.</p></div><button class="btn primary" onclick="openModal('automationModal')">+ Crear flujo</button></div><div class="card table-wrap"><table class="data"><thead><tr><th>Flujo</th><th>Trigger</th><th>Bloques</th><th>Ejecuciones</th><th>Estado</th><th></th></tr></thead><tbody id="automationRows"><tr><td colspan="6" class="loading">Cargando automatizaciones…</td></tr></tbody></table></div></section>
+<section class="view" id="integrations"><div class="section-head"><div><h2>Integraciones</h2><p>Webhooks salientes y claves para la API pública.</p></div><div class="toolbar"><button class="btn" onclick="openModal('webhookModal')">+ Webhook</button><button class="btn primary" onclick="openModal('apiKeyModal')">+ API key</button></div></div><div class="two-col"><div class="card panel"><h3>Webhooks</h3><div id="webhookList" class="alert-list"><div class="loading">Cargando…</div></div></div><div class="card panel"><h3>Claves API</h3><div id="apiKeyList" class="alert-list"><div class="loading">Cargando…</div></div></div></div></section>
+<section class="view" id="forms"><div class="section-head"><div><h2>Formularios</h2><p>Captura datos estructurados dentro de la operación.</p></div><button class="btn primary" onclick="prepareFormModal()">+ Crear formulario</button></div><div class="card table-wrap"><table class="data"><thead><tr><th>Formulario</th><th>Slug</th><th>Campos</th><th>Respuestas</th><th>Estado</th><th></th></tr></thead><tbody id="formRows"><tr><td colspan="6" class="loading">Cargando formularios…</td></tr></tbody></table></div></section>
+<section class="view" id="ai"><div class="section-head"><div><h2>Inteligencia IA</h2><p>Configura un proveedor compatible y prueba asistencia sobre conversaciones reales.</p></div></div><div class="two-col"><form class="card panel" onsubmit="saveAiSettings(event)"><h3>Configuración del proveedor</h3><div class="form-grid"><div class="field full"><label for="aiEndpoint">Endpoint</label><input id="aiEndpoint" type="url" required placeholder="https://api.openai.com/v1/chat/completions"></div><div class="field"><label for="aiModel">Modelo</label><input id="aiModel" required placeholder="gpt-4.1-mini"></div><div class="field"><label for="aiKey">Nueva clave API</label><input id="aiKey" type="password" autocomplete="new-password" placeholder="Dejar vacío para conservar"></div><div class="field full"><label for="aiPrompt">Prompt del sistema</label><textarea id="aiPrompt" rows="6"></textarea></div></div><p><label><input id="aiEnabled" type="checkbox"> Habilitar asistencia IA</label></p><div class="notice" id="aiKeyStatus">La clave se almacena cifrada y nunca se vuelve a mostrar.</div><p><button class="btn primary">Guardar configuración</button></p></form><div class="card panel"><h3>Laboratorio de conversación</h3><div class="field"><label for="aiContact">Contacto</label><select id="aiContact"></select></div><div class="toolbar" style="margin:14px 0"><button class="btn" onclick="testAi('assist')">Sugerir respuesta</button><button class="btn" onclick="testAi('summary')">Resumir</button><button class="btn" onclick="testAi('classify')">Clasificar</button></div><div class="code-result" id="aiResult" aria-live="polite">Selecciona un contacto y una acción.</div></div></div></section>`;
+      const extModals = `
+<div class="modal" id="automationModal"><form class="dialog" onsubmit="saveAutomation(event)"><div class="dialog-head"><h3>Nueva automatización</h3><button type="button" class="close" onclick="closeModal('automationModal')">×</button></div><div class="dialog-body"><div class="form-grid"><div class="field"><label for="autoName">Nombre</label><input id="autoName" required placeholder="Bienvenida comercial"></div><div class="field"><label for="autoKeyword">Palabra clave opcional</label><input id="autoKeyword" placeholder="precio"></div></div><p><label><input id="autoActive" type="checkbox"> Crear activa</label></p><p><strong>Bloques</strong></p><div class="steps" id="automationBlocks"></div><button type="button" class="btn" onclick="addAutomationBlock()">+ Añadir bloque</button></div><div class="dialog-foot"><button type="button" class="btn" onclick="closeModal('automationModal')">Cancelar</button><button class="btn primary">Crear flujo</button></div></form></div>
+<div class="modal" id="webhookModal"><form class="dialog" onsubmit="saveWebhook(event)"><div class="dialog-head"><h3>Nuevo webhook</h3><button type="button" class="close" onclick="closeModal('webhookModal')">×</button></div><div class="dialog-body form-grid"><div class="field"><label for="whName">Nombre</label><input id="whName" required></div><div class="field"><label for="whUrl">URL HTTPS</label><input id="whUrl" type="url" required></div><div class="field full"><label for="whEvents">Eventos, separados por coma</label><input id="whEvents" placeholder="message.received, automation.webhook"></div></div><div class="dialog-foot"><button type="button" class="btn" onclick="closeModal('webhookModal')">Cancelar</button><button class="btn primary">Crear webhook</button></div></form></div>
+<div class="modal" id="apiKeyModal"><form class="dialog" onsubmit="saveApiKey(event)"><div class="dialog-head"><h3>Nueva clave API</h3><button type="button" class="close" onclick="closeModal('apiKeyModal')">×</button></div><div class="dialog-body"><div class="field"><label for="keyName">Nombre de integración</label><input id="keyName" required placeholder="ERP producción"></div></div><div class="dialog-foot"><button type="button" class="btn" onclick="closeModal('apiKeyModal')">Cancelar</button><button class="btn primary">Generar clave</button></div></form></div>
+<div class="modal" id="secretModal"><div class="dialog"><div class="dialog-head"><h3>Guarda este secreto ahora</h3><button class="close" onclick="closeModal('secretModal')">×</button></div><div class="dialog-body"><div class="notice"><b>Solo se mostrará una vez.</b> Cópialo y almacénalo en un gestor seguro.</div><p class="secret-box" id="secretValue"></p><button class="btn primary" onclick="copySecret()">Copiar al portapapeles</button></div></div></div>
+<div class="modal" id="formModal"><form class="dialog" onsubmit="saveForm(event)"><div class="dialog-head"><h3>Nuevo formulario</h3><button type="button" class="close" onclick="closeModal('formModal')">×</button></div><div class="dialog-body"><div class="form-grid"><div class="field"><label for="formName">Nombre</label><input id="formName" required></div><div class="field"><label for="formSlug">Slug</label><input id="formSlug" required pattern="[a-z0-9-]+"></div><div class="field"><label for="formStage">Mover oportunidad a</label><select id="formStage"><option value="">No modificar CRM</option></select></div><div class="field"><label for="formTask">Crear tarea al responder</label><input id="formTask" placeholder="Ej. Llamar al cliente"></div></div><p><strong>Campos</strong></p><div class="steps" id="formFields"></div><button type="button" class="btn" onclick="addFormField()">+ Añadir campo</button></div><div class="dialog-foot"><button type="button" class="btn" onclick="closeModal('formModal')">Cancelar</button><button class="btn primary">Crear formulario</button></div></form></div>
+<div class="modal" id="responsesModal"><div class="dialog"><div class="dialog-head"><h3>Respuestas del formulario</h3><button class="close" onclick="closeModal('responsesModal')">×</button></div><div class="dialog-body table-wrap" id="responseList"></div></div></div>`;
+      document
+        .querySelector(".content")
+        .insertAdjacentHTML("beforeend", extViews);
+      document.body.insertAdjacentHTML("beforeend", extModals);
+      $("integrations").insertAdjacentHTML(
+        "beforeend",
+        `<div class="card panel" style="margin-top:15px"><div class="section-head"><div><h3>Equipos y asignación</h3><p>Distribuye conversaciones por línea, etiqueta, equipo y horario.</p></div><div class="toolbar"><button class="btn" onclick="openModal('teamModal')">+ Equipo</button><button class="btn" onclick="openModal('ruleModal')">+ Regla</button></div></div><div class="two-col"><div><h3>Equipos operativos</h3><div id="teamList" class="alert-list"><div class="loading">Cargando…</div></div></div><div><h3>Reglas de asignación</h3><div id="ruleList" class="alert-list"><div class="loading">Cargando…</div></div></div></div></div>`,
+      );
+      document.body.insertAdjacentHTML(
+        "beforeend",
+        `<div class="modal" id="teamModal"><form class="dialog" onsubmit="saveTeam(event)"><div class="dialog-head"><h3>Nuevo equipo operativo</h3><button type="button" class="close" onclick="closeModal('teamModal')">×</button></div><div class="dialog-body"><div class="field"><label for="teamName">Nombre</label><input id="teamName" required></div><div class="field" style="margin-top:12px"><label for="teamUsers">Agentes (selección múltiple)</label><select id="teamUsers" multiple size="7"></select></div></div><div class="dialog-foot"><button type="button" class="btn" onclick="closeModal('teamModal')">Cancelar</button><button class="btn primary">Crear equipo</button></div></form></div><div class="modal" id="ruleModal"><form class="dialog" onsubmit="saveRule(event)"><div class="dialog-head"><h3>Nueva regla de asignación</h3><button type="button" class="close" onclick="closeModal('ruleModal')">×</button></div><div class="dialog-body form-grid"><div class="field full"><label for="ruleName">Nombre</label><input id="ruleName" required></div><div class="field"><label for="ruleLine">Línea</label><select id="ruleLine"></select></div><div class="field"><label for="ruleTag">Etiqueta</label><select id="ruleTag"></select></div><div class="field"><label for="ruleTeam">Equipo</label><select id="ruleTeam"></select></div><div class="field"><label for="rulePriority">Prioridad</label><input id="rulePriority" type="number" value="100" min="1"></div><div class="field"><label for="ruleStart">Desde</label><input id="ruleStart" type="time"></div><div class="field"><label for="ruleEnd">Hasta</label><input id="ruleEnd" type="time"></div></div><div class="dialog-foot"><button type="button" class="btn" onclick="closeModal('ruleModal')">Cancelar</button><button class="btn primary">Crear regla</button></div></form></div>`,
+      );
+      const extNav = [
+        ["automations", "⚡", "Automatizaciones"],
+        ["integrations", "⇄", "Integraciones"],
+        ["forms", "▤", "Formularios"],
+        ["ai", "✦", "Inteligencia IA"],
+      ];
+      extNav.forEach(([view, icon, label]) => {
+        const b = document.createElement("button");
+        b.dataset.view = view;
+        b.hidden = true;
+        b.innerHTML = `<span class="ico">${icon}</span>${label}`;
+        b.onclick = () => activateExt(view, b);
+        document.querySelector(".nav").appendChild(b);
+      });
+      function activateExt(view, b) {
+        document
+          .querySelectorAll(".nav button")
+          .forEach((x) => x.classList.remove("active"));
+        document
+          .querySelectorAll(".view")
+          .forEach((x) => x.classList.remove("active"));
+        b.classList.add("active");
+        $(view).classList.add("active");
+        setDrawer(false);
+      }
+      function addAutomationBlock() {}
+      async function loadAutomations() {
+        try {
+          const rows = await api("/automations");
+          $("automationRows").innerHTML = rows.length
+            ? rows
+                .map(
+                  (x) =>
+                    `<tr><td><b>${esc(x.name)}</b><div class="muted">v${x.version}</div></td><td>${esc(x.trigger_type)}</td><td>${x.blocks}</td><td>${x.active_runs}</td><td><span class="status ${x.active ? "active" : ""}">${x.active ? "Activa" : "Inactiva"}</span></td><td><button class="btn" onclick="toggleAutomation(${x.id},${!x.active})">${x.active ? "Desactivar" : "Activar"}</button></td></tr>`,
+                )
+                .join("")
+            : '<tr><td colspan="6" class="empty"><b>Sin automatizaciones</b>Crea tu primer flujo.</td></tr>';
+        } catch (e) {
+          err("automationRows", e, 6, "loadAutomations()");
+        }
+      }
+      async function saveAutomation() {}
+      async function toggleAutomation(id, active) {
+        try {
+          await api(`/automations/${id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ active }),
+          });
+          toast(
+            active ? "Automatización activada" : "Automatización desactivada",
+          );
+          loadAutomations();
+        } catch (e) {
+          toast(e.message, true);
+        }
+      }
+      async function loadIntegrations() {
+        const [w, k] = await Promise.allSettled([
+          api("/integrations/webhooks"),
+          api("/integrations/api-keys"),
+        ]);
+        $("webhookList").innerHTML =
+          w.status === "fulfilled"
+            ? w.value.length
+              ? w.value
+                  .map(
+                    (x) =>
+                      `<div class="alert-row"><div><b>${esc(x.name)}</b><div class="muted">${esc(x.url)}</div></div><button class="btn" onclick="toggleWebhook(${x.id},${!x.active})">${x.active ? "Pausar" : "Activar"}</button></div>`,
+                  )
+                  .join("")
+              : '<div class="empty">Sin webhooks.</div>'
+            : `<div class="empty"><b>Error</b>${esc(w.reason.message)} <button class="btn" onclick="loadIntegrations()">Reintentar</button></div>`;
+        $("apiKeyList").innerHTML =
+          k.status === "fulfilled"
+            ? k.value.length
+              ? k.value
+                  .map(
+                    (x) =>
+                      `<div class="alert-row"><div><b>${esc(x.name)}</b><div class="muted">${esc(x.key_prefix)}… · ${x.last_used_at ? fmt(x.last_used_at) : "Nunca usada"}</div></div>${x.active ? `<button class="btn danger" onclick="revokeKey(${x.id})">Revocar</button>` : '<span class="status">Revocada</span>'}</div>`,
+                  )
+                  .join("")
+              : '<div class="empty">Sin claves API.</div>'
+            : `<div class="empty"><b>Error</b>${esc(k.reason.message)}</div>`;
+      }
+      async function saveWebhook(e) {
+        e.preventDefault();
+        try {
+          const r = await api("/integrations/webhooks", {
+            method: "POST",
+            body: JSON.stringify({
+              name: $("whName").value,
+              url: $("whUrl").value,
+              events: $("whEvents")
+                .value.split(",")
+                .map((x) => x.trim())
+                .filter(Boolean),
+            }),
+          });
+          closeModal("webhookModal");
+          showSecret(r.secret);
+          loadIntegrations();
+        } catch (x) {
+          toast(x.message, true);
+        }
+      }
+      async function toggleWebhook(id, active) {
+        try {
+          await api(`/integrations/webhooks/${id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ active }),
+          });
+          loadIntegrations();
+        } catch (e) {
+          toast(e.message, true);
+        }
+      }
+      async function saveApiKey(e) {
+        e.preventDefault();
+        try {
+          const r = await api("/integrations/api-keys", {
+            method: "POST",
+            body: JSON.stringify({ name: $("keyName").value }),
+          });
+          closeModal("apiKeyModal");
+          showSecret(r.key);
+          loadIntegrations();
+        } catch (x) {
+          toast(x.message, true);
+        }
+      }
+      async function revokeKey(id) {
+        if (
+          !confirm("¿Revocar esta clave? La integración dejará de funcionar.")
+        )
+          return;
+        try {
+          await api(`/integrations/api-keys/${id}`, { method: "DELETE" });
+          toast("Clave revocada");
+          loadIntegrations();
+        } catch (e) {
+          toast(e.message, true);
+        }
+      }
+      function showSecret(v) {
+        $("secretValue").textContent = v;
+        openModal("secretModal");
+      }
+      async function copySecret() {
+        try {
+          await navigator.clipboard.writeText($("secretValue").textContent);
+          toast("Secreto copiado");
+        } catch {
+          toast("Copia manualmente el secreto", true);
+        }
+      }
+      async function loadOpsConfig() {
+        const [teams, rules, lines] = await Promise.allSettled([
+          api("/operation-teams"),
+          api("/assignment-rules"),
+          api("/my-lines"),
+        ]);
+        state.teams = teams.status === "fulfilled" ? teams.value : [];
+        if (lines.status === "fulfilled") state.lines = lines.value;
+        optionize("ruleLine", state.lines, "name", "Cualquier línea");
+        optionize("ruleTag", state.tags, "name", "Cualquier etiqueta");
+        optionize("ruleTeam", state.teams, "name", "Sin equipo");
+        $("teamUsers").innerHTML = state.users
+          .filter((u) => u.role === "agent")
+          .map((u) => `<option value="${u.id}">${esc(u.display_name)}</option>`)
+          .join("");
+        $("teamList").innerHTML =
+          teams.status === "fulfilled"
+            ? state.teams.length
+              ? state.teams
+                  .map(
+                    (t) =>
+                      `<div class="alert-row"><div><b>${esc(t.name)}</b><div class="muted">${t.members} integrantes</div></div><span class="status active">Activo</span></div>`,
+                  )
+                  .join("")
+              : '<div class="empty">Sin equipos.</div>'
+            : `<div class="empty"><b>Error</b>${esc(teams.reason.message)}</div>`;
+        $("ruleList").innerHTML =
+          rules.status === "fulfilled"
+            ? rules.value.length
+              ? rules.value
+                  .map(
+                    (r) =>
+                      `<div class="alert-row"><div><b>${esc(r.name)}</b><div class="muted">Prioridad ${r.priority} · ${r.start_time || "Todo el día"}${r.end_time ? "–" + r.end_time : ""}</div></div><span class="status ${r.active ? "active" : ""}">${r.active ? "Activa" : "Inactiva"}</span></div>`,
+                  )
+                  .join("")
+              : '<div class="empty">Sin reglas.</div>'
+            : `<div class="empty"><b>Error</b>${esc(rules.reason.message)} <button class="btn" onclick="loadOpsConfig()">Reintentar</button></div>`;
+      }
+      async function saveTeam(e) {
+        e.preventDefault();
+        try {
+          await api("/operation-teams", {
+            method: "POST",
+            body: JSON.stringify({
+              name: $("teamName").value,
+              user_ids: [...$("teamUsers").selectedOptions].map(
+                (o) => +o.value,
+              ),
+            }),
+          });
+          closeModal("teamModal");
+          toast("Equipo creado");
+          loadOpsConfig();
+        } catch (x) {
+          toast(x.message, true);
+        }
+      }
+      async function saveRule(e) {
+        e.preventDefault();
+        try {
+          await api("/assignment-rules", {
+            method: "POST",
+            body: JSON.stringify({
+              name: $("ruleName").value,
+              line_id: +$("ruleLine").value || null,
+              tag_id: +$("ruleTag").value || null,
+              team_id: +$("ruleTeam").value || null,
+              start_time: $("ruleStart").value || null,
+              end_time: $("ruleEnd").value || null,
+              priority: +$("rulePriority").value || 100,
+              active: true,
+            }),
+          });
+          closeModal("ruleModal");
+          toast("Regla creada");
+          loadOpsConfig();
+        } catch (x) {
+          toast(x.message, true);
+        }
+      }
+      function addFormField() {
+        const d = document.createElement("div");
+        d.className = "builder-row";
+        d.style.gridTemplateColumns = "1fr 1fr 120px auto 38px";
+        d.innerHTML =
+          '<input aria-label="Key" placeholder="key" required pattern="[a-zA-Z0-9_]+"><input aria-label="Etiqueta" placeholder="Etiqueta" required><select aria-label="Tipo"><option value="text">Texto</option><option value="number">Número</option><option value="date">Fecha</option><option value="boolean">Sí/No</option></select><label><input type="checkbox"> Obligatorio</label><button type="button" class="btn danger" onclick="this.parentElement.remove()">×</button>';
+        $("formFields").appendChild(d);
+      }
+      async function loadForms() {
+        try {
+          const rows = await api("/forms");
+          $("formRows").innerHTML = rows.length
+            ? rows
+                .map(
+                  (f) =>
+                    `<tr><td><b>${esc(f.name)}</b></td><td>${esc(f.slug)}</td><td>${f.schema.length}</td><td>${f.responses}</td><td><span class="status ${f.active ? "active" : ""}">${f.active ? "Activo" : "Inactivo"}</span></td><td><button class="btn" onclick="viewResponses(${f.id})">Ver respuestas</button></td></tr>`,
+                )
+                .join("")
+            : '<tr><td colspan="6" class="empty"><b>Sin formularios</b>Crea el primero.</td></tr>';
+        } catch (e) {
+          err("formRows", e, 6, "loadForms()");
+        }
+      }
+      async function saveForm(e) {
+        e.preventDefault();
+        const schema = [...$("formFields").children].map((r) => {
+          const i = r.querySelectorAll("input");
+          return {
+            key: i[0].value,
+            label: i[1].value,
+            type: r.querySelector("select").value,
+            required: i[2].checked,
+          };
+        });
+        try {
+          await api("/forms", {
+            method: "POST",
+            body: JSON.stringify({
+              name: $("formName").value,
+              slug: $("formSlug").value,
+              schema,
+            }),
+          });
+          closeModal("formModal");
+          toast("Formulario creado");
+          loadForms();
+        } catch (x) {
+          toast(x.message, true);
+        }
+      }
+      async function viewResponses(id) {
+        openModal("responsesModal");
+        $("responseList").innerHTML =
+          '<div class="loading">Cargando respuestas…</div>';
+        try {
+          const rows = await api(`/forms/${id}/responses`);
+          $("responseList").innerHTML = rows.length
+            ? `<table class="data"><thead><tr><th>Fecha</th><th>Contacto</th><th>Respuesta</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${fmt(r.created_at)}</td><td>${esc(r.contact_name || r.phone)}</td><td><code>${esc(JSON.stringify(r.response))}</code></td></tr>`).join("")}</tbody></table>`
+            : '<div class="empty">Aún no hay respuestas.</div>';
+        } catch (e) {
+          $("responseList").innerHTML =
+            `<div class="empty"><b>Error</b>${esc(e.message)}</div>`;
+        }
+      }
+      async function loadAiSettings() {
+        try {
+          const s = await api("/ai/settings");
+          $("aiEndpoint").value =
+            s.endpoint || "https://api.openai.com/v1/chat/completions";
+          $("aiModel").value = s.model || "gpt-4.1-mini";
+          $("aiPrompt").value =
+            s.system_prompt ||
+            "Asiste al agente usando solo el contexto proporcionado.";
+          $("aiEnabled").checked = !!s.enabled;
+          $("aiKeyStatus").innerHTML = s.has_key
+            ? "<b>Clave configurada.</b> Déjala vacía para conservarla."
+            : "Aún no hay clave configurada.";
+        } catch (e) {
+          $("aiKeyStatus").innerHTML =
+            `<b>No se pudo cargar:</b> ${esc(e.message)} <button class="btn" onclick="loadAiSettings()">Reintentar</button>`;
+        }
+      }
+      async function saveAiSettings(e) {
+        e.preventDefault();
+        try {
+          await api("/ai/settings", {
+            method: "PUT",
+            body: JSON.stringify({
+              endpoint: $("aiEndpoint").value,
+              model: $("aiModel").value,
+              api_key: $("aiKey").value,
+              system_prompt: $("aiPrompt").value,
+              enabled: $("aiEnabled").checked,
+            }),
+          });
+          $("aiKey").value = "";
+          toast("Configuración IA guardada");
+          loadAiSettings();
+        } catch (x) {
+          toast(x.message, true);
+        }
+      }
+      async function testAi(action) {
+        const endpoints = {
+            assist: "/ai/assist",
+            summary: "/ai/summary",
+            classify: "/ai/classify",
+          },
+          out = $("aiResult");
+        out.textContent = "Consultando al asistente…";
+        try {
+          const r = await api(endpoints[action], {
+            method: "POST",
+            body: JSON.stringify({ contact_id: +$("aiContact").value }),
+          });
+          out.textContent =
+            action === "classify"
+              ? JSON.stringify(r.classification, null, 2)
+              : r.text;
+        } catch (e) {
+          out.textContent = `Error: ${e.message}`;
+        }
+      }
+      addAutomationBlock();
+      addFormField();
+      optionize("aiContact", state.contacts, "name");
+      (function bootExt(attempt = 0) {
+        if (state.canAdmin === undefined) {
+          if (attempt < 200) setTimeout(() => bootExt(attempt + 1), 50);
+          return;
+        }
+        if (!state.canAdmin) return;
+        extNav.forEach(
+          ([v]) =>
+            (document.querySelector(`.nav button[data-view="${v}"]`).hidden =
+              false),
+        );
+        optionize("aiContact", state.contacts, "name");
+        Promise.allSettled([
+          loadAutomations(),
+          loadIntegrations(),
+          loadOpsConfig(),
+          loadForms(),
+          loadAiSettings(),
+        ]);
+      })();
+    </script>
+    <script>
+      /* Revisión de seguridad, accesibilidad y editores tipados. */
+      document.head.insertAdjacentHTML(
+        "beforeend",
+        `<style>
+.sidebar{display:flex;flex-direction:column;overflow:hidden}.brand{flex:0 0 auto}.nav{flex:1 1 auto;min-height:0;max-height:none!important;overflow-y:auto;overscroll-behavior:contain;padding-bottom:18px}.builder-row{display:block;padding:12px}.builder-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}.builder-head select{flex:1}.builder-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.builder-error{color:var(--red);font-size:12px;font-weight:700;margin-top:7px}.modal[aria-hidden="true"]{display:none}@media(max-width:560px){.builder-fields{grid-template-columns:1fr}.builder-row{min-width:0}.builder-head{align-items:flex-start}.builder-head select{min-width:0}.dialog{width:100%}}
+</style>`,
+      );
+      let activeModal = null,
+        secretEphemeral = "",
+        modalReturnFocus = new WeakMap();
+      function modalFocusable(m) {
+        return [
+          ...m.querySelectorAll(
+            'button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])',
+          ),
+        ].filter((x) => !x.hidden && x.offsetParent !== null);
+      }
+      openModal = function (id) {
+        const m = $(id);
+        if (!m) return;
+        m.setAttribute("role", "dialog");
+        m.setAttribute("aria-modal", "true");
+        m.setAttribute("aria-hidden", "false");
+        const heading = m.querySelector("h2,h3");
+        if (heading) {
+          if (!heading.id) heading.id = `${id}Title`;
+          m.setAttribute("aria-labelledby", heading.id);
+        }
+        modalReturnFocus.set(m, document.activeElement);
+        m.classList.add("open");
+        activeModal = m;
+        document.querySelector(".shell")?.setAttribute("inert", "");
+        requestAnimationFrame(() => modalFocusable(m)[0]?.focus());
+      };
+      function destroySecret() {
+        secretEphemeral = "";
+        const node = $("secretValue");
+        if (node) {
+          node.textContent = "";
+          node.removeAttribute("data-secret");
+        }
+      }
+      closeModal = function (id) {
+        const m = $(id);
+        if (!m) return;
+        if (id === "secretModal") destroySecret();
+        m.classList.remove("open");
+        m.setAttribute("aria-hidden", "true");
+        if (activeModal === m) activeModal = null;
+        if (!document.querySelector(".modal.open"))
+          document.querySelector(".shell")?.removeAttribute("inert");
+        const back = modalReturnFocus.get(m);
+        modalReturnFocus.delete(m);
+        if (back?.isConnected) back.focus();
+      };
+      showSecret = function (v) {
+        destroySecret();
+        secretEphemeral = String(v || "");
+        $("secretValue").textContent = secretEphemeral;
+        openModal("secretModal");
+      };
+      copySecret = async function () {
+        if (!secretEphemeral) return;
+        try {
+          await navigator.clipboard.writeText(secretEphemeral);
+          toast("Secreto copiado");
+        } catch {
+          toast("No se pudo copiar el secreto", true);
+        } finally {
+          closeModal("secretModal");
+        }
+      };
+      document.addEventListener(
+        "click",
+        (e) => {
+          if (
+            e.target.classList?.contains("modal") &&
+            e.target.classList.contains("open")
+          )
+            closeModal(e.target.id);
+        },
+        true,
+      );
+      document.addEventListener(
+        "keydown",
+        (e) => {
+          if (!activeModal) return;
+          if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            closeModal(activeModal.id);
+            return;
+          }
+          if (e.key === "Tab") {
+            const f = modalFocusable(activeModal);
+            if (!f.length) {
+              e.preventDefault();
+              return;
+            }
+            const first = f[0],
+              last = f[f.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+              e.preventDefault();
+              last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+              e.preventDefault();
+              first.focus();
+            }
+          }
+        },
+        true,
+      );
+      document.querySelectorAll(".modal").forEach((m) => {
+        m.setAttribute(
+          "aria-hidden",
+          m.classList.contains("open") ? "false" : "true",
+        );
+        const h = m.querySelector("h2,h3");
+        if (h) {
+          if (!h.id) h.id = `${m.id}Title`;
+          m.setAttribute("aria-labelledby", h.id);
+        }
+      });
+      function blockField(label, control) {
+        return `<div class="field"><label>${label}${control}</label></div>`;
+      }
+      function renderBlockFields(row) {
+        const type = row.querySelector(".block-type").value,
+          f = row.querySelector(".builder-fields");
+        let html = "";
+        if (type === "message")
+          html = blockField(
+            "Texto del mensaje",
+            '<textarea data-key="body" required></textarea>',
+          );
+        if (type === "question")
+          html =
+            blockField(
+              "Pregunta",
+              '<textarea data-key="body" required></textarea>',
+            ) +
+            blockField(
+              "Opciones sugeridas (separadas por coma)",
+              '<input data-key="options">',
+            );
+        if (type === "condition")
+          html =
+            blockField(
+              "Estado opcional",
+              '<select data-key="status"><option value="">Cualquiera</option><option value="new">Nuevo</option><option value="in_progress">En atención</option><option value="waiting_customer">Esperando cliente</option><option value="pending">Pendiente</option><option value="resolved">Resuelto</option></select>',
+            ) +
+            blockField(
+              "Etiqueta opcional",
+              `<select data-key="tag_id"><option value="">Cualquiera</option>${state.tags.map((t) => `<option value="${t.id}">${esc(t.name)}</option>`).join("")}</select>`,
+            ) +
+            blockField("Mensaje contiene", '<input data-key="contains">') +
+            blockField(
+              "Saltar a posición si no coincide",
+              '<input data-key="else_position" type="number" min="0" value="0">',
+            );
+        if (type === "wait")
+          html =
+            blockField(
+              "Duración",
+              '<input data-key="duration" type="number" min="1" value="1" required>',
+            ) +
+            blockField(
+              "Unidad",
+              '<select data-key="unit"><option value="minutes">Minutos</option><option value="hours">Horas</option><option value="days">Días</option></select>',
+            );
+        if (type === "tag")
+          html = blockField(
+            "Etiqueta",
+            `<select data-key="tag_id" required><option value="">Seleccionar</option>${state.tags.map((t) => `<option value="${t.id}">${esc(t.name)}</option>`).join("")}</select>`,
+          );
+        if (type === "assign")
+          html = blockField(
+            "Agente",
+            `<select data-key="user_id" required><option value="">Seleccionar</option>${state.users.map((u) => `<option value="${u.id}">${esc(u.display_name)}</option>`).join("")}</select>`,
+          );
+        if (type === "webhook")
+          html =
+            blockField(
+              "URL de destino",
+              '<input data-key="url" type="url" required>',
+            ) +
+            blockField(
+              "Evento",
+              '<input data-key="event" value="automation.webhook" required>',
+            );
+        if (type === "flow")
+          html = blockField(
+            "Otro flujo",
+            `<select data-key="flow_id" required><option value="">Seleccionar</option>${(state.automations || []).map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select>`,
+          );
+        f.innerHTML = html;
+        row.querySelector(".builder-error").textContent = "";
+      }
+      addAutomationBlock = function () {
+        const d = document.createElement("div");
+        d.className = "builder-row";
+        d.innerHTML = `<div class="builder-head"><label style="font-weight:700">Tipo <select class="block-type"><option value="message">Mensaje</option><option value="question">Pregunta</option><option value="condition">Condición</option><option value="wait">Espera</option><option value="tag">Etiqueta</option><option value="assign">Asignación</option><option value="webhook">Webhook</option><option value="flow">Otro flujo</option></select></label><button type="button" class="btn danger" aria-label="Eliminar bloque" onclick="this.closest('.builder-row').remove()">Eliminar</button></div><div class="builder-fields"></div><div class="builder-error" aria-live="polite"></div>`;
+        d.querySelector(".block-type").onchange = () => renderBlockFields(d);
+        $("automationBlocks").appendChild(d);
+        renderBlockFields(d);
+      };
+      addFormField = function () {
+        const d = document.createElement("div");
+        d.className = "builder-row";
+        d.innerHTML = `<div class="builder-head"><strong>Campo del formulario</strong><button type="button" class="btn danger" aria-label="Eliminar campo" onclick="this.closest('.builder-row').remove()">Eliminar</button></div><div class="builder-fields"><div class="field"><label>Key<input aria-label="Key" placeholder="nombre_cliente" required pattern="[a-zA-Z0-9_]+"></label></div><div class="field"><label>Etiqueta<input aria-label="Etiqueta" placeholder="Nombre del cliente" required></label></div><div class="field"><label>Tipo<select aria-label="Tipo"><option value="text">Texto</option><option value="number">Número</option><option value="date">Fecha</option><option value="boolean">Sí/No</option></select></label></div><div class="field"><label><input type="checkbox"> Campo obligatorio</label></div></div>`;
+        $("formFields").appendChild(d);
+      };
+      function automationConfig(row) {
+        const type = row.querySelector(".block-type").value,
+          values = {};
+        row.querySelectorAll("[data-key]").forEach((x) => {
+          values[x.dataset.key] = x.value;
+        });
+        let config = {};
+        if (type === "message") config = { body: values.body.trim() };
+        if (type === "question")
+          config = {
+            body: values.body.trim(),
+            options: values.options
+              .split(",")
+              .map((x) => x.trim())
+              .filter(Boolean),
+          };
+        if (type === "condition") {
+          config = {};
+          if (values.status) config.status = values.status;
+          if (values.tag_id) config.tag_id = +values.tag_id;
+          if (values.contains.trim()) config.contains = values.contains.trim();
+          config.else_position = +values.else_position || 0;
+          if (!config.status && !config.tag_id && !config.contains)
+            throw Error("Define estado, etiqueta o texto a buscar.");
+        }
+        if (type === "wait") {
+          const n = +values.duration;
+          if (!n || n < 1) throw Error("La duración debe ser mayor que cero.");
+          config = {
+            minutes: n * { minutes: 1, hours: 60, days: 1440 }[values.unit],
+          };
+        }
+        if (type === "tag") {
+          if (!values.tag_id) throw Error("Selecciona una etiqueta.");
+          config = { tag_id: +values.tag_id };
+        }
+        if (type === "assign") {
+          if (!values.user_id) throw Error("Selecciona un agente.");
+          config = { user_id: +values.user_id };
+        }
+        if (type === "webhook") {
+          try {
+            new URL(values.url);
+          } catch {
+            throw Error("Escribe una URL válida.");
+          }
+          config = { url: values.url, event: values.event.trim() };
+          if (!config.event) throw Error("El evento es obligatorio.");
+        }
+        if (type === "flow") {
+          if (!values.flow_id) throw Error("Selecciona otro flujo.");
+          config = { flow_id: +values.flow_id };
+        }
+        if ((type === "message" || type === "question") && !config.body)
+          throw Error(
+            type === "message"
+              ? "El mensaje es obligatorio."
+              : "La pregunta es obligatoria.",
+          );
+        return { block_type: type, config };
+      }
+      saveAutomation = async function (e) {
+        e.preventDefault();
+        const rows = [...$("automationBlocks").children];
+        if (!rows.length) return toast("Añade al menos un bloque", true);
+        let blocks = [],
+          invalid = false;
+        rows.forEach((r) => {
+          r.querySelector(".builder-error").textContent = "";
+          try {
+            blocks.push(automationConfig(r));
+          } catch (x) {
+            r.querySelector(".builder-error").textContent = x.message;
+            invalid = true;
+          }
+        });
+        if (invalid) return toast("Revisa los bloques señalados", true);
+        try {
+          await api("/automations", {
+            method: "POST",
+            body: JSON.stringify({
+              name: $("autoName").value,
+              trigger_type: "incoming",
+              trigger: { keyword: $("autoKeyword").value.trim() || undefined },
+              active: $("autoActive").checked,
+              blocks,
+            }),
+          });
+          closeModal("automationModal");
+          toast("Automatización creada");
+          $("automationBlocks").innerHTML = "";
+          addAutomationBlock();
+          loadAutomations();
+        } catch (x) {
+          toast(x.message, true);
+        }
+      };
+      const originalLoadAutomations = loadAutomations;
+      loadAutomations = async function () {
+        try {
+          state.automations = await api("/automations");
+          const rows = state.automations;
+          $("automationRows").innerHTML = rows.length
+            ? rows
+                .map(
+                  (x) =>
+                    `<tr><td><b>${esc(x.name)}</b><div class="muted">v${x.version}</div></td><td>${esc(x.trigger_type)}</td><td>${x.blocks}</td><td>${x.active_runs}</td><td><span class="status ${x.active ? "active" : ""}">${x.active ? "Activa" : "Inactiva"}</span></td><td><button class="btn" onclick="toggleAutomation(${x.id},${!x.active})">${x.active ? "Desactivar" : "Activar"}</button></td></tr>`,
+                )
+                .join("")
+            : '<tr><td colspan="6" class="empty"><b>Sin automatizaciones</b>Crea tu primer flujo.</td></tr>';
+        } catch (e) {
+          err("automationRows", e, 6, "loadAutomations()");
+        }
+      };
+      function prepareFormModal() {
+        optionize("formStage", state.stages || [], "name", "No modificar CRM");
+        $("formTask").value = "";
+        openModal("formModal");
+      }
+      saveForm = async function (e) {
+        e.preventDefault();
+        const schema = [...$("formFields").children].map((r) => {
+            const i = r.querySelectorAll("input");
+            return {
+              key: i[0].value,
+              label: i[1].value,
+              type: r.querySelector("select").value,
+              required: i[2].checked,
+            };
+          }),
+          actions = {
+            stage_id: +$("formStage").value || null,
+            task_title: $("formTask").value.trim() || null,
+          };
+        try {
+          await api("/forms", {
+            method: "POST",
+            body: JSON.stringify({
+              name: $("formName").value,
+              slug: $("formSlug").value,
+              schema,
+              actions,
+            }),
+          });
+          closeModal("formModal");
+          toast("Formulario creado");
+          loadForms();
+        } catch (x) {
+          toast(x.message, true);
+        }
+      };
+      $("automationBlocks").innerHTML = "";
+      addAutomationBlock();
+      $("formFields").innerHTML = "";
+      addFormField();
+      // Si la sesión falla, sustituir todo el workspace activo por un estado definitivo.
+      const sessionGuard = setInterval(() => {
+        if (
+          $("userName")?.textContent === "Sesión no disponible" ||
+          $("userName")?.textContent === "SesiÃ³n no disponible"
+        ) {
+          clearInterval(sessionGuard);
+          document.querySelector(".content").innerHTML =
+            '<section class="view active"><div class="card empty"><b>La sesión expiró o no está disponible</b>No podemos cargar la consola sin una sesión válida.<p><button class="btn primary" onclick="location.reload()">Volver a intentar</button> <a class="btn" href="./">Ir al acceso</a></p></div></section>';
+        }
+      }, 100);
+    </script>
+  </body>
+</html>

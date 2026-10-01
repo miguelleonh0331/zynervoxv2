@@ -25,6 +25,7 @@ independiente, sin mezclar su base MySQL con `asterisk` ni duplicar su lógica.
 - `app/web/modules/admin/whatsapp.php`: portal integrado.
 - `installer/whatsapp.sh`: ciclo de vida del stack.
 - `whatsapp/compose.yml`: servicios y persistencia.
+- `whatsapp/overrides/`: correcciones de compatibilidad versionadas sobre la imagen fijada.
 - `/zynerwabav2/`: ruta pública proxificada.
 
 ## Dependencias principales
@@ -65,3 +66,11 @@ sudo WHATSAPP_TEST_PROXY_URL=http://127.0.0.1/zynerwabav2 \
 de la aplicación; omitirlo para una verificación no disruptiva. La prueba no sustituye
 el E2E con Meta, que necesita una empresa, línea y destinatario exclusivos de laboratorio.
 El procedimiento y la evidencia obligatoria están en `tests/META_E2E.md`.
+
+`installer/whatsapp.sh init` sincroniza la contraseña del superadministrador con el
+`.env` incluso cuando se reutiliza un volumen MySQL. El override de `Empresas`
+adapta usuarios y líneas al contrato `/api/empresas/:id/...` del backend 2.0.0.
+Los overrides de la bandeja y gestión consumen `/api/my-lines`, que respeta el
+contexto de empresa del administrador sin exigir privilegios de superadministrador.
+El override backend de `empresas` aplica `requireSuperadmin` por ruta, evitando que
+su router global intercepte `/api/my-lines` y los módulos registrados después.
