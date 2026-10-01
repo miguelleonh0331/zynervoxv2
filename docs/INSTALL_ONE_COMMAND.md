@@ -33,6 +33,10 @@ sudo env \
 El bootstrap se detiene si la ruta fuente o la ruta web ya existen. Nunca limpia
 ni sobrescribe automáticamente una instalación previa.
 
+Si una ejecución se interrumpe, inspeccionar primero sus rutas y reanudar el mismo
+comando agregando `ZYNERVOX_RESUME=1`. La reanudación exige que la fuente sea un
+clon Git válido y no elimina datos, volúmenes ni archivos ajenos.
+
 ## Artefactos y aislamiento
 
 - Fuente: rama o tag indicado por `ZYNERVOX_REF`.
