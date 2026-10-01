@@ -72,3 +72,5 @@ El procedimiento y la evidencia obligatoria están en `tests/META_E2E.md`.
 adapta usuarios y líneas al contrato `/api/empresas/:id/...` del backend 2.0.0.
 Los overrides de la bandeja y gestión consumen `/api/my-lines`, que respeta el
 contexto de empresa del administrador sin exigir privilegios de superadministrador.
+El override backend de `empresas` aplica `requireSuperadmin` por ruta, evitando que
+su router global intercepte `/api/my-lines` y los módulos registrados después.

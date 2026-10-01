@@ -47,6 +47,7 @@ services:
     volumes:
       - whatsapp_data:/app/data
       - ./overrides/public/app.js:/app/public/app.js:ro
+      - ./overrides/src/features/empresas/index.js:/app/src/features/empresas/index.js:ro
       - ./overrides/views/empresas/index.html:/app/views/empresas/index.html:ro
       - ./overrides/views/gestion/index.html:/app/views/gestion/index.html:ro
 

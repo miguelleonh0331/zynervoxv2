@@ -283,3 +283,24 @@ Contrato:
 
 Riesgos:
 - los overrides deben revisarse al actualizar la imagen Zynerwaba
+
+### 2026-10-01 01:05 - ARCHITECT_AGENT - whatsapp
+
+Tipo: fix
+
+Resumen:
+Guardia superadmin limitada a las rutas de empresas sin interceptar el resto del API
+
+Motivo:
+El router global bloqueaba `/api/my-lines`, contactos y módulos posteriores para administradores válidos
+
+Archivos modificados:
+- whatsapp/overrides/src/features/empresas/index.js
+- whatsapp/compose.yml
+- src/features/whatsapp/README.md
+
+Contrato:
+- sin cambios; se restaura la autorización documentada del backend
+
+Riesgos:
+- el override debe retirarse cuando una imagen Zynerwaba posterior incluya la corrección
