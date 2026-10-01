@@ -400,3 +400,22 @@ Contrato:
 
 Riesgos:
 Las credenciales Meta se guardan cifradas y nunca se muestran
+
+### 2026-10-01 12:14 - ARCHITECT_AGENT - whatsapp
+
+Tipo: refactor
+
+Resumen:
+Separar visualmente administración de operaciones WhatsApp
+
+Motivo:
+El panel actual debe contener solo configuración y gestión de identidades
+
+Archivos modificados:
+- app/web/modules/admin/whatsapp.php; src/features/whatsapp/README.md; src/features/whatsapp/CONTRACT.md; docs/ARCHITECTURE.md; docs/flows/whatsapp-omnicanal.md
+
+Contrato:
+- modificado con ADR-0007
+
+Riesgos:
+Las operaciones quedan accesibles solo por API o panel Zynerwaba hasta crear su módulo dedicado

@@ -152,3 +152,27 @@ Cambia el contrato whatsapp, el instalador, la configuración del contenedor y e
 
 Seguimiento:
 Validar E2E con Meta cuando existan línea y destinatario exclusivos de laboratorio.
+
+### ADR-0007 - Separar administración y operaciones WhatsApp
+
+Fecha: 2026-10-01
+
+Estado: aceptada
+
+Contexto:
+El panel administrativo mezclaba configuración multiempresa con conversaciones, contactos y campañas.
+
+Decisión:
+Reservar modules/admin/whatsapp.php para empresas, administradores, agentes, líneas y credenciales; crear las operaciones en una ruta independiente posteriormente.
+
+Motivo:
+Mantener responsabilidades claras y navegación coherente por rol.
+
+Alternativas evaluadas:
+- Conservar una sola pantalla con todas las funciones.
+
+Impacto:
+Cambia la navegación del módulo WhatsApp sin eliminar APIs ni datos operativos.
+
+Seguimiento:
+Diseñar e implementar el módulo Operaciones WhatsApp en una tarea separada.
