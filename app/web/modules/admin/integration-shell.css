@@ -1,5 +1,8 @@
 .integration-shell {
-    margin-left: 255px;
+    margin-left: 260px;
+    width: calc(100% - 260px);
+    min-width: 0;
+    flex: 1 1 auto;
     min-height: 100vh;
     background: #f4f1eb;
     display: flex;
@@ -38,6 +41,6 @@
     --accent: #f47b16;
 }
 @media (max-width: 900px) {
-    .integration-shell { margin-left: 0; padding-top: 58px; }
+    .integration-shell { margin-left: 0; width: 100%; padding-top: 58px; }
     .integration-head { align-items: flex-start; }
 }

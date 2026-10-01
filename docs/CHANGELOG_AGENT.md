@@ -687,3 +687,22 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-10-01 22:17 - ARCHITECT_AGENT - farm
+
+Tipo: fix
+
+Resumen:
+Las vistas administrativas nativas ahora ocupan todo el ancho disponible.
+
+Motivo:
+El contenedor flexible conservaba ancho automático y dejaba una franja vacía a la derecha.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
