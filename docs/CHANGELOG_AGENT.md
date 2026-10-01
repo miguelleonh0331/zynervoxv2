@@ -419,3 +419,22 @@ Contrato:
 
 Riesgos:
 Las operaciones quedan accesibles solo por API o panel Zynerwaba hasta crear su módulo dedicado
+
+### 2026-10-01 12:22 - ARCHITECT_AGENT - whatsapp
+
+Tipo: refactor
+
+Resumen:
+Clarificar formularios administrativos WhatsApp
+
+Motivo:
+Los campos carecían de etiquetas y la distribución era demasiado compacta
+
+Archivos modificados:
+- app/web/modules/admin/whatsapp.php
+
+Contrato:
+- sin cambios
+
+Riesgos:
+Cambio visual sin alterar endpoints ni datos
