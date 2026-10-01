@@ -51,6 +51,8 @@ El superadministrador dispone además de una vista `Empresas` para crear tenants
 administradores, números y credenciales Meta sin abandonar Zynervox.
 Conversaciones, contactos, campañas, listas y envíos pertenecen al futuro módulo
 separado de Operaciones WhatsApp y no aparecen en este panel administrativo.
+La siguiente entrega debe integrar los overrides en una nueva imagen Zynerwaba,
+publicarla con etiqueta y digest inmutables, y vincularla al mismo tag de Git.
 
 ## Pruebas
 

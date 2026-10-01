@@ -71,3 +71,34 @@ comandos al actualizar una instalación anterior para activar la sesión única.
 Validar `/zynerwabav2/`, login, sesión, empresas, líneas, recepción y envío antes
 de promover una versión. `down` retira contenedores y conserva ambos volúmenes.
 Usar `remove-proxy` para retirar la ruta Apache sin borrar datos.
+
+### Actualización segura de WhatsApp
+
+1. Trabajar en una rama y mantener `main` desplegable.
+2. Ejecutar `backup` y guardar el commit actual y el digest de la imagen activa.
+3. Construir y publicar la nueva imagen con una etiqueta inmutable; nunca reutilizar
+   una etiqueta publicada.
+4. Actualizar etiqueta y digest juntos en `whatsapp/compose.yml`.
+5. Desplegar primero en un servidor de laboratorio aislado.
+6. Ejecutar `smoke.sh`, validar roles en navegador y completar `META_E2E.md` cuando
+   existan credenciales Meta de prueba.
+7. Etiquetar Git y Docker con la misma versión solo después de aprobar los gates.
+
+### Rollback y recuperación
+
+- No borrar volúmenes durante una actualización o rollback.
+- Restaurar el commit anterior con `git revert` o una nueva rama basada en el tag
+  estable; no reescribir el historial compartido.
+- Restaurar en `whatsapp/compose.yml` la etiqueta y el digest anteriores, ejecutar
+  `installer/whatsapp.sh up` y repetir el smoke test.
+- Si existe corrupción o migración incompatible, restaurar el respaldo con
+  `installer/whatsapp.sh restore /ruta/whatsapp.sql.gz` antes de habilitar tráfico.
+- Reiniciar únicamente el stack WhatsApp. Los servicios y carpetas productivos
+  ajenos a esta integración quedan fuera del procedimiento.
+
+### Gate de publicación
+
+La versión no se promueve si falla el smoke test, el aislamiento multiempresa, el
+inicio de sesión por SSO o el rollback ensayado. El E2E Meta puede quedar pendiente
+solo en versiones de laboratorio; una versión declarada operativa exige completar
+`src/features/whatsapp/tests/META_E2E.md`.
