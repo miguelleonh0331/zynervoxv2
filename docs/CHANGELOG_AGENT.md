@@ -438,3 +438,98 @@ Contrato:
 
 Riesgos:
 Cambio visual sin alterar endpoints ni datos
+
+### 2026-10-01 16:30 - ARCHITECT_AGENT - agent
+
+Tipo: feature
+
+Resumen:
+Incorporar app/web/agc/zynervox.php desde Kamatera para migración y pruebas progresivas del AGC.
+
+Motivo:
+Versionar el AGC por archivos y validarlo primero en el ambiente aislado.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
+
+### 2026-10-01 16:31 - ARCHITECT_AGENT - agent
+
+Tipo: docs
+
+Resumen:
+Documentar el primer despliegue AGC y sus tres dependencias PHP pendientes.
+
+Motivo:
+Mantener el estado de laboratorio reproducible antes de migrar el siguiente archivo.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
+
+### 2026-10-01 16:33 - ARCHITECT_AGENT - agent
+
+Tipo: feature
+
+Resumen:
+Agregar dbconnect_mysqli.php y functions.php como dependencias iniciales de la consola AGC.
+
+Motivo:
+Resolver el primer HTTP 500 sin versionar astguiclient.conf ni credenciales.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
+
+### 2026-10-01 16:33 - ARCHITECT_AGENT - agent
+
+Tipo: fix
+
+Resumen:
+Permitir que el AGC lea ZYNERVOX_CONFIG_FILE o /etc/zynervox/astguiclient.conf.
+
+Motivo:
+Conectar al esquema aislado de laboratorio sin versionar secretos ni copiar configuración productiva.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
+
+### 2026-10-01 16:46 - ARCHITECT_AGENT - agent
+
+Tipo: docs
+
+Resumen:
+Registrar mirmidon como laboratorio VICIdial aislado para AGC y listar recursos visuales pendientes.
+
+Motivo:
+La prueba requiere esquema VICIdial completo sin tocar /srv/www/htdocs/agc productivo.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
