@@ -495,3 +495,22 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-10-01 16:33 - ARCHITECT_AGENT - agent
+
+Tipo: fix
+
+Resumen:
+Permitir que el AGC lea ZYNERVOX_CONFIG_FILE o /etc/zynervox/astguiclient.conf.
+
+Motivo:
+Conectar al esquema aislado de laboratorio sin versionar secretos ni copiar configuración productiva.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido

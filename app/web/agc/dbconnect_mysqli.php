@@ -30,9 +30,17 @@ if ($PHP_error_reporting_OVERRIDE > 0)
 	error_reporting($php_err_suppression_value);
 	}
 
-if ( file_exists("/etc/astguiclient.conf") )
+$DBCconfig_file = getenv('ZYNERVOX_CONFIG_FILE');
+if (empty($DBCconfig_file))
 	{
-	$DBCagc = file("/etc/astguiclient.conf");
+	$DBCconfig_file = file_exists('/etc/zynervox/astguiclient.conf')
+		? '/etc/zynervox/astguiclient.conf'
+		: '/etc/astguiclient.conf';
+	}
+
+if ( file_exists($DBCconfig_file) )
+	{
+	$DBCagc = file($DBCconfig_file);
 	foreach ($DBCagc as $DBCline) 
 		{
 		$DBCline = preg_replace("/ |>|\n|\r|\t|\#.*|;.*/","",$DBCline);
