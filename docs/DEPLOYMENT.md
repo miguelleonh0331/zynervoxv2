@@ -1,5 +1,18 @@
 # Despliegue
 
+## Política de origen y publicación
+
+- Preparar, documentar y probar cada cambio en una copia local controlada por Git.
+- Publicar los cambios aprobados en GitHub antes de instalar en un servidor.
+- Instalar desde un tag o commit de GitHub, o desde una imagen Docker inmutable
+  fijada por digest.
+- No transferir código mediante SFTP, SCP ni copias manuales, y no editarlo
+  directamente en el servidor.
+- Limitar la intervención posterior al despliegue a verificaciones de versión,
+  salud y funcionamiento. Toda corrección debe volver al flujo local y publicarse.
+- Mantener secretos, credenciales y datos operativos fuera de Git; los instaladores
+  los generan o los reciben como configuración externa.
+
 ## Requisitos
 
 Servidor Ubuntu. Para operación completa requiere Asterisk/VICIdial funcional,
