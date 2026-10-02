@@ -61,15 +61,28 @@ function renderZynerdeskBody(string $html, string $proxyBase): string
     // retiran los enlaces de descarga en vez de dejarlos rotos (el upstream
     // ni siquiera sirve /downloads en esta imagen).
     $body = preg_replace('~<a[^>]*href="downloads/[^"]*"[^>]*>.*?</a>~is', '', $body);
+    // El logo del upstream duplicaria la marca: el shell de Zynervox ya la
+    // muestra en el sidebar y en la cabecera de la integracion.
+    $body = preg_replace('~<img[^>]*class="brand-logo"[^>]*>~is', '', $body);
     return $body;
 }
 
 function extractZynerdeskStyle(string $html): string
 {
-    if (preg_match_all('~<style[^>]*>(.*?)</style>~is', $html, $m)) {
-        return implode("\n", $m[1]);
+    if (!preg_match_all('~<style[^>]*>(.*?)</style>~is', $html, $m)) {
+        return '';
     }
-    return '';
+    $css = implode("\n", $m[1]);
+    // El CSS del upstream declara su paleta en `:root` y su tipografia/fondo en
+    // `body`. Al encerrarlo en `@scope (.zynerdesk-native)` ninguno de los dos
+    // selectores coincide ya con un elemento del scope, asi que las variables
+    // (--navy, --ink, --bg...) quedaban SIN definir y la vista se veia lavada:
+    // hero transparente, texto invisible y contenedores sin ancho. `:scope` si
+    // apunta al elemento raiz del scope, de modo que las variables vuelven a
+    // existir y heredan a todo el arbol embebido.
+    $css = preg_replace('~(^|[\s,}])\:root\b~', '$1:scope', $css);
+    $css = preg_replace('~(^|[\s,}])body\b~', '$1:scope', $css);
+    return $css;
 }
 
 $zynerdeskHtml = fetchZynerdeskPage($zynerdeskPort, 'index.html');
@@ -86,6 +99,13 @@ $zynerdeskCss = extractZynerdeskStyle($zynerdeskHtml);
     <title>Zynerdesk - Zynervox</title>
     <link rel="stylesheet" href="layout.css">
     <link rel="stylesheet" href="integration-shell.css">
+    <style>
+        /* El upstream esperaba ser el documento completo; aqui es un bloque
+           dentro del shell. Se fija ancho completo para que su layout interno
+           (hero KPI, grid de equipos y mapa Leaflet) calcule bien su medida. */
+        .zynerdesk-native { display: block; width: 100%; min-width: 0; }
+        .zynerdesk-native header { position: static; }
+    </style>
     <?php if ($zynerdeskCss !== ''): ?><style>@scope (.zynerdesk-native) { <?= $zynerdeskCss ?> }</style><?php endif; ?>
 </head>
 <body>
