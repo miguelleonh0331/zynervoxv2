@@ -706,3 +706,98 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-10-02 08:16 - zynerdesk_AGENT - zynerdesk
+
+Tipo: feature
+
+Resumen:
+Alta del modulo zynerdesk: compose.yml, installer/zynerdesk.sh, proxy Apache, flag --with-zynerdesk, entrada de sidebar. Stack de prueba viejo synervox-remoteo-test eliminado.
+
+Motivo:
+Integrar supervision remota (Synervox Remoteo 2.0.2, digest fijado) como area Zynerdesk de Zynervox, reproducible desde GitHub.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
+
+### 2026-10-02 10:35 - ARCHITECT_AGENT - zynerdesk
+
+Tipo: fix
+
+Resumen:
+Zynerdesk se embebe en el shell de Zynervox mediante composicion server-side con lista blanca de vistas (panel, supervicion, usuarios, remoteo); documentacion del modulo, contrato, agente, arquitectura y flujo alineados con lo implementado.
+
+Motivo:
+La navegacion al proxy sacaba al operador del panel; ademas la documentacion describia un enfoque de integracion que no es el que quedo en codigo.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
+
+### 2026-10-02 11:14 - ARCHITECT_AGENT - zynerdesk
+
+Tipo: feature
+
+Resumen:
+Integrar SSO automático desde la sesión administrativa Zynervox
+
+Motivo:
+Eliminar el segundo formulario de login sin desactivar la seguridad propia de Zynerdesk
+
+Archivos modificados:
+- app/web/modules/admin/zynerdesk.php,installer/zynerdesk.sh,zynerdesk/compose.yml,src/features/zynerdesk/README.md,src/features/zynerdesk/CONTRACT.md,docs/ROADMAP.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+La integración depende de que el secreto HMAC coincida entre PHP y el contenedor; el login directo queda como fallback
+
+### 2026-10-02 11:17 - zynerdesk_AGENT - zynerdesk
+
+Tipo: fix
+
+Resumen:
+Actualizar instalaciones existentes al digest SSO sin recrear secretos ni volúmenes
+
+Motivo:
+El .env persistente conservaba la imagen anterior aunque el repositorio fijara un digest nuevo
+
+Archivos modificados:
+- installer/zynerdesk.sh
+
+Contrato:
+- modificado con ADR-0014
+
+Riesgos:
+La actualización depende de acceso de lectura al registro GHCR
+
+### 2026-10-02 11:18 - zynerdesk_AGENT - zynerdesk
+
+Tipo: fix
+
+Resumen:
+Alinear cookie SSO con el despliegue HTTP de laboratorio
+
+Motivo:
+SameSite=None sin Secure es rechazado por navegadores y Secure no funciona sobre HTTP
+
+Archivos modificados:
+- zynerdesk/compose.yml,installer/zynerdesk.sh,src/features/zynerdesk/README.md
+
+Contrato:
+- modificado con ADR-0014
+
+Riesgos:
+Producción HTTPS debe cambiar ZYNERDESK_COOKIE_SECURE a 1

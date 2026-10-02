@@ -272,3 +272,75 @@ Impacto:
 
 Seguimiento:
 (ninguno)
+
+### ADR-0012 - Zynerdesk como stack Docker aislado, integrado por proxy inverso sin iframe
+
+Fecha: 2026-10-02
+
+Estado: aceptada
+
+Contexto:
+Se requiere incorporar Synervox Remoteo (supervision remota) como modulo Zynerdesk del panel Zynervox, probado primero en Mirmidon, sin tocar produccion.
+
+Decisión:
+Zynerdesk se instala como servicio Docker propio (compose.yml + MySQL propio), publicado bajo subruta via proxy inverso Apache (incluye WebSocket), con entrada en el sidebar. Se elimino el stack de prueba standalone synervox-remoteo-test (sin datos) para reemplazarlo por este modulo integrado.
+
+Motivo:
+El upstream 2.0.2 no expone SSO ni BASE_PATH por variable, pero su frontend ya calcula la ruta base desde location.pathname, por lo que un proxy inverso simple funciona sin iframe y sin modificar la imagen. Integracion nativa via API queda para una etapa futura.
+
+Alternativas evaluadas:
+- (ninguna registrada)
+
+Impacto:
+(pendiente)
+
+Seguimiento:
+(ninguno)
+
+### ADR-0013 - Zynerdesk se embebe por composicion server-side, no por navegacion al proxy
+
+Fecha: 2026-10-02
+
+Estado: aceptada
+
+Contexto:
+ADR-0012 dejo abierta la forma de integracion visual y se asumio publicar el frontend del upstream por proxy. Al probarlo, el panel salia del shell de Zynervox: se perdia el sidebar y Supervision multiple y Remotear abrian fuera del panel. El upstream 2.0.2 no expone SSO ni una variable de base path y sirve rutas relativas al documento.
+
+Decisión:
+modules/admin/zynerdesk.php descarga la pagina del upstream por HTTP server-side, resuelve sus rutas relativas de href/src contra la carpeta del documento, reemite las hojas de estilo externas de su head, confina su CSS en @scope y la embebe en el shell. Las paginas visibles se declaran en una lista blanca de vistas (panel, supervicion, usuarios, remoteo); los enlaces del upstream hacia ellas se reescriben de vuelta al shell y pierden target=_blank. El proxy Apache se conserva para assets, API y WebSocket.
+
+Motivo:
+Es la unica forma de cumplir un solo sidebar, encabezado y scroll sin iframe y sin modificar la imagen del upstream. La resolucion de rutas es generica, de modo que una vista nueva no exige reglas de reescritura propias, y la adaptacion ocurre en memoria al servir la pagina, nunca editando el contenedor.
+
+Alternativas evaluadas:
+- (ninguna registrada)
+
+Impacto:
+(pendiente)
+
+Seguimiento:
+(ninguno)
+
+### ADR-0014 - SSO firmado entre Zynervox y Zynerdesk
+
+Fecha: 2026-10-02
+
+Estado: aceptada
+
+Contexto:
+La integración visual Zynerdesk exigía un segundo login aunque el operador ya estaba autenticado como administrador Zynervox.
+
+Decisión:
+Zynervox emite claims nivel 9 HMAC-SHA256 por 60 segundos y Zynerdesk los intercambia por su sesión sid normal. El login directo se conserva para recuperación.
+
+Motivo:
+Evita compartir contraseñas y mantiene protegidos API, RBAC y WebSocket.
+
+Alternativas evaluadas:
+- Quitar autenticación; compartir contraseña administrativa.
+
+Impacto:
+Contrato HTTP Zynerdesk, configuración del instalador, Compose y vista integrada.
+
+Seguimiento:
+Publicar imagen inmutable, fijar digest y validar E2E en mirmidon.

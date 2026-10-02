@@ -11,6 +11,7 @@ SKIP_PACKAGES=0
 WITH_WHATSAPP=0
 WITH_FARM=0
 WITH_STT_PROVIDERS=0
+WITH_ZYNERDESK=0
 INSTALL_DOCKER=0
 FARM_INSTANCE="${FARM_INSTANCE:-zynervox-farm}"
 STT_INSTANCE="${STT_INSTANCE:-zynervox-stt}"
@@ -23,6 +24,7 @@ for arg in "$@"; do
     --with-whatsapp) WITH_WHATSAPP=1 ;;
     --with-farm) WITH_FARM=1 ;;
     --with-stt-providers) WITH_STT_PROVIDERS=1 ;;
+    --with-zynerdesk) WITH_ZYNERDESK=1 ;;
     --install-docker) INSTALL_DOCKER=1 ;;
     *) echo "Argumento desconocido: $arg" >&2; exit 2 ;;
   esac
@@ -39,7 +41,7 @@ DB_CONFIG=/etc/astguiclient.conf
 
 if [[ $DRY_RUN -eq 1 ]]; then
   [[ -f "$DB_CONFIG" ]] && integration=available || integration=partial
-  echo "DRY_RUN web=$WEB_ROOT asterisk=$ASTERISK_ROOT url=$URL_PATH migrations=$APPLY_MIGRATIONS integration=$integration skip_packages=$SKIP_PACKAGES whatsapp=$WITH_WHATSAPP farm=$WITH_FARM stt_providers=$WITH_STT_PROVIDERS install_docker=$INSTALL_DOCKER os=${ID:-unknown} web_group=$WEB_GROUP"
+  echo "DRY_RUN web=$WEB_ROOT asterisk=$ASTERISK_ROOT url=$URL_PATH migrations=$APPLY_MIGRATIONS integration=$integration skip_packages=$SKIP_PACKAGES whatsapp=$WITH_WHATSAPP farm=$WITH_FARM stt_providers=$WITH_STT_PROVIDERS zynerdesk=$WITH_ZYNERDESK install_docker=$INSTALL_DOCKER os=${ID:-unknown} web_group=$WEB_GROUP"
   exit 0
 fi
 
@@ -150,18 +152,45 @@ if [[ $APPLY_MIGRATIONS -eq 1 ]]; then
   fi
 fi
 
-if [[ $WITH_WHATSAPP -eq 1 ]]; then
-  bash "$ROOT/installer/whatsapp.sh" init
-  bash "$ROOT/installer/whatsapp.sh" install-proxy
-fi
+# Los módulos son opcionales e independientes entre sí: el fallo de uno no debe
+# abortar la instalación de los demás, que es lo que ocurría bajo `set -e` (un
+# host sin Python 3.10 dejaba a Farm abortando y Zynerdesk sin instalar). Cada
+# módulo se ejecuta aislado y su resultado se acumula para el resumen final.
+MODULES_OK=()
+MODULES_FAILED=()
 
-if [[ $WITH_FARM -eq 1 ]]; then
+run_module() {
+  local label="$1"
+  shift
+  local status=0
+  "$@" || status=$?
+  if [[ $status -eq 0 ]]; then
+    MODULES_OK+=("$label")
+  else
+    MODULES_FAILED+=("$label (exit $status)")
+    echo "AVISO: el módulo $label no se completó (exit $status); la instalación continúa" >&2
+  fi
+}
+
+install_whatsapp() {
+  bash "$ROOT/installer/whatsapp.sh" init && bash "$ROOT/installer/whatsapp.sh" install-proxy
+}
+install_farm() {
   WEB_ROOT="$WEB_ROOT" WEB_GROUP="$WEB_GROUP" bash "$ROOT/installer/farm.sh"
-fi
-
-if [[ $WITH_STT_PROVIDERS -eq 1 ]]; then
+}
+install_stt_providers() {
   WEB_ROOT="$WEB_ROOT" WEB_GROUP="$WEB_GROUP" bash "$ROOT/installer/stt-providers.sh"
-fi
+}
+install_zynerdesk() {
+  bash "$ROOT/installer/zynerdesk.sh" init && bash "$ROOT/installer/zynerdesk.sh" install-proxy
+}
+
+# Con `if` y no con `[[ ... ]] && ...`: bajo `set -e` una condición falsa al
+# final de una lista AND devuelve 1 y abortaría la instalación.
+if [[ $WITH_WHATSAPP -eq 1 ]]; then run_module "WhatsApp" install_whatsapp; fi
+if [[ $WITH_FARM -eq 1 ]]; then run_module "Farm" install_farm; fi
+if [[ $WITH_STT_PROVIDERS -eq 1 ]]; then run_module "Stt Providers" install_stt_providers; fi
+if [[ $WITH_ZYNERDESK -eq 1 ]]; then run_module "Zynerdesk" install_zynerdesk; fi
 
 if command -v apache2ctl >/dev/null 2>&1; then
   if apache2ctl configtest; then
@@ -170,6 +199,69 @@ if command -v apache2ctl >/dev/null 2>&1; then
     echo "AVISO: Apache tiene errores previos; archivos web conservados sin recargar" >&2
   fi
 fi
-WEB_ROOT="$WEB_ROOT" CHECK_FARM="$WITH_FARM" CHECK_STT_PROVIDERS="$WITH_STT_PROVIDERS" \
-  FARM_INSTANCE="$FARM_INSTANCE" STT_INSTANCE="$STT_INSTANCE" bash "$ROOT/installer/check.sh"
-echo "INSTALACION_OK web=$WEB_ROOT url_path=$URL_PATH"
+# El diagnóstico no debe cortar la ejecución antes del resumen: su resultado se
+# reporta ahí junto con el resto.
+check_status=0
+WEB_ROOT="$WEB_ROOT" CHECK_FARM="$WITH_FARM" CHECK_STT_PROVIDERS="$WITH_STT_PROVIDERS" CHECK_ZYNERDESK="$WITH_ZYNERDESK" \
+  FARM_INSTANCE="$FARM_INSTANCE" STT_INSTANCE="$STT_INSTANCE" bash "$ROOT/installer/check.sh" || check_status=$?
+
+# --- Resumen de instalación -------------------------------------------------
+# Las credenciales se piden a cada módulo que sí quedó instalado. Se imprimen
+# una sola vez, aquí, para que el operador pueda guardarlas: no se escriben en
+# ningún log del instalador.
+echo
+echo "================ RESUMEN DE INSTALACIÓN ================"
+echo "Web:  $WEB_ROOT"
+echo "Ruta: $URL_PATH"
+
+echo
+echo "-- Módulos instalados --"
+if [[ ${#MODULES_OK[@]} -eq 0 ]]; then
+  echo "  (ninguno)"
+else
+  printf '  OK  %s\n' "${MODULES_OK[@]}"
+fi
+
+echo
+echo "-- Credenciales generadas --"
+echo "  Guárdelas ahora: no vuelven a mostrarse y no quedan en los logs."
+for module in "${MODULES_OK[@]+"${MODULES_OK[@]}"}"; do
+  case "$module" in
+    WhatsApp)
+      bash "$ROOT/installer/whatsapp.sh" credentials 2>/dev/null | sed 's/^/  /' || true ;;
+    Zynerdesk)
+      bash "$ROOT/installer/zynerdesk.sh" credentials 2>/dev/null | sed 's/^/  /' || true ;;
+    Farm)
+      echo "  FARM_TOKENS=/var/lib/${FARM_INSTANCE}/internal_token (y control/control.token)" ;;
+    "Stt Providers")
+      echo "  STT_CONFIG=/etc/zynervox/${STT_INSTANCE}.env (incluye STT_DB_PASSWORD)" ;;
+  esac
+done
+
+if [[ ${#MODULES_FAILED[@]} -gt 0 ]]; then
+  echo
+  echo "-- Errores a parchar --"
+  printf '  FALLO  %s\n' "${MODULES_FAILED[@]}"
+  echo
+  echo "  El resto de la instalación se completó. Para reintentar solo el módulo"
+  echo "  afectado, corrija la causa y vuelva a ejecutar su script:"
+  echo "    sudo bash $ROOT/installer/<modulo>.sh init"
+  echo "  Requisitos frecuentes: Farm necesita Python 3.10+; WhatsApp y"
+  echo "  Zynerdesk necesitan Docker y Docker Compose."
+fi
+
+if [[ $check_status -ne 0 ]]; then
+  echo
+  echo "-- Diagnóstico --"
+  echo "  check.sh devolvió fallos (exit $check_status). Revise su salida arriba."
+fi
+
+echo
+if [[ ${#MODULES_FAILED[@]} -eq 0 && $check_status -eq 0 ]]; then
+  echo "INSTALACION_OK web=$WEB_ROOT url_path=$URL_PATH"
+  echo "========================================================"
+else
+  echo "INSTALACION_INCOMPLETA web=$WEB_ROOT url_path=$URL_PATH modulos_fallidos=${#MODULES_FAILED[@]}"
+  echo "========================================================"
+  exit 1
+fi

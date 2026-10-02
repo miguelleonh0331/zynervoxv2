@@ -7,6 +7,8 @@
 - `whatsapp`: Zynerwaba y MySQL 8.4 aislados, esquema propio y persistencia separada.
 - `farm`: panel PHP y dos servicios systemd loopback para anexos y proxies.
 - `stt_providers`: panel PHP y esquema MariaDB propio para cuentas/API keys STT.
+- `zynerdesk`: Synervox Remoteo (supervisión remota) y MySQL 8.4 aislados,
+  imagen fijada por digest, esquema y persistencia propios.
 - `/etc/zynervox/astguiclient.conf` o `/etc/astguiclient.conf`: conexión MariaDB.
 - `/var/lib/asterisk/sounds`: audios, cachés y grabaciones; nunca se versiona.
 
@@ -26,3 +28,17 @@ Farm y Stt Providers se renderizan como vistas nativas sin iframe y reutilizan l
 sesión administrativa de Zynervox. Farm delega
 privilegios a servicios locales aislados; Stt Providers usa un usuario MariaDB
 limitado a su base. Ninguno vive dentro del Docker de WhatsApp.
+
+Zynerdesk → MySQL propio → agentes Windows futuros: Zynerdesk se publica como
+servicio Docker aislado (`zynerdesk/compose.yml`), proxyeado por Apache bajo
+su propia subruta (HTTP y WebSocket). A diferencia de WhatsApp, el upstream
+`2.0.2` no ofrece SSO ni `BASE_PATH`: sirve rutas relativas al documento que
+las contiene. Por eso `modules/admin/zynerdesk.php` descarga la página del
+upstream server-side, reescribe sus rutas relativas hacia el proxy y la
+embebe en el shell, de modo que el panel conserva un solo sidebar,
+encabezado y scroll, sin iframe. El navegador pide assets, API y WebSocket
+directamente al proxy; la página que los contiene es de Zynervox. La
+autenticación es de doble puerta y sin credenciales compartidas: sesión
+Zynervox nivel 9 para la vista, y el login propio del upstream para la app.
+El agente Windows que se conecta a Zynerdesk (`synervox-remoteo-agent`) queda
+fuera de alcance de esta etapa: solo se documenta la relación futura.

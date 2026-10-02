@@ -30,5 +30,7 @@ export WHATSAPP_BASE_PATH_OVERRIDE="${WHATSAPP_BASE_PATH_OVERRIDE:-${URL_PATH}-w
 export WHATSAPP_COMPOSE_PROJECT_OVERRIDE="${WHATSAPP_COMPOSE_PROJECT_OVERRIDE:-zynervoxv2-deploy-test}"
 export FARM_INSTANCE="${FARM_INSTANCE_OVERRIDE:-zynervoxv2-deploy-test-farm}"
 export STT_INSTANCE="${STT_INSTANCE_OVERRIDE:-zynervoxv2-deploy-test-stt}"
+export ZYNERDESK_BASE_PATH_OVERRIDE="${ZYNERDESK_BASE_PATH_OVERRIDE:-${URL_PATH}-zynerdesk}"
+export ZYNERDESK_COMPOSE_PROJECT_OVERRIDE="${ZYNERDESK_COMPOSE_PROJECT_OVERRIDE:-zynervoxv2-deploy-test-zynerdesk}"
 
-exec "$SOURCE_DIR/installer/install.sh" --skip-packages --install-docker --with-whatsapp --with-farm --with-stt-providers
+exec "$SOURCE_DIR/installer/install.sh" --skip-packages --install-docker --with-whatsapp --with-farm --with-stt-providers --with-zynerdesk

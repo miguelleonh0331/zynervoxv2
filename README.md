@@ -78,3 +78,31 @@ sudo WEB_ROOT=/var/www/html/zynervox URL_PATH=/zynervox \
 Apache publica Zynerwaba bajo `/zynerwabav2/`; el botón **WhatsApp** de Zynervox
 abre esa bandeja. Las sesiones permanecen separadas en esta primera integración.
 `remove-proxy` retira la publicación Apache y `down` conserva los volúmenes.
+
+## Zynerdesk (soporte remoto)
+
+Synervox Remoteo se ejecuta como servicio Docker independiente con MySQL 8.4
+propio. La imagen `ghcr.io/miguelleonh0331/synervox-remoteo` se descarga publicada,
+fijada por digest (nunca por etiqueta flotante); no se construye localmente.
+Sus secretos se generan en `zynerdesk/.env`, excluido de Git.
+
+```bash
+sudo ./installer/zynerdesk.sh init
+sudo ./installer/zynerdesk.sh install-proxy
+sudo ./installer/zynerdesk.sh credentials
+sudo ./installer/zynerdesk.sh backup /ruta/zynerdesk.sql.gz
+```
+
+También puede instalar web y Zynerdesk en una sola ejecución:
+
+```bash
+sudo WEB_ROOT=/var/www/html/zynervox URL_PATH=/zynervox \
+  ./installer/install.sh --skip-packages --with-zynerdesk
+```
+
+Apache publica Zynerdesk bajo su propia subruta (HTTP + WebSocket); el ítem
+**Zynerdesk** del sidebar abre esa app con navegación completa, sin iframe.
+No hay sesión única con Zynervox en esta primera etapa (login propio del
+contenedor). El agente Windows (`synervox-remoteo-agent`) queda pendiente,
+fuera de alcance. `remove-proxy` retira la publicación Apache y `down`
+conserva los volúmenes.
