@@ -11,7 +11,7 @@ repositorio central.
 
 - Imagen: `ghcr.io/miguelleonh0331/synervox-remoteo`
 - Revisión fijada: `24b8b44d4a3905cb493526090c0f247a81c37be6`
-- Digest inmutable: `sha256:0025bfc1902bb20bfc879b56862bacf08dafaf5717913592bc32ecb6e0627ba4`
+- Digest inmutable: `sha256:a2a79232e0b8561a553a11fcfdb9fbc38b2cb346ef7dd400e3b65491c5de4a8b`
 - Stack real: Node.js 22, `ws` (WebSocket), `mysql2`, `bcrypt`, `dotenv`.
 - Migraciones y usuario admin inicial se aplican solos al arrancar
   (`scripts/start.js`, idempotente vía tabla `schema_migrations`).
@@ -127,7 +127,7 @@ aparece en la vista embebida, no en el contenedor: comparar siempre contra
 - MySQL 8.4 propio (contenedor `db` del compose), sin compartir con otros módulos.
 - Apache con `mod_proxy`, `mod_proxy_http`, `mod_proxy_wstunnel`.
 - PHP con `curl` (la vista integrada descarga el upstream server-side).
-- Imagen `ghcr.io/miguelleonh0331/synervox-remoteo@sha256:0025bfc1902bb20bfc879b56862bacf08dafaf5717913592bc32ecb6e0627ba4`.
+- Imagen `ghcr.io/miguelleonh0331/synervox-remoteo@sha256:a2a79232e0b8561a553a11fcfdb9fbc38b2cb346ef7dd400e3b65491c5de4a8b`.
 
 ## Casos principales
 
@@ -147,6 +147,8 @@ Inicio de sesión único, sin credenciales compartidas:
 - el upstream intercambia la firma en `POST /api/auth/zynervox-sso` por su cookie
   `sid` normal, preservando RBAC, API y WebSocket autenticados;
 - el login directo de Zynerdesk permanece como acceso de recuperación.
+- las vistas integradas no muestran botones propios de cierre de sesión; la
+  salida pertenece a la sesión principal de Zynervox.
 
 En instalaciones HTTP de laboratorio se usa `ZYNERDESK_COOKIE_SECURE=0` con
 `ZYNERDESK_COOKIE_SAME_SITE=Lax`. En producción HTTPS debe usarse `Secure=1`.

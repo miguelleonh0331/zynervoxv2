@@ -13,7 +13,7 @@
 - Farm: Python 3.10+, systemd, baresip, ffmpeg y PHP, sin Docker.
 - Stt Providers: PHP 7.4+, PDO MySQL y cURL sobre MariaDB nativa aislada.
 - Zynerdesk: imagen `ghcr.io/miguelleonh0331/synervox-remoteo` fijada por
-  digest `sha256:0025bfc1902bb20bfc879b56862bacf08dafaf5717913592bc32ecb6e0627ba4`,
+  digest `sha256:a2a79232e0b8561a553a11fcfdb9fbc38b2cb346ef7dd400e3b65491c5de4a8b`,
   Node.js 22, WebSocket (`ws`) y MySQL 8.4 propio en Docker. Apache proxyea
   la ruta pública (`mod_proxy_http` + `mod_proxy_wstunnel`).
 
