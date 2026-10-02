@@ -22,10 +22,13 @@ $proxyBase = rtrim($zynerdeskBasePath, '/') . '/';
 // Vistas del upstream que se muestran dentro del shell de Zynervox. Cualquier
 // enlace del upstream que apunte a una de estas rutas se reescribe hacia
 // zynerdesk.php para no salir del panel; el resto se manda al proxy publico.
+// "tab" distingue las secciones fijas de la cabecera de las vistas a las que
+// solo se llega desde el panel, como remotear un equipo concreto.
 $ZYNERDESK_VIEWS = [
-    'panel'       => ['path' => 'index.html',            'title' => 'Panel'],
-    'supervicion' => ['path' => 'supervicion/index.html','title' => 'Supervisión múltiple'],
-    'usuarios'    => ['path' => 'admin.html',            'title' => 'Usuarios'],
+    'panel'       => ['path' => 'index.html',            'title' => 'Panel',                'tab' => true],
+    'supervicion' => ['path' => 'supervicion/index.html','title' => 'Supervisión múltiple', 'tab' => true],
+    'usuarios'    => ['path' => 'admin.html',            'title' => 'Usuarios',             'tab' => true],
+    'remoteo'     => ['path' => 'remoteo.html',          'title' => 'Remotear',             'tab' => false],
 ];
 $view = isset($_GET['view']) && isset($ZYNERDESK_VIEWS[$_GET['view']]) ? $_GET['view'] : 'panel';
 $viewPath = $ZYNERDESK_VIEWS[$view]['path'];
@@ -78,8 +81,10 @@ function zynerdeskResolve(string $relative, string $baseDir): string
     return $resolved;
 }
 
-// Las vistas embebidas se enlazan al propio shell; todo lo demas al proxy.
-function zynerdeskShellUrl(string $absolute, string $proxyBase, array $views): ?string
+// Las vistas embebidas se enlazan al propio shell; todo lo demas al proxy. El
+// query se conserva porque "Remotear" identifica al equipo con ?agent=...,
+// que remoteo.html lee del navegador con URLSearchParams.
+function zynerdeskShellUrl(string $path, string $query, string $proxyBase, array $views): ?string
 {
     foreach ($views as $key => $meta) {
         $candidates = [$proxyBase . $meta['path']];
@@ -87,8 +92,8 @@ function zynerdeskShellUrl(string $absolute, string $proxyBase, array $views): ?
         if (substr($meta['path'], -11) === '/index.html') {
             $candidates[] = $proxyBase . substr($meta['path'], 0, -10);
         }
-        if (in_array($absolute, $candidates, true)) {
-            return 'zynerdesk.php?view=' . $key;
+        if (in_array($path, $candidates, true)) {
+            return 'zynerdesk.php?view=' . $key . ($query !== '' ? '&' . $query : '');
         }
     }
     return null;
@@ -110,9 +115,30 @@ function renderZynerdeskBody(string $html, string $baseDir, string $proxyBase, a
             if (preg_match('~^(?:[a-z][a-z0-9+.-]*:|//|/|#)~i', $url)) {
                 return $m[0];
             }
+            // El query se separa antes de normalizar: resolver "../" sobre el
+            // documento es cosa de la ruta, no de los parametros.
+            $query = '';
+            if (($mark = strpos($url, '?')) !== false) {
+                $query = substr($url, $mark + 1);
+                $url = substr($url, 0, $mark);
+            }
             $absolute = zynerdeskResolve($url, $baseDir);
-            $target = zynerdeskShellUrl($absolute, $proxyBase, $views) ?? $absolute;
+            $target = zynerdeskShellUrl($absolute, $query, $proxyBase, $views)
+                ?? $absolute . ($query !== '' ? '?' . $query : '');
             return $m[1] . '=' . $m[2] . $target . $m[2];
+        },
+        $body
+    );
+
+    // Los enlaces que vuelven al shell no deben abrir otra ventana: el upstream
+    // marcaba "Remotear" con target="_blank" por ser una app suelta.
+    $body = preg_replace_callback(
+        '~<a\b[^>]*>~i',
+        function (array $m): string {
+            if (strpos($m[0], 'zynerdesk.php?view=') === false) {
+                return $m[0];
+            }
+            return preg_replace('~\s+target=(["\'])[^"\']*\1~i', '', $m[0]);
         },
         $body
     );
@@ -248,8 +274,12 @@ $zynerdeskHeadLinks = extractZynerdeskHeadLinks($zynerdeskHtml, $viewDir);
         <div><h1>Zynerdesk</h1><p>Supervisión remota (Synervox Remoteo)</p></div>
         <nav class="integration-tabs" aria-label="Secciones de Zynerdesk">
             <?php foreach ($ZYNERDESK_VIEWS as $key => $meta): ?>
+            <?php if (!$meta['tab']) { continue; } ?>
             <a class="<?= $view === $key ? 'active' : '' ?>" href="zynerdesk.php?view=<?= $key ?>"><?= htmlspecialchars($meta['title'], ENT_QUOTES, 'UTF-8') ?></a>
             <?php endforeach; ?>
+            <?php if (!$ZYNERDESK_VIEWS[$view]['tab']): ?>
+            <a class="active" aria-current="page"><?= htmlspecialchars($ZYNERDESK_VIEWS[$view]['title'], ENT_QUOTES, 'UTF-8') ?></a>
+            <?php endif; ?>
         </nav>
     </header>
     <section class="integration-native zynerdesk-native">
