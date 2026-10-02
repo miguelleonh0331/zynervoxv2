@@ -10,8 +10,8 @@ repositorio central.
 ## Origen y versión upstream
 
 - Imagen: `ghcr.io/miguelleonh0331/synervox-remoteo`
-- Revisión fijada: `77155e70051c9714332a2caeb785a60a650da041`
-- Digest inmutable: `sha256:7836bcdecba9514c4c0156790cb0e375f9e42d7a9cec97816628ea50057ef50c`
+- Revisión fijada: `24b8b44d4a3905cb493526090c0f247a81c37be6`
+- Digest inmutable: `sha256:bc7393a4c0040a0068cf8321c622032e4991352fd2b08cf8167cbd45c19083f0`
 - Stack real: Node.js 22, `ws` (WebSocket), `mysql2`, `bcrypt`, `dotenv`.
 - Migraciones y usuario admin inicial se aplican solos al arrancar
   (`scripts/start.js`, idempotente vía tabla `schema_migrations`).
@@ -127,7 +127,7 @@ aparece en la vista embebida, no en el contenedor: comparar siempre contra
 - MySQL 8.4 propio (contenedor `db` del compose), sin compartir con otros módulos.
 - Apache con `mod_proxy`, `mod_proxy_http`, `mod_proxy_wstunnel`.
 - PHP con `curl` (la vista integrada descarga el upstream server-side).
-- Imagen `ghcr.io/miguelleonh0331/synervox-remoteo@sha256:7836bcdecba9514c4c0156790cb0e375f9e42d7a9cec97816628ea50057ef50c`.
+- Imagen `ghcr.io/miguelleonh0331/synervox-remoteo@sha256:bc7393a4c0040a0068cf8321c622032e4991352fd2b08cf8167cbd45c19083f0`.
 
 ## Casos principales
 

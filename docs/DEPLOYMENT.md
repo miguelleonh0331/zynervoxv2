@@ -147,7 +147,7 @@ sudo ./installer/zynerdesk.sh backup /ruta/zynerdesk.sql.gz
 ```
 
 La imagen `ghcr.io/miguelleonh0331/synervox-remoteo` queda fijada por digest
-(`sha256:7836bcdecba9514c4c0156790cb0e375f9e42d7a9cec97816628ea50057ef50c`) en
+(`sha256:bc7393a4c0040a0068cf8321c622032e4991352fd2b08cf8167cbd45c19083f0`) en
 `zynerdesk/.env`, nunca por etiqueta flotante. `init` escanea el primer puerto
 loopback libre entre `4100` y `4199`, levanta MySQL 8.4 propio y genera
 usuario/contraseña de administrador (mínimo 12 caracteres, exigido por el

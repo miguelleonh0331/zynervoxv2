@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ZYNERDESK_DIR="$ROOT/zynerdesk"
 ENV_FILE="$ZYNERDESK_DIR/.env"
-ZYNERDESK_DEFAULT_IMAGE="ghcr.io/miguelleonh0331/synervox-remoteo@sha256:7836bcdecba9514c4c0156790cb0e375f9e42d7a9cec97816628ea50057ef50c"
+ZYNERDESK_DEFAULT_IMAGE="ghcr.io/miguelleonh0331/synervox-remoteo@sha256:bc7393a4c0040a0068cf8321c622032e4991352fd2b08cf8167cbd45c19083f0"
 
 usage() { echo "Uso: $0 init|up|status|credentials|install-proxy|remove-proxy|backup <archivo>|restore <archivo>|down"; }
 
