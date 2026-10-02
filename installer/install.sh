@@ -11,6 +11,7 @@ SKIP_PACKAGES=0
 WITH_WHATSAPP=0
 WITH_FARM=0
 WITH_STT_PROVIDERS=0
+WITH_ZYNERDESK=0
 INSTALL_DOCKER=0
 FARM_INSTANCE="${FARM_INSTANCE:-zynervox-farm}"
 STT_INSTANCE="${STT_INSTANCE:-zynervox-stt}"
@@ -23,6 +24,7 @@ for arg in "$@"; do
     --with-whatsapp) WITH_WHATSAPP=1 ;;
     --with-farm) WITH_FARM=1 ;;
     --with-stt-providers) WITH_STT_PROVIDERS=1 ;;
+    --with-zynerdesk) WITH_ZYNERDESK=1 ;;
     --install-docker) INSTALL_DOCKER=1 ;;
     *) echo "Argumento desconocido: $arg" >&2; exit 2 ;;
   esac
@@ -39,7 +41,7 @@ DB_CONFIG=/etc/astguiclient.conf
 
 if [[ $DRY_RUN -eq 1 ]]; then
   [[ -f "$DB_CONFIG" ]] && integration=available || integration=partial
-  echo "DRY_RUN web=$WEB_ROOT asterisk=$ASTERISK_ROOT url=$URL_PATH migrations=$APPLY_MIGRATIONS integration=$integration skip_packages=$SKIP_PACKAGES whatsapp=$WITH_WHATSAPP farm=$WITH_FARM stt_providers=$WITH_STT_PROVIDERS install_docker=$INSTALL_DOCKER os=${ID:-unknown} web_group=$WEB_GROUP"
+  echo "DRY_RUN web=$WEB_ROOT asterisk=$ASTERISK_ROOT url=$URL_PATH migrations=$APPLY_MIGRATIONS integration=$integration skip_packages=$SKIP_PACKAGES whatsapp=$WITH_WHATSAPP farm=$WITH_FARM stt_providers=$WITH_STT_PROVIDERS zynerdesk=$WITH_ZYNERDESK install_docker=$INSTALL_DOCKER os=${ID:-unknown} web_group=$WEB_GROUP"
   exit 0
 fi
 
@@ -163,6 +165,11 @@ if [[ $WITH_STT_PROVIDERS -eq 1 ]]; then
   WEB_ROOT="$WEB_ROOT" WEB_GROUP="$WEB_GROUP" bash "$ROOT/installer/stt-providers.sh"
 fi
 
+if [[ $WITH_ZYNERDESK -eq 1 ]]; then
+  bash "$ROOT/installer/zynerdesk.sh" init
+  bash "$ROOT/installer/zynerdesk.sh" install-proxy
+fi
+
 if command -v apache2ctl >/dev/null 2>&1; then
   if apache2ctl configtest; then
     systemctl reload apache2
@@ -170,6 +177,6 @@ if command -v apache2ctl >/dev/null 2>&1; then
     echo "AVISO: Apache tiene errores previos; archivos web conservados sin recargar" >&2
   fi
 fi
-WEB_ROOT="$WEB_ROOT" CHECK_FARM="$WITH_FARM" CHECK_STT_PROVIDERS="$WITH_STT_PROVIDERS" \
+WEB_ROOT="$WEB_ROOT" CHECK_FARM="$WITH_FARM" CHECK_STT_PROVIDERS="$WITH_STT_PROVIDERS" CHECK_ZYNERDESK="$WITH_ZYNERDESK" \
   FARM_INSTANCE="$FARM_INSTANCE" STT_INSTANCE="$STT_INSTANCE" bash "$ROOT/installer/check.sh"
 echo "INSTALACION_OK web=$WEB_ROOT url_path=$URL_PATH"

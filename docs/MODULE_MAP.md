@@ -2,7 +2,7 @@
 
 Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 
-Última generación: 2026-10-01 18:44
+Última generación: 2026-10-02 08:16
 
 ## Módulos
 
@@ -19,6 +19,7 @@ Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 | stt_providers | src/features/stt_providers | _DEFAULT_MODULE_AGENT.md | (sin descripción) | src/features/stt_providers/CONTRACT.md |
 | telephony | src/features/telephony | telephony_AGENT.md | (sin descripción) | src/features/telephony/CONTRACT.md |
 | whatsapp | src/features/whatsapp | whatsapp_AGENT.md | Incorporar la operación WhatsApp a Zynervox reutilizando Zynerwaba v2 como servicio | src/features/whatsapp/CONTRACT.md |
+| zynerdesk | src/features/zynerdesk | zynerdesk_AGENT.md | Incorporar Synervox Remoteo (supervisión remota de agentes: WebRTC, telemetría | src/features/zynerdesk/CONTRACT.md |
 
 ## Dependencias entre módulos
 
@@ -34,3 +35,7 @@ Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 | whatsapp | Imagen integrada `miguelleonh0331/zynerwabav2:2.1.0-zynervox`, construida | módulo inexistente |
 | whatsapp | MySQL 8.4 y el esquema saneado versionado | módulo inexistente |
 | whatsapp | Apache como proxy de la ruta pública | módulo inexistente |
+| zynerdesk | Docker y Docker Compose del host; | módulo inexistente |
+| zynerdesk | MySQL 8.4 propio (volumen `zynerdesk_mysql`, no compartido); | módulo inexistente |
+| zynerdesk | Apache como proxy de la ruta pública (`mod_proxy`, `mod_proxy_http`, | módulo inexistente |
+| zynerdesk | la imagen publicada `miguelleonh0331/synervox-remoteov2` fijada por digest | módulo inexistente |

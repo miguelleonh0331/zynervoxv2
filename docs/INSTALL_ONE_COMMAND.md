@@ -31,8 +31,13 @@ sudo env \
   WHATSAPP_COMPOSE_PROJECT_OVERRIDE=zynervoxv2-deploy-test \
   FARM_INSTANCE_OVERRIDE=zynervoxv2-deploy-test-farm \
   STT_INSTANCE_OVERRIDE=zynervoxv2-deploy-test-stt \
+  ZYNERDESK_BASE_PATH_OVERRIDE=/zynervoxv2-deploy-test-zynerdesk \
+  ZYNERDESK_COMPOSE_PROJECT_OVERRIDE=zynervoxv2-deploy-test-zynerdesk \
   bash
 ```
+
+Zynerdesk se puede omitir quitando la bandera `--with-zynerdesk` de
+`installer/bootstrap.sh` (instalación sin Zynerdesk queda soportada).
 
 El bootstrap se detiene si la ruta fuente o la ruta web ya existen. Nunca limpia
 ni sobrescribe automáticamente una instalación previa.
@@ -52,6 +57,9 @@ clon Git válido y no elimina datos, volúmenes ni archivos ajenos.
 - Persistencia: volúmenes Compose exclusivos del nombre del proyecto.
 - Farm: `/opt/<instancia>`, `/var/lib/<instancia>` y dos unidades systemd.
 - Stt Providers: base/usuario propios y configuración protegida en `/etc/zynervox`.
+- Zynerdesk: imagen fijada por digest, puerto loopback libre entre 4100 y
+  4199, secretos en `zynerdesk/.env` (excluido de Git), configuración pública
+  en `/etc/zynervox/zynerdesk.conf`.
 - ViciBox/openSUSE: se instala `runc` oficial 1.5.2 bajo un SHA-256 fijado y se
   valida antes de crear contenedores. Docker usa el runtime explícito
   `vicibox-runc`; la configuración anterior queda en
@@ -68,6 +76,8 @@ clon Git válido y no elimina datos, volúmenes ni archivos ajenos.
 6. El E2E Meta se ejecuta solo con empresa, línea y destinatario de laboratorio.
 7. Farm rechaza acceso sin sesión y sus dos servicios responden en loopback.
 8. Stt Providers rechaza acceso sin sesión y devuelve un listado válido autenticado.
+9. Zynerdesk: contenedores `app`/`db` saludables, ruta pública responde, login
+   y WebSocket propios funcionan, `Zynerdesk` visible en el sidebar sin iframe.
 
 ## Retirada segura
 

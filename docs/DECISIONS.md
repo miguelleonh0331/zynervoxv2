@@ -272,3 +272,27 @@ Impacto:
 
 Seguimiento:
 (ninguno)
+
+### ADR-0012 - Zynerdesk como stack Docker aislado, integrado por proxy inverso sin iframe
+
+Fecha: 2026-10-02
+
+Estado: aceptada
+
+Contexto:
+Se requiere incorporar Synervox Remoteo (supervision remota) como modulo Zynerdesk del panel Zynervox, probado primero en Mirmidon, sin tocar produccion.
+
+Decisión:
+Zynerdesk se instala como servicio Docker propio (compose.yml + MySQL propio), publicado bajo subruta via proxy inverso Apache (incluye WebSocket), con entrada en el sidebar. Se elimino el stack de prueba standalone synervox-remoteo-test (sin datos) para reemplazarlo por este modulo integrado.
+
+Motivo:
+El upstream 2.0.2 no expone SSO ni BASE_PATH por variable, pero su frontend ya calcula la ruta base desde location.pathname, por lo que un proxy inverso simple funciona sin iframe y sin modificar la imagen. Integracion nativa via API queda para una etapa futura.
+
+Alternativas evaluadas:
+- (ninguna registrada)
+
+Impacto:
+(pendiente)
+
+Seguimiento:
+(ninguno)

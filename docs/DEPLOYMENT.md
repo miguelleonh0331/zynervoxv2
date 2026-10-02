@@ -24,7 +24,7 @@ Para instalar los tres módulos administrativos junto con la web:
 
 ```bash
 sudo ./installer/install.sh --skip-packages --install-docker \
-  --with-whatsapp --with-farm --with-stt-providers
+  --with-whatsapp --with-farm --with-stt-providers --with-zynerdesk
 ```
 
 Sin `--apply-migrations` no se cambia la base. Si falta VICIdial, la web se instala
@@ -136,3 +136,38 @@ exigen una sesión Zynervox nivel 9. Variables principales: `STT_INSTANCE`,
 
 No introducir API keys reales en pruebas de instalación. Validar listado vacío,
 CSRF, rechazo sin sesión y persistencia con datos sintéticos.
+
+## Zynerdesk
+
+```bash
+sudo ./installer/zynerdesk.sh init
+sudo ./installer/zynerdesk.sh install-proxy
+sudo ./installer/zynerdesk.sh status
+sudo ./installer/zynerdesk.sh backup /ruta/zynerdesk.sql.gz
+```
+
+La imagen `miguelleonh0331/synervox-remoteov2` queda fijada por digest
+(`sha256:0c6f400c6385ca08840ec0282698a5750d21b5c85c8f41d98cf65078d272783b`) en
+`zynerdesk/.env`, nunca por etiqueta flotante. `init` escanea el primer puerto
+loopback libre entre `4100` y `4199`, levanta MySQL 8.4 propio y genera
+usuario/contraseña de administrador (mínimo 12 caracteres, exigido por el
+propio upstream). `install-proxy` publica `/etc/zynervox/zynerdesk.conf`
+(ruta pública) con permisos `root:www-data 0640` y habilita
+`mod_proxy_wstunnel` para el WebSocket (`/ws`).
+
+No hay SSO con Zynervox en esta etapa: el login es el propio del contenedor.
+`down` retira contenedores conservando ambos volúmenes (`zynerdesk_mysql`,
+`zynerdesk_data`). Usar `remove-proxy` para retirar la ruta Apache sin borrar
+datos.
+
+### Rollback Zynerdesk
+
+- No borrar `zynerdesk_mysql` ni `zynerdesk_data` durante una actualización.
+- Guardar el digest de imagen activo antes de actualizar; restaurarlo en
+  `zynerdesk/.env` (`ZYNERDESK_IMAGE=...@sha256:...`) y ejecutar
+  `installer/zynerdesk.sh up` para revertir.
+- Si una migración resulta incompatible, restaurar con
+  `installer/zynerdesk.sh restore /ruta/zynerdesk.sql.gz` antes de habilitar
+  tráfico.
+- Reiniciar únicamente el stack Zynerdesk; no afecta WhatsApp, Farm, Stt
+  Providers ni VICIdial.

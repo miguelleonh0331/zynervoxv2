@@ -40,6 +40,17 @@ function _svgIcon($name) {
 // quedaban rotos: apuntaban a bot_ivr/campaigns.php en vez de
 // modules/admin/campaigns.php.)
 function renderSidebar($activePage = 'home', $rootPrefix = '../../') {
+    // Ruta pública de Zynerdesk: viene de /etc/zynervox/zynerdesk.conf (lo
+    // escribe installer/zynerdesk.sh install-proxy), con fallback de dev.
+    $zynerdeskBasePath = '/zynerdesk';
+    $zynerdeskConfigFile = '/etc/zynervox/zynerdesk.conf';
+    if (is_readable($zynerdeskConfigFile)) {
+        foreach (file($zynerdeskConfigFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+            if (strpos($line, 'ZYNERDESK_BASE_PATH=') === 0) {
+                $zynerdeskBasePath = trim(substr($line, strlen('ZYNERDESK_BASE_PATH=')));
+            }
+        }
+    }
     // "built" = false => la pagina todavia es un stub (_stub.php), se muestra
     // tachada en el menu para que se note a simple vista que falta construir.
     $items = [
@@ -59,6 +70,7 @@ function renderSidebar($activePage = 'home', $rootPrefix = '../../') {
         ['key' => 'whatsapp',    'href' => 'modules/admin/whatsapp.php',     'icon' => 'whatsapp',   'label' => 'WhatsApp',           'built' => true],
         ['key' => 'farm',        'href' => 'modules/admin/farm.php',         'icon' => 'farm',       'label' => 'Farm',               'built' => true],
         ['key' => 'stt_providers','href' => 'modules/admin/stt_providers.php','icon' => 'stt',       'label' => 'Stt Providers',      'built' => true],
+        ['key' => 'zynerdesk',   'href' => rtrim($zynerdeskBasePath, '/') . '/', 'icon' => 'remote', 'label' => 'Zynerdesk',          'built' => true],
         ['key' => 'usergroups',  'href' => 'modules/admin/usergroups.php',   'icon' => 'usergroups', 'label' => 'User Groups (Grupos)', 'built' => true],
         ['key' => 'remote',      'href' => 'modules/admin/remoteagents.php', 'icon' => 'remote',     'label' => 'Agents GSM',         'built' => true],
         ['key' => 'phones',      'href' => 'modules/admin/phones.php',       'icon' => 'phones',     'label' => 'Anexos/Teléfonos',   'built' => true],
@@ -87,7 +99,8 @@ function renderSidebar($activePage = 'home', $rootPrefix = '../../') {
     <div class="nav-section">
         <h3 class="nav-title">Administración</h3>
         <?php foreach ($items as $it): ?>
-        <a href="<?php echo $rootPrefix . $it['href']; ?>" class="nav-item <?php echo $activePage === $it['key'] ? 'active' : ''; ?>"
+        <?php $itHref = (strpos($it['href'], '/') === 0 || preg_match('#^https?://#', $it['href'])) ? $it['href'] : $rootPrefix . $it['href']; ?>
+        <a href="<?php echo $itHref; ?>" class="nav-item <?php echo $activePage === $it['key'] ? 'active' : ''; ?>"
             <?php if (!$it['built']): ?>style="text-decoration: line-through; opacity: 0.55;" title="Aún no construido"<?php endif; ?>>
             <?php echo _svgIcon($it['icon']); ?> <?php echo $it['label']; ?>
         </a>

@@ -8,6 +8,7 @@ fail=0
 warn=0
 CHECK_FARM="${CHECK_FARM:-0}"
 CHECK_STT_PROVIDERS="${CHECK_STT_PROVIDERS:-0}"
+CHECK_ZYNERDESK="${CHECK_ZYNERDESK:-0}"
 
 for command in php python3; do
   if ! command -v "$command" >/dev/null 2>&1; then
@@ -39,6 +40,9 @@ if [[ "$CHECK_FARM" == 1 ]]; then
 fi
 if [[ "$CHECK_STT_PROVIDERS" == 1 ]]; then
   [[ -f "$WEB_ROOT/modules/admin/stt_providers_app/config/db.php" ]] || { echo "FALTA configuración Stt Providers"; fail=1; }
+fi
+if [[ "$CHECK_ZYNERDESK" == 1 ]]; then
+  [[ -f /etc/zynervox/zynerdesk.conf ]] || { echo "FALTA configuración Zynerdesk"; fail=1; }
 fi
 if [[ ! -f /etc/astguiclient.conf && ! -f /etc/zynervox/astguiclient.conf ]]; then
   echo "AVISO: falta configuración de base"

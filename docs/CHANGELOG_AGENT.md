@@ -706,3 +706,22 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-10-02 08:16 - zynerdesk_AGENT - zynerdesk
+
+Tipo: feature
+
+Resumen:
+Alta del modulo zynerdesk: compose.yml, installer/zynerdesk.sh, proxy Apache, flag --with-zynerdesk, entrada de sidebar. Stack de prueba viejo synervox-remoteo-test eliminado.
+
+Motivo:
+Integrar supervision remota (Synervox Remoteo 2.0.2, digest fijado) como area Zynerdesk de Zynervox, reproducible desde GitHub.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido

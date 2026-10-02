@@ -1,5 +1,10 @@
 # Roadmap
 
+- Zynerdesk: descargar/publicar el agente Windows
+  (`miguelleonh0331/synervox-remoteo-agent`) y conectar el flujo de alta de
+  equipos. Expresamente pendiente, no implementado en esta etapa.
+- Zynerdesk: evaluar integración nativa vía API (como WhatsApp con SSO) en vez
+  de proxy del frontend completo, si el upstream expone un mecanismo SSO.
 - Construir el módulo separado de Operaciones WhatsApp: conversaciones, contactos, campañas, listas y envíos.
 - Ejecutar el gate E2E con una empresa, línea Meta y destinatario exclusivos de laboratorio.
 - Reconstruir y publicar la imagen Zynerwaba con los overrides integrados; eliminar parches de runtime cuando la imagen verificada los sustituya.
