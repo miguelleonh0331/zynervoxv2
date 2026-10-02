@@ -151,6 +151,14 @@ Inicio de sesión único, sin credenciales compartidas:
 En instalaciones HTTP de laboratorio se usa `ZYNERDESK_COOKIE_SECURE=0` con
 `ZYNERDESK_COOKIE_SAME_SITE=Lax`. En producción HTTPS debe usarse `Secure=1`.
 
+### Validación en mirmidon (2026-10-02)
+
+- `installer/zynerdesk.sh install-proxy` sincronizó el secreto de `.env` hacia
+  `/etc/zynervox/zynerdesk.conf`, sin mostrarlo ni regenerarlo.
+- El archivo quedó `root:www` con permisos `0640`.
+- App y MySQL quedaron saludables; el endpoint SSO publicado por Apache
+  respondió `403` ante un cuerpo sin firma, comportamiento esperado.
+
 ## Notas para agentes
 
 Antes de modificar este módulo, leer en orden:
