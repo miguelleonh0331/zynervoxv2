@@ -9,6 +9,26 @@ Incluye los módulos administrativos WhatsApp, Farm y Stt Providers. WhatsApp se
 ejecuta en Docker; Farm y Stt Providers se integran en el host y reutilizan el
 login principal de Zynervox.
 
+## Desarrollo y fuente de verdad
+
+La copia local oficial de trabajo en Windows está ubicada en:
+
+```text
+E:\servidores\zynerdesk\proyectos\zynervoxv2
+```
+
+Esta carpeta se utiliza para desarrollo, reconstrucción, pruebas, documentación
+y control de versiones. La ruta es una referencia del entorno del propietario;
+otros colaboradores pueden clonar el repositorio en otra ubicación.
+
+Todo cambio se prepara y valida localmente antes de publicarse. GitHub es la
+fuente de verdad del código distribuido: las instalaciones en servidores parten
+de un tag o commit publicado, o de una imagen Docker inmutable fijada por digest.
+No se despliega código mediante SFTP, SCP, copias manuales ni edición directa en
+el servidor. Después de instalar solo se realizan verificaciones remotas; cualquier
+corrección vuelve al flujo local, Git y publicación. Los secretos y datos operativos
+permanecen fuera del repositorio.
+
 ## Instalación
 
 ```bash

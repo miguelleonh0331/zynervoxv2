@@ -344,3 +344,37 @@ Contrato HTTP Zynerdesk, configuración del instalador, Compose y vista integrad
 
 Seguimiento:
 Publicar imagen inmutable, fijar digest y validar E2E en mirmidon.
+
+### ADR-0015 - Desarrollo local y despliegue exclusivo desde artefactos publicados
+
+Fecha: 2026-10-02
+
+Estado: aceptada
+
+Contexto:
+Las copias manuales y las ediciones directas en servidores crean diferencias no
+trazables entre el repositorio, las imágenes y las instalaciones.
+
+Decisión:
+Usar `E:\servidores\zynerdesk\proyectos\zynervoxv2` como copia local oficial del
+propietario para desarrollo, reconstrucción, pruebas y documentación. Publicar
+todo cambio aprobado en GitHub y desplegar servidores exclusivamente desde un tag
+o commit publicado, o desde una imagen Docker inmutable fijada por digest. No usar
+SFTP, SCP, copias manuales ni edición directa de código en servidores. Las pruebas
+previas son locales; después del despliegue solo se valida el artefacto instalado.
+
+Motivo:
+Mantener una única fuente de verdad, permitir reconstrucciones reproducibles y
+conservar trazabilidad y rollback por Git o digest.
+
+Alternativas evaluadas:
+- Copiar archivos modificados directamente al servidor.
+- Corregir el código sobre una instalación ya desplegada.
+
+Impacto:
+Flujo transversal de desarrollo, publicación y despliegue. No cambia contratos ni
+lógica de aplicación. Secretos y datos operativos continúan fuera de Git.
+
+Seguimiento:
+Verificar en cada despliegue el commit, tag o digest instalado y registrar el
+resultado de las pruebas remotas.

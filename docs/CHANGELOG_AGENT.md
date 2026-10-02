@@ -801,3 +801,27 @@ Contrato:
 
 Riesgos:
 Producción HTTPS debe cambiar ZYNERDESK_COOKIE_SECURE a 1
+
+### 2026-10-02 17:40 - ARCHITECT_AGENT - transversal
+
+Tipo: docs
+
+Resumen:
+Documentar la copia local oficial y el flujo de publicación y despliegue sin SFTP,
+SCP, copias manuales ni ediciones directas en servidores.
+
+Motivo:
+Mantener GitHub y las imágenes inmutables como fuentes únicas de toda instalación
+y evitar diferencias no versionadas entre entornos.
+
+Archivos modificados:
+- README.md
+- docs/DEPLOYMENT.md
+- docs/DECISIONS.md
+- docs/CHANGELOG_AGENT.md
+
+Contrato:
+- sin cambios; decisión registrada en ADR-0015
+
+Riesgos:
+- la ruta local documentada es específica del entorno Windows del propietario
