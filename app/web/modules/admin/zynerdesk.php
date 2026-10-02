@@ -67,6 +67,29 @@ function renderZynerdeskBody(string $html, string $proxyBase): string
     return $body;
 }
 
+// El upstream carga leaflet.css con un <link> en su <head>. Como aqui solo se
+// embebe su <body>, esa hoja se perdia y Leaflet quedaba sin el
+// `position:absolute` de sus tiles: el mapa se dibujaba con los mosaicos
+// sueltos y descuadrados. Se reemiten los <link rel="stylesheet"> externos del
+// head conservando integrity/crossorigin. Leaflet usa el prefijo .leaflet-*,
+// asi que no interfiere con el shell de Zynervox.
+function extractZynerdeskHeadLinks(string $html): string
+{
+    if (!preg_match('~<head[^>]*>(.*?)</head>~is', $html, $head)) {
+        return '';
+    }
+    if (!preg_match_all('~<link[^>]*rel=["\']stylesheet["\'][^>]*>~i', $head[1], $links)) {
+        return '';
+    }
+    $out = '';
+    foreach ($links[0] as $link) {
+        if (preg_match('~href=["\'](https?://[^"\']+)["\']~i', $link)) {
+            $out .= $link . "\n";
+        }
+    }
+    return $out;
+}
+
 function extractZynerdeskStyle(string $html): string
 {
     if (!preg_match_all('~<style[^>]*>(.*?)</style>~is', $html, $m)) {
@@ -90,6 +113,7 @@ $zynerdeskBody = $zynerdeskHtml !== ''
     ? renderZynerdeskBody($zynerdeskHtml, $proxyBase)
     : '<p class="integration-error">Zynerdesk no respondió. Verifique el contenedor y el proxy Apache.</p>';
 $zynerdeskCss = extractZynerdeskStyle($zynerdeskHtml);
+$zynerdeskHeadLinks = extractZynerdeskHeadLinks($zynerdeskHtml);
 ?>
 <!doctype html>
 <html lang="es">
@@ -99,6 +123,7 @@ $zynerdeskCss = extractZynerdeskStyle($zynerdeskHtml);
     <title>Zynerdesk - Zynervox</title>
     <link rel="stylesheet" href="layout.css">
     <link rel="stylesheet" href="integration-shell.css">
+    <?= $zynerdeskHeadLinks ?>
     <style>
         /* El upstream esperaba ser el documento completo; aqui es un bloque
            dentro del shell. Se fija ancho completo para que su layout interno
@@ -117,6 +142,15 @@ $zynerdeskCss = extractZynerdeskStyle($zynerdeskHtml);
     <section class="integration-native zynerdesk-native">
         <?= $zynerdeskBody ?>
     </section>
+    <script>
+    // El upstream solo recalcula el mapa al mostrarlo/ocultarlo. Aqui vive en
+    // un contenedor flex que fija su ancho despues de que Leaflet se inicializa,
+    // asi que se emite un resize (Leaflet lo escucha y hace invalidateSize) una
+    // vez que terminaron de cargar hoja de estilos e imagenes.
+    window.addEventListener('load', function () {
+        window.dispatchEvent(new Event('resize'));
+    });
+    </script>
 </div>
 </body>
 </html>
