@@ -82,7 +82,7 @@ abre esa bandeja. Las sesiones permanecen separadas en esta primera integración
 ## Zynerdesk (soporte remoto)
 
 Synervox Remoteo se ejecuta como servicio Docker independiente con MySQL 8.4
-propio. La imagen `miguelleonh0331/synervox-remoteov2` se descarga publicada,
+propio. La imagen `ghcr.io/miguelleonh0331/synervox-remoteo` se descarga publicada,
 fijada por digest (nunca por etiqueta flotante); no se construye localmente.
 Sus secretos se generan en `zynerdesk/.env`, excluido de Git.
 

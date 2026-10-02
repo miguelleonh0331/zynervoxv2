@@ -17,7 +17,8 @@ el sidebar, sin iframe y sin tocar otros módulos.
   upstream, que la página embebida consume desde el navegador.
 - `${ZYNERDESK_BASE_PATH}/ws`: WebSocket, proxyeado con `upgrade=websocket`.
 - `/etc/zynervox/zynerdesk.conf`: contrato de configuración entre el
-  instalador y la web. Claves `ZYNERDESK_BASE_PATH` y `ZYNERDESK_PORT`. Lo
+  instalador y la web. Claves `ZYNERDESK_BASE_PATH`, `ZYNERDESK_PORT` y
+  `ZYNERVOX_SSO_SECRET`. Lo
   escribe `installer/zynerdesk.sh install-proxy` con permisos
   `root:<grupo web> 0640`.
 
@@ -51,7 +52,7 @@ Este módulo puede depender de:
 - Apache como proxy de la ruta pública (`mod_proxy`, `mod_proxy_http`,
   `mod_proxy_wstunnel`);
 - PHP con `curl`, para traer el upstream server-side;
-- la imagen publicada `miguelleonh0331/synervox-remoteov2` fijada por digest.
+- la imagen publicada `ghcr.io/miguelleonh0331/synervox-remoteo` fijada por digest.
 
 ## Dependencias prohibidas
 
@@ -75,6 +76,8 @@ Este módulo garantiza que:
 - las migraciones son idempotentes (tabla `schema_migrations` del upstream);
 - la vista embebida no altera el documento del upstream en el contenedor: toda
   la adaptación ocurre en memoria, al servir la página;
+- la sesión administrativa Zynervox se intercambia por una sesión Zynerdesk
+  mediante un token HMAC efímero; nunca se comparte la contraseña;
 - el CSS del upstream queda confinado en `@scope (.zynerdesk-native)` y no
   altera el resto del panel.
 

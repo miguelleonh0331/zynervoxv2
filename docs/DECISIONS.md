@@ -320,3 +320,27 @@ Impacto:
 
 Seguimiento:
 (ninguno)
+
+### ADR-0014 - SSO firmado entre Zynervox y Zynerdesk
+
+Fecha: 2026-10-02
+
+Estado: aceptada
+
+Contexto:
+La integración visual Zynerdesk exigía un segundo login aunque el operador ya estaba autenticado como administrador Zynervox.
+
+Decisión:
+Zynervox emite claims nivel 9 HMAC-SHA256 por 60 segundos y Zynerdesk los intercambia por su sesión sid normal. El login directo se conserva para recuperación.
+
+Motivo:
+Evita compartir contraseñas y mantiene protegidos API, RBAC y WebSocket.
+
+Alternativas evaluadas:
+- Quitar autenticación; compartir contraseña administrativa.
+
+Impacto:
+Contrato HTTP Zynerdesk, configuración del instalador, Compose y vista integrada.
+
+Seguimiento:
+Publicar imagen inmutable, fijar digest y validar E2E en mirmidon.

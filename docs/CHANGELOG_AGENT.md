@@ -744,3 +744,22 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-10-02 11:14 - ARCHITECT_AGENT - zynerdesk
+
+Tipo: feature
+
+Resumen:
+Integrar SSO automático desde la sesión administrativa Zynervox
+
+Motivo:
+Eliminar el segundo formulario de login sin desactivar la seguridad propia de Zynerdesk
+
+Archivos modificados:
+- app/web/modules/admin/zynerdesk.php,installer/zynerdesk.sh,zynerdesk/compose.yml,src/features/zynerdesk/README.md,src/features/zynerdesk/CONTRACT.md,docs/ROADMAP.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+La integración depende de que el secreto HMAC coincida entre PHP y el contenedor; el login directo queda como fallback

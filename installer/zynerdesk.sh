@@ -37,7 +37,7 @@ generate_env() {
   local project_name="${ZYNERDESK_COMPOSE_PROJECT_OVERRIDE:-zynervox-zynerdesk}"
   cat > "$ENV_FILE" <<EOF
 COMPOSE_PROJECT_NAME=$project_name
-ZYNERDESK_IMAGE=miguelleonh0331/synervox-remoteov2@sha256:0c6f400c6385ca08840ec0282698a5750d21b5c85c8f41d98cf65078d272783b
+ZYNERDESK_IMAGE=ghcr.io/miguelleonh0331/synervox-remoteo@sha256:7836bcdecba9514c4c0156790cb0e375f9e42d7a9cec97816628ea50057ef50c
 ZYNERDESK_BIND_HOST=127.0.0.1
 ZYNERDESK_PORT=$port
 ZYNERDESK_BASE_PATH=$base_path
@@ -47,7 +47,16 @@ ZYNERDESK_DB_PASSWORD=$(openssl rand -hex 24)
 ZYNERDESK_DB_ROOT_PASSWORD=$(openssl rand -hex 24)
 ZYNERDESK_ADMIN_USER=admin
 ZYNERDESK_ADMIN_PASSWORD=$(openssl rand -hex 12)
+ZYNERVOX_SSO_SECRET=$(openssl rand -hex 32)
 EOF
+}
+
+ensure_sso_env() {
+  [[ -f "$ENV_FILE" ]] || return
+  grep -q '^ZYNERVOX_SSO_SECRET=' "$ENV_FILE" || {
+    umask 077
+    printf 'ZYNERVOX_SSO_SECRET=%s\n' "$(openssl rand -hex 32)" >> "$ENV_FILE"
+  }
 }
 
 load_env() {
@@ -74,13 +83,13 @@ wait_app() {
 action="${1:-}"
 case "$action" in
   init)
-    require_runtime; generate_env; load_env
+    require_runtime; generate_env; ensure_sso_env; load_env
     compose pull app
     compose up -d --force-recreate
     wait_app
     echo "ZYNERDESK_READY host=$ZYNERDESK_BIND_HOST port=$ZYNERDESK_PORT path=$ZYNERDESK_BASE_PATH"
     ;;
-  up) require_runtime; load_env; compose up -d; wait_app ;;
+  up) require_runtime; ensure_sso_env; load_env; compose up -d; wait_app ;;
   status) require_runtime; load_env; compose ps ;;
   credentials)
     load_env
@@ -88,7 +97,7 @@ case "$action" in
       "$ZYNERDESK_ADMIN_USER" "$ZYNERDESK_ADMIN_PASSWORD" "$ZYNERDESK_BASE_PATH"
     ;;
   install-proxy)
-    load_env
+    ensure_sso_env; load_env
     web_group=www-data
     getent group "$web_group" >/dev/null || web_group=www
     getent group "$web_group" >/dev/null || web_group=root
@@ -109,7 +118,8 @@ case "$action" in
     sudo apache2ctl configtest
     sudo systemctl reload apache2
     sudo install -d -o root -g "$web_group" -m 0750 /etc/zynervox
-    printf 'ZYNERDESK_BASE_PATH=%s\nZYNERDESK_PORT=%s\n' "$ZYNERDESK_BASE_PATH" "$ZYNERDESK_PORT" | sudo tee /etc/zynervox/zynerdesk.conf >/dev/null
+    printf 'ZYNERDESK_BASE_PATH=%s\nZYNERDESK_PORT=%s\nZYNERVOX_SSO_SECRET=%s\n' \
+      "$ZYNERDESK_BASE_PATH" "$ZYNERDESK_PORT" "$ZYNERVOX_SSO_SECRET" | sudo tee /etc/zynervox/zynerdesk.conf >/dev/null
     sudo chown root:"$web_group" /etc/zynervox/zynerdesk.conf
     sudo chmod 0640 /etc/zynervox/zynerdesk.conf
     echo "ZYNERDESK_PROXY_READY path=$ZYNERDESK_BASE_PATH port=$ZYNERDESK_PORT"

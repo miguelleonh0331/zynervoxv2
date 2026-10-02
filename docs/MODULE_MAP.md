@@ -2,7 +2,7 @@
 
 Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 
-Última generación: 2026-10-02 10:37
+Última generación: 2026-10-02 11:16
 
 ## Módulos
 
@@ -40,4 +40,4 @@ Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 | zynerdesk | MySQL 8.4 propio (volumen `zynerdesk_mysql`, no compartido); | módulo inexistente |
 | zynerdesk | Apache como proxy de la ruta pública (`mod_proxy`, `mod_proxy_http`, | módulo inexistente |
 | zynerdesk | PHP con `curl`, para traer el upstream server-side; | módulo inexistente |
-| zynerdesk | la imagen publicada `miguelleonh0331/synervox-remoteov2` fijada por digest | módulo inexistente |
+| zynerdesk | la imagen publicada `ghcr.io/miguelleonh0331/synervox-remoteo` fijada por digest | módulo inexistente |

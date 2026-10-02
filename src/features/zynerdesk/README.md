@@ -9,9 +9,9 @@ repositorio central.
 
 ## Origen y versión upstream
 
-- Imagen: `miguelleonh0331/synervox-remoteov2`
-- Versión fijada: `2.0.2`
-- Digest inmutable: `sha256:0c6f400c6385ca08840ec0282698a5750d21b5c85c8f41d98cf65078d272783b`
+- Imagen: `ghcr.io/miguelleonh0331/synervox-remoteo`
+- Revisión fijada: `77155e70051c9714332a2caeb785a60a650da041`
+- Digest inmutable: `sha256:7836bcdecba9514c4c0156790cb0e375f9e42d7a9cec97816628ea50057ef50c`
 - Stack real: Node.js 22, `ws` (WebSocket), `mysql2`, `bcrypt`, `dotenv`.
 - Migraciones y usuario admin inicial se aplican solos al arrancar
   (`scripts/start.js`, idempotente vía tabla `schema_migrations`).
@@ -62,7 +62,7 @@ integración: `zynerdesk/compose.yml`, `installer/zynerdesk.sh`,
 El usuario rechazó el iframe y pidió que Zynerdesk se vea como el resto de
 módulos: un solo sidebar, un solo encabezado y un solo scroll.
 
-El upstream `2.0.2` no ofrece SSO ni una variable de `base path`: sirve rutas
+El upstream fijado no ofrece una variable de `base path`: sirve rutas
 relativas al documento que las contiene. Por eso `zynerdesk.php`:
 
 1. descarga por HTTP desde `127.0.0.1:<puerto>` la página pedida (igual que
@@ -127,7 +127,7 @@ aparece en la vista embebida, no en el contenedor: comparar siempre contra
 - MySQL 8.4 propio (contenedor `db` del compose), sin compartir con otros módulos.
 - Apache con `mod_proxy`, `mod_proxy_http`, `mod_proxy_wstunnel`.
 - PHP con `curl` (la vista integrada descarga el upstream server-side).
-- Imagen `miguelleonh0331/synervox-remoteov2@sha256:0c6f...783b`.
+- Imagen `ghcr.io/miguelleonh0331/synervox-remoteo@sha256:7836bcdecba9514c4c0156790cb0e375f9e42d7a9cec97816628ea50057ef50c`.
 
 ## Casos principales
 
@@ -140,14 +140,13 @@ aparece en la vista embebida, no en el contenedor: comparar siempre contra
 
 ## Autenticación
 
-Doble puerta, sin credenciales compartidas:
+Inicio de sesión único, sin credenciales compartidas:
 
 - `zynerdesk.php` exige sesión administrativa de Zynervox (`Auth::checkAccess(9)`);
-- el upstream mantiene su propio login, con el usuario admin generado durante
-  la instalación (`installer/zynerdesk.sh credentials`).
-
-No hay SSO en esta etapa porque el upstream `2.0.2` no expone un mecanismo
-equivalente al de WhatsApp. Está anotado en `docs/ROADMAP.md`.
+- genera claims nivel 9 firmados con `ZYNERVOX_SSO_SECRET` y vencimiento de 60 segundos;
+- el upstream intercambia la firma en `POST /api/auth/zynervox-sso` por su cookie
+  `sid` normal, preservando RBAC, API y WebSocket autenticados;
+- el login directo de Zynerdesk permanece como acceso de recuperación.
 
 ## Notas para agentes
 

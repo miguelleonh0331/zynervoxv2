@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../includes/Auth.php';
 // installer/zynerdesk.sh install-proxy en /etc/zynervox/zynerdesk.conf.
 $zynerdeskBasePath = '/zynerdesk';
 $zynerdeskPort = '';
+$zynerdeskSsoSecret = '';
 $zynerdeskConfigFile = '/etc/zynervox/zynerdesk.conf';
 if (is_readable($zynerdeskConfigFile)) {
     foreach (file($zynerdeskConfigFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
@@ -14,6 +15,9 @@ if (is_readable($zynerdeskConfigFile)) {
         }
         if (strpos($line, 'ZYNERDESK_PORT=') === 0) {
             $zynerdeskPort = trim(substr($line, strlen('ZYNERDESK_PORT=')));
+        }
+        if (strpos($line, 'ZYNERVOX_SSO_SECRET=') === 0) {
+            $zynerdeskSsoSecret = trim(substr($line, strlen('ZYNERVOX_SSO_SECRET=')));
         }
     }
 }
@@ -32,6 +36,21 @@ $ZYNERDESK_VIEWS = [
 ];
 $view = isset($_GET['view']) && isset($ZYNERDESK_VIEWS[$_GET['view']]) ? $_GET['view'] : 'panel';
 $viewPath = $ZYNERDESK_VIEWS[$view]['path'];
+$zynerdeskSso = null;
+if (strlen($zynerdeskSsoSecret) >= 32) {
+    $claims = [
+        'user' => (string)($_SESSION['user'] ?? ''),
+        'name' => (string)($_SESSION['full_name'] ?? $_SESSION['user'] ?? ''),
+        'level' => (int)($_SESSION['user_level'] ?? 0),
+        'exp' => time() + 60,
+    ];
+    $json = json_encode($claims, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $payload = rtrim(strtr(base64_encode($json), '+/', '-_'), '=');
+    $zynerdeskSso = [
+        'payload' => $payload,
+        'signature' => hash_hmac('sha256', $payload, $zynerdeskSsoSecret),
+    ];
+}
 // Carpeta del documento dentro del upstream, para resolver sus rutas relativas.
 // Se calcula con corte de cadena y no con dirname(), que en Windows devuelve
 // separadores "\" y corromperia la URL.
@@ -242,6 +261,11 @@ function zynerdeskInlineScripts(string $body, string $port, string $baseDir, str
 $zynerdeskHtml = fetchZynerdesk($zynerdeskPort, $viewPath);
 if ($zynerdeskHtml !== '') {
     $zynerdeskBody = renderZynerdeskBody($zynerdeskHtml, $viewDir, $proxyBase, $ZYNERDESK_VIEWS);
+    if ($zynerdeskSso !== null) {
+        $ssoJson = json_encode($zynerdeskSso, JSON_UNESCAPED_SLASHES);
+        $endpointJson = json_encode($proxyBase . 'api/auth/zynervox-sso', JSON_UNESCAPED_SLASHES);
+        $zynerdeskBody = '<script>window.ZYNERDESK_SSO_READY=fetch(' . $endpointJson . ',{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(' . $ssoJson . ')}).then(function(r){if(!r.ok)throw new Error("SSO Zynerdesk HTTP "+r.status);return r.json();});</script>' . $zynerdeskBody;
+    }
     $zynerdeskBody = zynerdeskInlineScripts($zynerdeskBody, $zynerdeskPort, $viewDir, $proxyBase);
 } else {
     $zynerdeskBody = '<p class="integration-error">Zynerdesk no respondió. Verifique el contenedor y el proxy Apache.</p>';
