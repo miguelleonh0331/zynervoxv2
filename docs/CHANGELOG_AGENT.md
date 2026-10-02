@@ -725,3 +725,22 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-10-02 10:35 - ARCHITECT_AGENT - zynerdesk
+
+Tipo: fix
+
+Resumen:
+Zynerdesk se embebe en el shell de Zynervox mediante composicion server-side con lista blanca de vistas (panel, supervicion, usuarios, remoteo); documentacion del modulo, contrato, agente, arquitectura y flujo alineados con lo implementado.
+
+Motivo:
+La navegacion al proxy sacaba al operador del panel; ademas la documentacion describia un enfoque de integracion que no es el que quedo en codigo.
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido

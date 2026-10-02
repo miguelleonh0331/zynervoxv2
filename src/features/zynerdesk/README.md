@@ -15,8 +15,8 @@ repositorio central.
 - Stack real: Node.js 22, `ws` (WebSocket), `mysql2`, `bcrypt`, `dotenv`.
 - Migraciones y usuario admin inicial se aplican solos al arrancar
   (`scripts/start.js`, idempotente vía tabla `schema_migrations`).
-- El frontend calcula su `BASE` desde `location.pathname` (no hay variable
-  `BASE_PATH`): ya soporta montarse bajo una subruta sin tocar la imagen.
+- La imagen no se construye localmente: se descarga publicada y se fija por
+  digest. No usar etiquetas flotantes.
 
 ## Responsabilidad
 
@@ -24,18 +24,20 @@ Este módulo se encarga de:
 
 - el stack Docker (`zynerdesk/compose.yml`) de la app + su MySQL propio;
 - el instalador (`installer/zynerdesk.sh`, flag `--with-zynerdesk`);
-- el proxy Apache (`installer/apache-zynerdesk.conf.template`) bajo una
-  subruta propia, con WebSocket (`mod_proxy_wstunnel` + `upgrade=websocket`);
-- la entrada `Zynerdesk` en el sidebar de Zynervox
-  (`app/web/modules/admin/sidebar.php`), leyendo la ruta pública real desde
-  `/etc/zynervox/zynerdesk.conf`.
+- el proxy Apache (`installer/apache-zynerdesk.conf.template`), que publica
+  los assets, la API y el WebSocket del upstream bajo una subruta propia;
+- la vista integrada `app/web/modules/admin/zynerdesk.php`, que embebe el
+  panel dentro del shell de Zynervox;
+- la entrada `Zynerdesk` en `app/web/modules/admin/sidebar.php`.
 
 ## No responsabilidad
 
 Este módulo no se encarga de:
 
 - el agente Windows (`miguelleonh0331/synervox-remoteo-agent`): descarga y
-  distribución del `.exe` quedan expresamente pendientes para otra etapa;
+  distribución del `.exe` quedan expresamente pendientes para otra etapa.
+  Los enlaces de descarga del upstream se retiran de la vista embebida porque
+  además esta imagen no sirve `/downloads`;
 - VICIdial, WhatsApp, Farm ni Stt Providers: no comparte tablas ni credenciales
   con ningún otro módulo.
 
@@ -50,35 +52,102 @@ tests/      pruebas del módulo
 
 En este módulo `api/services/models/tests` quedan vacíos a propósito: la
 lógica de aplicación vive en la imagen Docker upstream, no en este
-repositorio. Lo que sí es código propio del módulo son los artefactos de
-despliegue: `zynerdesk/compose.yml`, `installer/zynerdesk.sh`,
-`installer/apache-zynerdesk.conf.template` y la entrada de sidebar.
+repositorio. El código propio del módulo son los artefactos de despliegue e
+integración: `zynerdesk/compose.yml`, `installer/zynerdesk.sh`,
+`installer/apache-zynerdesk.conf.template`,
+`app/web/modules/admin/zynerdesk.php` y la entrada de sidebar.
+
+## Cómo funciona la integración visual
+
+El usuario rechazó el iframe y pidió que Zynerdesk se vea como el resto de
+módulos: un solo sidebar, un solo encabezado y un solo scroll.
+
+El upstream `2.0.2` no ofrece SSO ni una variable de `base path`: sirve rutas
+relativas al documento que las contiene. Por eso `zynerdesk.php`:
+
+1. descarga por HTTP desde `127.0.0.1:<puerto>` la página pedida (igual que
+   Farm incluye su propio cuerpo, pero por red en vez de por `require`);
+2. extrae su `<body>` y lo reescribe: resuelve cada ruta relativa de
+   `href`/`src` contra la carpeta del documento, normalizando `./` y `../`
+   como lo haría el navegador, y la convierte en una ruta absoluta del proxy;
+3. reemite los `<link rel="stylesheet">` externos de su `<head>`;
+4. inyecta su CSS dentro de `@scope (.zynerdesk-native)` para no contaminar
+   el shell;
+5. lo envuelve en el encabezado y el sidebar de Zynervox.
+
+Así el navegador pide los assets, la API y el WebSocket directamente al proxy
+público, pero la página que los contiene es una página de Zynervox.
+
+### Vistas
+
+`zynerdesk.php?view=<clave>` embebe una página del upstream. Las vistas con
+`tab => true` aparecen como pestañas en la cabecera; `remoteo` es contextual y
+se alcanza desde el panel.
+
+| Vista | Página upstream | Pestaña |
+|---|---|---|
+| `panel` (por defecto) | `index.html` | sí |
+| `supervicion` | `supervicion/index.html` | sí |
+| `usuarios` | `admin.html` | sí |
+| `remoteo` | `remoteo.html` | no, contextual |
+
+Los enlaces del upstream que apuntan a una de estas páginas se reescriben de
+vuelta al shell, y se les retira `target="_blank"`, para que la navegación no
+se salga del panel. Cualquier otra ruta va al proxy.
+
+Para agregar una vista basta con sumarla a `$ZYNERDESK_VIEWS`: la resolución
+de rutas es genérica y no requiere reglas nuevas.
+
+### Trampas conocidas del upstream
+
+Documentadas porque volverán a aparecer al actualizar la imagen:
+
+- **`leaflet.css` vive en el `<head>`.** Al embeber solo el `<body>` se perdía
+  y los tiles del mapa quedaban sin `position:absolute`, descuadrados. Por eso
+  se reemiten los `<link>` del head conservando `integrity` y `crossorigin`.
+- **La paleta se declara en `:root` y el fondo en `body`.** Dentro de
+  `@scope` ninguno de los dos coincide con un elemento del scope, así que las
+  variables quedaban sin definir y la vista se veía lavada. Ambos se reescriben
+  a `:scope`.
+- **`supervicion/app.js` fija su base con
+  `location.pathname.split("/supervicion")`**, que embebido no existe. Ese
+  script se trae y se inyecta en línea con `API_BASE` y `APP_BASE` apuntando a
+  la ruta real del proxy, o su API y su WebSocket quedan rotos.
+- **El query no se normaliza junto con la ruta.** `Remotear` identifica al
+  equipo con `?agent=...`; resolver `../` es cosa del path y los parámetros se
+  conservan aparte.
+
+Si una actualización del upstream cambia alguno de estos supuestos, el síntoma
+aparece en la vista embebida, no en el contenedor: comparar siempre contra
+`http://127.0.0.1:<puerto>/` directo antes de tocar el rewrite.
 
 ## Dependencias principales
 
 - Docker + Docker Compose en el host.
 - MySQL 8.4 propio (contenedor `db` del compose), sin compartir con otros módulos.
 - Apache con `mod_proxy`, `mod_proxy_http`, `mod_proxy_wstunnel`.
+- PHP con `curl` (la vista integrada descarga el upstream server-side).
 - Imagen `miguelleonh0331/synervox-remoteov2@sha256:0c6f...783b`.
 
 ## Casos principales
 
-- Admin entra a Zynervox, hace clic en `Zynerdesk` en el sidebar, navega
-  (sin iframe) a la app proxyeada bajo su subruta pública.
-- La app resuelve login, WebSocket y assets solos porque calculan su base
-  dinámicamente desde la URL real.
+- Admin entra a Zynervox, hace clic en `Zynerdesk` y ve el panel dentro del
+  shell, con pestañas para Panel, Supervisión múltiple y Usuarios.
+- Desde el panel abre `Remotear` sobre un equipo concreto, sin salir de
+  Zynervox.
 - Instalación/actualización vía `installer/zynerdesk.sh init|up|install-proxy`,
   idempotente, sin perder el volumen de datos.
 
-## Integración visual (decisión de etapa 1)
+## Autenticación
 
-Se eligió la opción 2 del orden de preferencia del usuario: proxy inverso
-bajo el mismo dominio, conservando el frontend completo del upstream durante
-esta primera etapa (sin iframe). La app no comparte sesión con Zynervox
-(login propio, usuario admin generado en la instalación). Integración nativa
-vía API (como hace WhatsApp con SSO) queda documentada como mejora futura en
-`docs/ROADMAP.md`, porque el upstream `2.0.2` no expone un mecanismo SSO
-equivalente.
+Doble puerta, sin credenciales compartidas:
+
+- `zynerdesk.php` exige sesión administrativa de Zynervox (`Auth::checkAccess(9)`);
+- el upstream mantiene su propio login, con el usuario admin generado durante
+  la instalación (`installer/zynerdesk.sh credentials`).
+
+No hay SSO en esta etapa porque el upstream `2.0.2` no expone un mecanismo
+equivalente al de WhatsApp. Está anotado en `docs/ROADMAP.md`.
 
 ## Notas para agentes
 

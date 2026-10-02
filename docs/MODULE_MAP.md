@@ -2,7 +2,7 @@
 
 Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 
-Última generación: 2026-10-02 08:16
+Última generación: 2026-10-02 10:37
 
 ## Módulos
 
@@ -35,7 +35,9 @@ Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 | whatsapp | Imagen integrada `miguelleonh0331/zynerwabav2:2.1.0-zynervox`, construida | módulo inexistente |
 | whatsapp | MySQL 8.4 y el esquema saneado versionado | módulo inexistente |
 | whatsapp | Apache como proxy de la ruta pública | módulo inexistente |
+| zynerdesk | la sesión administrativa de Zynervox mediante `Includes\Auth`; | módulo inexistente |
 | zynerdesk | Docker y Docker Compose del host; | módulo inexistente |
 | zynerdesk | MySQL 8.4 propio (volumen `zynerdesk_mysql`, no compartido); | módulo inexistente |
 | zynerdesk | Apache como proxy de la ruta pública (`mod_proxy`, `mod_proxy_http`, | módulo inexistente |
+| zynerdesk | PHP con `curl`, para traer el upstream server-side; | módulo inexistente |
 | zynerdesk | la imagen publicada `miguelleonh0331/synervox-remoteov2` fijada por digest | módulo inexistente |

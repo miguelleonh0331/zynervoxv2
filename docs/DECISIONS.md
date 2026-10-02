@@ -296,3 +296,27 @@ Impacto:
 
 Seguimiento:
 (ninguno)
+
+### ADR-0013 - Zynerdesk se embebe por composicion server-side, no por navegacion al proxy
+
+Fecha: 2026-10-02
+
+Estado: aceptada
+
+Contexto:
+ADR-0012 dejo abierta la forma de integracion visual y se asumio publicar el frontend del upstream por proxy. Al probarlo, el panel salia del shell de Zynervox: se perdia el sidebar y Supervision multiple y Remotear abrian fuera del panel. El upstream 2.0.2 no expone SSO ni una variable de base path y sirve rutas relativas al documento.
+
+Decisión:
+modules/admin/zynerdesk.php descarga la pagina del upstream por HTTP server-side, resuelve sus rutas relativas de href/src contra la carpeta del documento, reemite las hojas de estilo externas de su head, confina su CSS en @scope y la embebe en el shell. Las paginas visibles se declaran en una lista blanca de vistas (panel, supervicion, usuarios, remoteo); los enlaces del upstream hacia ellas se reescriben de vuelta al shell y pierden target=_blank. El proxy Apache se conserva para assets, API y WebSocket.
+
+Motivo:
+Es la unica forma de cumplir un solo sidebar, encabezado y scroll sin iframe y sin modificar la imagen del upstream. La resolucion de rutas es generica, de modo que una vista nueva no exige reglas de reescritura propias, y la adaptacion ocurre en memoria al servir la pagina, nunca editando el contenedor.
+
+Alternativas evaluadas:
+- (ninguna registrada)
+
+Impacto:
+(pendiente)
+
+Seguimiento:
+(ninguno)

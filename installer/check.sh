@@ -42,7 +42,22 @@ if [[ "$CHECK_STT_PROVIDERS" == 1 ]]; then
   [[ -f "$WEB_ROOT/modules/admin/stt_providers_app/config/db.php" ]] || { echo "FALTA configuración Stt Providers"; fail=1; }
 fi
 if [[ "$CHECK_ZYNERDESK" == 1 ]]; then
-  [[ -f /etc/zynervox/zynerdesk.conf ]] || { echo "FALTA configuración Zynerdesk"; fail=1; }
+  [[ -f "$WEB_ROOT/modules/admin/zynerdesk.php" ]] || { echo "FALTA módulo Zynerdesk"; fail=1; }
+  if [[ -f /etc/zynervox/zynerdesk.conf ]]; then
+    # La vista integrada arma la pagina pidiendosela al contenedor por
+    # loopback, asi que necesita el puerto publicado y la extension curl.
+    zynerdesk_port="$(sed -n 's/^ZYNERDESK_PORT=//p' /etc/zynervox/zynerdesk.conf)"
+    if [[ -z "$zynerdesk_port" ]]; then
+      echo "FALTA ZYNERDESK_PORT en /etc/zynervox/zynerdesk.conf; reejecute zynerdesk.sh install-proxy"
+      fail=1
+    elif command -v curl >/dev/null 2>&1 && ! curl -fsS --max-time 5 "http://127.0.0.1:${zynerdesk_port}/login.html" >/dev/null 2>&1; then
+      echo "AVISO: Zynerdesk no respondió en 127.0.0.1:${zynerdesk_port}"
+      warn=1
+    fi
+  else
+    echo "FALTA configuración Zynerdesk"
+    fail=1
+  fi
 fi
 if [[ ! -f /etc/astguiclient.conf && ! -f /etc/zynervox/astguiclient.conf ]]; then
   echo "AVISO: falta configuración de base"
