@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ZYNERDESK_DIR="$ROOT/zynerdesk"
 ENV_FILE="$ZYNERDESK_DIR/.env"
+ZYNERDESK_DEFAULT_IMAGE="ghcr.io/miguelleonh0331/synervox-remoteo@sha256:7836bcdecba9514c4c0156790cb0e375f9e42d7a9cec97816628ea50057ef50c"
 
 usage() { echo "Uso: $0 init|up|status|credentials|install-proxy|remove-proxy|backup <archivo>|restore <archivo>|down"; }
 
@@ -37,7 +38,7 @@ generate_env() {
   local project_name="${ZYNERDESK_COMPOSE_PROJECT_OVERRIDE:-zynervox-zynerdesk}"
   cat > "$ENV_FILE" <<EOF
 COMPOSE_PROJECT_NAME=$project_name
-ZYNERDESK_IMAGE=ghcr.io/miguelleonh0331/synervox-remoteo@sha256:7836bcdecba9514c4c0156790cb0e375f9e42d7a9cec97816628ea50057ef50c
+ZYNERDESK_IMAGE=$ZYNERDESK_DEFAULT_IMAGE
 ZYNERDESK_BIND_HOST=127.0.0.1
 ZYNERDESK_PORT=$port
 ZYNERDESK_BASE_PATH=$base_path
@@ -57,6 +58,18 @@ ensure_sso_env() {
     umask 077
     printf 'ZYNERVOX_SSO_SECRET=%s\n' "$(openssl rand -hex 32)" >> "$ENV_FILE"
   }
+}
+
+sync_image_env() {
+  [[ -f "$ENV_FILE" ]] || return
+  local temp_file="${ENV_FILE}.tmp.$$"
+  awk -v image="$ZYNERDESK_DEFAULT_IMAGE" '
+    /^ZYNERDESK_IMAGE=/ { print "ZYNERDESK_IMAGE=" image; found=1; next }
+    { print }
+    END { if (!found) print "ZYNERDESK_IMAGE=" image }
+  ' "$ENV_FILE" > "$temp_file"
+  chmod 0600 "$temp_file"
+  mv -f "$temp_file" "$ENV_FILE"
 }
 
 load_env() {
@@ -83,13 +96,13 @@ wait_app() {
 action="${1:-}"
 case "$action" in
   init)
-    require_runtime; generate_env; ensure_sso_env; load_env
+    require_runtime; generate_env; ensure_sso_env; sync_image_env; load_env
     compose pull app
     compose up -d --force-recreate
     wait_app
     echo "ZYNERDESK_READY host=$ZYNERDESK_BIND_HOST port=$ZYNERDESK_PORT path=$ZYNERDESK_BASE_PATH"
     ;;
-  up) require_runtime; ensure_sso_env; load_env; compose up -d; wait_app ;;
+  up) require_runtime; ensure_sso_env; sync_image_env; load_env; compose pull app; compose up -d; wait_app ;;
   status) require_runtime; load_env; compose ps ;;
   credentials)
     load_env

@@ -763,3 +763,22 @@ Contrato:
 
 Riesgos:
 La integración depende de que el secreto HMAC coincida entre PHP y el contenedor; el login directo queda como fallback
+
+### 2026-10-02 11:17 - zynerdesk_AGENT - zynerdesk
+
+Tipo: fix
+
+Resumen:
+Actualizar instalaciones existentes al digest SSO sin recrear secretos ni volúmenes
+
+Motivo:
+El .env persistente conservaba la imagen anterior aunque el repositorio fijara un digest nuevo
+
+Archivos modificados:
+- installer/zynerdesk.sh
+
+Contrato:
+- modificado con ADR-0014
+
+Riesgos:
+La actualización depende de acceso de lectura al registro GHCR
