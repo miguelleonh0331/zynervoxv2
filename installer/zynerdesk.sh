@@ -109,7 +109,7 @@ case "$action" in
     sudo apache2ctl configtest
     sudo systemctl reload apache2
     sudo install -d -o root -g "$web_group" -m 0750 /etc/zynervox
-    printf 'ZYNERDESK_BASE_PATH=%s\n' "$ZYNERDESK_BASE_PATH" | sudo tee /etc/zynervox/zynerdesk.conf >/dev/null
+    printf 'ZYNERDESK_BASE_PATH=%s\nZYNERDESK_PORT=%s\n' "$ZYNERDESK_BASE_PATH" "$ZYNERDESK_PORT" | sudo tee /etc/zynervox/zynerdesk.conf >/dev/null
     sudo chown root:"$web_group" /etc/zynervox/zynerdesk.conf
     sudo chmod 0640 /etc/zynervox/zynerdesk.conf
     echo "ZYNERDESK_PROXY_READY path=$ZYNERDESK_BASE_PATH port=$ZYNERDESK_PORT"
