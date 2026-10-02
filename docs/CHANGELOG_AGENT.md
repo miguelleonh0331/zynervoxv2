@@ -782,3 +782,22 @@ Contrato:
 
 Riesgos:
 La actualización depende de acceso de lectura al registro GHCR
+
+### 2026-10-02 11:18 - zynerdesk_AGENT - zynerdesk
+
+Tipo: fix
+
+Resumen:
+Alinear cookie SSO con el despliegue HTTP de laboratorio
+
+Motivo:
+SameSite=None sin Secure es rechazado por navegadores y Secure no funciona sobre HTTP
+
+Archivos modificados:
+- zynerdesk/compose.yml,installer/zynerdesk.sh,src/features/zynerdesk/README.md
+
+Contrato:
+- modificado con ADR-0014
+
+Riesgos:
+Producción HTTPS debe cambiar ZYNERDESK_COOKIE_SECURE a 1

@@ -148,6 +148,9 @@ Inicio de sesión único, sin credenciales compartidas:
   `sid` normal, preservando RBAC, API y WebSocket autenticados;
 - el login directo de Zynerdesk permanece como acceso de recuperación.
 
+En instalaciones HTTP de laboratorio se usa `ZYNERDESK_COOKIE_SECURE=0` con
+`ZYNERDESK_COOKIE_SAME_SITE=Lax`. En producción HTTPS debe usarse `Secure=1`.
+
 ## Notas para agentes
 
 Antes de modificar este módulo, leer en orden:
