@@ -319,7 +319,7 @@ function register(ctx) {
         .map((c) => `${c}=VALUES(${c})`).join(', ');
       await db.prepare(
         `INSERT INTO empresa_credenciales (empresa_id, ${cols.join(', ')})
-         VALUES (${['?'].repeat(cols.length + 1).join(',')})
+         VALUES (${Array(cols.length + 1).fill('?').join(',')})
          ON DUPLICATE KEY UPDATE ${updates}, updated_at=CURRENT_TIMESTAMP`
       ).run(...params);
       await empresaAudit(empresaId, req.user.id, 'credenciales_actualizadas', {
