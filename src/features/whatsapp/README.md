@@ -103,6 +103,9 @@ separado de Operaciones WhatsApp y no aparecen en este panel administrativo.
 - `node src/features/whatsapp/tests/webhook-late-handlers.test.js` verifica que
   el POST firmado resuelva los callbacks de conversaciones y salud aunque esos
   módulos se registren después de `whatsapp`.
+- `node src/features/whatsapp/tests/inbox-legacy-backend-compat.test.js` evita
+  que rutas opcionales ausentes aborten el arranque de la bandeja y comprueba
+  que el envío de texto use el endpoint existente de mensajes del contacto.
 - `node src/features/whatsapp/tests/conversaciones-timestamp.test.js` verifica
   que la fecha del evento entrante se propague hasta la inserción del mensaje.
 - Envío/recepción Meta pendiente de configurar credenciales y líneas de prueba.

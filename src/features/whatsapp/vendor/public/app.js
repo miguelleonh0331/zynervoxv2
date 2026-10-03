@@ -113,8 +113,20 @@ async function api(path, options = {}) {
     location.reload();
     throw new Error("La sesión expiró");
   }
-  if (!response.ok) throw new Error(data.error || "Error de servidor");
+  if (!response.ok) {
+    const error = new Error(data.error || "Error de servidor");
+    error.status = response.status;
+    throw error;
+  }
   return data;
+}
+async function optionalApi(path, fallback) {
+  try {
+    return await api(path);
+  } catch (error) {
+    if (error.status === 404) return fallback;
+    throw error;
+  }
 }
 function toast(text) {
   const node = $("#toast");
@@ -473,7 +485,11 @@ async function hangupActiveCall() {
   }
 }
 async function loadClassifications() {
-  const data = await api("/classifications");
+  const data = await optionalApi("/classifications", {
+    folders: [],
+    tags: [],
+    lines: state.allLines,
+  });
   state.folders = data.folders;
   state.tags = data.tags;
   state.lines = data.lines || [];
@@ -494,7 +510,12 @@ async function loadLines() {
   populateUserFormLines();
 }
 async function loadMetrics() {
-  const m = await api("/metrics");
+  const m = await optionalApi("/metrics", {
+    open: state.contacts.filter((contact) => contact.status !== "closed").length,
+    unassigned: state.contacts.filter((contact) => contact.owner_user_id == null).length,
+    sentToday: 0,
+    receivedToday: 0,
+  });
   $("#metrics").innerHTML = [
     ["Abiertos", m.open],
     ["Sin asignar", m.unassigned],
@@ -519,7 +540,7 @@ async function loadContacts() {
   await loadMetrics();
 }
 async function loadQuickReplies() {
-  state.quickReplies = await api("/quick-replies");
+  state.quickReplies = await optionalApi("/quick-replies", []);
   renderQuickReplyOptions();
   if (state.user?.role === "admin")
     $("#quickReplyAdminList").innerHTML =
@@ -549,7 +570,7 @@ function renderQuickReplyOptions() {
       .join("");
 }
 async function loadMentionUsers() {
-  state.mentionUsers = await api("/mention-users");
+  state.mentionUsers = await optionalApi("/mention-users", state.users);
   if (state.user?.role === "supervisor") {
     $("#ownerSelect").innerHTML =
       '<option value="">Sin asignar</option>' +
@@ -632,8 +653,8 @@ function selectMention(index) {
 async function loadConversationDetails() {
   if (!state.active) return;
   const [notes, timeline] = await Promise.all([
-    api(`/contacts/${state.active.id}/internal-notes`),
-    api(`/contacts/${state.active.id}/timeline`),
+    optionalApi(`/contacts/${state.active.id}/internal-notes`, []),
+    optionalApi(`/contacts/${state.active.id}/timeline`, []),
   ]);
   $("#internalNoteList").innerHTML =
     notes
@@ -748,7 +769,7 @@ function renderContacts(refreshAlert = true) {
 }
 async function loadAutoReplies() {
   if (state.user?.role !== "admin") return;
-  state.autoReplies = await api("/auto-replies");
+  state.autoReplies = await optionalApi("/auto-replies", []);
   renderAutoReplies();
 }
 function renderAutoReplies() {
@@ -817,7 +838,7 @@ function renderAutoReplies() {
 }
 async function loadReservations() {
   if (!state.user) return;
-  state.reservations = await api("/assignment-reservations");
+  state.reservations = await optionalApi("/assignment-reservations", []);
   if (state.user.role === "admin") renderReservations();
   else renderContacts();
 }
@@ -1550,9 +1571,9 @@ $("#sendForm").onsubmit = async (event) => {
         throw new Error(data.error || "No se pudo enviar el archivo");
       clearPendingFile();
     } else {
-      await api("/send", {
+      await api(`/contacts/${state.active.id}/messages`, {
         method: "POST",
-        body: JSON.stringify({ contact_id: state.active.id, body }),
+        body: JSON.stringify({ body }),
       });
     }
     $("#messageBody").value = "";

@@ -967,3 +967,32 @@ Contrato:
 
 Riesgos:
 - cambio limitado a propagar la fecha ya recibida; no altera clasificacion ni permisos
+### 2026-10-04 00:10 - whatsapp_AGENT - whatsapp
+
+Tipo: fix
+
+Resumen:
+Compatibilizar la bandeja moderna con el backend vendorizado disponible: las
+funciones auxiliares ausentes degradan solo ante HTTP 404 y el envío de texto
+usa `POST /contacts/:id/messages`.
+
+Motivo:
+El arranque de administradores se detenía en `/auto-replies` antes de cargar
+contactos; otros roles acumulaban 404 en clasificaciones, métricas, reservas,
+menciones y respuestas rápidas. Además, el formulario llamaba `/send`, ruta no
+implementada por el backend.
+
+Archivos modificados:
+- src/features/whatsapp/vendor/public/app.js
+- src/features/whatsapp/vendor/public/index.html
+- src/features/whatsapp/tests/inbox-legacy-backend-compat.test.js
+- src/features/whatsapp/README.md
+- docs/CHANGELOG_AGENT.md
+
+Contrato:
+- la bandeja principal y el envío de texto siguen funcionales con el backend
+  actual; errores distintos de 404 siguen propagándose
+
+Riesgos:
+- las funciones auxiliares cuyo backend aún no existe permanecen vacías o
+  inactivas, sin bloquear contactos y mensajes
