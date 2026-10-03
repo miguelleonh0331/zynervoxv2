@@ -14,6 +14,11 @@ INSTANCE="${WHATSAPP_INSTANCE:-zynervox-whatsapp}"
 [[ "$INSTANCE" =~ ^[a-z0-9][a-z0-9-]{2,40}$ ]] || { echo "WHATSAPP_INSTANCE inválido" >&2; exit 2; }
 
 NODE_BIN="${WHATSAPP_NODE:-$(command -v node || true)}"
+# Resolver symlinks (ej. /usr/local/bin/node -> /root/.hermes/node/bin/node,
+# comun en instalaciones via nvm u otros gestores bajo el home de root).
+# ProtectHome=read-only abajo permite leer/ejecutar ahi; sin esto, systemd no
+# puede resolver el symlink de forma consistente y falla con 203/EXEC.
+[[ -n "$NODE_BIN" ]] && NODE_BIN="$(readlink -f "$NODE_BIN")"
 CONFIG_ENV="/etc/zynervox/$INSTANCE.env"
 RUNTIME="/opt/$INSTANCE"
 DATA="/var/lib/$INSTANCE"
@@ -140,7 +145,7 @@ RestartSec=5
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ProtectHome=true
+ProtectHome=read-only
 ReadWritePaths=$DATA
 StandardOutput=append:$LOG/service.log
 StandardError=append:$LOG/service.log
