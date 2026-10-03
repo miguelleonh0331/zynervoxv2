@@ -1,16 +1,16 @@
 <?php
-// Endpoint de control/monitor de Zypad. Ejecuta exactamente los comandos
-// sudo whitelisteados por installer/zypad.sh (/etc/sudoers.d/zynervox-zypad)
-// contra el contenedor fijo "zynervox-zypad". Nunca interpola variables de
-// usuario en el comando: $action solo selecciona cuál de las 4 llamadas
-// fijas se ejecuta, nada de concatenar nombres/puertos que vengan del
-// request.
+// Endpoint de control/monitor de Zypad. Habla por HTTP con el control-daemon
+// local (systemd, root) escrito por installer/zypad.sh -- NO usa sudo: en
+// hosts con Apache endurecido (ProtectSystem=full en el unit systemd), /usr
+// queda montado "nosuid" dentro del sandbox del servicio, lo que inutiliza
+// el bit setuid de /usr/bin/sudo para cualquier hijo de Apache. Se verificó
+// en docker_converxa (file_exists() de /etc/sudoers.d/* ya da false desde
+// dentro de Apache); sudo -n deniega siempre ahí sin importar la regla.
 require_once __DIR__ . '/../../../includes/Auth.php';
 \Includes\Auth::checkAccess(9);
 
 header('Content-Type: application/json; charset=utf-8');
 
-const ZYPAD_INSTANCE = 'zynervox-zypad';
 const ZYPAD_CONFIG = '/etc/zynervox/zynervox-zypad.php';
 
 function zypadRespond(array $payload, int $status = 200): void
@@ -23,6 +23,7 @@ function zypadRespond(array $payload, int $status = 200): void
 if (!is_readable(ZYPAD_CONFIG)) {
     zypadRespond(['ok' => false, 'error' => 'Zypad no está instalado en este servidor'], 404);
 }
+$config = require ZYPAD_CONFIG;
 
 $action = $_GET['action'] ?? ($_POST['action'] ?? '');
 
@@ -35,59 +36,41 @@ if (in_array($action, ['start', 'stop'], true)) {
     }
 }
 
-/**
- * Corre exactamente los argv dados bajo sudo -n (nunca con shell=true ni
- * interpolación de strings). Cada elemento ya es una constante fija del
- * propio script, por eso no hace falta validar contenido.
- */
-function zypadSudo(array $argv): array
+function zypadControl(string $method, string $path, array $config): array
 {
-    $cmd = 'sudo -n ' . implode(' ', array_map('escapeshellarg', $argv)) . ' 2>&1';
-    exec($cmd, $out, $code);
-    return [$code === 0, implode("\n", $out)];
+    $url = 'http://127.0.0.1:' . (int)$config['control_port'] . $path;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_HTTPHEADER => ['X-Control-Token: ' . $config['control_token']],
+    ]);
+    if ($method === 'POST') {
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, '');
+    }
+    $body = curl_exec($ch);
+    $errno = curl_errno($ch);
+    curl_close($ch);
+    if ($errno !== 0 || $body === false) {
+        return ['ok' => false, 'error' => 'control-daemon de Zypad no responde'];
+    }
+    $data = json_decode((string)$body, true);
+    return is_array($data) ? $data : ['ok' => false, 'error' => 'respuesta inválida del control-daemon'];
 }
 
 switch ($action) {
     case 'start':
-        [$ok, $out] = zypadSudo(['/usr/bin/docker', 'start', ZYPAD_INSTANCE]);
-        zypadRespond(['ok' => $ok, 'detail' => $out]);
+        zypadRespond(zypadControl('POST', '/start', $config));
         break;
 
     case 'stop':
-        [$ok, $out] = zypadSudo(['/usr/bin/docker', 'stop', ZYPAD_INSTANCE]);
-        zypadRespond(['ok' => $ok, 'detail' => $out]);
+        zypadRespond(zypadControl('POST', '/stop', $config));
         break;
 
     case 'status':
-        [$ok, $out] = zypadSudo(['/usr/bin/docker', 'inspect', '-f', '{{.State.Running}}', ZYPAD_INSTANCE]);
-        $running = $ok && trim($out) === 'true';
-        $stats = null;
-        if ($running) {
-            [$sok, $sout] = zypadSudo(['/usr/bin/docker', 'stats', '--no-stream', ZYPAD_INSTANCE]);
-            if ($sok) {
-                // Salida por defecto de `docker stats` (sin --format, para que
-                // coincida literal con la regla sudoers): una cabecera y una
-                // línea de datos. Las columnas "USAGE / LIMIT" y "NET/BLOCK
-                // I/O" traen 3 tokens cada una (valor, "/", valor).
-                $lines = array_values(array_filter(explode("\n", trim($sout))));
-                $dataLine = end($lines) ?: '';
-                if (preg_match(
-                    '/^\S+\s+\S+\s+([\d.]+%)\s+(\S+\s*\/\s*\S+)\s+([\d.]+%)\s+(\S+\s*\/\s*\S+)\s+(\S+\s*\/\s*\S+)\s+(\d+)\s*$/',
-                    $dataLine,
-                    $m
-                )) {
-                    $stats = [
-                        'cpu' => $m[1],
-                        'mem' => $m[2],
-                        'mem_perc' => $m[3],
-                        'net' => $m[4],
-                        'block' => $m[5],
-                        'pids' => $m[6],
-                    ];
-                }
-            }
-        }
-        zypadRespond(['ok' => true, 'running' => $running, 'stats' => $stats]);
+        zypadRespond(zypadControl('GET', '/status', $config));
         break;
 
     default:

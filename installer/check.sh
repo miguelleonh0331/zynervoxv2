@@ -72,6 +72,7 @@ if [[ "$CHECK_ZYNERDESK" == 1 ]]; then
 fi
 if [[ "$CHECK_ZYPAD" == 1 ]]; then
   [[ -f /etc/zynervox/zynervox-zypad.php ]] || { echo "FALTA configuración Zypad"; fail=1; }
+  systemctl is-active --quiet zynervox-zypad-control.service || { echo "FALTA servicio activo: zynervox-zypad-control.service"; fail=1; }
   if command -v docker >/dev/null 2>&1; then
     [[ "$(docker inspect -f '{{.State.Running}}' zynervox-zypad 2>/dev/null)" == "true" ]] || { echo "FALTA contenedor activo: zynervox-zypad"; fail=1; }
   else
