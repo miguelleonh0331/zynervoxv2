@@ -12,7 +12,8 @@ const MIGRATIONS = [
   "005_keyboard_blocks.sql", "006_audio_listening_audit.sql",
   "007_camera_viewing_sessions.sql", "008_monitored_apps.sql",
   "009_optimize_activity_events_indexes.sql", "010_activity_stats.sql",
-  "011_pause_allowance.sql", "012_semaphore_override.sql"
+  "011_pause_allowance.sql", "012_semaphore_override.sql",
+  "013_agents_network.sql"
 ];
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
