@@ -13,14 +13,17 @@ getent group "$WEB_GROUP" >/dev/null || WEB_GROUP=root
 INSTANCE="${WHATSAPP_INSTANCE:-zynervox-whatsapp}"
 [[ "$INSTANCE" =~ ^[a-z0-9][a-z0-9-]{2,40}$ ]] || { echo "WHATSAPP_INSTANCE inválido" >&2; exit 2; }
 
-NODE_BIN="${WHATSAPP_NODE:-$(command -v node || true)}"
+NODE_BIN_SRC="${WHATSAPP_NODE:-$(command -v node || true)}"
 # Resolver symlinks (ej. /usr/local/bin/node -> /root/.hermes/node/bin/node,
-# comun en instalaciones via nvm u otros gestores bajo el home de root).
-# ProtectHome=read-only abajo permite leer/ejecutar ahi; sin esto, systemd no
-# puede resolver el symlink de forma consistente y falla con 203/EXEC.
-[[ -n "$NODE_BIN" ]] && NODE_BIN="$(readlink -f "$NODE_BIN")"
+# comun en instalaciones via nvm u otros gestores bajo el home de root). No
+# basta con ProtectHome=true: /root suele ser 0700 root:root, asi que
+# ningun usuario de servicio puede atravesarlo sin importar el hardening de
+# systemd. Se copia el binario real a $RUNTIME/.bin (ver install_code) y el
+# servicio ejecuta esa copia, nunca la ruta original.
+[[ -n "$NODE_BIN_SRC" ]] && NODE_BIN_SRC="$(readlink -f "$NODE_BIN_SRC")"
 CONFIG_ENV="/etc/zynervox/$INSTANCE.env"
 RUNTIME="/opt/$INSTANCE"
+NODE_BIN="$RUNTIME/.bin/node"
 DATA="/var/lib/$INSTANCE"
 LOG="/var/log/$INSTANCE"
 SERVICE="$INSTANCE.service"
@@ -29,7 +32,7 @@ usage() { echo "Uso: $0 init|up|status|credentials|install-proxy|remove-proxy|ba
 
 require_runtime() {
   local missing=()
-  [[ -n "$NODE_BIN" ]] || missing+=(node)
+  [[ -n "$NODE_BIN_SRC" ]] || missing+=(node)
   for cmd in npm mysql openssl curl ss; do
     command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
   done
@@ -37,7 +40,7 @@ require_runtime() {
     echo "Falta dependencia Whatsapp: ${missing[*]}" >&2
     exit 1
   fi
-  "$NODE_BIN" -e 'process.exit(process.versions.node.split(".")[0] < 18 ? 1 : 0)' \
+  "$NODE_BIN_SRC" -e 'process.exit(process.versions.node.split(".")[0] < 18 ? 1 : 0)' \
     || { echo "Whatsapp requiere Node 18+" >&2; exit 1; }
 }
 
@@ -123,6 +126,12 @@ install_code() {
   find "$RUNTIME" -type f -exec chmod 0644 {} +
   chmod 0750 "$DATA" "$DATA/media"
 
+  # Copia propia del binario de Node, nunca la ruta original: evita depender
+  # de permisos fuera de nuestro control (ej. node bajo /root, 0700, ilegible
+  # para el usuario de servicio sin importar el hardening de systemd).
+  install -d -o root -g root -m 0755 "$RUNTIME/.bin"
+  install -m 0755 -o root -g root "$NODE_BIN_SRC" "$NODE_BIN"
+
   install -d -o root -g "$WEB_GROUP" -m 0750 "$LOG"
 }
 
@@ -145,7 +154,7 @@ RestartSec=5
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ProtectHome=read-only
+ProtectHome=true
 ReadWritePaths=$DATA
 StandardOutput=append:$LOG/service.log
 StandardError=append:$LOG/service.log
