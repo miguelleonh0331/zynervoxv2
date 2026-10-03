@@ -53,6 +53,7 @@ chown -R root:"$WEB_GROUP" "$WEB_DEST"
 find "$WEB_DEST" -type d -exec chmod 0750 {} +
 find "$WEB_DEST" -type f -exec chmod 0640 {} +
 
+install -d -o root -g root -m 0755 "$RUNTIME"
 if [[ "$SKIP_ANNEX" != "1" ]]; then
     install -d -o root -g root -m 0755 "$RUNTIME/annex" "$DATA/annex"
 fi
