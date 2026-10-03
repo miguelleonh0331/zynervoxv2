@@ -26,6 +26,8 @@ else
     STT_DB_PASSWORD="$(openssl rand -hex 24)"
     umask 077
     printf 'STT_DB_NAME=%q\nSTT_DB_USER=%q\nSTT_DB_PASSWORD=%q\n' "$DB_NAME" "$DB_USER" "$STT_DB_PASSWORD" > "$CONFIG_ENV"
+    # shellcheck disable=SC1090
+    source "$CONFIG_ENV"
 fi
 
 mysql -e "CREATE DATABASE IF NOT EXISTS \`$STT_DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE USER IF NOT EXISTS '$STT_DB_USER'@'localhost' IDENTIFIED BY '$STT_DB_PASSWORD'; ALTER USER '$STT_DB_USER'@'localhost' IDENTIFIED BY '$STT_DB_PASSWORD'; GRANT ALL PRIVILEGES ON \`$STT_DB_NAME\`.* TO '$STT_DB_USER'@'localhost'; FLUSH PRIVILEGES;"
