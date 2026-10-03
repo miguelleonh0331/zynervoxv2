@@ -101,6 +101,7 @@ function renderSidebar($activePage = 'home', $rootPrefix = '../../') {
         // el array deja espacio para futuras sin tocar el <details>.
         $servicios = [
             ['key' => 'zypad', 'href' => 'modules/admin/services/zypad.php', 'icon' => 'stt', 'label' => 'Zypad'],
+            ['key' => 'zynerdesk_control', 'href' => 'modules/admin/services/zynerdesk_control.php', 'icon' => 'remote', 'label' => 'Zynerdesk'],
         ];
         $serviciosOpen = in_array($activePage, array_column($servicios, 'key'), true);
         ?>

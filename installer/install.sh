@@ -189,7 +189,9 @@ install_stt_providers() {
   WEB_ROOT="$WEB_ROOT" WEB_GROUP="$WEB_GROUP" bash "$ROOT/installer/stt-providers.sh"
 }
 install_zynerdesk() {
-  bash "$ROOT/installer/zynerdesk.sh" init && bash "$ROOT/installer/zynerdesk.sh" install-proxy
+  bash "$ROOT/installer/zynerdesk.sh" init \
+    && bash "$ROOT/installer/zynerdesk.sh" install-proxy \
+    && bash "$ROOT/installer/zynerdesk.sh" install-control
 }
 install_zypad() {
   WEB_GROUP="$WEB_GROUP" bash "$ROOT/installer/zypad.sh"

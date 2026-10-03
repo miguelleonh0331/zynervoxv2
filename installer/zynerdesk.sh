@@ -27,7 +27,7 @@ NODE_BIN="$RUNTIME/.bin/node"
 LOG="/var/log/$INSTANCE"
 SERVICE="$INSTANCE.service"
 
-usage() { echo "Uso: $0 init|up|status|credentials|install-proxy|remove-proxy|backup <archivo>|restore <archivo>|down"; }
+usage() { echo "Uso: $0 init|up|status|credentials|install-proxy|remove-proxy|install-control|backup <archivo>|restore <archivo>|down"; }
 
 require_runtime() {
   local missing=()
@@ -251,6 +251,177 @@ case "$action" in
       systemctl reload apache2
     fi
     echo "ZYNERDESK_PROXY_REMOVED"
+    ;;
+  install-control)
+    # Control-daemon para que el panel web pueda parar/iniciar el servicio
+    # ($SERVICE) sin usar sudo: en hosts con Apache endurecido
+    # (ProtectSystem=full en el unit systemd), /usr queda montado "nosuid"
+    # dentro del sandbox del servicio, lo que inutiliza el bit setuid de
+    # /usr/bin/sudo para cualquier hijo de Apache (confirmado en
+    # docker_converxa; ver el mismo fix en installer/zypad.sh). El daemon
+    # corre como root desde que systemd lo arranca -- no escala privilegios
+    # en caliente -- asi que el hardening de Apache no lo afecta.
+    [[ $EUID -eq 0 ]] || { echo "Ejecutar como root" >&2; exit 1; }
+    PYTHON="$(command -v python3)"
+    [[ -n "$PYTHON" ]] || { echo "install-control requiere python3" >&2; exit 1; }
+    CONTROL_RUNTIME="/opt/$INSTANCE-control"
+    CONTROL_TOKEN_FILE="/etc/zynervox/$INSTANCE-control.token"
+    CONTROL_PORT_FILE="/etc/zynervox/$INSTANCE-control.port"
+    CONTROL_SERVICE="$INSTANCE-control.service"
+    CONTROL_CONF="/etc/zynervox/zynerdesk-control.php"
+
+    control_port_free() { ! ss -ltnH "sport = :$1" 2>/dev/null | grep -q .; }
+    choose_control_port() {
+      local port
+      for port in $(seq 8880 8900); do control_port_free "$port" && { echo "$port"; return; }; done
+      echo "Sin puertos libres entre 8880 y 8900" >&2; exit 1
+    }
+
+    install -d -o root -g root -m 0755 "$CONTROL_RUNTIME"
+    if [[ ! -s "$CONTROL_TOKEN_FILE" ]]; then
+      umask 077
+      openssl rand -hex 32 > "$CONTROL_TOKEN_FILE"
+    fi
+    chown root:root "$CONTROL_TOKEN_FILE"
+    chmod 0400 "$CONTROL_TOKEN_FILE"
+    CONTROL_TOKEN="$(cat "$CONTROL_TOKEN_FILE")"
+
+    if [[ -s "$CONTROL_PORT_FILE" ]]; then
+      CONTROL_PORT="$(cat "$CONTROL_PORT_FILE")"
+    else
+      CONTROL_PORT="$(choose_control_port)"
+      echo "$CONTROL_PORT" > "$CONTROL_PORT_FILE"
+    fi
+
+    cat > "$CONTROL_RUNTIME/control.py" <<'PY'
+#!/usr/bin/env python3
+"""Control-daemon generico de systemd: start/stop/status de UNA unidad fija,
+por HTTP en 127.0.0.1, autenticado con token. Corre como root via systemd
+para poder controlar otro servicio sin sudo (ver installer/zynerdesk.sh y
+installer/zypad.sh para el porque)."""
+from __future__ import annotations
+
+import argparse
+import hmac
+import json
+import subprocess
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+UNIT = ""
+TOKEN = ""
+
+
+def systemctl(*args: str) -> tuple[bool, str]:
+    try:
+        proc = subprocess.run(
+            ["/usr/bin/systemctl", *args],
+            capture_output=True, text=True, timeout=20,
+        )
+        return proc.returncode == 0, (proc.stdout + proc.stderr).strip()
+    except Exception as exc:  # noqa: BLE001 - se reporta al panel, no se oculta
+        return False, str(exc)
+
+
+def status() -> dict:
+    ok, out = systemctl("is-active", UNIT)
+    return {"ok": True, "running": ok and out.strip() == "active"}
+
+
+class Handler(BaseHTTPRequestHandler):
+    def _authorized(self) -> bool:
+        return hmac.compare_digest(self.headers.get("X-Control-Token", ""), TOKEN)
+
+    def _json(self, payload: dict, status_code: int = 200) -> None:
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self) -> None:
+        if not self._authorized():
+            self._json({"ok": False, "error": "unauthorized"}, 403)
+            return
+        if self.path.rstrip("/") == "/status":
+            self._json(status())
+        else:
+            self._json({"ok": False, "error": "not found"}, 404)
+
+    def do_POST(self) -> None:
+        if not self._authorized():
+            self._json({"ok": False, "error": "unauthorized"}, 403)
+            return
+        action = self.path.rstrip("/").lstrip("/")
+        if action in ("start", "stop"):
+            ok, out = systemctl(action, UNIT)
+            self._json({"ok": ok, "detail": out})
+        else:
+            self._json({"ok": False, "error": "not found"}, 404)
+
+    def log_message(self, fmt: str, *args) -> None:  # silencia access log a stderr
+        return
+
+
+def main() -> None:
+    global UNIT, TOKEN
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, required=True)
+    parser.add_argument("--unit", required=True)
+    parser.add_argument("--token-file", required=True)
+    args = parser.parse_args()
+    UNIT = args.unit
+    with open(args.token_file, encoding="utf-8") as fh:
+        TOKEN = fh.read().strip()
+    ThreadingHTTPServer(("127.0.0.1", args.port), Handler).serve_forever()
+
+
+if __name__ == "__main__":
+    main()
+PY
+    chown root:root "$CONTROL_RUNTIME/control.py"
+    chmod 0500 "$CONTROL_RUNTIME/control.py"
+
+    cat > "/etc/systemd/system/$CONTROL_SERVICE" <<EOF
+[Unit]
+Description=Zynervox Zynerdesk control daemon ($INSTANCE, start/stop sin sudo)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=$PYTHON $CONTROL_RUNTIME/control.py --port $CONTROL_PORT --unit $SERVICE --token-file $CONTROL_TOKEN_FILE
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+    systemctl enable --now "$CONTROL_SERVICE"
+
+    for _ in $(seq 1 15); do
+      curl -fsS -H "X-Control-Token: $CONTROL_TOKEN" "http://127.0.0.1:${CONTROL_PORT}/status" >/dev/null 2>&1 && break
+      sleep 1
+    done
+    curl -fsS -H "X-Control-Token: $CONTROL_TOKEN" "http://127.0.0.1:${CONTROL_PORT}/status" >/dev/null
+
+    install -d -o root -g "$WEB_GROUP" -m 0750 /etc/zynervox
+    cat > "$CONTROL_CONF" <<EOF
+<?php
+return [
+    'service' => '$SERVICE',
+    'control_port' => $CONTROL_PORT,
+    'control_token' => '$CONTROL_TOKEN',
+];
+EOF
+    chown root:"$WEB_GROUP" "$CONTROL_CONF"
+    chmod 0640 "$CONTROL_CONF"
+
+    echo "ZYNERDESK_CONTROL_READY service=$SERVICE port=$CONTROL_PORT"
     ;;
   backup)
     load_env
