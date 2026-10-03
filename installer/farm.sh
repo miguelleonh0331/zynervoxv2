@@ -121,6 +121,7 @@ Environment=ZYPAD_ANNEX_SCRIPT=$RUNTIME/annex/zypad_annex
 Environment=ZYPAD_PYTHON=$PYTHON
 Environment=ZYPAD_DATA_DIR=$DATA/annex
 Environment=ZYPAD_SERVICE_PREFIX=$INSTANCE-baresip-
+Environment=ZYPAD_ENV_FILE=$CONFIG_ENV
 ExecStart=$PYTHON $RUNTIME/annex/zypad_annex_daemon.py
 Restart=always
 RestartSec=3

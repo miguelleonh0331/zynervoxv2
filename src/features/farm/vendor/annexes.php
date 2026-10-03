@@ -65,6 +65,20 @@ main{max-width:1100px;margin:0 auto;padding:20px;display:grid;gap:16px}
 
   <section class="fleet-control panel">
     <div>
+      <p class="panel-kicker">CONFIGURACIÓN</p>
+      <h2>Servidor SIP destino</h2>
+      <p class="subtitle">Aplica a todos los anexos: los existentes se reescriben y reinician, los nuevos nacen apuntando aquí.</p>
+    </div>
+    <div class="row">
+      <label>Servidor (host o host:puerto)
+        <input id="destinoHost" placeholder="209.17.220.5">
+      </label>
+      <button id="btnSaveDestino" class="primary">Guardar y aplicar a todos</button>
+    </div>
+  </section>
+
+  <section class="fleet-control panel">
+    <div>
       <p class="panel-kicker">CREAR ANEXO</p>
       <h2>Alta individual</h2>
     </div>

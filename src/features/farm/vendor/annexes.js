@@ -167,6 +167,31 @@ document.getElementById('btnStartAll').addEventListener('click', async () => {
   refresh();
 });
 
+async function loadDestino() {
+  const data = await api('get_destino', '', '');
+  if (data.ok) document.getElementById('destinoHost').value = data.host || '';
+}
+
+document.getElementById('btnSaveDestino').addEventListener('click', async () => {
+  const host = document.getElementById('destinoHost').value.trim();
+  if (!/^[A-Za-z0-9_.-]{1,253}(:[0-9]{1,5})?$/.test(host)) {
+    showMsg('Servidor inválido: usa host o host:puerto', false);
+    return;
+  }
+  if (!confirm(`¿Aplicar "${host}" como destino a TODOS los anexos (existentes se reinician)?`)) return;
+  const btn = document.getElementById('btnSaveDestino');
+  btn.disabled = true; btn.textContent = 'Aplicando…';
+  const data = await api('set_destino', '', '', { host });
+  btn.disabled = false; btn.textContent = 'Guardar y aplicar a todos';
+  if (data.ok) {
+    const updated = (data.agents || []).filter(a => a.updated).length;
+    showMsg(`Destino guardado. Anexos actualizados: ${updated}/${(data.agents || []).length}.`, true);
+  } else {
+    showMsg(`Error: ${data.error || 'fallo'}`, false);
+  }
+  refresh();
+});
+
 document.getElementById('btnRefresh').addEventListener('click', refresh);
 document.getElementById('annexSearch').addEventListener('input', applyFilter);
 document.getElementById('annexFilter').addEventListener('change', applyFilter);
@@ -179,4 +204,5 @@ document.getElementById('sum-err-card').addEventListener('keydown', event => {
 });
 
 refresh();
+loadDestino();
 setInterval(refresh, 15000);

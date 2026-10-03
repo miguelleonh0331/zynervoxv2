@@ -22,6 +22,7 @@ import time
 from pathlib import Path
 
 ASTERISK_HOST = os.getenv("ZYPAD_ASTERISK_HOST", "").strip()
+ENV_FILE = os.getenv("ZYPAD_ENV_FILE", "").strip()
 DATA_DIR = Path(os.getenv("ZYPAD_DATA_DIR", "/var/lib/zypad_pool"))
 SYSTEMD_DIR = Path(os.getenv("ZYPAD_SYSTEMD_DIR", "/etc/systemd/system"))
 POOL_JSON = DATA_DIR / "pool.json"
@@ -383,15 +384,89 @@ def start_all():
     print(json.dumps({"ok": True, "action": "start_all", "started": started, "total": len(results), "results": results}))
 
 
+HOST_RE = re.compile(r"[A-Za-z0-9_.-]{1,253}(:[0-9]{1,5})?")
+ACCOUNT_HOST_RE = re.compile(r"(<sip:\d+@)[^>]+(>)")
+
+
+def validate_host(value):
+    if not HOST_RE.fullmatch(value or ""):
+        fail("servidor invalido: use host o host:puerto")
+    return value
+
+
+def persist_destino(host):
+    """Guarda el destino como default para anexos nuevos. Requiere
+    ZYPAD_ENV_FILE (lo fija el .service del daemon via systemd) -- sin esto
+    el cambio solo aplicaria en memoria del proceso actual, se perderia al
+    reiniciar el daemon."""
+    if not ENV_FILE:
+        raise AnnexError("ZYPAD_ENV_FILE no configurado; no se puede guardar el destino")
+    path = Path(ENV_FILE)
+    lines = []
+    found = False
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("ZYPAD_ASTERISK_HOST="):
+                lines.append(f"ZYPAD_ASTERISK_HOST={host}")
+                found = True
+            else:
+                lines.append(line)
+    if not found:
+        lines.append(f"ZYPAD_ASTERISK_HOST={host}")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def rewrite_account_host(agent, host):
+    accounts = agent_dir(agent) / "accounts"
+    if not accounts.exists():
+        return False
+    text = accounts.read_text(encoding="utf-8")
+    new_text, count = ACCOUNT_HOST_RE.subn(rf"\g<1>{host}\g<2>", text, count=1)
+    if count == 0:
+        return False
+    accounts.write_text(new_text, encoding="utf-8")
+    return True
+
+
+def get_destino():
+    print(json.dumps({"ok": True, "action": "get_destino", "host": ASTERISK_HOST}))
+
+
+def set_destino(host):
+    host = validate_host(host)
+    try:
+        persist_destino(host)
+    except AnnexError as exc:
+        fail(str(exc))
+        return
+    updated = []
+    for agent in sorted(read_pool()):
+        changed = rewrite_account_host(agent, host)
+        restarted = False
+        if changed and service_path(agent).exists():
+            run(["/usr/bin/systemctl", "restart", f"{SERVICE_PREFIX}{agent}.service"], check=False)
+            restarted = True
+        updated.append({"agent": agent, "updated": changed, "restarted": restarted})
+    print(json.dumps({"ok": True, "action": "set_destino", "host": host, "agents": updated}))
+
+
 def main():
     if len(sys.argv) < 2:
-        fail("uso: zypad_annex create|create_range|delete|start|stop|stop_all|start_all|status|status_detail [ANEXO|INICIO FIN] [PASSWORD]")
+        fail("uso: zypad_annex create|create_range|delete|start|stop|stop_all|start_all|status|status_detail|get_destino|set_destino [ANEXO|INICIO FIN|HOST] [PASSWORD]")
     action = sys.argv[1]
     if action == "status":
         status_all()
         return
     if action == "status_detail":
         status_detail_all()
+        return
+    if action == "get_destino":
+        get_destino()
+        return
+    if action == "set_destino":
+        if len(sys.argv) < 3:
+            fail("falta host")
+        set_destino(sys.argv[2])
         return
     if action == "stop_all":
         stop_all()

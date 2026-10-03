@@ -33,10 +33,12 @@ class Handler(BaseHTTPRequestHandler):
         password = str(data.get("password", ""))
         args = [PYTHON, SCRIPT, action]
 
-        if action in ("status", "status_detail"):
+        if action in ("status", "status_detail", "get_destino"):
             pass
         elif action in ("stop_all", "start_all"):
             pass
+        elif action == "set_destino":
+            args.append(str(data.get("host", "")))
         elif action == "create_range":
             args += [str(data.get("from", "")), str(data.get("to", ""))]
             if password:

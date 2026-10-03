@@ -37,9 +37,28 @@ $action = (string) ($data['action'] ?? '');
 $agent = preg_replace('/\D+/', '', (string) ($data['agent'] ?? '')) ?? '';
 $password = (string) ($data['password'] ?? $agent);
 
-$validActions = ['create', 'create_range', 'delete', 'start', 'stop', 'stop_all', 'start_all', 'status', 'status_detail'];
+$validActions = ['create', 'create_range', 'delete', 'start', 'stop', 'stop_all', 'start_all', 'status', 'status_detail', 'get_destino', 'set_destino'];
 if (!in_array($action, $validActions, true)) {
     echo json_encode(['ok' => false, 'error' => 'Accion invalida']);
+    exit;
+}
+
+if ($action === 'get_destino') {
+    echo json_encode(call_daemon(['action' => 'get_destino']), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($action === 'set_destino') {
+    $host = trim((string) ($data['host'] ?? ''));
+    if (!preg_match('/^[A-Za-z0-9_.-]{1,253}(:[0-9]{1,5})?$/', $host)) {
+        echo json_encode(['ok' => false, 'error' => 'Servidor invalido: use host o host:puerto']);
+        exit;
+    }
+    audit_event('annex_set_destino', ['host' => $host]);
+    echo json_encode(
+        call_daemon(['action' => 'set_destino', 'host' => $host]),
+        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+    );
     exit;
 }
 
