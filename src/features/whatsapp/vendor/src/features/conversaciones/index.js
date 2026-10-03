@@ -34,13 +34,13 @@ function register(ctx) {
   async function classifyIncoming({ line, waId, profileName, message, timestampMs }) {
     if (message.type !== 'text') {
       // Media/otros: se registra como mensaje normal (soporte básico).
-      return insertIncoming({ line, waId, profileName, message, isAuto: 0, isOptout: 0 });
+      return insertIncoming({ line, waId, profileName, message, timestampMs, isAuto: 0, isOptout: 0 });
     }
     const body = message.text?.body || '';
     const norm = normalize(body);
 
     if (NO_INTEREST.has(norm)) {
-      const contact = await insertIncoming({ line, waId, profileName, message, isAuto: 0, isOptout: 1 });
+      const contact = await insertIncoming({ line, waId, profileName, message, timestampMs, isAuto: 0, isOptout: 1 });
       await db.prepare("UPDATE contacts SET status='closed' WHERE id=?").run(contact.id);
       if (ctx.markOptout) {
         await ctx.markOptout(String(waId), line.empresa_id, 'No me interesa (respuesta automática)');
@@ -56,10 +56,10 @@ function register(ctx) {
     ).get(contact.id);
     let isAuto = 0;
     if (Number(yaHayAuto.n) === 0 && wordCount(body) > 10) isAuto = 1;
-    return insertIncoming({ line, waId, profileName, message: { ...message, text: { body } }, isAuto, isOptout: 0, contactId: contact.id });
+    return insertIncoming({ line, waId, profileName, message: { ...message, text: { body } }, timestampMs, isAuto, isOptout: 0, contactId: contact.id });
   }
 
-  async function insertIncoming({ line, waId, profileName, message, isAuto, isOptout, contactId }) {
+  async function insertIncoming({ line, waId, profileName, message, timestampMs, isAuto, isOptout, contactId }) {
     const contact = contactId
       ? await db.prepare('SELECT * FROM contacts WHERE id=?').get(contactId)
       : await touchContactFromWebhook({ line, waId, profileName });

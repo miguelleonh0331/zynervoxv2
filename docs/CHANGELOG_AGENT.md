@@ -945,3 +945,25 @@ Contrato:
 
 Riesgos:
 - no cambia el orden de modulos ni las APIs; los callbacks se consultan en `ctx` al procesar cada evento
+
+### 2026-10-03 23:38 - whatsapp_AGENT - whatsapp
+
+Tipo: fix
+
+Resumen:
+Propagar `timestampMs` desde `classifyIncoming` hasta `insertIncoming` en las rutas de texto, opt-out y multimedia.
+
+Motivo:
+El webhook real alcanzaba conversaciones, pero la insercion fallaba con `timestampMs is not defined` porque `insertIncoming` usaba una variable fuera de alcance.
+
+Archivos modificados:
+- src/features/whatsapp/vendor/src/features/conversaciones/index.js
+- src/features/whatsapp/tests/conversaciones-timestamp.test.js
+- src/features/whatsapp/README.md
+- docs/CHANGELOG_AGENT.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- cambio limitado a propagar la fecha ya recibida; no altera clasificacion ni permisos

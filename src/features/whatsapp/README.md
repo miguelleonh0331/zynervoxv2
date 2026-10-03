@@ -103,6 +103,8 @@ separado de Operaciones WhatsApp y no aparecen en este panel administrativo.
 - `node src/features/whatsapp/tests/webhook-late-handlers.test.js` verifica que
   el POST firmado resuelva los callbacks de conversaciones y salud aunque esos
   módulos se registren después de `whatsapp`.
+- `node src/features/whatsapp/tests/conversaciones-timestamp.test.js` verifica
+  que la fecha del evento entrante se propague hasta la inserción del mensaje.
 - Envío/recepción Meta pendiente de configurar credenciales y líneas de prueba.
 
 El smoke test reproducible usa las credenciales locales sin mostrarlas:
