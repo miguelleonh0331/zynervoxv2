@@ -60,12 +60,22 @@ fi
 install -d -o root -g "$WEB_GROUP" -m 0750 "$LOG"
 getent group "$INSTANCE" >/dev/null 2>&1 || groupadd --system "$INSTANCE"
 id "$INSTANCE" >/dev/null 2>&1 || useradd --system --gid "$INSTANCE" --home-dir "$RUNTIME" --shell /usr/sbin/nologin "$INSTANCE"
-install -d -o "$INSTANCE" -g "$INSTANCE" -m 0750 "$RUNTIME/control" "$RUNTIME/control/secrets"
+install -d -o "$INSTANCE" -g "$INSTANCE" -m 0750 "$RUNTIME/control/secrets"
+# control/ con grupo web (0750, solo traversal+listado, nada sensible vive
+# directo ahi -- secrets/ adentro mantiene su propio dueno/permiso mas
+# estricto): sin esto www-data no puede ni atravesar hacia proxy-accounts/
+# aunque esa carpeta misma sea escribible para el. chown/chmod explicitos
+# (no "install -d" otra vez): sobre un directorio ya existente no siempre
+# reaplica dueno/grupo/permiso de forma confiable.
+chown "$INSTANCE":"$WEB_GROUP" "$RUNTIME/control"
+chmod 0750 "$RUNTIME/control"
 # proxy-accounts: grupo web con escritura (0770), para que el panel pueda
 # subir archivos de cuentas proxy sin SSH/FTP. El orquestador (orchestrator.py)
 # ya vigila esta carpeta y recarga solo -- no hace falta avisarle del archivo
 # nuevo por otra via.
-install -d -o "$INSTANCE" -g "$WEB_GROUP" -m 0770 "$RUNTIME/control/proxy-accounts"
+install -d -o "$INSTANCE" -g "$INSTANCE" -m 0770 "$RUNTIME/control/proxy-accounts"
+chown "$INSTANCE":"$WEB_GROUP" "$RUNTIME/control/proxy-accounts"
+chmod 0770 "$RUNTIME/control/proxy-accounts"
 install -d -o "$INSTANCE" -g "$WEB_GROUP" -m 0750 "$DATA/control"
 
 if [[ "$SKIP_ANNEX" != "1" ]]; then
