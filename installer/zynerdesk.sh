@@ -1,123 +1,189 @@
 #!/usr/bin/env bash
+# Ciclo de vida nativo de Zynerdesk (Synervox Remoteo). Sin Docker ni Compose:
+# proceso Node administrado por systemd, BD en el MySQL nativo del host.
+# Ver ADR-0016 (docs/DECISIONS.md) para el porque.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ZYNERDESK_DIR="$ROOT/zynerdesk"
-ENV_FILE="$ZYNERDESK_DIR/.env"
-ZYNERDESK_DEFAULT_IMAGE="ghcr.io/miguelleonh0331/synervox-remoteo@sha256:a2a79232e0b8561a553a11fcfdb9fbc38b2cb346ef7dd400e3b65491c5de4a8b"
+VENDOR="$ROOT/src/features/zynerdesk/vendor"
+WEB_GROUP="${WEB_GROUP:-www-data}"
+getent group "$WEB_GROUP" >/dev/null || WEB_GROUP=www
+getent group "$WEB_GROUP" >/dev/null || WEB_GROUP=root
+
+INSTANCE="${ZYNERDESK_INSTANCE:-zynervox-zynerdesk}"
+[[ "$INSTANCE" =~ ^[a-z0-9][a-z0-9-]{2,40}$ ]] || { echo "ZYNERDESK_INSTANCE inválido" >&2; exit 2; }
+
+NODE_BIN="${ZYNERDESK_NODE:-$(command -v node || true)}"
+CONFIG_ENV="/etc/zynervox/$INSTANCE.env"
+RUNTIME="/opt/$INSTANCE"
+LOG="/var/log/$INSTANCE"
+SERVICE="$INSTANCE.service"
 
 usage() { echo "Uso: $0 init|up|status|credentials|install-proxy|remove-proxy|backup <archivo>|restore <archivo>|down"; }
 
 require_runtime() {
-  command -v docker >/dev/null 2>&1 || { echo "Falta Docker" >&2; exit 1; }
-  if docker compose version >/dev/null 2>&1; then
-    COMPOSE_BIN=(docker compose)
-  elif command -v docker-compose >/dev/null 2>&1; then
-    COMPOSE_BIN=(docker-compose)
-  else
-    echo "Falta Docker Compose" >&2; exit 1
+  local missing=()
+  [[ -n "$NODE_BIN" ]] || missing+=(node)
+  for cmd in npm mysql openssl curl ss; do
+    command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
+  done
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "Falta dependencia Zynerdesk: ${missing[*]}" >&2
+    exit 1
   fi
+  "$NODE_BIN" -e 'process.exit(process.versions.node.split(".")[0] < 18 ? 1 : 0)' \
+    || { echo "Zynerdesk requiere Node 18+" >&2; exit 1; }
 }
 
-compose() {
-  "${COMPOSE_BIN[@]}" --env-file "$ENV_FILE" -p "$COMPOSE_PROJECT_NAME" -f "$ZYNERDESK_DIR/compose.yml" "$@"
+choose_port() {
+  local port=4100
+  while ss -ltnH | awk '{print $4}' | grep -qE "(^|:)${port}\$"; do
+    port=$((port + 1))
+    [[ $port -le 4199 ]] || { echo "No hay puerto libre entre 4100 y 4199" >&2; exit 1; }
+  done
+  echo "$port"
 }
 
 generate_env() {
-  [[ -f "$ENV_FILE" ]] && return
-  command -v openssl >/dev/null 2>&1 || { echo "Falta openssl" >&2; exit 1; }
-  local port=4100
-  if command -v ss >/dev/null 2>&1; then
-    while ss -ltnH | awk '{print $4}' | grep -qE "(^|:)${port}$"; do
-      port=$((port + 1))
-      [[ $port -le 4199 ]] || { echo "No hay puerto libre entre 4100 y 4199" >&2; exit 1; }
-    done
-  fi
-  umask 077
+  [[ -f "$CONFIG_ENV" ]] && return
+  install -d -o root -g root -m 0755 /etc/zynervox
+  local port; port="$(choose_port)"
   local base_path="${ZYNERDESK_BASE_PATH_OVERRIDE:-/zynerdesk}"
-  local project_name="${ZYNERDESK_COMPOSE_PROJECT_OVERRIDE:-zynervox-zynerdesk}"
-  cat > "$ENV_FILE" <<EOF
-COMPOSE_PROJECT_NAME=$project_name
-ZYNERDESK_IMAGE=$ZYNERDESK_DEFAULT_IMAGE
-ZYNERDESK_BIND_HOST=127.0.0.1
-ZYNERDESK_PORT=$port
-ZYNERDESK_BASE_PATH=$base_path
-ZYNERDESK_DB_NAME=syner_remoteo
-ZYNERDESK_DB_USER=syner_remoteo
-ZYNERDESK_DB_PASSWORD=$(openssl rand -hex 24)
-ZYNERDESK_DB_ROOT_PASSWORD=$(openssl rand -hex 24)
-ZYNERDESK_ADMIN_USER=admin
-ZYNERDESK_ADMIN_PASSWORD=$(openssl rand -hex 12)
+  umask 077
+  cat > "$CONFIG_ENV" <<EOF
+HOST=127.0.0.1
+PORT=$port
+BASE_PATH=$base_path
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_NAME=syner_remoteo
+DB_USER=syner_remoteo
+DB_PASS=$(openssl rand -hex 24)
+INITIAL_ADMIN_USER=admin
+INITIAL_ADMIN_PASSWORD=$(openssl rand -hex 12)
 ZYNERVOX_SSO_SECRET=$(openssl rand -hex 32)
-ZYNERDESK_COOKIE_SECURE=0
-ZYNERDESK_COOKIE_SAME_SITE=Lax
+COOKIE_SECURE=0
 EOF
 }
 
-ensure_sso_env() {
-  [[ -f "$ENV_FILE" ]] || return
-  grep -q '^ZYNERVOX_SSO_SECRET=' "$ENV_FILE" || {
-    umask 077
-    printf 'ZYNERVOX_SSO_SECRET=%s\n' "$(openssl rand -hex 32)" >> "$ENV_FILE"
-  }
-}
-
-sync_image_env() {
-  [[ -f "$ENV_FILE" ]] || return
-  local temp_file="${ENV_FILE}.tmp.$$"
-  awk -v image="$ZYNERDESK_DEFAULT_IMAGE" '
-    /^ZYNERDESK_IMAGE=/ { print "ZYNERDESK_IMAGE=" image; found=1; next }
-    { print }
-    END { if (!found) print "ZYNERDESK_IMAGE=" image }
-  ' "$ENV_FILE" > "$temp_file"
-  chmod 0600 "$temp_file"
-  mv -f "$temp_file" "$ENV_FILE"
-}
-
 load_env() {
-  [[ -f "$ENV_FILE" ]] || { echo "Falta $ENV_FILE; ejecute init" >&2; exit 1; }
+  [[ -f "$CONFIG_ENV" ]] || { echo "Falta $CONFIG_ENV; ejecute init" >&2; exit 1; }
   set -a
-  source "$ENV_FILE"
+  # shellcheck disable=SC1090
+  source "$CONFIG_ENV"
   set +a
-  [[ "$ZYNERDESK_PORT" =~ ^[0-9]+$ ]] || { echo "ZYNERDESK_PORT inválido" >&2; exit 1; }
-  [[ "$ZYNERDESK_BASE_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]] || { echo "ZYNERDESK_BASE_PATH inválido" >&2; exit 1; }
-  [[ "$ZYNERDESK_DB_NAME" =~ ^[A-Za-z0-9_]+$ ]] || { echo "ZYNERDESK_DB_NAME inválido" >&2; exit 1; }
-  [[ "$ZYNERDESK_DB_USER" =~ ^[A-Za-z0-9_]+$ ]] || { echo "ZYNERDESK_DB_USER inválido" >&2; exit 1; }
-  [[ "$COMPOSE_PROJECT_NAME" =~ ^[a-z0-9][a-z0-9_-]+$ ]] || { echo "COMPOSE_PROJECT_NAME inválido" >&2; exit 1; }
+  [[ "$PORT" =~ ^[0-9]+$ ]] || { echo "PORT inválido" >&2; exit 1; }
+  [[ "$BASE_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]] || { echo "BASE_PATH inválido" >&2; exit 1; }
+  [[ "$DB_NAME" =~ ^[A-Za-z0-9_]+$ ]] || { echo "DB_NAME inválido" >&2; exit 1; }
+  [[ "$DB_USER" =~ ^[A-Za-z0-9_]+$ ]] || { echo "DB_USER inválido" >&2; exit 1; }
+}
+
+ensure_database() {
+  mysql -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; \
+CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS'; \
+ALTER USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS'; \
+GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost'; \
+FLUSH PRIVILEGES;"
+  # El esquema lo aplica scripts/start.js solo, en cada arranque (idempotente
+  # vía tabla schema_migrations). No hace falta precargar SQL aquí.
+}
+
+ensure_system_user() {
+  getent group "$INSTANCE" >/dev/null 2>&1 || groupadd --system "$INSTANCE"
+  id "$INSTANCE" >/dev/null 2>&1 || \
+    useradd --system --gid "$INSTANCE" --home-dir "$RUNTIME" --shell /usr/sbin/nologin "$INSTANCE"
+}
+
+install_code() {
+  install -d -o root -g root -m 0755 "$RUNTIME"
+  tar -C "$VENDOR" -cf - . | tar -C "$RUNTIME" -xf -
+  (cd "$RUNTIME" && npm ci --omit=dev --no-audit --no-fund)
+
+  chown -R root:root "$RUNTIME"
+  find "$RUNTIME" -type d -exec chmod 0755 {} +
+  find "$RUNTIME" -type f -exec chmod 0644 {} +
+
+  install -d -o root -g "$WEB_GROUP" -m 0750 "$LOG"
+}
+
+write_service() {
+  cat > "/etc/systemd/system/$SERVICE" <<EOF
+[Unit]
+Description=Zynervox Zynerdesk (Synervox Remoteo nativo, $INSTANCE)
+After=network-online.target mysql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=$INSTANCE
+Group=$INSTANCE
+WorkingDirectory=$RUNTIME
+EnvironmentFile=$CONFIG_ENV
+ExecStart=$NODE_BIN $RUNTIME/scripts/start.js
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+StandardOutput=append:$LOG/service.log
+StandardError=append:$LOG/service.log
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  touch "$LOG/service.log"
+  chown "$INSTANCE":"$WEB_GROUP" "$LOG/service.log"
+  chmod 0640 "$LOG/service.log"
+  systemctl daemon-reload
 }
 
 wait_app() {
   for _ in $(seq 1 60); do
-    if curl -fsS "http://127.0.0.1:${ZYNERDESK_PORT}/login.html" >/dev/null 2>&1; then return; fi
+    curl -fsS "http://127.0.0.1:${PORT}/login.html" >/dev/null 2>&1 && return
     sleep 2
   done
   echo "Zynerdesk no quedó disponible" >&2
+  journalctl -u "$SERVICE" --no-pager -n 30 >&2 || true
   exit 1
 }
 
 action="${1:-}"
 case "$action" in
   init)
-    require_runtime; generate_env; ensure_sso_env; sync_image_env; load_env
-    compose pull app
-    compose up -d --force-recreate
+    [[ $EUID -eq 0 ]] || { echo "Ejecutar como root" >&2; exit 1; }
+    require_runtime
+    generate_env
+    load_env
+    ensure_database
+    ensure_system_user
+    install_code
+    write_service
+    systemctl enable --now "$SERVICE"
     wait_app
-    echo "ZYNERDESK_READY host=$ZYNERDESK_BIND_HOST port=$ZYNERDESK_PORT path=$ZYNERDESK_BASE_PATH"
+    echo "ZYNERDESK_READY host=127.0.0.1 port=$PORT path=$BASE_PATH"
     ;;
-  up) require_runtime; ensure_sso_env; sync_image_env; load_env; compose pull app; compose up -d; wait_app ;;
-  status) require_runtime; load_env; compose ps ;;
+  up)
+    [[ $EUID -eq 0 ]] || { echo "Ejecutar como root" >&2; exit 1; }
+    load_env
+    systemctl start "$SERVICE"
+    wait_app
+    ;;
+  status)
+    load_env
+    systemctl is-active "$SERVICE" || true
+    systemctl status "$SERVICE" --no-pager -l || true
+    ;;
   credentials)
     load_env
     printf 'ZYNERDESK_ADMIN_USER=%s\nZYNERDESK_ADMIN_PASSWORD=%s\nZYNERDESK_PATH=%s\n' \
-      "$ZYNERDESK_ADMIN_USER" "$ZYNERDESK_ADMIN_PASSWORD" "$ZYNERDESK_BASE_PATH"
+      "$INITIAL_ADMIN_USER" "$INITIAL_ADMIN_PASSWORD" "$BASE_PATH"
     ;;
   install-proxy)
-    ensure_sso_env; load_env
-    web_group=www-data
-    getent group "$web_group" >/dev/null || web_group=www
-    getent group "$web_group" >/dev/null || web_group=root
-    command -v a2enmod >/dev/null 2>&1 && sudo a2enmod proxy proxy_http proxy_wstunnel headers >/dev/null
-    proxy_slug="$(printf '%s' "$ZYNERDESK_BASE_PATH" | tr -c 'A-Za-z0-9' '-' | sed 's/^-*//;s/-*$//')"
+    [[ $EUID -eq 0 ]] || { echo "Ejecutar como root" >&2; exit 1; }
+    load_env
+    command -v a2enmod >/dev/null 2>&1 && a2enmod proxy proxy_http proxy_wstunnel headers >/dev/null
+    proxy_slug="$(printf '%s' "$BASE_PATH" | tr -c 'A-Za-z0-9' '-' | sed 's/^-*//;s/-*$//')"
     proxy_name="zynervox-zynerdesk-${proxy_slug:-default}"
     if command -v a2enconf >/dev/null 2>&1; then
       proxy_file="/etc/apache2/conf-available/${proxy_name}.conf"
@@ -126,53 +192,56 @@ case "$action" in
     else
       echo "No se encontró directorio de configuración Apache" >&2; exit 1
     fi
-    sed -e "s|__BASE_PATH__|$ZYNERDESK_BASE_PATH|g" -e "s|__PORT__|$ZYNERDESK_PORT|g" \
-      "$ROOT/installer/apache-zynerdesk.conf.template" | \
-      sudo tee "$proxy_file" >/dev/null
-    command -v a2enconf >/dev/null 2>&1 && sudo a2enconf "$proxy_name" >/dev/null
-    sudo apache2ctl configtest
-    sudo systemctl reload apache2
-    sudo install -d -o root -g "$web_group" -m 0750 /etc/zynervox
+    sed -e "s|__BASE_PATH__|$BASE_PATH|g" -e "s|__PORT__|$PORT|g" \
+      "$ROOT/installer/apache-zynerdesk.conf.template" > "$proxy_file"
+    command -v a2enconf >/dev/null 2>&1 && a2enconf "$proxy_name" >/dev/null
+    apache2ctl configtest
+    systemctl reload apache2
+    install -d -o root -g "$WEB_GROUP" -m 0750 /etc/zynervox
     printf 'ZYNERDESK_BASE_PATH=%s\nZYNERDESK_PORT=%s\nZYNERVOX_SSO_SECRET=%s\n' \
-      "$ZYNERDESK_BASE_PATH" "$ZYNERDESK_PORT" "$ZYNERVOX_SSO_SECRET" | sudo tee /etc/zynervox/zynerdesk.conf >/dev/null
-    sudo chown root:"$web_group" /etc/zynervox/zynerdesk.conf
-    sudo chmod 0640 /etc/zynervox/zynerdesk.conf
-    echo "ZYNERDESK_PROXY_READY path=$ZYNERDESK_BASE_PATH port=$ZYNERDESK_PORT"
+      "$BASE_PATH" "$PORT" "$ZYNERVOX_SSO_SECRET" > /etc/zynervox/zynerdesk.conf
+    chown root:"$WEB_GROUP" /etc/zynervox/zynerdesk.conf
+    chmod 0640 /etc/zynervox/zynerdesk.conf
+    echo "ZYNERDESK_PROXY_READY path=$BASE_PATH port=$PORT"
     ;;
   remove-proxy)
+    [[ $EUID -eq 0 ]] || { echo "Ejecutar como root" >&2; exit 1; }
     load_env
-    proxy_slug="$(printf '%s' "$ZYNERDESK_BASE_PATH" | tr -c 'A-Za-z0-9' '-' | sed 's/^-*//;s/-*$//')"
+    proxy_slug="$(printf '%s' "$BASE_PATH" | tr -c 'A-Za-z0-9' '-' | sed 's/^-*//;s/-*$//')"
     proxy_name="zynervox-zynerdesk-${proxy_slug:-default}"
     if command -v a2disconf >/dev/null 2>&1; then
-      sudo a2disconf "$proxy_name" >/dev/null 2>&1 || true
-      sudo rm -f "/etc/apache2/conf-available/${proxy_name}.conf"
+      a2disconf "$proxy_name" >/dev/null 2>&1 || true
+      rm -f "/etc/apache2/conf-available/${proxy_name}.conf"
     elif [[ -d /etc/apache2/conf.d ]]; then
-      sudo rm -f "/etc/apache2/conf.d/${proxy_name}.conf"
+      rm -f "/etc/apache2/conf.d/${proxy_name}.conf"
     fi
     if command -v apache2ctl >/dev/null 2>&1; then
-      sudo rm -f /etc/zynervox/zynerdesk.conf
-      sudo apache2ctl configtest
-      sudo systemctl reload apache2
+      rm -f /etc/zynervox/zynerdesk.conf
+      apache2ctl configtest
+      systemctl reload apache2
     fi
     echo "ZYNERDESK_PROXY_REMOVED"
     ;;
   backup)
-    require_runtime; load_env
+    load_env
     output="${2:-}"
     [[ -n "$output" ]] || { usage; exit 2; }
     umask 077
-    compose exec -T db mysqldump -uroot -p"$ZYNERDESK_DB_ROOT_PASSWORD" \
-      --single-transaction --routines --events --triggers "$ZYNERDESK_DB_NAME" | gzip > "$output"
+    MYSQL_PWD="$DB_PASS" mysqldump -h 127.0.0.1 -u "$DB_USER" \
+      --single-transaction --routines --events --triggers "$DB_NAME" | gzip > "$output"
     echo "ZYNERDESK_BACKUP_READY file=$output"
     ;;
   restore)
-    require_runtime; load_env
+    load_env
     input="${2:-}"
     [[ -f "$input" ]] || { echo "Backup no encontrado: $input" >&2; exit 2; }
-    gzip -dc "$input" | compose exec -T db \
-      mysql -uroot -p"$ZYNERDESK_DB_ROOT_PASSWORD" "$ZYNERDESK_DB_NAME"
+    gzip -dc "$input" | MYSQL_PWD="$DB_PASS" mysql -h 127.0.0.1 -u "$DB_USER" "$DB_NAME"
     echo "ZYNERDESK_RESTORE_OK file=$input"
     ;;
-  down) require_runtime; load_env; compose down ;;
+  down)
+    [[ $EUID -eq 0 ]] || { echo "Ejecutar como root" >&2; exit 1; }
+    load_env
+    systemctl stop "$SERVICE"
+    ;;
   *) usage; exit 2 ;;
 esac

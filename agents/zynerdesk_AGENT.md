@@ -56,11 +56,12 @@ todos los módulos y exige escalar.
 
 ## Reglas específicas del módulo
 
-- La imagen del upstream se fija **por digest**, nunca por etiqueta flotante.
-  Al actualizar, registrar el digest anterior antes de cambiarlo: es el camino
-  de rollback.
-- No editar archivos dentro del contenedor para adaptarlo al despliegue. Toda
-  la adaptación ocurre al servir la página, en `zynerdesk.php`.
+- No reintroducir Docker, Compose ni una imagen fijada por digest para este
+  módulo (ADR-0016). El código vive vendorizado en
+  `src/features/zynerdesk/vendor/`; al actualizarlo, documentar el origen
+  exacto en `README.md` (igual que se hizo al vendorizar la primera vez).
+- No editar `vendor/` a mano para adaptarlo al despliegue. Toda la adaptación
+  visual ocurre al servir la página, en `zynerdesk.php`.
 - No agregar reglas de reescritura ad-hoc por cadena: la resolución de rutas
   es genérica. Una vista nueva se declara en `$ZYNERDESK_VIEWS` y debería
   funcionar sin tocar el motor de reescritura.
@@ -69,10 +70,9 @@ todos los módulos y exige escalar.
 - Las trampas conocidas del upstream (hojas en el `<head>`, paleta en
   `:root`/`body`, base calculada en `supervicion/app.js`) están documentadas
   en `README.md`. Revisarlas en cada actualización de imagen.
-- Nunca versionar `zynerdesk/.env` ni volcar credenciales en logs, HTML o
-  mensajes de commit.
-- No borrar los volúmenes `zynerdesk_mysql` ni `zynerdesk_data` en una
-  actualización.
+- Nunca versionar `/etc/zynervox/zynervox-zynerdesk.env` ni volcar credenciales
+  en logs, HTML o mensajes de commit.
+- No borrar la base `syner_remoteo` en una actualización.
 
 ## Debe escalar al ARCHITECT_AGENT si
 
