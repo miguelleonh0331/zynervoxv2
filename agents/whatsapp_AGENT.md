@@ -42,8 +42,10 @@ agents/ARCHITECT_AGENT.md
 
 - No acceder directamente a tablas de Zynerwaba ni de `asterisk`.
 - No copiar secretos de Meta, `.env`, sesiones, contactos o mensajes.
-- Mantener imagen, digest y esquema sincronizados y verificables.
-- Separar siempre base, puerto y volúmenes del resto de Zynervox.
+- Mantener `vendor/` y el esquema sincronizados y verificables; documentar el
+  origen de cualquier actualización de `vendor/` (ver `README.md`).
+- No reintroducir Docker, Compose ni una imagen fijada por digest para este módulo.
+- Separar siempre base, puerto y datos del resto de Zynervox.
 - Tratar SSO, webhooks compartidos o identidad unificada como cambios de contrato.
 - Probar login, sesión y persistencia además del simple HTTP 200.
 
