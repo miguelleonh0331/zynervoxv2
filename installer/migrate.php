@@ -9,7 +9,7 @@ if ($argc !== 3) {
 $webRoot = rtrim($argv[1], '/');
 $migrationDir = rtrim($argv[2], '/');
 require_once $webRoot . '/includes/Database.php';
-$db = Database::getInstance();
+$db = \Includes\Database::getInstance();
 $db->exec('CREATE TABLE IF NOT EXISTS zynervox_schema_migrations (' .
     'name VARCHAR(190) PRIMARY KEY, applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)');
 
