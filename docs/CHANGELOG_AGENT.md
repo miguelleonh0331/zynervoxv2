@@ -844,3 +844,22 @@ Contrato:
 
 Riesgos:
 Modulo validado en mirmidon (produccion) en su forma Docker actual; esta rama no toca mirmidon, solo WSL de pruebas
+
+### 2026-10-03 10:59 - zynerdesk_AGENT - zynerdesk
+
+Tipo: refactor
+
+Resumen:
+Cerrar migracion zynerdesk docker->nativo: 6 pruebas de aceptacion verificadas en zynervoxv1 (WSL) - docker vacio, systemd activo, 14 tablas migradas, proxy 200, SSO HMAC real 200 con identidad correcta, sesion persiste tras reinicio del servicio
+
+Motivo:
+Cerrar ADR-0016 zynerdesk: confirmar que la migracion funciona end-to-end, no solo que arranca
+
+Archivos modificados:
+- docs/CHANGELOG_AGENT.md
+
+Contrato:
+- modificado con ADR-0016
+
+Riesgos:
+check.sh --strict sigue en FAIL solo por Asterisk local ausente (gap preexistente, no relacionado). Rama feat/zynerdesk-nativo publicada SIN merge a main. Probado en WSL zynervoxv1, no en mirmidon (produccion sigue en Docker).
