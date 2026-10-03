@@ -16,7 +16,8 @@
   async function uploadProxyFile(file) {
     const body = new FormData();
     body.append('proxy_file', file);
-    const response = await fetch('proxy_upload.php', {
+    const endpoint = window.ZYNERVOX_FARM_PROXY_UPLOAD_API || 'proxy_upload.php';
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {'X-CSRF-Token': csrf},
       body,
