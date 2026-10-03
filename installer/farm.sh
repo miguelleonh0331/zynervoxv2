@@ -14,7 +14,7 @@ SKIP_ANNEX="${FARM_SKIP_ANNEX:-0}"
 [[ "$INSTANCE" =~ ^[a-z0-9][a-z0-9-]{2,40}$ ]] || { echo "FARM_INSTANCE inválido" >&2; exit 2; }
 [[ $EUID -eq 0 ]] || { echo "Ejecutar como root" >&2; exit 1; }
 "$PYTHON" -c 'import sys; raise SystemExit(sys.version_info < (3, 10))' || { echo "Farm requiere Python 3.10+" >&2; exit 1; }
-DEPS=(ss openssl systemctl ffmpeg curl)
+DEPS=(ss openssl systemctl ffmpeg curl sox)
 [[ "$SKIP_ANNEX" == "1" ]] || DEPS+=(baresip)
 for command in "${DEPS[@]}"; do
     command -v "$command" >/dev/null 2>&1 || { echo "Falta dependencia Farm: $command" >&2; exit 1; }
