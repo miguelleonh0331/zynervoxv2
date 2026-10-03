@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Synervox Remoteo · Ingreso</title>
+  <style>
+    :root { --bg:#0d1117; --panel:#161b22; --line:#2a333d; --ink:#e8eef4; --muted:#9fb0c0; --accent:#2f8f6f; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+      font-family:"Segoe UI",Verdana,sans-serif; color:var(--ink);
+      background:radial-gradient(1200px 600px at 30% -10%, rgba(47,143,111,.18), transparent), var(--bg); }
+    .card { width:min(380px,92vw); background:var(--panel); border:1px solid var(--line);
+      border-radius:12px; padding:28px; box-shadow:0 30px 80px rgba(0,0,0,.5); }
+    h1 { margin:0 0 4px; font-size:20px; }
+    p.sub { margin:0 0 20px; color:var(--muted); font-size:13px; }
+    label { display:block; margin:14px 0 6px; font-size:13px; color:var(--muted); }
+    input { width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:8px;
+      background:#0d1117; color:#fff; font-size:14px; }
+    button { margin-top:22px; width:100%; padding:12px; border:0; border-radius:8px;
+      background:var(--accent); color:#fff; font-weight:800; cursor:pointer; font-size:14px; }
+    button:disabled { opacity:.6; cursor:wait; }
+.err { margin-top:14px; min-height:18px; color:#ff6b6b; font-size:13px; }
+.dl { display:block; margin-top:16px; text-align:center; font-size:13px; color:var(--muted);
+  text-decoration:none; border-top:1px solid var(--line); padding-top:14px; }
+.dl:hover { color:var(--ink); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Synervox Remoteo</h1>
+    <p class="sub">Ingreso de técnico</p>
+    <label>Usuario</label>
+    <input id="username" autocomplete="username" autofocus>
+    <label>Contraseña</label>
+    <input id="password" type="password" autocomplete="current-password">
+    <button id="btn">Ingresar</button>
+<div class="err" id="err"></div>
+    <a class="dl" href="downloads/Synervox-Cliente-0.2.0.exe" download>⬇ Descargar Zyntransfer</a>
+  </div>
+  <script>
+    const btn = document.getElementById("btn");
+    const err = document.getElementById("err");
+    async function login() {
+      err.textContent = ""; btn.disabled = true;
+      try {
+        const res = await fetch("api/auth/login", {
+          method:"POST", headers:{"content-type":"application/json"}, credentials:"include",
+          body: JSON.stringify({ username: username.value.trim(), password: password.value })
+        });
+        if (!res.ok) { const j = await res.json().catch(()=>({})); throw new Error(j.error || "Error de ingreso"); }
+        location.href = "./";
+      } catch (e) { err.textContent = e.message; } finally { btn.disabled = false; }
+    }
+    btn.addEventListener("click", login);
+    document.addEventListener("keydown", (e) => { if (e.key === "Enter") login(); });
+  </script>
+</body>
+</html>

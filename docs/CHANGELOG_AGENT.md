@@ -825,3 +825,22 @@ Contrato:
 
 Riesgos:
 - la ruta local documentada es específica del entorno Windows del propietario
+
+### 2026-10-03 10:49 - zynerdesk_AGENT - zynerdesk
+
+Tipo: refactor
+
+Resumen:
+Vendorizar codigo de Synervox Remoteo (extraido de ghcr.io/miguelleonh0331/synervox-remoteo) en src/features/zynerdesk/vendor/, primer paso de la migracion a nativo
+
+Motivo:
+El codigo solo existia dentro de la imagen Docker; sin esto no hay forma de versionarlo ni de correr el servicio sin contenedor
+
+Archivos modificados:
+- src/features/zynerdesk/vendor/** src/features/zynerdesk/README.md src/features/zynerdesk/CONTRACT.md
+
+Contrato:
+- modificado con ADR-0016
+
+Riesgos:
+Modulo validado en mirmidon (produccion) en su forma Docker actual; esta rama no toca mirmidon, solo WSL de pruebas

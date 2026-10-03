@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Synervox Remoteo | Supervicion</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Synervox Remoteo</h1>
+      <p class="subtitle">Supervicion multiple</p>
+    </div>
+    <div class="who">
+      <span id="whoName">--</span>
+      <a href="../index.html">Panel principal</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="toolbar">
+      <select id="campaign" aria-label="Campana">
+        <option value="">Todas las campa&ntilde;as</option>
+      </select>
+      <input class="search" id="search" type="search" placeholder="Buscar por tag, host o IP...">
+      <label class="online-filter"><input type="checkbox" id="onlineOnly"> Solo online</label>
+      <span class="stat" id="agentStat">Cargando agentes...</span>
+      <button class="btn secondary" id="selectOnline">Seleccionar online</button>
+      <button class="btn secondary" id="clearSelection">Limpiar</button>
+      <button class="btn primary" id="startView" disabled>Ver seleccionados (0)</button>
+    </section>
+
+    <section class="layout">
+      <aside class="agent-panel">
+        <div class="panel-title">
+          <strong>Agentes del grupo</strong>
+          <span id="selectionCount">0 seleccionados</span>
+        </div>
+        <div class="agent-list" id="agentList">
+          <div class="empty">Cargando...</div>
+        </div>
+      </aside>
+
+      <section class="monitor-panel">
+        <div class="monitor-head">
+          <div>
+            <strong>Pantallas en vivo</strong>
+            <span id="monitorStat">Sin sesiones activas</span>
+          </div>
+          <div class="monitor-tools">
+            <select id="columns" aria-label="Columnas de la cuadricula">
+              <option value="auto">Columnas automaticas</option>
+              <option value="2">2 columnas</option>
+              <option value="3">3 columnas</option>
+              <option value="4">4 columnas</option>
+            </select>
+            <button class="btn wall-btn" id="videowall" disabled>Modo Videowall</button>
+          </div>
+        </div>
+        <div class="screen-grid" id="screenGrid">
+          <div class="welcome">
+            <strong>Selecciona dos o mas agentes</strong>
+            <span>Elige una campa&ntilde;a, marca los equipos y pulsa "Ver seleccionados".</span>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <button class="wall-exit" id="exitVideowall" type="button">Salir de Videowall</button>
+
+  <template id="screenTemplate">
+    <article class="screen-card">
+      <div class="screen-bar">
+        <div class="screen-name">
+          <span class="live-dot"></span>
+          <strong></strong>
+          <small></small>
+        </div>
+        <div class="screen-actions">
+          <button class="icon-btn control-btn" type="button">Control OFF</button>
+          <button class="icon-btn camera-btn" type="button" style="display:none">Cámara: ON</button>
+          <button class="icon-btn expand-btn" type="button" title="Ampliar">Ampliar</button>
+          <button class="icon-btn close-btn" type="button" title="Cerrar">Cerrar</button>
+        </div>
+      </div>
+      <div class="stage">
+        <video autoplay playsinline></video>
+        <div class="control-overlay" tabindex="0"></div>
+        <div class="screen-hint">Conectando...</div>
+        <div class="cam-box" style="display:none">
+          <span class="cam-label">Cámara</span>
+          <video autoplay playsinline muted></video>
+        </div>
+      </div>
+      <div class="screen-status">Iniciando se&ntilde;alizacion...</div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>

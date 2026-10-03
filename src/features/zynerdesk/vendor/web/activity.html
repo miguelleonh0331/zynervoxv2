@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Actividad del agente · Synervox</title>
+  <style>
+    :root { --bg:#f5f2ec; --panel:#fff; --panel2:#f7f9fc; --ink:#202b3d; --muted:#6c7889;
+      --line:#d9dde4; --accent:#f58213; --accent-dark:#c45b0a; --ok:#21854a; --danger:#c94c42; }
+    * { box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    body { margin:0; background:var(--bg); color:var(--ink); font-family:Inter,Segoe UI,Arial,sans-serif; font-size:13px; }
+    header { position:sticky; top:0; z-index:5; display:flex; align-items:center; justify-content:space-between; gap:16px;
+      padding:13px 24px; background:#202b3d; color:#fff; box-shadow:0 4px 18px rgba(0,0,0,.12); }
+    .title h1 { margin:0; font-size:18px; } .title p { margin:4px 0 0; color:#bdc7d4; }
+    .header-actions { display:flex; align-items:center; gap:12px; }
+    .page-status { color:#bdc7d4; font-size:11px; }
+    .back { color:#fff; text-decoration:none; border:1px solid #536172; border-radius:8px; padding:8px 12px; }
+    main { max-width:1500px; margin:0 auto; padding:20px 24px 40px; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px;
+      box-shadow:0 5px 18px rgba(16,26,45,.05); margin-bottom:14px; }
+    .filters { display:flex; align-items:end; gap:10px; flex-wrap:wrap; }
+    label { display:flex; flex-direction:column; gap:4px; color:var(--muted); font-size:10px; font-weight:800; text-transform:uppercase; }
+    input,select,button { min-height:36px; border:1px solid var(--line); border-radius:8px; padding:7px 10px;
+      background:var(--panel2); color:var(--ink); font:inherit; }
+    button { border-color:#202b3d; background:#202b3d; color:#fff; cursor:pointer; font-weight:800; }
+    button:hover { background:#2d3a50; }
+    .status { margin-left:auto; color:var(--muted); }
+    .kpis { display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:10px; }
+    .kpi { border:1px solid var(--line); border-radius:10px; padding:12px; background:var(--panel2); }
+    .kpi small { color:var(--muted); text-transform:uppercase; font-weight:800; font-size:9px; }
+    .kpi b { display:block; margin-top:5px; font-size:20px; }
+    h2 { margin:0 0 12px; font-size:14px; }
+    .chips { display:flex; gap:7px; flex-wrap:wrap; }
+    .chip { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); border-radius:8px;
+      padding:7px 9px; background:var(--panel2); }
+    .dot { width:8px; height:8px; border-radius:50%; background:#8290a3; }.dot.open { background:var(--ok); }
+    .table-wrap { overflow:auto; max-height:540px; border:1px solid var(--line); border-radius:9px; }
+    table { width:100%; border-collapse:collapse; min-width:800px; }
+    th { position:sticky; top:0; z-index:1; background:#edf1f5; color:#59677a; text-transform:uppercase;
+      font-size:9px; letter-spacing:.05em; text-align:left; padding:9px; }
+    td { padding:8px 9px; border-top:1px solid #edf0f4; vertical-align:top; }
+    tr:hover td { background:#fffaf5; }
+    .event-type { font-weight:800; color:#465870; white-space:nowrap; }
+    .detail { max-width:700px; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .muted { color:var(--muted); }.danger { color:var(--danger); }
+    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .empty { padding:24px; text-align:center; color:var(--muted); }
+    .block-active { color:var(--ok); font-weight:800; }
+    .block-inactive { color:var(--danger); font-weight:800; }
+    .privacy-note { margin:8px 0 0; color:var(--muted); font-size:11px; }
+    .acc-toggle { width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px;
+      border:0; background:none; padding:0; margin:0 0 12px; cursor:pointer; text-align:left; color:inherit; font:inherit; }
+    .acc-toggle h2 { margin:0; }
+    .acc-arrow { color:var(--muted); font-size:11px; transition:transform .15s ease; }
+    .acc-toggle[aria-expanded="true"] .acc-arrow { transform:rotate(90deg); }
+    .acc-body[hidden] { display:none; }
+    .acc-filters { display:flex; align-items:end; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+    .acc-filters label { display:flex; flex-direction:column; gap:4px; color:var(--muted); font-size:10px; font-weight:800; text-transform:uppercase; }
+    .acc-filters input, .acc-filters select, .acc-filters button { min-height:34px; border:1px solid var(--line); border-radius:8px; padding:6px 9px;
+      background:var(--panel2); color:var(--ink); font:inherit; }
+    .acc-filters button { border-color:#202b3d; background:#202b3d; color:#fff; cursor:pointer; font-weight:800; }
+    .acc-filters button:hover { background:#2d3a50; }
+    .acc-status { color:var(--muted); font-size:11px; }
+    .live-state { display:inline-flex; align-items:center; gap:6px; font-weight:800; }
+    .live-state::before { content:""; width:9px; height:9px; border-radius:50%; background:#8290a3; }
+    .live-state.green::before { background:var(--ok); }.live-state.yellow::before { background:#c58a15; }
+    .live-state.red::before { background:var(--danger); }.live-state.gray::before { background:#8290a3; }
+    .daily-semaphore { min-height:30px; padding:4px 7px; font-weight:800; background:#fff; }
+    .daily-semaphore.green { border-color:var(--ok); color:#16743c; }
+    .daily-semaphore.yellow { border-color:#c58a15; color:#91620b; }
+    .daily-semaphore.red { border-color:var(--danger); color:#b3312b; }
+    .daily-semaphore.gray { border-color:#8290a3; color:#59677a; }
+    .overview-grid { display:grid; grid-template-columns:1.35fr repeat(4,minmax(135px,1fr)); gap:10px; margin-bottom:14px; }
+    .overview-card { min-height:94px; padding:14px; border:1px solid var(--line); border-radius:12px; background:var(--panel);
+      box-shadow:0 5px 18px rgba(16,26,45,.05); display:flex; flex-direction:column; justify-content:space-between; }
+    .overview-card.primary { background:linear-gradient(135deg,#202b3d,#303c4f); color:#fff; border-color:#202b3d; }
+    .overview-card small { color:var(--muted); text-transform:uppercase; font-size:9px; font-weight:900; letter-spacing:.06em; }
+    .overview-card.primary small,.overview-card.primary .overview-meta { color:#bdc7d4; }
+    .overview-value { display:block; margin-top:8px; font-size:20px; font-weight:900; }
+    .overview-meta { display:block; margin-top:5px; color:var(--muted); font-size:10px; }
+    .panel-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:12px; }
+    .panel-heading h2 { margin:2px 0 0; font-size:17px; }
+    .eyebrow { color:var(--accent-dark); font-size:9px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+    .jornada-panel { padding:0; overflow:hidden; }
+    .jornada-head { padding:16px 16px 12px; border-bottom:1px solid var(--line); }
+    .jornada-head .acc-filters { margin:0; }
+    .jornada-note { padding:9px 16px; margin:0; background:#fff9f2; border-bottom:1px solid #f3dfca; }
+    .jornada-panel .table-wrap { margin:0; border:0; border-radius:0; max-height:none; }
+    .jornada-table { min-width:900px; }
+    .jornada-table td { vertical-align:middle; }
+    .journey-row td { padding:11px 10px; }
+    .date-cell b { display:block; font-size:13px; }.cell-note { display:block; margin-top:3px; color:var(--muted); font-size:10px; }
+    .metric-strong { font-size:14px; font-weight:900; }
+    .metric-strong.good { color:var(--ok); }.metric-strong.warn { color:#a8700c; }.metric-strong.bad { color:var(--danger); }
+    .detail-button,.audit-day { min-height:30px; padding:5px 9px; border-color:var(--line); background:#fff; color:var(--ink); }
+    .detail-button:hover,.audit-day:hover { color:#fff; }
+    .journey-detail td { padding:0; background:#f7f9fc; }
+    .journey-detail:hover td { background:#f7f9fc; }
+    .day-detail { padding:14px 16px; border-top:1px solid var(--line); }
+    .detail-grid { display:grid; grid-template-columns:repeat(7,minmax(110px,1fr)); gap:8px; }
+    .detail-item { padding:9px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+    .detail-item small { display:block; color:var(--muted); text-transform:uppercase; font-size:8px; font-weight:900; }
+    .detail-item b { display:block; margin-top:4px; font-size:12px; }
+    .day-detail-actions { display:flex; align-items:center; justify-content:flex-end; margin-top:10px; }
+    .current-panel { display:flex; align-items:center; gap:16px; padding:13px 16px; }
+    .current-panel h2 { min-width:145px; margin:0; }
+    .current-panel .chips { flex:1; }
+    .audit-heading { margin:24px 2px 10px; }
+    .audit-heading h2 { margin:3px 0; font-size:16px; }
+    .audit-heading p { margin:0; color:var(--muted); font-size:11px; }
+    @media(max-width:1100px){ .overview-grid{grid-template-columns:repeat(3,1fr)}.overview-card.primary{grid-column:span 2}.detail-grid{grid-template-columns:repeat(4,1fr)} }
+    @media(max-width:720px){ header{position:static;align-items:flex-start;padding:12px}.header-actions{align-items:flex-end;flex-direction:column}.page-status{display:none}
+      main{padding:12px}.overview-grid{grid-template-columns:1fr 1fr}.overview-card.primary{grid-column:1/-1}.panel-heading{display:block}.panel-heading .acc-filters{margin-top:12px}
+      .current-panel{display:block}.current-panel h2{margin-bottom:10px}.detail-grid{grid-template-columns:1fr 1fr}.two-col{grid-template-columns:1fr} }
+    @media(max-width:460px){ .overview-grid{grid-template-columns:1fr}.overview-card.primary{grid-column:auto}.detail-grid{grid-template-columns:1fr}.back{padding:7px 9px}.title h1{font-size:15px} }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title"><h1 id="agentTitle">Actividad del agente</h1><p id="agentMeta">Cargando información…</p></div>
+    <div class="header-actions"><span class="page-status" id="pageStatus">Cargando...</span><a class="back" href="index.html">Volver al panel</a></div>
+  </header>
+  <main>
+    <section class="overview-grid" aria-label="Resumen de actividad">
+      <article class="overview-card primary">
+        <small>Estado actual</small>
+        <span class="live-state gray overview-value" id="dailyCurrentState">Sin datos</span>
+        <span class="overview-meta" id="currentStateMeta">Esperando telemetria</span>
+      </article>
+      <article class="overview-card">
+        <small>Actividad hoy</small>
+        <b class="overview-value" id="todayActivity">--</b>
+        <span class="overview-meta">Teclado + proceso productivo</span>
+      </article>
+      <article class="overview-card">
+        <small>Pausa usada</small>
+        <b class="overview-value" id="todayPause">--</b>
+        <span class="overview-meta" id="todayPauseAllowance">Permitida: --</span>
+      </article>
+      <article class="overview-card">
+        <small>Tiempo evaluado</small>
+        <b class="overview-value" id="todayEvaluated">--</b>
+        <span class="overview-meta">Refrigerio excluido</span>
+      </article>
+      <article class="overview-card">
+        <small>Semaforo del dia</small>
+        <span class="live-state gray overview-value" id="todaySemaphore">Sin datos</span>
+        <span class="overview-meta" id="todaySemaphoreMeta">Calculo automatico</span>
+      </article>
+    </section>
+
+    <div hidden aria-hidden="true">
+      <span id="kpiEvents"></span><span id="kpiForeground"></span><span id="kpiOpen"></span><span id="kpiClipboard"></span>
+      <span id="kpiFirstKey"></span><span id="kpiLastKey"></span><span id="kpiActiveBlocks"></span><span id="kpiInactiveBlocks"></span>
+    </div>
+
+    <section class="panel jornada-panel">
+      <div class="jornada-head">
+        <div class="panel-heading">
+          <div><span class="eyebrow">Seguimiento diario</span><h2>Jornada</h2></div>
+          <div class="acc-filters">
+            <label>Desde<input id="dailyFrom" type="date"></label>
+            <label>Hasta<input id="dailyTo" type="date"></label>
+            <button id="dailyRefresh" type="button">Actualizar</button>
+            <span class="acc-status" id="dailyStatus"></span>
+          </div>
+        </div>
+      </div>
+      <p class="privacy-note jornada-note">5 minutos de pausa permitidos por hora evaluada. Refrigerio de 1:00 p. m. a 2:00 p. m. excluido.</p>
+      <div class="table-wrap"><table class="jornada-table"><thead><tr><th>Dia</th><th>Horario</th><th>Evaluado</th><th>Actividad</th><th>Pausa usada / permitida</th><th>Semaforo</th><th>Detalle</th></tr></thead><tbody id="dailyRows"></tbody></table></div>
+    </section>
+
+    <section class="panel current-panel">
+      <h2>Aplicaciones actuales</h2>
+      <div class="chips" id="currentApps"><span class="muted">Sin datos</span></div>
+    </section>
+
+    <div class="audit-heading"><span class="eyebrow">Consulta bajo demanda</span><h2>Auditoria y detalle</h2><p>Estas secciones solo consultan la base cuando las abres.</p></div>
+
+    <section class="panel">
+      <button class="acc-toggle" id="keyboardToggle" type="button" aria-expanded="false" aria-controls="keyboardBody">
+        <h2>Bloques de actividad de teclado <span class="muted">(5 minutos)</span></h2>
+        <span class="acc-arrow">▶</span>
+      </button>
+      <div class="acc-body" id="keyboardBody" hidden>
+        <div class="acc-filters">
+          <label>Desde<input id="keyboardFrom" type="date"></label>
+          <label>Hasta<input id="keyboardTo" type="date"></label>
+          <button id="keyboardRefresh" type="button">Actualizar</button>
+          <span class="acc-status" id="keyboardStatus"></span>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Inicio</th><th>Fin</th><th>Estado</th><th>Pulsaciones</th><th>Primera</th><th>Ultima</th><th>Tipo</th></tr></thead><tbody id="keyboardRows"><tr><td colspan="7" class="empty">Sin cargar todavía</td></tr></tbody></table></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <button class="acc-toggle" id="summaryToggle" type="button" aria-expanded="false" aria-controls="summaryBody">
+        <h2>Resumen por aplicación</h2>
+        <span class="acc-arrow">▶</span>
+      </button>
+      <div class="acc-body" id="summaryBody" hidden>
+        <div class="acc-filters">
+          <label>Desde<input id="summaryFrom" type="date"></label>
+          <label>Hasta<input id="summaryTo" type="date"></label>
+          <button id="summaryRefresh" type="button">Actualizar</button>
+          <span class="acc-status" id="summaryStatus"></span>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Aplicación</th><th>Tiempo abierta</th><th>Primer plano</th><th>Último evento</th></tr></thead><tbody id="lazySummaryRows"><tr><td colspan="4" class="empty">Sin cargar todavía</td></tr></tbody></table></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <button class="acc-toggle" id="activityToggle" type="button" aria-expanded="false" aria-controls="activityBody">
+        <h2>Actividad detallada <span class="muted">(máximo 250 eventos más recientes del rango)</span></h2>
+        <span class="acc-arrow">▶</span>
+      </button>
+      <div class="acc-body" id="activityBody" hidden>
+        <div class="acc-filters">
+          <label>Desde<input id="activityFrom" type="date"></label>
+          <label>Hasta<input id="activityTo" type="date"></label>
+          <label>Aplicación<select id="activityAppFilter"><option value="">Todas</option></select></label>
+          <label>Evento<select id="activityTypeFilter"><option value="">Todos</option></select></label>
+          <button id="activityRefresh" type="button">Actualizar</button>
+          <span class="acc-status" id="activityStatus"></span>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Evento</th><th>Aplicación</th><th>Detalle</th></tr></thead><tbody id="activityRows"><tr><td colspan="4" class="empty">Sin cargar todavía</td></tr></tbody></table></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <button class="acc-toggle" id="audioToggle" type="button" aria-expanded="false" aria-controls="audioBody">
+        <h2>Auditoría de escucha remota <span class="muted">(solo administradores; no contiene audio)</span></h2>
+        <span class="acc-arrow">▶</span>
+      </button>
+      <div class="acc-body" id="audioBody" hidden>
+        <div class="acc-filters">
+          <label>Desde<input id="audioFrom" type="date"></label>
+          <label>Hasta<input id="audioTo" type="date"></label>
+          <button id="audioRefresh" type="button">Actualizar</button>
+          <span class="acc-status" id="audioStatus"></span>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Solicitud</th><th>Administrador</th><th>Estado</th><th>Inicio</th><th>Fin</th><th>Duración</th><th>Motivo</th></tr></thead><tbody id="audioRows"><tr><td colspan="7" class="empty">Sin cargar todavía</td></tr></tbody></table></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <button class="acc-toggle" id="commandsToggle" type="button" aria-expanded="false" aria-controls="commandsBody">
+        <h2>Speed Test y diagnósticos</h2>
+        <span class="acc-arrow">▶</span>
+      </button>
+      <div class="acc-body" id="commandsBody" hidden>
+        <div class="acc-filters">
+          <label>Desde<input id="commandsFrom" type="date"></label>
+          <label>Hasta<input id="commandsTo" type="date"></label>
+          <button id="commandsRefresh" type="button">Actualizar</button>
+          <span class="acc-status" id="commandsStatus"></span>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Estado</th><th>Resultado</th></tr></thead><tbody id="commandRows"><tr><td colspan="4" class="empty">Sin cargar todavía</td></tr></tbody></table></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const agentId = params.get("agent") || "";
+    const agentLabel = params.get("label") || agentId;
+    const $ = id => document.getElementById(id);
+    const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    let report = null;
+
+    const REPORT_TIME_ZONE="America/Lima";
+    function dateValue(date){
+      const parts=new Intl.DateTimeFormat("en-CA",{timeZone:REPORT_TIME_ZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(date);
+      const values=Object.fromEntries(parts.map(part=>[part.type,part.value]));
+      return `${values.year}-${values.month}-${values.day}`;
+    }
+    function formatDate(value){ return value ? new Date(value).toLocaleString("es-PE",{timeZone:REPORT_TIME_ZONE,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}) : "--"; }
+    function formatTime(value){ return value ? new Date(value).toLocaleTimeString("es-PE",{timeZone:REPORT_TIME_ZONE,hour:"2-digit",minute:"2-digit",second:"2-digit"}) : "--"; }
+    function duration(ms){ const s=Math.max(0,Math.round(Number(ms)||0)/1000); if(s<60)return Math.round(s)+" s"; if(s<3600)return Math.floor(s/60)+" min "+Math.round(s%60)+" s"; return Math.floor(s/3600)+" h "+Math.floor((s%3600)/60)+" min"; }
+    function parseJson(value){ try{return typeof value==="string"?JSON.parse(value):value||{};}catch{return {};} }
+    function typeLabel(type){ return ({app_opened:"Aplicación abierta",app_closed:"Aplicación cerrada",foreground_started:"Primer plano iniciado",foreground_ended:"Primer plano terminado",input_state:"Actividad de entrada",clipboard_text:"Portapapeles"})[type]||type; }
+    function detail(event){
+      if(event.event_type==="app_opened") return "Aplicación detectada como abierta";
+      if(event.event_type==="app_closed") return "Tiempo abierta: "+duration(event.duration_ms);
+      if(event.event_type==="foreground_started") return event.window_title||"Ventana en primer plano";
+      if(event.event_type==="foreground_ended") return "Tiempo en primer plano: "+duration(event.duration_ms);
+      if(event.event_type==="input_state") return (event.state||"--")+" · inactividad "+duration(event.idle_ms);
+      if(event.event_type==="clipboard_text") return event.clipboard_text!==null&&event.clipboard_text!==undefined
+        ? `Texto (${event.char_count||0} caracteres): ${event.clipboard_text}`
+        : `Texto protegido (${event.char_count||0} caracteres) · hash ${event.clipboard_sha256||"--"}`;
+      return "--";
+    }
+
+    async function ensureSession(){
+      const response=await fetch("api/auth/me",{credentials:"include"});
+      const data=await response.json();
+      if(!data.user){ location.href="login.html"; return null; }
+      return data.user;
+    }
+
+    async function loadReport(){
+      if(!agentId){ $("pageStatus").textContent="Falta identificar el agente"; return; }
+      $("pageStatus").textContent="Cargando estado...";
+      try {
+        const url=`api/history/current?agent=${encodeURIComponent(agentId)}`;
+        const response=await fetch(url,{credentials:"include"});
+        const data=await response.json();
+        if(response.status===401){ location.href="login.html"; return; }
+        if(!response.ok) throw new Error(data.error||"No se pudo cargar el estado");
+        report=data;
+        render();
+        $("pageStatus").textContent=`Actualizado ${new Date().toLocaleTimeString("es-PE")}`;
+      } catch(error){ $("pageStatus").textContent=error.message||String(error); $("pageStatus").classList.add("danger"); }
+    }
+
+    function render(){
+      if(!report) return;
+      $("kpiOpen").textContent=(report.currentApps||[]).filter(a=>a.is_open).length;
+      renderCurrentState();
+
+      $("currentApps").innerHTML=(report.currentApps||[]).map(item=>`<span class="chip"><i class="dot ${item.is_open?'open':''}"></i><b>${esc(item.process_name)}</b><span class="muted">${item.is_open?'abierta':'cerrada'} · ${esc(formatDate(item.last_reported_at))}</span></span>`).join("")||'<span class="muted">Agente anterior o sin datos de actividad</span>';
+    }
+
+    function renderCurrentState(){
+      const status=report?.activityStatus, element=$("dailyCurrentState");
+      if(!element) return;
+      const reportedAt=status?.last_reported_at?new Date(status.last_reported_at).getTime():0;
+      const ageSeconds=reportedAt?Math.max(0,(Date.now()-reportedAt)/1000):Infinity;
+      let state="gray", label="Sin conexión";
+      if(ageSeconds<=120){
+        const idleSeconds=Number(status.idle_ms||0)/1000;
+        if(status.input_state==="active" || idleSeconds<60){ state="green"; label="Productivo"; }
+        else if(idleSeconds<=3600){ state="yellow"; label="Pausa / sin teclado"; }
+        else { state="red"; label="Inactividad excedida"; }
+      }
+      element.className=`live-state ${state}`;
+      element.textContent=label;
+      $("currentStateMeta").textContent=reportedAt?`Ultimo reporte: ${formatDate(status.last_reported_at)}`:"Esperando telemetria";
+    }
+
+    // ---- "Auditoría de escucha remota": acordeon con carga bajo demanda ----
+    // Bloques de teclado: carga bajo demanda, solo al abrir el acordeon.
+    let keyboardBlocksLoaded=false;
+    function renderKeyboardData(data){
+      const blocks=data.keyboardBlocks||[], activeBlocks=blocks.filter(block=>Number(block.keypress_count)>0), inactiveBlocks=blocks.filter(block=>Number(block.keypress_count)===0);
+      const firstKeys=activeBlocks.map(block=>block.first_key_at).filter(Boolean).sort(), lastKeys=activeBlocks.map(block=>block.last_key_at).filter(Boolean).sort();
+      $("kpiFirstKey").textContent=firstKeys.length?formatDate(firstKeys[0]):"--";
+      $("kpiLastKey").textContent=lastKeys.length?formatDate(lastKeys[lastKeys.length-1]):"--";
+      $("kpiActiveBlocks").textContent=`${activeBlocks.length} (${duration(activeBlocks.length*5*60000)})`;
+      $("kpiInactiveBlocks").textContent=`${inactiveBlocks.length} (${duration(inactiveBlocks.length*5*60000)})`;
+      $("keyboardRows").innerHTML=blocks.map(block=>{ const active=Number(block.keypress_count)>0; return `<tr><td>${esc(formatDate(block.block_start))}</td><td>${esc(formatTime(block.block_end))}</td><td class="${active?'block-active':'block-inactive'}">${active?'Activo':'Sin teclado'}</td><td>${esc(block.keypress_count||0)}</td><td>${esc(formatTime(block.first_key_at))}</td><td>${esc(formatTime(block.last_key_at))}</td><td>${Number(block.complete)?'Completo':'Parcial'}</td></tr>`; }).join("")||'<tr><td colspan="7" class="empty">Sin bloques de teclado para el rango</td></tr>';
+    }
+    async function loadKeyboardSection(){
+      if(!agentId) return;
+      const from=$("keyboardFrom").value, to=$("keyboardTo").value;
+      if(!from||!to){ $("keyboardStatus").textContent="Elige un rango de fechas"; return; }
+      $("keyboardStatus").textContent="Cargando…";
+      try {
+        const fromIso=new Date(from+"T00:00:00-05:00").toISOString(), toIso=new Date(to+"T23:59:59.999-05:00").toISOString();
+        const url=`api/history/keyboard-blocks?agent=${encodeURIComponent(agentId)}&from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`;
+        const response=await fetch(url,{credentials:"include"}), data=await response.json();
+        if(response.status===401){ location.href="login.html"; return; }
+        if(!response.ok) throw new Error(data.error||"No se pudo cargar");
+        renderKeyboardData(data); $("keyboardStatus").textContent=`Actualizado ${new Date().toLocaleTimeString("es-PE")}`;
+      } catch(error){ $("keyboardStatus").textContent=error.message||String(error); }
+    }
+    $("keyboardToggle").addEventListener("click",()=>{
+      const expanded=$("keyboardToggle").getAttribute("aria-expanded")==="true";
+      $("keyboardToggle").setAttribute("aria-expanded",String(!expanded)); $("keyboardBody").hidden=expanded;
+      if(!expanded&&!keyboardBlocksLoaded){ keyboardBlocksLoaded=true; loadKeyboardSection(); }
+    });
+    $("keyboardRefresh").addEventListener("click",loadKeyboardSection);
+
+    // Jornada por dia: filtro independiente, cargado por defecto para hoy.
+    function semaphoreControl(day){
+      const effective=["green","yellow","red","gray"].includes(day.semaphore)?day.semaphore:"gray";
+      const automatic=["green","yellow","red","gray"].includes(day.automatic_semaphore)?day.automatic_semaphore:effective;
+      const selected=Number(day.semaphore_overridden||0)===1?effective:"auto";
+      const option=(value,label)=>`<option value="${value}"${selected===value?" selected":""}>${label}</option>`;
+      return `<select class="daily-semaphore ${effective}" data-work-day="${esc(String(day.work_day||"").slice(0,10))}" title="${selected==="auto"?"Calculado automaticamente":"Corregido manualmente"}">${option("auto",`Automatico (${automatic})`)}${option("green","Verde")}${option("yellow","Amarillo")}${option("red","Rojo")}${option("gray","Gris")}</select>`;
+    }
+
+    function semaphoreLabel(value){
+      return ({green:"Verde",yellow:"Amarillo",red:"Rojo",gray:"Gris"})[value]||"Sin datos";
+    }
+
+    function renderDailyDashboard(days){
+      const today=(days||[]).find(day=>String(day.work_day||"").slice(0,10)===dateValue(new Date()));
+      if(!today) return;
+      const semaphore=["green","yellow","red","gray"].includes(today.semaphore)?today.semaphore:"gray";
+      $("todayActivity").textContent=`${Number(today.activity_pct||0).toFixed(2)}%`;
+      $("todayPause").textContent=duration(Number(today.inactive_seconds||0)*1000);
+      $("todayPauseAllowance").textContent=`Permitida: ${duration(Number(today.allowed_pause_seconds||0)*1000)}`;
+      $("todayEvaluated").textContent=duration(Number(today.evaluated_seconds||0)*1000);
+      $("todaySemaphore").className=`live-state ${semaphore} overview-value`;
+      $("todaySemaphore").textContent=semaphoreLabel(semaphore);
+      $("todaySemaphoreMeta").textContent=Number(today.semaphore_overridden||0)===1
+        ? `Ajuste manual · ${today.semaphore_override_by||"usuario"}` : "Calculo automatico";
+    }
+
+    function renderDailyRows(days){
+      return (days||[]).map(day=>{
+        const workDay=String(day.work_day||"").slice(0,10);
+        const activity=Number(day.activity_pct||0);
+        const excess=Number(day.excess_pause_seconds||0);
+        const tone=day.semaphore==="green"?"good":day.semaphore==="yellow"?"warn":day.semaphore==="red"?"bad":"";
+        return `<tr class="journey-row">
+          <td class="date-cell"><b>${esc(workDay)}</b><span class="cell-note">${Number(day.semaphore_overridden||0)===1?"Color manual":"Color automatico"}</span></td>
+          <td><b>${esc(formatTime(day.first_key_at))} – ${esc(formatTime(day.last_key_at))}</b><span class="cell-note">Lapso ${esc(duration(Number(day.span_seconds||0)*1000))}</span></td>
+          <td><span class="metric-strong">${esc(duration(Number(day.evaluated_seconds||0)*1000))}</span></td>
+          <td><span class="metric-strong ${tone}">${activity.toFixed(2)}%</span><span class="cell-note">${esc(duration(Number(day.assisted_seconds||0)*1000))} asistida</span></td>
+          <td><b>${esc(duration(Number(day.inactive_seconds||0)*1000))} / ${esc(duration(Number(day.allowed_pause_seconds||0)*1000))}</b><span class="cell-note ${excess>0?"danger":""}">Exceso: ${esc(duration(excess*1000))}</span></td>
+          <td>${semaphoreControl(day)}</td>
+          <td><button class="detail-button day-detail-toggle" type="button" data-work-day="${esc(workDay)}" aria-expanded="false">Ver detalle</button></td>
+        </tr>
+        <tr class="journey-detail" data-detail-day="${esc(workDay)}" hidden><td colspan="7"><div class="day-detail">
+          <div class="detail-grid">
+            <div class="detail-item"><small>Pulsaciones</small><b>${esc(day.keypress_count||0)}</b></div>
+            <div class="detail-item"><small>Bloques con teclado</small><b>${esc(day.active_blocks||0)}</b></div>
+            <div class="detail-item"><small>Bloques sin teclado</small><b>${esc(day.inactive_blocks||0)}</b></div>
+            <div class="detail-item"><small>Actividad teclado</small><b>${esc(duration(Number(day.keyboard_seconds||0)*1000))}</b></div>
+            <div class="detail-item"><small>Actividad asistida</small><b>${esc(duration(Number(day.assisted_seconds||0)*1000))}</b></div>
+            <div class="detail-item"><small>Refrigerio excluido</small><b>${esc(duration(Number(day.authorized_break_seconds||0)*1000))}</b></div>
+            <div class="detail-item"><small>Pausa continua mayor</small><b>${esc(duration(Number(day.max_inactive_seconds||0)*1000))}</b></div>
+          </div>
+          <div class="day-detail-actions"><button class="audit-day" type="button" data-work-day="${esc(workDay)}">Auditar este dia</button></div>
+        </div></td></tr>`;
+      }).join("")||'<tr><td colspan="7" class="empty">Sin jornada para el rango</td></tr>';
+    }
+
+    async function loadDailySection(){
+      if(!agentId) return;
+      const from=$("dailyFrom").value, to=$("dailyTo").value;
+      if(!from||!to){ $("dailyStatus").textContent="Elige un rango de fechas"; return; }
+      $("dailyStatus").textContent="Cargando…";
+      try {
+        const fromIso=new Date(from+"T00:00:00-05:00").toISOString(), toIso=new Date(to+"T23:59:59.999-05:00").toISOString();
+        const url=`api/history/keyboard-daily?agent=${encodeURIComponent(agentId)}&from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`;
+        const response=await fetch(url,{credentials:"include"}), data=await response.json();
+        if(response.status===401){ location.href="login.html"; return; }
+        if(!response.ok) throw new Error(data.error||"No se pudo cargar");
+        renderDailyDashboard(data.keyboardDaily||[]);
+        $("dailyRows").innerHTML=renderDailyRows(data.keyboardDaily||[]);
+        $("dailyStatus").textContent=`Actualizado ${new Date().toLocaleTimeString("es-PE")}`;
+      } catch(error){ $("dailyStatus").textContent=error.message||String(error); }
+    }
+    $("dailyRefresh").addEventListener("click",loadDailySection);
+    $("dailyRows").addEventListener("click",event=>{
+      const detailButton=event.target.closest(".day-detail-toggle");
+      if(detailButton){
+        const detail=document.querySelector(`[data-detail-day="${detailButton.dataset.workDay}"]`);
+        const expanded=detailButton.getAttribute("aria-expanded")==="true";
+        detailButton.setAttribute("aria-expanded",String(!expanded));
+        detailButton.textContent=expanded?"Ver detalle":"Ocultar";
+        if(detail) detail.hidden=expanded;
+        return;
+      }
+      const auditButton=event.target.closest(".audit-day");
+      if(!auditButton) return;
+      const day=auditButton.dataset.workDay;
+      ["keyboardFrom","keyboardTo","summaryFrom","summaryTo","activityFrom","activityTo"].forEach(id=>$(id).value=day);
+      summaryLoaded=false;
+      detailedActivityLoaded=false;
+      $("summaryStatus").textContent="Listo para consultar este dia";
+      $("activityStatus").textContent="Listo para consultar este dia";
+      $("keyboardToggle").setAttribute("aria-expanded","true");
+      $("keyboardBody").hidden=false;
+      keyboardBlocksLoaded=true;
+      loadKeyboardSection();
+      $("keyboardToggle").closest(".panel").scrollIntoView({behavior:"smooth",block:"start"});
+    });
+    $("dailyRows").addEventListener("change",async(event)=>{
+      const select=event.target.closest(".daily-semaphore");
+      if(!select) return;
+      select.disabled=true;
+      $("dailyStatus").textContent="Guardando semaforo...";
+      try {
+        const response=await fetch("api/history/keyboard-daily/semaphore",{
+          method:"POST", credentials:"include", headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({agentId,workDay:select.dataset.workDay,semaphore:select.value})
+        });
+        const data=await response.json();
+        if(response.status===401){ location.href="login.html"; return; }
+        if(!response.ok) throw new Error(data.error||"No se pudo guardar");
+        await loadDailySection();
+      } catch(error){
+        select.disabled=false;
+        $("dailyStatus").textContent=error.message||String(error);
+      }
+    });
+
+    // Resumen por aplicacion: carga bajo demanda en su propio acordeon.
+    let summaryLoaded=false;
+    function renderLazySummary(rows){
+      $("lazySummaryRows").innerHTML=(rows||[]).map(item=>`<tr><td><b>${esc(item.process_name||"--")}</b></td><td>${esc(duration(item.open_duration_ms))}</td><td>${esc(duration(item.foreground_duration_ms))}</td><td>${esc(formatDate(item.last_event_at))}</td></tr>`).join("")||'<tr><td colspan="4" class="empty">Sin resumen para el rango</td></tr>';
+    }
+    async function loadSummarySection(){
+      if(!agentId) return;
+      const from=$("summaryFrom").value, to=$("summaryTo").value;
+      if(!from||!to){ $("summaryStatus").textContent="Elige un rango de fechas"; return; }
+      $("summaryStatus").textContent="Cargando…";
+      try {
+        const fromIso=new Date(from+"T00:00:00-05:00").toISOString(), toIso=new Date(to+"T23:59:59.999-05:00").toISOString();
+        const url=`api/history/app-summary?agent=${encodeURIComponent(agentId)}&from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`;
+        const response=await fetch(url,{credentials:"include"}), data=await response.json();
+        if(response.status===401){ location.href="login.html"; return; }
+        if(!response.ok) throw new Error(data.error||"No se pudo cargar");
+        renderLazySummary(data.appSummary); $("summaryStatus").textContent=`Actualizado ${new Date().toLocaleTimeString("es-PE")}`;
+      } catch(error){ $("summaryStatus").textContent=error.message||String(error); }
+    }
+    $("summaryToggle").addEventListener("click",()=>{
+      const expanded=$("summaryToggle").getAttribute("aria-expanded")==="true";
+      $("summaryToggle").setAttribute("aria-expanded",String(!expanded)); $("summaryBody").hidden=expanded;
+      if(!expanded&&!summaryLoaded){ summaryLoaded=true; loadSummarySection(); }
+    });
+    $("summaryRefresh").addEventListener("click",loadSummarySection);
+
+    let audioAuditLoaded=false;
+    function renderAudioRows(rows){
+      $("audioRows").innerHTML=(rows||[]).map(item=>{
+        const elapsed=item.started_at&&item.ended_at?new Date(item.ended_at)-new Date(item.started_at):0;
+        return `<tr><td>${esc(formatDate(item.requested_at))}</td><td>${esc(item.supervisor_username||"--")}</td><td>${esc(item.status||"--")}</td><td>${esc(formatDate(item.started_at))}</td><td>${esc(formatDate(item.ended_at))}</td><td>${esc(elapsed?duration(elapsed):"--")}</td><td>${esc(item.error_detail||item.end_reason||"--")}</td></tr>`;
+      }).join("")||'<tr><td colspan="7" class="empty">Sin sesiones de escucha para el rango</td></tr>';
+    }
+    async function loadAudioAuditSection(){
+      if(!agentId) return;
+      const from=$("audioFrom").value, to=$("audioTo").value;
+      if(!from||!to){ $("audioStatus").textContent="Elige un rango de fechas"; return; }
+      $("audioStatus").textContent="Cargando…";
+      try {
+        const fromIso=new Date(from+"T00:00:00-05:00").toISOString();
+        const toIso=new Date(to+"T23:59:59.999-05:00").toISOString();
+        const url=`api/history/audio-sessions?agent=${encodeURIComponent(agentId)}&from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`;
+        const response=await fetch(url,{credentials:"include"});
+        const data=await response.json();
+        if(response.status===401){ location.href="login.html"; return; }
+        if(!response.ok) throw new Error(data.error||"No se pudo cargar");
+        renderAudioRows(data.audioSessions);
+        $("audioStatus").textContent=`Actualizado ${new Date().toLocaleTimeString("es-PE")}`;
+      } catch(error){ $("audioStatus").textContent=error.message||String(error); }
+    }
+    $("audioToggle").addEventListener("click",()=>{
+      const expanded=$("audioToggle").getAttribute("aria-expanded")==="true";
+      $("audioToggle").setAttribute("aria-expanded",String(!expanded));
+      $("audioBody").hidden=expanded;
+      if(!expanded&&!audioAuditLoaded){ audioAuditLoaded=true; loadAudioAuditSection(); }
+    });
+    $("audioRefresh").addEventListener("click",loadAudioAuditSection);
+
+    // ---- "Actividad detallada": acordeon con carga bajo demanda ----
+    // Los KPIs "Tiempo en primer plano", "Copias al portapapeles" y el
+    // conteo de eventos dependian de estos mismos datos crudos; ahora se
+    // calculan a partir de lo que esta seccion cargue, y quedan en "--"
+    // hasta que se abra (igual criterio que las otras secciones diferidas).
+    let detailedActivityLoaded=false, detailedActivityData=[];
+    function renderDetailedActivity(){
+      const app=$("activityAppFilter").value, type=$("activityTypeFilter").value;
+      const events=detailedActivityData.filter(event=>{
+        const eventApp=event.process_name||event.source_process||"";
+        return (!app||eventApp===app)&&(!type||event.event_type===type);
+      });
+      $("kpiEvents").textContent=events.length;
+      $("kpiForeground").textContent=duration(events.filter(e=>e.event_type==="foreground_ended").reduce((n,e)=>n+Number(e.duration_ms||0),0));
+      $("kpiClipboard").textContent=events.filter(e=>e.event_type==="clipboard_text").length;
+      $("activityRows").innerHTML=events.map(event=>`<tr><td>${esc(formatDate(event.event_time))}</td><td class="event-type">${esc(typeLabel(event.event_type))}</td><td>${esc(event.process_name||event.source_process||"--")}</td><td class="detail">${esc(detail(event))}</td></tr>`).join("")||'<tr><td colspan="4" class="empty">Sin actividad para los filtros</td></tr>';
+    }
+    function populateActivityFilters(){
+      const currentApp=$("activityAppFilter").value, currentType=$("activityTypeFilter").value;
+      const apps=[...new Set(detailedActivityData.map(e=>e.process_name||e.source_process).filter(Boolean))].sort();
+      const types=[...new Set(detailedActivityData.map(e=>e.event_type).filter(Boolean))].sort();
+      $("activityAppFilter").innerHTML='<option value="">Todas</option>'+apps.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
+      $("activityTypeFilter").innerHTML='<option value="">Todos</option>'+types.map(v=>`<option value="${esc(v)}">${esc(typeLabel(v))}</option>`).join("");
+      if(apps.includes(currentApp)) $("activityAppFilter").value=currentApp;
+      if(types.includes(currentType)) $("activityTypeFilter").value=currentType;
+    }
+    async function loadDetailedActivitySection(){
+      if(!agentId) return;
+      const from=$("activityFrom").value, to=$("activityTo").value;
+      if(!from||!to){ $("activityStatus").textContent="Elige un rango de fechas"; return; }
+      $("activityStatus").textContent="Cargando…";
+      try {
+        const fromIso=new Date(from+"T00:00:00-05:00").toISOString();
+        const toIso=new Date(to+"T23:59:59.999-05:00").toISOString();
+        const url=`api/history/activity?agent=${encodeURIComponent(agentId)}&from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}&limit=250`;
+        const response=await fetch(url,{credentials:"include"});
+        const data=await response.json();
+        if(response.status===401){ location.href="login.html"; return; }
+        if(!response.ok) throw new Error(data.error||"No se pudo cargar");
+        detailedActivityData=data.activity||[];
+        populateActivityFilters();
+        renderDetailedActivity();
+        $("activityStatus").textContent=`Actualizado ${new Date().toLocaleTimeString("es-PE")}`;
+      } catch(error){ $("activityStatus").textContent=error.message||String(error); }
+    }
+    $("activityToggle").addEventListener("click",()=>{
+      const expanded=$("activityToggle").getAttribute("aria-expanded")==="true";
+      $("activityToggle").setAttribute("aria-expanded",String(!expanded));
+      $("activityBody").hidden=expanded;
+      if(!expanded&&!detailedActivityLoaded){ detailedActivityLoaded=true; loadDetailedActivitySection(); }
+    });
+    $("activityRefresh").addEventListener("click",loadDetailedActivitySection);
+    $("activityAppFilter").addEventListener("change",renderDetailedActivity);
+    $("activityTypeFilter").addEventListener("change",renderDetailedActivity);
+
+    // ---- "Speed Test y diagnósticos": acordeon con carga bajo demanda ----
+    // No usa el reporte grande de /api/history: tiene su propio endpoint y
+    // su propio filtro de fecha, y solo consulta la base cuando el admin
+    // abre el acordeon o pulsa "Actualizar" (nunca al cargar la pagina).
+    let commandsLoaded=false;
+    function renderCommandRows(rows){
+      $("commandRows").innerHTML=(rows||[]).map(item=>{
+        const result=parseJson(item.result_json);
+        const value=item.status==="error"?(item.error||""):item.type==="speedtest"?`${result.downloadMbps??"--"}↓ / ${result.uploadMbps??"--"}↑ · ping ${result.pingMs??"--"} ms`:`${result.hostCount??"--"} dispositivos · ${result.subnet||""}`;
+        return `<tr><td>${esc(formatDate(item.acked_at||item.created_at))}</td><td>${esc(item.type)}</td><td>${esc(item.status)}</td><td>${esc(value)}</td></tr>`;
+      }).join("")||'<tr><td colspan="4" class="empty">Sin diagnósticos para el rango</td></tr>';
+    }
+    async function loadCommandsSection(){
+      if(!agentId) return;
+      const from=$("commandsFrom").value, to=$("commandsTo").value;
+      if(!from||!to){ $("commandsStatus").textContent="Elige un rango de fechas"; return; }
+      $("commandsStatus").textContent="Cargando…";
+      try {
+        const fromIso=new Date(from+"T00:00:00-05:00").toISOString();
+        const toIso=new Date(to+"T23:59:59.999-05:00").toISOString();
+        const url=`api/history/commands?agent=${encodeURIComponent(agentId)}&from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`;
+        const response=await fetch(url,{credentials:"include"});
+        const data=await response.json();
+        if(response.status===401){ location.href="login.html"; return; }
+        if(!response.ok) throw new Error(data.error||"No se pudo cargar");
+        renderCommandRows(data.history);
+        $("commandsStatus").textContent=`Actualizado ${new Date().toLocaleTimeString("es-PE")}`;
+      } catch(error){ $("commandsStatus").textContent=error.message||String(error); }
+    }
+    $("commandsToggle").addEventListener("click",()=>{
+      const expanded=$("commandsToggle").getAttribute("aria-expanded")==="true";
+      $("commandsToggle").setAttribute("aria-expanded",String(!expanded));
+      $("commandsBody").hidden=expanded;
+      if(!expanded&&!commandsLoaded){ commandsLoaded=true; loadCommandsSection(); }
+    });
+    $("commandsRefresh").addEventListener("click",loadCommandsSection);
+
+    (async()=>{
+      if(!await ensureSession()) return;
+      $("agentTitle").textContent=`Actividad · ${agentLabel||agentId}`;
+      $("agentMeta").textContent=`Agente ${agentId}`;
+      $("dailyFrom").value=dateValue(new Date()); $("dailyTo").value=dateValue(new Date());
+      $("keyboardFrom").value=dateValue(new Date(Date.now()-7*86400000)); $("keyboardTo").value=dateValue(new Date());
+      $("summaryFrom").value=dateValue(new Date(Date.now()-7*86400000)); $("summaryTo").value=dateValue(new Date());
+      $("commandsFrom").value=dateValue(new Date()); $("commandsTo").value=dateValue(new Date());
+      $("audioFrom").value=dateValue(new Date()); $("audioTo").value=dateValue(new Date());
+      $("activityFrom").value=dateValue(new Date()); $("activityTo").value=dateValue(new Date());
+      await loadReport();
+      await loadDailySection();
+    })();
+  </script>
+</body>
+</html>

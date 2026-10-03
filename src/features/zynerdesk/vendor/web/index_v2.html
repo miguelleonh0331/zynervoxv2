@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Synervox Remoteo · Panel v2 (actividad)</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <style>
+    /* Paleta real de zynervox.site (sacada de su propio index.html, no
+       inventada): cream de fondo, tarjetas blancas, navy + naranja de acento. */
+    :root {
+      --bg:#f7f5ef; --panel:#fff; --panel2:#f7f8fa; --line:#d9dde3; --ink:#172522; --muted:#667085;
+      --accent:#f58a1f; --accent-dark:#df7510; --accent-dim:#fff0df; --navy:#101a2d;
+      --ok:#21854a; --off:#9aa3af; --warn:#c2760f; --danger:#c0392b; --rem:#df7510;
+      --shadow:0 8px 30px rgba(16,26,45,.08);
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Verdana,sans-serif; color:var(--ink); background:var(--bg); }
+    header { padding:16px 26px; border-bottom:1px solid var(--line); background:rgba(247,245,239,.96);
+      display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .brand-logo { height:42px; display:block; }
+    .who { color:var(--muted); font-size:13px; display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:10px; }
+    .who a { color:var(--accent-dark); cursor:pointer; margin-left:10px; text-decoration:none; }
+    .who .dl { border:1px solid var(--accent); border-radius:6px; padding:4px 9px; font-size:12px; font-weight:700; }
+    .who .supervision-btn { margin-left:0; border:1px solid var(--rem); border-radius:7px; padding:8px 12px;
+      background:var(--rem); color:#fff; text-decoration:none; font-size:12px; font-weight:800; }
+    main { padding:20px 26px 40px; }
+
+    /* --- hero KPI: mismo tratamiento navy que usa zynervox.site en su hero/seguridad --- */
+    .hero { position:relative; overflow:hidden; margin:20px 26px 0; border-radius:14px;
+      padding:26px 28px; color:#fff; display:flex; align-items:center; justify-content:space-between;
+      gap:26px; flex-wrap:wrap; background:var(--navy); }
+    .hero::before { content:""; position:absolute; inset:-30%;
+      background:radial-gradient(circle at 27% 30%,rgba(245,138,31,.28),transparent 29%),
+        radial-gradient(circle at 82% 15%,rgba(255,255,255,.08),transparent 24%);
+      pointer-events:none; }
+    .hero-left { min-width:180px; position:relative; }
+    .hero-eyebrow { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:#ffd5a8; font-weight:800; margin-bottom:6px; }
+    .hero-clock { font-size:13px; color:#cdd3dd; font-variant-numeric:tabular-nums; text-transform:capitalize; }
+    .hero-right { display:flex; flex-direction:column; gap:10px; flex:1; min-width:0; position:relative; }
+    .kpis { display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:12px; position:relative; }
+    .kpi { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); border-radius:10px; padding:13px 16px; min-width:150px; }
+    .kpi.accent { background:var(--accent); border-color:var(--accent); }
+    .kpi-label { font-size:10px; letter-spacing:.08em; text-transform:uppercase; font-weight:800; color:rgba(255,255,255,.75); }
+    .kpi.accent .kpi-label { color:rgba(255,255,255,.92); }
+    .kpi-value { font-size:22px; font-weight:800; margin-top:6px; white-space:nowrap; }
+    .kpi-sub { font-size:11px; color:rgba(255,255,255,.65); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    /* Badges de porcentaje y chips dentro de los KPI (v2). */
+    .kpi-badge { display:inline-block; font-size:10px; font-weight:800; border-radius:999px; padding:2px 8px; margin-right:5px; vertical-align:middle; }
+    .kpi-badge.live { color:#fff; background:var(--ok); }
+    .kpi-badge.standby { color:#fff; background:var(--warn); }
+    .kpi-badge.crit { color:#fff; background:var(--danger); }
+    .kpi-chip { display:inline-block; font-size:10px; font-weight:800; border-radius:6px; padding:2px 7px; margin-right:5px; vertical-align:middle; }
+    .kpi-chip.warn-chip { color:var(--warn); background:var(--accent-dim); }
+    .kpi-chip.crit-chip { color:var(--danger); background:#fbe7e5; }
+    .kpi-value-inline { font-size:12px; font-weight:700; color:rgba(255,255,255,.85); margin-left:6px; }
+
+    /* Semáforo v2: tiñe el card completo (fondo+borde) según el % de la
+       métrica. Verde=buena señal, rojo=mala. Texto sigue legible sobre navy. */
+    .kpi.state-good { background:rgba(33,133,74,.38); border-color:rgba(84,196,130,.75); box-shadow:0 0 14px rgba(33,133,74,.25); }
+    .kpi.state-bad { background:rgba(192,57,43,.38); border-color:rgba(231,110,97,.75); box-shadow:0 0 14px rgba(192,57,43,.25); }
+    .kpi.state-good .kpi-badge, .kpi.state-bad .kpi-badge { background:rgba(255,255,255,.92); color:var(--ink); }
+    .kpi.state-good .kpi-sub, .kpi.state-bad .kpi-sub { color:rgba(255,255,255,.8); }
+
+    /* Fila de vista por campaña: mismos 4 KPI grandes, bajo las tarjetas pequeñas. */
+    .kpis-camp-view { display:none; margin-top:10px; }
+    .kpis-camp-view.show { display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:12px; position:relative; }
+
+    /* Cabecera de campaña activa sobre la fila de KPIs por campaña. */
+    .camp-view-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px; grid-column:1/-1; }
+    .camp-view-title { font-size:13px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#ffd5a8; }
+    .camp-view-sub { font-size:11px; color:rgba(255,255,255,.65); }
+
+    /* Selector de campaña del héroe (v2): mismo tratamiento oscuro que los KPI. */
+    .hero-select { margin-top:10px; padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.22);
+      background:rgba(255,255,255,.08); color:#fff; font-size:12px; font-weight:800; letter-spacing:.04em;
+      text-transform:uppercase; cursor:pointer; max-width:240px; }
+    .hero-select option { color:var(--ink); background:#fff; text-transform:none; }
+
+    /* Botón y estado para ocultar el mapa (v2). */
+    .map-toggle { font-size:11px; font-weight:800; color:var(--accent-dark); border:1px solid var(--accent);
+      border-radius:6px; padding:3px 9px; background:var(--panel); cursor:pointer; }
+    .map-toggle:hover { background:var(--accent-dim); }
+    .map-panel.map-off { display:none; }
+    .layout.map-full { grid-template-columns:1fr; }
+
+    /* Tarjetas de campaña: mismo lenguaje visual, contenedor y tamaño aparte
+       (mas chicas, mas columnas) para no competir con los 4 KPI principales. */
+    .kpis-camp { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px; }
+    .kpi-camp { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); border-top:2px solid #ffd5a8;
+      border-radius:8px; padding:8px 10px; min-width:0; }
+    .kpi-camp .kpi-label { font-size:9px; }
+    .kpi-camp .kpi-value { font-size:16px; margin-top:3px; }
+    .kpi-camp .kpi-sub { font-size:10px; margin-top:1px; }
+
+    /* --- layout mapa + lista --- */
+    .layout { display:grid; grid-template-columns:470px 1fr; gap:16px; align-items:start; margin-top:16px; }
+    /* Siempre al costado (no se apila en pantallas chicas, a pedido). */
+    .map-panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden;
+      box-shadow:var(--shadow); position:sticky; top:16px; }
+    .map-panel-head { padding:10px 14px; border-bottom:1px solid var(--line); display:flex; align-items:center;
+      justify-content:space-between; background:var(--panel2); }
+    .map-panel-head h2 { margin:0; font-size:13px; font-weight:800; letter-spacing:.02em; color:var(--ink); }
+    .map-legend { display:flex; gap:10px; font-size:10px; color:var(--muted); }
+    .map-legend span { display:inline-flex; align-items:center; gap:4px; }
+    .map-legend .sw { width:8px; height:8px; border-radius:50%; display:inline-block; }
+    #map { height:830px; background:var(--panel2); }
+    .leaflet-popup-content { font-size:12px; }
+    .leaflet-popup-content b { display:block; margin-bottom:2px; }
+    .geo-pop-btn { margin-top:6px; display:inline-block; font-size:11px; font-weight:700; color:var(--accent-dark);
+      border:1px solid var(--accent); border-radius:6px; padding:3px 8px; text-decoration:none; cursor:pointer; }
+    .content-col { min-width:0; }
+    .toolbar { display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+    select, .search { padding:10px 12px; border:1px solid var(--line); border-radius:8px;
+      background:var(--panel); color:var(--ink); font-size:14px; }
+    select:focus, .search:focus { outline:1px solid var(--accent); }
+    .stat { color:var(--muted); font-size:13px; }
+    .empty { padding:34px; text-align:center; color:var(--muted); }
+
+    .list { display:flex; flex-direction:column; gap:8px; }
+    .row-card { position:relative; background:var(--panel);
+      border:1px solid var(--line); border-radius:10px; padding:10px 16px; box-shadow:0 4px 15px rgba(16,26,45,.05); }
+    .row-card.is-online { border-color:#bfe3cd; }
+    .row-card::before { content:""; position:absolute; inset:0 auto 0 0; width:2px;
+      background:linear-gradient(180deg,var(--accent),transparent); opacity:.85; }
+    .row-main { display:flex; align-items:center; gap:16px; overflow-x:auto; overflow-y:hidden; }
+    .seg { display:flex; align-items:center; gap:6px; white-space:nowrap; flex:none; }
+    .div { width:1px; align-self:stretch; background:var(--line); flex:none; }
+    .dot { width:8px; height:8px; border-radius:50%; background:var(--off); flex:none; }
+    .dot.on { background:var(--ok); box-shadow:0 0 8px rgba(33,133,74,.45); }
+    .row-tag { font-size:12px; font-weight:800; letter-spacing:.02em; overflow:hidden; text-overflow:ellipsis; color:var(--ink); }
+    .row-camp { font-size:8px; letter-spacing:.06em; text-transform:uppercase; font-weight:800; color:var(--muted);
+      background:var(--panel2); border:1px solid var(--line); border-radius:999px; padding:3px 8px; }
+    .row-age { font-size:9px; color:var(--muted); }
+    .status-col { display:flex; flex-direction:column; gap:4px; flex:none; width:192px; overflow:hidden; }
+    .status-col .line1 { display:flex; align-items:center; gap:6px; overflow:hidden; }
+    .status-col .line2 { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+    .host-col { display:flex; flex-direction:column; gap:2px; font-size:11px; color:var(--muted);
+      flex:none; width:150px; white-space:nowrap; overflow:hidden; }
+    .host-col b { color:var(--ink); font-weight:700; overflow:hidden; text-overflow:ellipsis; }
+    .host-col span { overflow:hidden; text-overflow:ellipsis; }
+    .net-col { display:flex; flex-direction:column; gap:5px; font-size:10px; color:var(--muted);
+      flex:none; width:190px; white-space:nowrap; overflow:hidden; }
+    .net-col .line1 { display:flex; align-items:center; gap:5px; overflow:hidden; text-overflow:ellipsis; }
+    .net-col .line1 span:last-child { overflow:hidden; text-overflow:ellipsis; }
+    .net-col .line2 { display:flex; align-items:center; gap:5px; }
+    .row-net-icon { width:12px; height:12px; color:var(--muted); flex:none; }
+    .net-col .v { color:var(--ink); }
+    .k { text-transform:uppercase; letter-spacing:.05em; font-weight:800; color:#8a94a3; font-size:9px; }
+    .v { color:var(--ink); font-size:11px; }
+
+    .ping-badge { font-size:9px; font-weight:800; padding:2px 7px; border-radius:999px; white-space:nowrap; }
+    .ping-badge.ping-ok { color:var(--ok); background:#e6f4ea; }
+    .ping-badge.ping-hi { color:var(--warn); background:var(--accent-dim); }
+    .ping-badge.ping-off { color:var(--danger); background:#fbe7e5; }
+
+    .row-speed { display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+      background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:5px 10px; }
+    .row-speed .isp { font-size:9px; letter-spacing:.06em; text-transform:uppercase; font-weight:800; color:var(--accent-dark); }
+    .row-speed .ping { font-size:9px; color:var(--muted); margin-top:1px; }
+    .row-speed .mbps { font-size:13px; font-weight:800; white-space:nowrap; color:var(--ink); }
+    .row-speed .bars-ico { width:16px; height:16px; color:var(--accent-dark); flex:none; }
+    .row-speed.empty-speed { color:var(--muted); font-size:11px; }
+
+    .app-cards { display:flex; align-items:center; gap:5px; flex:none; }
+    .app-card { min-width:30px; height:30px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center;
+      border:1px solid #b8c6da; border-radius:8px; background:#f5f8fc; color:#334760;
+      font-size:11px; font-weight:900; letter-spacing:.04em; box-shadow:0 2px 6px rgba(16,26,45,.06); }
+    .app-card.chrome { color:#1b6d42; border-color:#a9d8bc; background:#edf9f1; }
+    .app-card.ccvox { color:#a64f0f; border-color:#f2c89f; background:#fff7ed; }
+
+    .row-actions { display:flex; gap:6px; flex:none; }
+    .ic-btn { appearance:none; width:30px; height:30px; border-radius:8px; border:1px solid var(--line);
+      background:var(--panel2); color:var(--muted); cursor:pointer; display:flex; align-items:center; justify-content:center; flex:none; }
+    .ic-btn svg { width:15px; height:15px; }
+    .ic-btn:hover:not(:disabled) { color:var(--accent-dark); border-color:var(--accent); background:var(--accent-dim); }
+    .ic-btn.active { color:var(--accent-dark); border-color:var(--accent); background:var(--accent-dim); }
+    .ic-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .ic-btn.rem-ic:hover:not(:disabled) { color:#fff; border-color:var(--rem); background:var(--rem); }
+
+    .row-detail { width:100%; margin-top:8px; padding-top:8px; border-top:1px dashed var(--line); font-size:11px; color:var(--muted); display:none; }
+    .row-detail.open { display:block; }
+    .row-detail strong { color:var(--ink); display:block; margin-bottom:2px; }
+    .row-detail .muted-line { color:var(--muted); }
+    .hist-toolbar { display:flex; align-items:end; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+    .hist-toolbar label { display:flex; flex-direction:column; gap:3px; font-size:9px; font-weight:800; text-transform:uppercase; }
+    .hist-toolbar input { border:1px solid var(--line); border-radius:6px; padding:5px 7px; color:var(--ink); background:var(--panel2); }
+    .hist-toolbar button { border:1px solid var(--line); border-radius:6px; padding:6px 10px; background:var(--ink); color:#fff; cursor:pointer; }
+    .hist-summary { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:9px; }
+    .hist-chip { padding:4px 7px; border:1px solid var(--line); border-radius:7px; background:var(--panel2); color:var(--ink); }
+    .hist-section { margin-top:9px; }
+    .hist-section-title { margin-bottom:5px; font-size:10px; font-weight:900; color:var(--ink); text-transform:uppercase; letter-spacing:.05em; }
+    .hist-event { display:grid; grid-template-columns:145px 125px minmax(220px,1fr); gap:8px; padding:4px 0; border-top:1px solid #edf0f4; }
+    .hist-event:first-child { border-top:0; }
+    .hist-event .event-type { font-weight:800; color:#4a5a70; }
+    .hist-event .event-detail { color:var(--ink); white-space:normal; overflow-wrap:anywhere; }
+  </style>
+</head>
+<body>
+  <header>
+    <img class="brand-logo" src="https://zynervox.site/assets/zynervox.png" alt="Zynervox">
+    <div class="who"><a class="dl" href="downloads/Synervox-Operador-Setup-0.2.0.exe" download>⬇ Descargar Zyner Transfer Admin</a><span id="whoName">--</span><a class="supervision-btn" href="supervicion/">Supervicion multiple</a><a class="dl" href="downloads/SynerAgentSetup-0.3.1.exe" download>⬇ Descargar Agente v0.3.1</a><a class="dl" id="adminUsers" href="admin.html" hidden>Usuarios</a></div>
+  </header>
+  <div class="hero">
+    <div class="hero-left">
+      <div class="hero-eyebrow">Panel operativo</div>
+      <div class="hero-clock" id="heroClock">--</div>
+      <select class="hero-select" id="heroCampaign"><option value="">Todas las campañas</option></select>
+    </div>
+    <div class="hero-right">
+      <div class="kpis">
+        <div class="kpi accent">
+          <div class="kpi-label">Equipos</div>
+          <div class="kpi-value" id="kpiTotal">--</div>
+          <div class="kpi-sub" id="kpiTotalSub">-- online</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Ping más alto</div>
+          <div class="kpi-value" id="kpiPing">--</div>
+          <div class="kpi-sub" id="kpiPingSub">sin datos</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Ancho de banda más bajo</div>
+          <div class="kpi-value" id="kpiBw">--</div>
+          <div class="kpi-sub" id="kpiBwSub">sin datos</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Offline</div>
+          <div class="kpi-value" id="kpiOffline">--</div>
+          <div class="kpi-sub">sin conexión ahora</div>
+        </div>
+      </div>
+      <div class="kpis-camp-view" id="campView">
+        <div class="camp-view-head"><span class="camp-view-title" id="campViewTitle">--</span><span class="camp-view-sub" id="campViewSub"></span></div>
+        <div class="kpi accent">
+          <div class="kpi-label">Parque total</div>
+          <div class="kpi-value"><span id="cvTotal">--</span><span class="kpi-value-inline">unidades</span></div>
+          <div class="kpi-sub" id="cvTotalSub">--</div>
+        </div>
+        <div class="kpi" id="cvLiveCard">
+          <div class="kpi-label">En uso / Live</div>
+          <div class="kpi-value"><span id="cvLive">--</span><span class="kpi-value-inline">activos</span></div>
+          <div class="kpi-sub"><span class="kpi-badge live" id="cvLivePct">--%</span><span id="cvLiveSub">online ahora</span></div>
+        </div>
+        <div class="kpi" id="cvStandbyCard">
+          <div class="kpi-label">Sin uso reciente</div>
+          <div class="kpi-value"><span id="cvStandby">--</span><span class="kpi-value-inline">standby</span></div>
+          <div class="kpi-sub"><span class="kpi-chip warn-chip">hasta 30 días</span><span class="kpi-badge standby" id="cvStandbyPct">--%</span><span>sin actividad</span></div>
+        </div>
+        <div class="kpi" id="cvCritCard">
+          <div class="kpi-label">Sin uso +30d</div>
+          <div class="kpi-value"><span id="cvCrit">--</span><span class="kpi-value-inline">críticos</span></div>
+          <div class="kpi-sub"><span class="kpi-chip crit-chip">Reasignar</span><span class="kpi-badge crit" id="cvCritPct">--%</span><span>auditoría</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <main>
+    <div class="layout">
+      <div class="map-panel">
+        <div class="map-panel-head">
+          <h2>Ubicación de equipos</h2>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="map-legend"><span><i class="sw" style="background:var(--ok)"></i>online</span><span><i class="sw" style="background:var(--off)"></i>offline</span></div>
+            <button class="map-toggle" id="mapToggle" type="button">Ocultar mapa</button>
+          </div>
+        </div>
+        <div id="map"></div>
+      </div>
+      <div class="content-col">
+        <div class="toolbar">
+          <select id="campaign"><option value="">Todas las campañas</option></select>
+          <input class="search" id="search" type="search" placeholder="Buscar por tag / host / IP...">
+          <span class="stat" id="stat">--</span>
+        </div>
+        <div id="wrap"><div class="empty">Cargando...</div></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    // --- iconos SVG en línea (estilo HUD, trazo fino, monocromo -> naranja al hover) ---
+    const ICON = {
+      monitor: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>`,
+      bolt:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg>`,
+      radar:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.5v2M21.5 12h-2M12 21.5v-2M2.5 12h2"/></svg>`,
+      pin:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.7 7-12.2A7 7 0 1 0 5 8.8C5 14.3 12 21 12 21z"/><circle cx="12" cy="8.8" r="2.3"/></svg>`,
+      clock:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3.2 1.9"/></svg>`,
+      bars:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 19v-6M10 19V9M15 19V5M20 19v-8"/></svg>`,
+      net:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a12 12 0 0 1 16 0M7 13.2a8 8 0 0 1 10 0M10.3 16.4a4 4 0 0 1 3.4 0"/><circle cx="12" cy="19.2" r="1.1" fill="currentColor" stroke="none"/></svg>`,
+      ethernet:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="7" rx="1.3"/><path d="M8 10V6.5h2V10M12 10V6.5h2V10M16 10V6.5"/><path d="M9 17v2M15 17v2"/></svg>`
+    };
+
+    // Catalogo visual inicial. Agregar aqui las aplicaciones importantes
+    // aprobadas; los agentes antiguos simplemente no entregan `openApps`.
+    const IMPORTANT_APPS = {
+      "chrome.exe": { code:"C", label:"Chrome", css:"chrome" },
+      "ccvox.exe": { code:"CC", label:"CCVox", css:"ccvox" }
+    };
+
+    // Si el nombre del adaptador contiene la letra "w" ya se asume wifi
+    // (Wireless); si no, ethernet.
+    function netIcon(adapter){
+      return /w/i.test(adapter || "") ? ICON.net : ICON.ethernet;
+    }
+
+    const BASE = location.pathname.replace(/[^/]*$/, "");
+    // --- gate de login ---
+    async function me(){ const r = await fetch("api/auth/me",{credentials:"include"}); return (await r.json()).user; }
+    (async () => {
+      let u; try { u = await me(); } catch { u = null; }
+      if (!u) { location.href = "login.html"; return; }
+      document.getElementById("whoName").textContent = u.username + " (" + u.role + ")";
+      document.getElementById("adminUsers").hidden = u.role !== "admin";
+      loadCampaigns(); tick(); setInterval(tick, 3000);
+    })();
+    const wrap = document.getElementById("wrap"), stat = document.getElementById("stat");
+    const campaignSel = document.getElementById("campaign"), search = document.getElementById("search");
+    let agents = [];
+    const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    function ageText(iso){ if(!iso) return "--"; const s=Math.floor((Date.now()-new Date(iso).getTime())/1000); if(s<60)return s+"s"; if(s<3600)return Math.floor(s/60)+"m"; if(s<86400)return Math.floor(s/3600)+"h"; return Math.floor(s/86400)+"d"; }
+    function parse(j){ try { return typeof j==="string"?JSON.parse(j):j; } catch { return null; } }
+
+    async function loadCampaigns(){
+      try { const j = await (await fetch("api/campaigns",{credentials:"include"})).json(); const cur = campaignSel.value;
+        const opts = '<option value="">Todas las campañas</option>' + (j.campaigns||[]).map(c=>`<option value="${esc(c.campaign)}">${esc(c.campaign)} (${c.total})</option>`).join("");
+        campaignSel.innerHTML = opts; campaignSel.value = cur;
+        heroCampSel.innerHTML = opts; heroCampSel.value = cur;
+      } catch {}
+    }
+    const heroCampSel = document.getElementById("heroCampaign");
+    campaignSel.addEventListener("change", () => { heroCampSel.value = campaignSel.value; tick(); });
+    heroCampSel.addEventListener("change", () => { campaignSel.value = heroCampSel.value; tick(); });
+    search.addEventListener("input", render);
+
+    // --- reloj del hero ---
+    function tickClock(){
+      const el = document.getElementById("heroClock");
+      if (el) el.textContent = new Date().toLocaleString("es-PE", { weekday:"long", day:"2-digit", month:"long", hour:"2-digit", minute:"2-digit", second:"2-digit" });
+    }
+    tickClock(); setInterval(tickClock, 1000);
+
+    // --- mapa (Leaflet + OpenStreetMap, sin API key) ---
+    const map = L.map("map", { worldCopyJump:true }).setView([-12.0464, -77.0428], 11); // Lima, Peru
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:"&copy; OpenStreetMap", maxZoom:18
+    }).addTo(map);
+
+    // Botón para ocultar/mostrar el mapa (v2). Al reabrirlo hay que recalcular
+    // su tamaño porque estuvo display:none.
+    const mapPanel = document.querySelector(".map-panel");
+    const layoutEl = document.querySelector(".layout");
+    const mapToggleBtn = document.getElementById("mapToggle");
+    mapToggleBtn.addEventListener("click", () => {
+      const off = mapPanel.classList.toggle("map-off");
+      layoutEl.classList.toggle("map-full", off);
+      mapToggleBtn.textContent = off ? "Mostrar mapa" : "Ocultar mapa";
+      if (!off) setTimeout(() => map.invalidateSize(), 80);
+    });
+    const markers = new Map();   // ip_public -> L.CircleMarker (UN marcador por IP/oficina, no por equipo)
+    const geoCache = new Map();  // ip_public -> {lat,lon,city,country,isp} | "pending" | "error"
+    const geoQueue = [];
+    let geoQueueRunning = false;
+
+    function enqueueGeo(ip, sampleAgentId){
+      if (geoCache.has(ip)) return;
+      geoCache.set(ip, "pending");
+      geoQueue.push({ ip, agentId: sampleAgentId });
+      runGeoQueue();
+    }
+
+    // Un pedido a la vez, con pausa entre cada uno: ipapi.is es un servicio
+    // externo con limite de tasa. Se cachea por IP (el servidor tambien
+    // cachea por IP), asi que varios equipos con la misma IP publica
+    // (misma oficina/NAT) comparten una sola consulta.
+    async function runGeoQueue(){
+      if (geoQueueRunning) return;
+      geoQueueRunning = true;
+      while (geoQueue.length){
+        const { ip, agentId } = geoQueue.shift();
+        try {
+          const j = await (await fetch("api/geo?agent="+encodeURIComponent(agentId),{credentials:"include"})).json();
+          const d = j.data || {};
+          if (j.ok && typeof d.lat === "number" && typeof d.lon === "number") {
+            geoCache.set(ip, {
+              lat:d.lat, lon:d.lon,
+              city:(d.location&&d.location.city)||"",
+              country:(d.location&&d.location.country)||d.cc||"",
+              isp:(d.company&&d.company.name)||d.company_name||(d.asn&&d.asn.org)||d.asn_org||""
+            });
+          } else { geoCache.set(ip, "error"); }
+        } catch { geoCache.set(ip, "error"); }
+        updateMapMarkers();
+        await new Promise(r => setTimeout(r, 400));
+      }
+      geoQueueRunning = false;
+    }
+
+    // Agrupa los equipos por IP publica: un solo punto por ubicacion.
+    function updateMapMarkers(){
+      const groups = new Map(); // ip -> [agentes]
+      for (const a of agents){
+        if (!a.ip_public) continue;
+        if (!groups.has(a.ip_public)) groups.set(a.ip_public, []);
+        groups.get(a.ip_public).push(a);
+      }
+
+      for (const [ip, list] of groups){
+        const cached = geoCache.get(ip);
+        if (cached === undefined) { enqueueGeo(ip, list[0].agent_id); continue; }
+        if (cached === "pending" || cached === "error") continue;
+
+        const anyOnline = list.some(a => a.online);
+        const color = anyOnline ? "#34d399" : "#5b6577";
+        const radius = Math.min(7 + (list.length - 1) * 2, 16);
+        let mk = markers.get(ip);
+        if (!mk) {
+          mk = L.circleMarker([cached.lat, cached.lon], { radius, color, weight:2, fillColor:color, fillOpacity:.55 }).addTo(map);
+          markers.set(ip, mk);
+        } else {
+          mk.setLatLng([cached.lat, cached.lon]);
+          mk.setStyle({ color, fillColor:color, radius });
+        }
+        const place = [cached.city, cached.country].filter(Boolean).join(", ");
+        const rows = list.map(a => `<div style="display:flex;align-items:center;gap:6px;margin-top:4px">`+
+          `<span style="width:7px;height:7px;border-radius:50%;flex:none;background:${a.online?'#34d399':'#5b6577'}"></span>`+
+          `<b style="margin:0">${esc(a.tag||a.agent_id)}</b>`+
+          (a.online ? ` <a class="geo-pop-btn" style="margin-top:0;padding:1px 6px" href="remoteo.html?agent=${encodeURIComponent(a.agent_id)}&label=${encodeURIComponent(a.tag||a.hostname||a.agent_id)}" target="_blank" rel="noopener">Remotear</a>` : "")+
+          `</div>`).join("");
+        mk.bindPopup(`<b>${esc(place || ip)}</b>${esc(cached.isp)}${list.length>1?` · ${list.length} equipos`:""}<div style="margin-top:2px">${rows}</div>`);
+      }
+
+      const currentIps = new Set(groups.keys());
+      for (const [ip, mk] of markers) {
+        if (!currentIps.has(ip)) { map.removeLayer(mk); markers.delete(ip); }
+      }
+    }
+
+    async function tick(){
+      try { const q = campaignSel.value ? ("?campaign="+encodeURIComponent(campaignSel.value)) : "";
+        const r = await fetch("api/agents"+q,{credentials:"include"}); if (r.status===401){ location.href="login.html"; return; }
+        agents = (await r.json()).agents || [];
+        // Orden estable: online primero, luego offline; dentro de cada grupo,
+        // alfabetico por tag/host. Sin esto el orden salta en cada refresco.
+        agents.sort((a,b) => (b.online?1:0) - (a.online?1:0) ||
+          String(a.tag||a.hostname||a.agent_id).localeCompare(String(b.tag||b.hostname||b.agent_id)));
+        render();
+        updateMapMarkers();
+      } catch { stat.textContent = "error"; }
+    }
+
+    // Ping de conexion EN VIVO (a.ping, medido continuamente) - distinto del
+    // ping que trae el resultado del speedtest manual (solo se actualiza al
+    // correr esa prueba puntual).
+    function pingBadge(p){
+      if (typeof p !== "number" || p < 0) return `<span class="ping-badge ping-off">offline</span>`;
+      const cls = p > 150 ? "ping-hi" : "ping-ok";
+      return `<span class="ping-badge ${cls}">${p} ms</span>`;
+    }
+
+    function speedBlock(s){
+      if(!s || s.status!=="done") return `<div class="seg row-speed empty-speed">Sin speedtest</div>`;
+      const r = parse(s.result_json)||{};
+      return `<div class="seg row-speed">
+        <div>
+          <div class="isp">${esc(r.isp||"speedtest")}</div>
+          <div class="ping">${esc(r.pingMs??"--")}ms ping</div>
+        </div>
+        <div class="mbps">${esc(r.downloadMbps??"--")}↓ / ${esc(r.uploadMbps??"--")}↑</div>
+      </div>`;
+    }
+
+    function appsBlock(a){
+      if(!a.online || !Array.isArray(a.openApps)) return "";
+      const cards = a.openApps.map(app => {
+        const processName = String(app.processName || "").toLowerCase();
+        const visual = IMPORTANT_APPS[processName];
+        if(!visual) return "";
+        const opened = app.openedAt ? ` desde ${new Date(app.openedAt).toLocaleTimeString("es-PE",{hour:"2-digit",minute:"2-digit"})}` : "";
+        return `<span class="app-card ${esc(visual.css)}" title="${esc(visual.label+opened)}">${esc(visual.code)}</span>`;
+      }).filter(Boolean).join("");
+      return cards ? `<div class="app-cards" aria-label="Aplicaciones abiertas">${cards}</div>` : "";
+    }
+
+    function row(a){
+      const off = a.online ? "" : "disabled";
+      return `<div class="row-card ${a.online?'is-online':''}" data-card="${esc(a.agent_id)}">
+        <div class="row-main">
+          <div class="seg status-col" title="${esc(a.tag||a.agent_id)}">
+            <div class="line1"><span class="dot ${a.online?'on':''}"></span><span class="row-tag">${esc(a.tag||a.agent_id)}</span></div>
+            <div class="line2">${pingBadge(a.ping)}<span class="row-camp">${esc(a.campaign||'sin campaña')}</span><span class="row-age">hace ${ageText(a.last_seen)}</span></div>
+          </div>
+          <div class="div"></div>
+          <div class="seg host-col" title="${esc(a.hostname||'--')} / ${esc(a.username||'--')}">
+            <b>${esc(a.hostname||'--')}</b>
+            <span>${esc(a.username||'--')}</span>
+          </div>
+          <div class="div"></div>
+          <div class="seg net-col" title="${esc(a.adapter||'--')} · ${esc(a.mac||'--')}">
+            <div class="line1 row-actions">
+              <button class="ic-btn rem-ic remote-btn" data-id="${esc(a.agent_id)}" data-label="${esc(a.tag||a.hostname||a.agent_id)}" ${off} title="Remotear (${esc(a.adapter||'--')})">${netIcon(a.adapter)}</button>
+              <button class="ic-btn cmd" data-cmd="speedtest" data-id="${esc(a.agent_id)}" ${off} title="Speedtest">${ICON.bolt}</button>
+              <button class="ic-btn cmd" data-cmd="network-scan" data-id="${esc(a.agent_id)}" ${off} title="Escanear LAN">${ICON.radar}</button>
+              <button class="ic-btn geo-ic" data-geo-id="${esc(a.agent_id)}" ${off} title="Ubicar">${ICON.pin}</button>
+              <button class="ic-btn hist-ic" data-hist="${esc(a.agent_id)}" data-label="${esc(a.tag||a.hostname||a.agent_id)}" title="Abrir historial completo">${ICON.clock}</button>
+            </div>
+            <div class="line2"><span class="k">LOC</span><span class="v">${esc(a.ip_local||'--')}</span><span class="k" style="margin-left:6px">PUB</span><span class="v">${esc(a.ip_public||'--')}</span></div>
+          </div>
+          <div class="div"></div>
+          ${speedBlock(a.speedtest)}
+          ${appsBlock(a)}
+        </div>
+        <div class="row-detail" id="detail-${esc(a.agent_id)}"></div>
+      </div>`;
+    }
+
+    // --- KPIs del hero: se calculan sobre `agents` completo (respeta el filtro
+    // de campaña, no el buscador de texto), igual que el contador `stat`. ---
+    function fmtNum(v, d){ return typeof v === "number" && Number.isFinite(v) ? v.toFixed(d) : "--"; }
+    function updateKpis(){
+      const $ = (id) => document.getElementById(id);
+      if (!$("kpiTotal")) return;
+
+      $("kpiTotal").textContent = agents.length;
+      $("kpiTotalSub").textContent = agents.filter(a=>a.online).length + " online";
+
+      const withPing = agents.filter(a => a.online && typeof a.ping === "number" && a.ping >= 0);
+      if (withPing.length) {
+        const worst = withPing.reduce((m,a) => a.ping > m.ping ? a : m, withPing[0]);
+        $("kpiPing").textContent = worst.ping + " ms";
+        $("kpiPingSub").textContent = esc(worst.tag || worst.hostname || worst.agent_id);
+      } else { $("kpiPing").textContent = "--"; $("kpiPingSub").textContent = "sin datos"; }
+
+      let worstAgent = null, worstDown = Infinity, worstUp = null;
+      for (const a of agents) {
+        if (!a.speedtest || a.speedtest.status !== "done") continue;
+        const r = parse(a.speedtest.result_json) || {};
+        const down = Number(r.downloadMbps);
+        if (!Number.isFinite(down)) continue;
+        if (down < worstDown) { worstDown = down; worstUp = Number(r.uploadMbps); worstAgent = a; }
+      }
+      if (worstAgent) {
+        $("kpiBw").textContent = `${fmtNum(worstDown,2)}↓ / ${fmtNum(worstUp,2)}↑ Mbps`;
+        $("kpiBwSub").textContent = esc(worstAgent.tag || worstAgent.hostname || worstAgent.agent_id);
+      } else { $("kpiBw").textContent = "--"; $("kpiBwSub").textContent = "sin datos"; }
+
+      $("kpiOffline").textContent = agents.filter(a=>!a.online).length;
+    }
+
+    // --- Vista v2: 4 KPIs de actividad (global o por campaña, segun el filtro).
+    // Reparto EXHAUSTIVO del parque para que las sumas cuadren siempre:
+    //   EN USO/LIVE      = online ahora
+    //   SIN USO RECIENTE = offline con menos de UMBRAL_CRITICO_D dias sin señal
+    //   SIN USO +30D     = con UMBRAL_CRITICO_D dias o mas sin señal
+    // live + standby + crit = total, y los tres % suman 100%.
+    // Semáforo (aplica a TODO el card): En Uso verde si % > 60, rojo si no;
+    // Sin Uso Reciente y +30d rojos si % > 20, verdes si no.
+    const UMBRAL_CRITICO_D = 30, UMBRAL_LIVE_OK = 60, UMBRAL_SINUSO_MALO = 20;
+    function daysSince(iso){ if(!iso) return Infinity; return (Date.now()-new Date(iso).getTime())/86400000; }
+    function updateCampView(){
+      const $ = (id) => document.getElementById(id);
+      if (!$("campView")) return;
+      const camp = campaignSel.value || "Todas las campañas";
+      $("campView").classList.add("show");
+      if (heroCampSel && heroCampSel.value !== campaignSel.value) heroCampSel.value = campaignSel.value;
+      // El endpoint /api/agents ya filtra por campana; agents es el conjunto filtrado.
+      const total = agents.length;
+      const online = agents.filter(a=>a.online).length;
+      // Ultima señal de vida: reporte de actividad del agente nuevo o, en su
+      // defecto, el ultimo heartbeat (last_seen). Agentes viejos siguen contando.
+      const lastAct = (a) => (a.activity && a.activity.last_reported_at) || a.last_seen || null;
+      const crit = agents.filter(a => daysSince(lastAct(a)) >= UMBRAL_CRITICO_D).length;
+      const standby = total - online - crit; // offline con menos de 60 dias
+      const pct = (n) => total ? Math.round(n/total*100) + "%" : "0%";
+      $("campViewTitle").textContent = camp;
+      $("campViewSub").textContent = "Vista de actividad · " + new Date().toLocaleDateString("es-PE");
+      $("cvTotal").textContent = total;
+      $("cvTotalSub").textContent = online + " online · " + (total - online) + " offline";
+      $("cvLive").textContent = online;
+      $("cvLivePct").textContent = pct(online);
+      $("cvLiveSub").textContent = "de " + total + " equipos online";
+      $("cvStandby").textContent = standby;
+      $("cvStandbyPct").textContent = pct(standby);
+      $("cvCrit").textContent = crit;
+      $("cvCritPct").textContent = pct(crit);
+      // Semáforo del card completo. total=0 => neutro (sin clase).
+      const set = (id, good) => { const c=$(id); if(!c) return; c.classList.toggle("state-good", !!good); c.classList.toggle("state-bad", !good); };
+      if (!total) { for (const id of ["cvLiveCard","cvStandbyCard","cvCritCard"]) { const c=$(id); if(c){c.classList.remove("state-good","state-bad");} } }
+      else {
+        set("cvLiveCard", online/total*100 > UMBRAL_LIVE_OK);
+        set("cvStandbyCard", !(standby/total*100 > UMBRAL_SINUSO_MALO));
+        set("cvCritCard", !(crit/total*100 > UMBRAL_SINUSO_MALO));
+      }
+    }
+
+    function render(){
+      updateKpis();
+      updateCampView();
+      const query = search.value.trim().toLowerCase();
+      const list = query ? agents.filter(a => (String(a.tag||"")+a.hostname+(a.ip_local||"")+(a.ip_public||"")).toLowerCase().includes(query)) : agents;
+      stat.textContent = `${agents.length} agentes · ${agents.filter(a=>a.online).length} online`;
+      if(!list.length){ wrap.innerHTML = '<div class="empty">Sin agentes.</div>'; return; }
+      wrap.innerHTML = `<div class="list">${list.map(row).join("")}</div>`;
+    }
+
+    function toggleDetail(agentId, html){
+      const el = document.getElementById("detail-"+agentId);
+      if (!el) return;
+      if (el.classList.contains("open") && el.dataset.kind === html.kind) { el.classList.remove("open"); el.innerHTML=""; return; }
+      el.dataset.kind = html.kind;
+      el.innerHTML = html.body;
+      el.classList.add("open");
+    }
+
+    function dateValue(date){
+      const d = new Date(date.getTime() - date.getTimezoneOffset()*60000);
+      return d.toISOString().slice(0,10);
+    }
+    function eventTime(value){
+      if(!value) return "--";
+      return new Date(value).toLocaleString("es-PE", {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    }
+    function durationText(ms){
+      const total = Math.max(0, Math.round(Number(ms)||0)/1000);
+      if(total < 60) return Math.round(total)+" s";
+      if(total < 3600) return Math.floor(total/60)+" min "+Math.round(total%60)+" s";
+      return Math.floor(total/3600)+" h "+Math.floor((total%3600)/60)+" min";
+    }
+    function activityDetail(event){
+      const proc = event.process_name || event.source_process || "--";
+      if(event.event_type === "app_opened") return `${proc} abierta`;
+      if(event.event_type === "app_closed") return `${proc} cerrada · ${durationText(event.duration_ms)}`;
+      if(event.event_type === "foreground_started") return `${proc} en primer plano${event.window_title?" · "+event.window_title:""}`;
+      if(event.event_type === "foreground_ended") return `${proc} dejó primer plano · ${durationText(event.duration_ms)}`;
+      if(event.event_type === "input_state") return `entrada ${event.state||"--"} · inactividad ${durationText(event.idle_ms)}`;
+      if(event.event_type === "clipboard_text") {
+        const copied = event.clipboard_text !== null && event.clipboard_text !== undefined
+          ? ` · “${event.clipboard_text}”` : "";
+        return `texto copiado (${event.char_count||0} caracteres) desde ${proc}${copied}`;
+      }
+      return proc;
+    }
+    function historyMarkup(agentId, data, from, to){
+      const status = data.activityStatus || {};
+      const summary = (data.appSummary||[]).map(item => `<span class="hist-chip"><b>${esc(item.process_name||"--")}</b> · abierta ${esc(durationText(item.open_duration_ms))} · activa ${esc(durationText(item.foreground_duration_ms))}</span>`).join("");
+      const activity = (data.activity||[]).map(event => `<div class="hist-event"><span>${esc(eventTime(event.event_time))}</span><span class="event-type">${esc(event.event_type)}</span><span class="event-detail">${esc(activityDetail(event))}</span></div>`).join("");
+      const commands = (data.history||[]).map(item => {
+        const result=parse(item.result_json)||{};
+        const detail=item.type==="speedtest"?`${result.downloadMbps??"--"}↓ ${result.uploadMbps??"--"}↑ ping ${result.pingMs??"--"}`:`${result.hostCount??"--"} dispositivos ${result.subnet||""}`;
+        return `<div class="hist-event"><span>${esc(eventTime(item.acked_at||item.created_at))}</span><span class="event-type">${esc(item.type)}</span><span class="event-detail">${esc(item.status==="error"?(item.error||""):detail)}</span></div>`;
+      }).join("");
+      return `<div class="hist-toolbar" data-history-agent="${esc(agentId)}">
+          <label>Desde<input class="hist-from" type="date" value="${esc(from)}"></label>
+          <label>Hasta<input class="hist-to" type="date" value="${esc(to)}"></label>
+          <button class="hist-refresh" data-agent="${esc(agentId)}">Actualizar reporte</button>
+        </div>
+        <div class="hist-summary">
+          <span class="hist-chip">Versión: ${esc(status.agent_version||"agente anterior")}</span>
+          <span class="hist-chip">Entrada: ${esc(status.input_state||"sin datos")}</span>
+          ${summary}
+        </div>
+        <div class="hist-section"><div class="hist-section-title">Actividad del agente</div>${activity||'<span class="muted-line">Sin actividad en el rango seleccionado</span>'}</div>
+        <div class="hist-section"><div class="hist-section-title">Speed Test y diagnósticos</div>${commands||'<span class="muted-line">Sin diagnósticos</span>'}</div>`;
+    }
+    async function loadActivityHistory(agentId, from, to){
+      const el = document.getElementById("detail-"+agentId);
+      if(!el) return;
+      el.dataset.kind = "hist";
+      el.innerHTML = '<span class="muted-line">Cargando reporte...</span>';
+      el.classList.add("open");
+      const fromIso = new Date(from+"T00:00:00").toISOString();
+      const toIso = new Date(to+"T23:59:59.999").toISOString();
+      try {
+        const url = "api/history?agent="+encodeURIComponent(agentId)+"&from="+encodeURIComponent(fromIso)+"&to="+encodeURIComponent(toIso)+"&limit=250";
+        const response = await fetch(url,{credentials:"include"});
+        const data = await response.json();
+        if(!response.ok) throw new Error(data.error||"No se pudo cargar el reporte");
+        el.innerHTML = historyMarkup(agentId, data, from, to);
+      } catch(error) {
+        el.innerHTML = `<span class="muted-line">${esc(error.message||error)}</span>`;
+      }
+    }
+
+    // --- acciones ---
+    wrap.addEventListener("click", async (e) => {
+      const refreshHistory = e.target.closest(".hist-refresh");
+      if (refreshHistory) {
+        const id = refreshHistory.dataset.agent;
+        const toolbar = refreshHistory.closest(".hist-toolbar");
+        const from = toolbar.querySelector(".hist-from").value;
+        const to = toolbar.querySelector(".hist-to").value;
+        if(from && to) await loadActivityHistory(id, from, to);
+        return;
+      }
+
+      const rem = e.target.closest(".remote-btn");
+      if (rem) { const id = rem.dataset.id; window.open("remoteo.html?agent="+encodeURIComponent(id)+"&label="+encodeURIComponent(rem.dataset.label||id), "remoteo_"+id, "width=1024,height=680,menubar=no,toolbar=no,location=no,status=no"); return; }
+
+      const cmd = e.target.closest(".cmd");
+      if (cmd) { const id=cmd.dataset.id, type=cmd.dataset.cmd; cmd.disabled=true;
+        try { const r=await fetch("api/agent/"+encodeURIComponent(id)+"/command",{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:JSON.stringify({type})}); if(!(await r.json()).ok) throw new Error("no se pudo"); await tick(); } catch(err){ alert(err.message||err); } finally { cmd.disabled=false; } return; }
+
+      const geo = e.target.closest(".geo-ic");
+      if (geo) { const id=geo.dataset.geoId; geo.disabled=true;
+        try { const j=await (await fetch("api/geo?agent="+encodeURIComponent(id),{credentials:"include"})).json();
+          let body;
+          if(j.ok){ const d=j.data||{}, loc=d.location||{}, asn=d.asn||{}, co=d.company||{};
+            body = `<strong>${esc(loc.city||"--")}, ${esc(loc.country||d.country||"--")}</strong><span class="muted-line">${esc(co.name||asn.org||"")}</span><div class="muted-line">${esc(j.ip||"")}</div>`;
+          } else { body = `<span class="muted-line">${esc(j.error||"error")}</span>`; }
+          toggleDetail(id, { kind:"geo", body });
+        } catch(err){ /* noop */ } finally { geo.disabled=false; } return; }
+
+      const hist = e.target.closest(".hist-ic");
+      if (hist) { const id=hist.dataset.hist; hist.disabled=true;
+        try {
+          const url="activity.html?agent="+encodeURIComponent(id)+"&label="+encodeURIComponent(hist.dataset.label||id);
+          const tab=window.open(url,"_blank");
+          if(tab) tab.opener=null;
+        } finally { hist.disabled=false; } return; }
+    });
+  </script>
+</body>
+</html>

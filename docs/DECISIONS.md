@@ -378,3 +378,27 @@ lógica de aplicación. Secretos y datos operativos continúan fuera de Git.
 Seguimiento:
 Verificar en cada despliegue el commit, tag o digest instalado y registrar el
 resultado de las pruebas remotas.
+
+### ADR-0016 - Migrar Zynerdesk (Synervox Remoteo) de Docker a despliegue nativo
+
+Fecha: 2026-10-03
+
+Estado: aceptada
+
+Contexto:
+El codigo de Synervox Remoteo solo existia dentro de la imagen ghcr.io/miguelleonh0331/synervox-remoteo, sin repo propio versionado. farm y whatsapp ya migraron al patron nativo (vendor/ + systemd + MySQL del host); zynerdesk quedaba como el ultimo modulo Docker, duplicando MySQL y sin trazabilidad por commit. Esta instancia esta validada en mirmidon (produccion) en su forma Docker actual.
+
+Decisión:
+Extraer el codigo de la imagen, vendorizarlo en src/features/zynerdesk/vendor/, reescribir installer/zynerdesk.sh sin Docker/Compose (usuario systemd dedicado, BD syner_remoteo en el MySQL nativo del host, scripts/start.js como entrypoint real ya que migra y arranca en un solo proceso) y eliminar zynerdesk/compose.yml.
+
+Motivo:
+Unificar el modelo de despliegue con farm/whatsapp, eliminar un MySQL duplicado, quitar la dependencia de Docker y recuperar el codigo fuente que hoy solo vive en una imagen binaria.
+
+Alternativas evaluadas:
+- Mantener Docker y solo versionar zynerdesk/compose.yml (no recupera el codigo fuente real); publicar la imagen propia con digest fijado (no resuelve la falta de repo).
+
+Impacto:
+modulo zynerdesk (CONTRACT.md reescrito); ningun otro modulo se modifica; bcrypt nativo requiere prebuild linux-x64 glibc (verificado disponible, sin necesidad de compilar); mirmidon sigue en Docker hasta que se decida migrar produccion por separado, fuera de alcance de este ADR
+
+Seguimiento:
+Validar en WSL (zynervoxv1) junto a farm/stt_providers/whatsapp antes de considerar fusionar a main. Migrar mirmidon requiere autorizacion explicita y separada.
