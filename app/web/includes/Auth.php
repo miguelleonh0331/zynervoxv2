@@ -46,27 +46,36 @@ class Auth {
             // zynervox_core no configurado o sin conexión: se sigue con vicidial_users.
         }
 
-        $db = Database::getInstance();
+        // 2. Fallback: vicidial_users en la BD compartida `asterisk`
+        //    (astguiclient.conf). Hosts sin VICIdial/Asterisk instalado
+        //    (ej. labs de prueba) no tienen ese archivo -- debe fallar como
+        //    "login invalido", no reventar la pagina entera con 500.
+        try {
+            $db = Database::getInstance();
 
-        // Columnas clave: user, pass, user_level, active
-        $stmt = $db->prepare("SELECT user, pass, user_level, full_name
-                             FROM vicidial_users
-                             WHERE user = :user AND active = 'Y'
-                             LIMIT 1");
-        $stmt->execute(['user' => $username]);
-        $user = $stmt->fetch();
+            // Columnas clave: user, pass, user_level, active
+            $stmt = $db->prepare("SELECT user, pass, user_level, full_name
+                                 FROM vicidial_users
+                                 WHERE user = :user AND active = 'Y'
+                                 LIMIT 1");
+            $stmt->execute(['user' => $username]);
+            $user = $stmt->fetch();
 
-        if ($user) {
-            // NOTA: Vicidial puede guardar passwords en texto plano o md5 según config.
-            // Por simplicidad y compatibilidad inicial, validamos texto plano.
-            if ($password === $user['pass']) {
-                $_SESSION['user'] = $user['user'];
-                $_SESSION['user_level'] = (int)$user['user_level'];
-                $_SESSION['full_name'] = $user['full_name'];
-                
-                Audit::logAccess($username, 'LOGIN', 'Successful login from website');
-                return true;
+            if ($user) {
+                // NOTA: Vicidial puede guardar passwords en texto plano o md5 según config.
+                // Por simplicidad y compatibilidad inicial, validamos texto plano.
+                if ($password === $user['pass']) {
+                    $_SESSION['user'] = $user['user'];
+                    $_SESSION['user_level'] = (int)$user['user_level'];
+                    $_SESSION['full_name'] = $user['full_name'];
+
+                    Audit::logAccess($username, 'LOGIN', 'Successful login from website');
+                    return true;
+                }
             }
+        } catch (Exception $e) {
+            // astguiclient.conf ausente/invalido: sin integracion VICIdial,
+            // login invalido en vez de error fatal.
         }
         return false;
     }
