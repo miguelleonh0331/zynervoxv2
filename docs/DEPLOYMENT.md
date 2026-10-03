@@ -29,11 +29,13 @@ sudo ./installer/install.sh --apply-migrations
 ```
 
 `--skip-packages` permite desplegar solo los archivos sin alterar paquetes del host.
-`--install-docker` instala y habilita Docker cuando falta. En openSUSE requiere
-`zypper`; en Ubuntu/Debian usa `apt`. Para el despliegue completo y aislado consulte
-`INSTALL_ONE_COMMAND.md`.
+`--install-docker` instala y habilita Docker cuando falta — lo requiere
+`--with-zynerdesk` (único módulo que sigue en Docker); `--with-whatsapp`,
+`--with-farm` y `--with-stt-providers` son nativos (`systemd` + MySQL del host,
+desde ADR-0016) y no lo necesitan. En openSUSE requiere `zypper`; en Ubuntu/Debian
+usa `apt`. Para el despliegue completo y aislado consulte `INSTALL_ONE_COMMAND.md`.
 
-Para instalar los tres módulos administrativos junto con la web:
+Para instalar los cuatro módulos administrativos junto con la web:
 
 ```bash
 sudo ./installer/install.sh --skip-packages --install-docker \
@@ -43,6 +45,40 @@ sudo ./installer/install.sh --skip-packages --install-docker \
 Sin `--apply-migrations` no se cambia la base. Si falta VICIdial, la web se instala
 y el diagnóstico devuelve `PARTIAL`. No crear tablas parciales: autenticación,
 campañas, agentes y telefonía dependen del esquema completo y sus datos iniciales.
+
+### `/etc/astguiclient.conf` ausente (entornos de laboratorio sin Asterisk real)
+
+El instalador **nunca genera** `/etc/astguiclient.conf` (ni `/etc/zynervox/astguiclient.conf`).
+Sin ese archivo, `includes/Database.php` lanza `PDOException` y **toda** la web
+responde `HTTP 500` — no solo los módulos opcionales (WhatsApp, Farm, etc.), el
+`index.php` principal también, porque `Includes\Auth::login()` lo requiere.
+
+Si se reinstala sobre un MySQL que ya tiene una base `asterisk` con el esquema
+VICIdial importado (clones de laboratorio, instancias WSL reutilizadas), recrear
+el archivo manualmente antes de validar login:
+
+```bash
+sudo install -d -o root -g www-data -m 0750 /etc/zynervox
+sudo tee /etc/astguiclient.conf > /dev/null <<'EOF'
+VARDB_server => 127.0.0.1
+VARDB_port => 3306
+VARDB_database => asterisk
+VARDB_user => zynervox_app
+VARDB_pass => <contraseña real del usuario zynervox_app>
+EOF
+sudo chown root:www-data /etc/astguiclient.conf
+sudo chmod 0640 /etc/astguiclient.conf
+```
+
+Si se desconoce la contraseña (p. ej. se perdió junto con un `/etc/zynervox`
+borrado), resetearla antes:
+
+```bash
+sudo mysql -e "ALTER USER 'zynervox_app'@'127.0.0.1' IDENTIFIED BY '<nueva_password>'; FLUSH PRIVILEGES;"
+```
+
+Sin una base `asterisk` real con tablas `vicidial_*`/`phones`, este paso no basta:
+hace falta VICIdial completo (ver sección anterior).
 
 ## Verificación
 
@@ -76,6 +112,11 @@ contraseña aleatoria.
 
 ## WhatsApp
 
+Servicio nativo desde ADR-0016 (ver `docs/DECISIONS.md`): sin Docker ni Compose,
+proceso Node administrado por `systemd`, BD en el MySQL del host. Requiere `node`
+(≥18), `npm`, `mysql` y `openssl` instalados en el servidor — el instalador falla
+con un mensaje claro si falta alguno; no los instala por sí mismo.
+
 ```bash
 sudo ./installer/whatsapp.sh init
 sudo ./installer/whatsapp.sh install-proxy
@@ -83,44 +124,46 @@ sudo ./installer/whatsapp.sh status
 sudo ./installer/whatsapp.sh backup /ruta/whatsapp.sql.gz
 ```
 
-El gestor construye la imagen integrada sobre Zynerwaba `2.0.0` fijada por digest,
-levanta MySQL 8.4 y selecciona el primer puerto local libre desde `3022`. Los
-volúmenes se prefijan con `COMPOSE_PROJECT_NAME` y no se comparten con
-MariaDB/VICIdial ni con otra instalación.
+`init` vendoriza `src/features/whatsapp/vendor/` en `/opt/zynervox-whatsapp`,
+ejecuta `npm ci`, crea la base `zynerwabav2` y su usuario propio en el MySQL
+nativo (nunca comparte motor con `asterisk` ni `zynervox_stt`), y selecciona el
+primer puerto local libre desde `3022`. La configuración vive en
+`/etc/zynervox/zynervox-whatsapp.env` (`0600 root`), no en `whatsapp/.env`.
 
 `init` genera `ZYNERVOX_SSO_SECRET`; `install-proxy` instala el mismo valor en
 `/etc/zynervox/whatsapp.conf` con acceso limitado a `root:www-data`. Repetir ambos
 comandos al actualizar una instalación anterior para activar la sesión única.
 El proxy usa `ProxyPass`/`ProxyPassReverse` y no exige `mod_headers`; `BASE_PATH`
-se entrega directamente al contenedor.
+se entrega directamente al proceso Node por `EnvironmentFile` de systemd.
 
 Validar `/zynerwabav2/`, login, sesión, empresas, líneas, recepción y envío antes
-de promover una versión. `down` retira contenedores y conserva ambos volúmenes.
-Usar `remove-proxy` para retirar la ruta Apache sin borrar datos.
+de promover una versión. `down` detiene el servicio y conserva BD y adjuntos
+(`/var/lib/zynervox-whatsapp`). Usar `remove-proxy` para retirar la ruta Apache
+sin borrar datos.
 
 ### Actualización segura de WhatsApp
 
 1. Trabajar en una rama y mantener `main` desplegable.
-2. Ejecutar `backup` y guardar el commit actual y el digest de la imagen activa.
-3. Construir la nueva imagen con una etiqueta inmutable; nunca reutilizar una
-   etiqueta publicada. Publicarla cuando exista autenticación segura al registro.
-4. Actualizar etiqueta y digest juntos en `whatsapp/compose.yml`.
-5. Desplegar primero en un servidor de laboratorio aislado.
-6. Ejecutar `smoke.sh`, validar roles en navegador y completar `META_E2E.md` cuando
+2. Ejecutar `backup` y guardar el commit actual.
+3. Actualizar `src/features/whatsapp/vendor/` solo documentando el origen exacto
+   en `src/features/whatsapp/README.md` (ver sección "Código vendorizado");
+   nunca editar `vendor/` a mano sin dejar esa traza.
+4. Desplegar primero en un servidor de laboratorio aislado.
+5. Ejecutar `smoke.sh`, validar roles en navegador y completar `META_E2E.md` cuando
    existan credenciales Meta de prueba.
-7. Etiquetar Git y Docker con la misma versión solo después de aprobar los gates.
+6. Etiquetar Git con la versión solo después de aprobar los gates.
 
 ### Rollback y recuperación
 
-- No borrar volúmenes durante una actualización o rollback.
+- No borrar la base `zynerwabav2` ni `/var/lib/zynervox-whatsapp` durante una
+  actualización o rollback.
 - Restaurar el commit anterior con `git revert` o una nueva rama basada en el tag
-  estable; no reescribir el historial compartido.
-- Restaurar en `whatsapp/compose.yml` la etiqueta y el digest anteriores, ejecutar
-  `installer/whatsapp.sh up` y repetir el smoke test.
+  estable; no reescribir el historial compartido. Volver a correr `init` para
+  reinstalar `vendor/` desde ese commit.
 - Si existe corrupción o migración incompatible, restaurar el respaldo con
   `installer/whatsapp.sh restore /ruta/whatsapp.sql.gz` antes de habilitar tráfico.
-- Reiniciar únicamente el stack WhatsApp. Los servicios y carpetas productivos
-  ajenos a esta integración quedan fuera del procedimiento.
+- Reiniciar únicamente `zynervox-whatsapp.service`. Los servicios y carpetas
+  productivos ajenos a esta integración quedan fuera del procedimiento.
 
 ### Gate de publicación
 
