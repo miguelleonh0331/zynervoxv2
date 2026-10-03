@@ -220,7 +220,11 @@ case "$action" in
     install_code
     write_sync_admin_script
     write_service
-    systemctl enable --now "$SERVICE"
+    # restart (no enable --now): en reinstalaciones el servicio ya puede estar
+    # activo; --now no reinicia un activo, y tras el DROP+CREATE de la BD el
+    # proceso Node debe arrancar de cero para recrear el superadmin inicial.
+    systemctl enable "$SERVICE"
+    systemctl restart "$SERVICE"
     wait_app
     env -i DB_HOST="$DB_HOST" DB_PORT="$DB_PORT" DB_USER="$DB_USER" DB_PASSWORD="$DB_PASSWORD" DB_NAME="$DB_NAME" \
       INITIAL_ADMIN_USER="$INITIAL_ADMIN_USER" INITIAL_ADMIN_PASSWORD="$INITIAL_ADMIN_PASSWORD" \

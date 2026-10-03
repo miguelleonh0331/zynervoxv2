@@ -175,7 +175,11 @@ case "$action" in
     ensure_system_user
     install_code
     write_service
-    systemctl enable --now "$SERVICE"
+    # restart (no enable --now): tras el DROP+CREATE de la BD, start.js debe
+    # arrancar de cero para recrear el superadmin inicial; --now no reinicia
+    # un servicio ya activo en reinstalaciones.
+    systemctl enable "$SERVICE"
+    systemctl restart "$SERVICE"
     wait_app
     echo "ZYNERDESK_READY host=127.0.0.1 port=$PORT path=$BASE_PATH"
     ;;
