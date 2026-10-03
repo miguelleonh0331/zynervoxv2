@@ -64,17 +64,37 @@ function register(ctx) {
       ? await db.prepare('SELECT * FROM contacts WHERE id=?').get(contactId)
       : await touchContactFromWebhook({ line, waId, profileName });
     const body = message.text?.body || (message.type === 'text' ? '' : `[${message.type}]`);
+    const createdAt = new Date(timestampMs || Date.now()).toISOString().slice(0, 19).replace('T', ' ');
     const r = await db.prepare(
       `INSERT INTO messages (contact_id, direction, type, body, wa_message_id, status,
         created_at, is_auto_response, is_optout_response)
        VALUES (?, 'in', ?, ?, ?, 'received', ?, ?, ?)`
     ).run(
       contact.id, message.type || 'text', body, message.id || null,
-      new Date(timestampMs || Date.now()).toISOString().slice(0, 19).replace('T', ' '),
+      createdAt,
       isAuto, isOptout
     );
     await db.prepare('UPDATE contacts SET last_message_at=CURRENT_TIMESTAMP WHERE id=?').run(contact.id);
     await emitContactRefresh(contact.id, { last_message_at: 'now' });
+    emitToContactRooms(
+      line.empresa_id,
+      contact.owner_user_id,
+      'message:new',
+      {
+        contact_id: contact.id,
+        message: {
+          id: r.lastInsertRowid,
+          contact_id: contact.id,
+          direction: 'in',
+          type: message.type || 'text',
+          body,
+          status: 'received',
+          created_at: createdAt,
+          is_auto_response: isAuto,
+          is_optout_response: isOptout,
+        },
+      },
+    );
     return contact;
   }
 
@@ -84,6 +104,15 @@ function register(ctx) {
   }
   function lineEmpresa(contact) { return contact.empresa_id ?? 0; }
 
+  function emitToContactRooms(empresaId, ownerUserId, event, payload) {
+    try {
+      io.to(`empresa:${empresaId}:admins`).emit(event, payload);
+      if (ownerUserId) {
+        io.to(`empresa:${empresaId}:user:${ownerUserId}`).emit(event, payload);
+      }
+    } catch (_err) { /* no interrumpir persistencia por un fallo de socket */ }
+  }
+
   async function emitContactRefresh(contactId, patch) {
     try {
       const row = await db.prepare(
@@ -91,11 +120,9 @@ function register(ctx) {
          JOIN \`lines\` l ON l.id=c.line_id WHERE c.id=?`
       ).get(contactId);
       if (!row) return;
-      const room = `empresa:${row.empresa_id}:admins`;
-      io.to(room).emit('contact:refresh', { contact: row, patch: patch || null });
-      if (row.owner_user_id) {
-        io.to(`empresa:${row.empresa_id}:user:${row.owner_user_id}`).emit('contact:refresh', { contact: row, patch: patch || null });
-      }
+      const payload = { contact: row, patch: patch || null };
+      emitToContactRooms(row.empresa_id, row.owner_user_id, 'contact:refresh', payload);
+      emitToContactRooms(row.empresa_id, row.owner_user_id, 'contacts:refresh', payload);
     } catch (_err) { /* no interrumpir el flujo por un fallo de emisión */ }
   }
 

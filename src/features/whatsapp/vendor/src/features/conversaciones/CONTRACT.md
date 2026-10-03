@@ -29,7 +29,7 @@
 ## Eventos Socket.IO que emite/escucha
 | Evento | Sala | Cuándo |
 |---|---|---|
-| `contact:refresh` | `empresa:<id>:admins` / `empresa:<id>:user:<uid>` | cambios de contacto/estado |
+| `contact:refresh` y `contacts:refresh` | `empresa:<id>:admins` / `empresa:<id>:user:<uid>` | cambios de contacto/estado; singular legado y plural consumido por la bandeja actual |
 | `message:new` | ídem | mensaje entrante/saliente nuevo |
 | `typing` | `empresa:<id>:contact:<id>` | indicador de escritura |
 | `llamada:entrada` | ídem | señalización de llamada |

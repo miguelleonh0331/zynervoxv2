@@ -108,6 +108,9 @@ separado de Operaciones WhatsApp y no aparecen en este panel administrativo.
   que el envío de texto use el endpoint existente de mensajes del contacto.
 - `node src/features/whatsapp/tests/conversaciones-timestamp.test.js` verifica
   que la fecha del evento entrante se propague hasta la inserción del mensaje.
+- `node src/features/whatsapp/tests/conversaciones-realtime.test.js` verifica
+  el refresco compatible de contactos y `message:new` en las salas de
+  administradores y del propietario para actualizar la bandeja y sus alertas.
 - Envío/recepción Meta pendiente de configurar credenciales y líneas de prueba.
 
 El smoke test reproducible usa las credenciales locales sin mostrarlas:

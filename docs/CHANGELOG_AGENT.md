@@ -996,3 +996,29 @@ Contrato:
 Riesgos:
 - las funciones auxiliares cuyo backend aún no existe permanecen vacías o
   inactivas, sin bloquear contactos y mensajes
+### 2026-10-04 00:25 - whatsapp_AGENT - whatsapp
+
+Tipo: fix
+
+Resumen:
+Restaurar actualización en tiempo real y alertas de mensajes entrantes en la
+bandeja mediante eventos Socket.IO compatibles.
+
+Motivo:
+El backend emitía `contact:refresh`, mientras el frontend escuchaba
+`contacts:refresh`; además, el guardado entrante nunca emitía `message:new`,
+evento necesario para refrescar el chat activo y disparar la alerta sonora.
+
+Archivos modificados:
+- src/features/whatsapp/vendor/src/features/conversaciones/index.js
+- src/features/whatsapp/vendor/src/features/conversaciones/CONTRACT.md
+- src/features/whatsapp/tests/conversaciones-realtime.test.js
+- src/features/whatsapp/README.md
+- docs/CHANGELOG_AGENT.md
+
+Contrato:
+- conserva `contact:refresh` y añade `contacts:refresh` por compatibilidad
+- emite `message:new` únicamente después de persistir el mensaje
+
+Riesgos:
+- los fallos de Socket.IO permanecen fail-open y no interrumpen la persistencia
