@@ -306,7 +306,12 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable --now "$CONTROL_SERVICE"
+# "restart" y no "enable --now": si el servicio ya estaba activo de una
+# corrida anterior, "enable --now" no lo reinicia y se queda corriendo con
+# el ExecStart viejo (puerto/python anteriores) aunque el .service en disco
+# ya diga otra cosa -- bug real encontrado reinstalando en mirmidon.
+systemctl enable "$CONTROL_SERVICE"
+systemctl restart "$CONTROL_SERVICE"
 
 for _ in $(seq 1 15); do
     curl -fsS -H "X-Control-Token: $CONTROL_TOKEN" "http://127.0.0.1:${ZYPAD_CONTROL_PORT}/status" >/dev/null 2>&1 && break
