@@ -52,6 +52,19 @@
         </div>
       </section>
 
+      <section class="fleet-control panel">
+        <div>
+          <p class="panel-kicker">CUENTAS PROXY</p>
+          <h2>Subir archivo</h2>
+          <p>Reemplaza la carga manual por FTP/SSH. El orquestador recarga la carpeta solo, sin reiniciar nada.</p>
+        </div>
+        <div class="target-control">
+          <input id="proxy-file-input" type="file" accept=".txt,.csv,.json" aria-label="Archivo de cuentas proxy" />
+          <button id="proxy-file-upload" class="primary">Subir</button>
+        </div>
+        <p id="proxy-upload-message" class="subtitle"></p>
+      </section>
+
       <div id="operation-message" class="operation-message" hidden></div>
 
       <section class="workspace">

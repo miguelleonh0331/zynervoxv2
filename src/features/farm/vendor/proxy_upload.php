@@ -1,0 +1,57 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/auth.php';
+require_auth(true);
+require_csrf();
+header('Content-Type: application/json; charset=utf-8');
+
+// Sube archivos de cuentas proxy directo a la carpeta vigilada por
+// orchestrator.py (proxy_dir) -- reemplaza el flujo manual por FTP/SSH.
+// El orquestador recarga solo, no hace falta avisarle por otra via.
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['ok' => false, 'error' => 'Metodo no permitido']);
+    exit;
+}
+
+$dir = (string)(farm_config()['proxy_dir'] ?? '');
+if ($dir === '' || !is_dir($dir) || !is_writable($dir)) {
+    http_response_code(503);
+    echo json_encode(['ok' => false, 'error' => 'Carpeta de proxies no disponible en el servidor']);
+    exit;
+}
+
+if (!isset($_FILES['proxy_file']) || $_FILES['proxy_file']['error'] !== UPLOAD_ERR_OK) {
+    $err = $_FILES['proxy_file']['error'] ?? UPLOAD_ERR_NO_FILE;
+    echo json_encode(['ok' => false, 'error' => "Error de subida (codigo $err)"]);
+    exit;
+}
+
+$maxBytes = 5 * 1024 * 1024; // 5 MB: listas de proxy son texto plano, de sobra
+if ($_FILES['proxy_file']['size'] > $maxBytes) {
+    echo json_encode(['ok' => false, 'error' => 'Archivo demasiado grande (max 5 MB)']);
+    exit;
+}
+
+$originalName = (string)$_FILES['proxy_file']['name'];
+$ext = strtolower((string)pathinfo($originalName, PATHINFO_EXTENSION));
+if (!in_array($ext, ['txt', 'csv', 'json'], true)) {
+    echo json_encode(['ok' => false, 'error' => 'Extension no permitida: use .txt, .csv o .json']);
+    exit;
+}
+
+// Nombre seguro: solo alfanumerico/guiones del original, prefijado con
+// timestamp para no pisar archivos existentes con el mismo nombre.
+$base = preg_replace('/[^A-Za-z0-9_.-]+/', '_', pathinfo($originalName, PATHINFO_FILENAME));
+$safeName = gmdate('Ymd-His') . '_' . substr((string)$base, 0, 80) . '.' . $ext;
+$dest = rtrim($dir, '/') . '/' . $safeName;
+
+if (!move_uploaded_file($_FILES['proxy_file']['tmp_name'], $dest)) {
+    echo json_encode(['ok' => false, 'error' => 'No se pudo guardar el archivo']);
+    exit;
+}
+chmod($dest, 0660);
+
+audit_event('proxy_file_upload', ['file' => $safeName, 'original' => $originalName, 'size' => $_FILES['proxy_file']['size']]);
+echo json_encode(['ok' => true, 'file' => $safeName]);

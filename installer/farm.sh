@@ -60,7 +60,12 @@ fi
 install -d -o root -g "$WEB_GROUP" -m 0750 "$LOG"
 getent group "$INSTANCE" >/dev/null 2>&1 || groupadd --system "$INSTANCE"
 id "$INSTANCE" >/dev/null 2>&1 || useradd --system --gid "$INSTANCE" --home-dir "$RUNTIME" --shell /usr/sbin/nologin "$INSTANCE"
-install -d -o "$INSTANCE" -g "$INSTANCE" -m 0750 "$RUNTIME/control" "$RUNTIME/control/proxy-accounts" "$RUNTIME/control/secrets"
+install -d -o "$INSTANCE" -g "$INSTANCE" -m 0750 "$RUNTIME/control" "$RUNTIME/control/secrets"
+# proxy-accounts: grupo web con escritura (0770), para que el panel pueda
+# subir archivos de cuentas proxy sin SSH/FTP. El orquestador (orchestrator.py)
+# ya vigila esta carpeta y recarga solo -- no hace falta avisarle del archivo
+# nuevo por otra via.
+install -d -o "$INSTANCE" -g "$WEB_GROUP" -m 0770 "$RUNTIME/control/proxy-accounts"
 install -d -o "$INSTANCE" -g "$WEB_GROUP" -m 0750 "$DATA/control"
 
 if [[ "$SKIP_ANNEX" != "1" ]]; then
@@ -96,6 +101,7 @@ return [
     'internal_token' => '${DATA}/internal_token',
     'control_token' => '${DATA}/control/control.token',
     'audit_log' => '${LOG}/audit.log',
+    'proxy_dir' => '${RUNTIME}/control/proxy-accounts',
 ];
 EOF
 chown root:"$WEB_GROUP" "$CONFIG_PHP"

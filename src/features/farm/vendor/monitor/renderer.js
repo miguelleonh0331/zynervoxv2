@@ -499,6 +499,26 @@ document.querySelector("#stop-all").addEventListener("click", async () => {
   try { await window.controlPlane.fleetAction("stop-all"); notify("Parada inmediata enviada."); await refresh(); }
   catch (error) { notify(error.message, true); }
 });
+document.querySelector("#proxy-file-upload").addEventListener("click", async () => {
+  const input = document.querySelector("#proxy-file-input");
+  const msg = document.querySelector("#proxy-upload-message");
+  const file = input.files && input.files[0];
+  if (!file) { notify("Elige un archivo primero.", true); return; }
+  const button = document.querySelector("#proxy-file-upload");
+  button.disabled = true; button.textContent = "Subiendo…";
+  try {
+    const result = await window.controlPlane.uploadProxyFile(file);
+    msg.textContent = `✔ Subido como ${result.file}. El orquestador lo recoge solo.`;
+    input.value = "";
+    notify("Archivo de proxies subido.");
+    await refresh();
+  } catch (error) {
+    msg.textContent = `✘ ${error.message}`;
+    notify(error.message, true);
+  } finally {
+    button.disabled = false; button.textContent = "Subir";
+  }
+});
 document.querySelector("#refresh").addEventListener("click", refresh);
 document.querySelector("#clear-filter").addEventListener("click", () => { selectedWorker = null; renderSelection(); refresh(); });
 workerSearch.addEventListener("input", applyWorkerFilters);

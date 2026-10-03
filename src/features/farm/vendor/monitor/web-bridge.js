@@ -13,8 +13,22 @@
     if (!response.ok) throw new Error(data.error || `Error HTTP ${response.status}`);
     return data;
   }
+  async function uploadProxyFile(file) {
+    const body = new FormData();
+    body.append('proxy_file', file);
+    const response = await fetch('proxy_upload.php', {
+      method: 'POST',
+      headers: {'X-CSRF-Token': csrf},
+      body,
+      credentials: 'same-origin'
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok) throw new Error(data.error || `Error HTTP ${response.status}`);
+    return data;
+  }
   window.controlPlane = {
     snapshot: () => request('snapshot'),
+    uploadProxyFile,
     events: (workerId = null) => request(`events${workerId ? `?worker=${Number(workerId)}` : ''}`),
     workerAction: (id, action, payload = {}) => request(`workers/${Number(id)}/${action}`, {method:'POST', body:payload}),
     fleetAction: (action, payload = {}) => request(`fleet/${action}`, {method:'POST', body:payload}),
