@@ -97,6 +97,9 @@ separado de Operaciones WhatsApp y no aparecen en este panel administrativo.
 - Servicio systemd, MySQL nativo, 63 tablas, proxy y login verificados tras borrar
   y reinstalar desde GitHub. Ver `docs/TAREA_WHATSAPP_NATIVO.md` §7 para el detalle
   de los 11 criterios de aceptación.
+- `node src/features/whatsapp/tests/webhook-verify-token.test.js` reproduce la
+  verificación GET de Meta con credenciales cifradas y evita regresiones en la
+  resolución del módulo criptográfico.
 - Envío/recepción Meta pendiente de configurar credenciales y líneas de prueba.
 
 El smoke test reproducible usa las credenciales locales sin mostrarlas:

@@ -42,7 +42,7 @@ function register(ctx) {
 
   function decryptVerify(row) {
     try {
-      const { decryptSecret } = require('../shared/crypto');
+      const { decryptSecret } = require('../../shared/crypto');
       return decryptSecret({ enc: row.verify_token_enc, iv: row.verify_token_iv, tag: row.verify_token_tag });
     } catch (_e) { return null; }
   }

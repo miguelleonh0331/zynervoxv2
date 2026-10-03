@@ -901,3 +901,25 @@ Contrato:
 
 Riesgos:
 check.sh --strict sigue en FAIL solo por Asterisk local ausente (gap preexistente, no relacionado). Rama feat/zynerdesk-nativo publicada, fusionada a main el 2026-10-03. Probado en WSL zynervoxv1, no en mirmidon (produccion sigue en Docker).
+
+### 2026-10-03 23:18 - whatsapp_AGENT - whatsapp
+
+Tipo: fix
+
+Resumen:
+Corregir la ruta relativa del helper criptografico usado por el webhook GET de Meta y agregar una prueba de regresion con verify token cifrado.
+
+Motivo:
+El modulo cargaba `../shared/crypto` desde `src/features/whatsapp`, ruta inexistente. El error se ocultaba en `decryptVerify()` y todo challenge valido terminaba en HTTP 403.
+
+Archivos modificados:
+- src/features/whatsapp/vendor/src/features/whatsapp/index.js
+- src/features/whatsapp/tests/webhook-verify-token.test.js
+- src/features/whatsapp/README.md
+- docs/CHANGELOG_AGENT.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- cambio localizado a la verificacion GET; la recepcion POST y el envio a Graph API no cambian
