@@ -39,7 +39,11 @@ getent group "$WEB_GROUP" >/dev/null || WEB_GROUP=root
 
 [[ $EUID -eq 0 ]] || { echo "Ejecutar como root" >&2; exit 1; }
 command -v docker >/dev/null 2>&1 || { echo "Zypad requiere Docker instalado (reinstale con --install-docker)" >&2; exit 1; }
-PYTHON="$(command -v python3)"
+# Prioriza python3.11: algunos hosts (ej. openSUSE VICIbox) traen de fabrica
+# un python3 generico muy antiguo (3.6, sin "from __future__ import
+# annotations") junto a un python3.11 real instalado aparte. Mismo patron
+# que installer/farm.sh.
+PYTHON="$(command -v python3.11 || command -v python3)"
 [[ -n "$PYTHON" ]] || { echo "Zypad requiere python3 para el control-daemon" >&2; exit 1; }
 
 # Prioriza una IP privada real (RFC1918) para publicar el puerto. Si el host

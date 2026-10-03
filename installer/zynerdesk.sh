@@ -262,7 +262,10 @@ case "$action" in
     # corre como root desde que systemd lo arranca -- no escala privilegios
     # en caliente -- asi que el hardening de Apache no lo afecta.
     [[ $EUID -eq 0 ]] || { echo "Ejecutar como root" >&2; exit 1; }
-    PYTHON="$(command -v python3)"
+    # Prioriza python3.11: algunos hosts (ej. openSUSE VICIbox) traen de
+    # fabrica un python3 generico muy antiguo (3.6, sin "from __future__
+    # import annotations") junto a un python3.11 real instalado aparte.
+    PYTHON="$(command -v python3.11 || command -v python3)"
     [[ -n "$PYTHON" ]] || { echo "install-control requiere python3" >&2; exit 1; }
     CONTROL_RUNTIME="/opt/$INSTANCE-control"
     CONTROL_TOKEN_FILE="/etc/zynervox/$INSTANCE-control.token"
