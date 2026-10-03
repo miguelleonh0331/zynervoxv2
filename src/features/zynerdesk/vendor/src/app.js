@@ -96,7 +96,7 @@ function limitedString(value, maxLength) {
   return String(value).trim().slice(0, maxLength) || null;
 }
 
-const { normalizeActivityEvent, recalculateAgentDailyStats, limaDate } =
+const { normalizeProcessName, normalizeActivityEvent, recalculateAgentDailyStats, limaDate } =
   createActivityService({ pool, limitedString });
 
 const { getUserCampaigns, canAccessAgent, replaceUserCampaigns } =

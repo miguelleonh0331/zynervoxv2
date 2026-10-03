@@ -301,7 +301,7 @@ function createActivityService({ pool, limitedString }) {
     );
   }
 
-  return { normalizeActivityEvent, recalculateAgentDailyStats, limaDate };
+  return { normalizeProcessName, normalizeActivityEvent, recalculateAgentDailyStats, limaDate };
 }
 
 module.exports = { createActivityService };

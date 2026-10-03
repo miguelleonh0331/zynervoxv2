@@ -54,6 +54,11 @@ choose_port() {
 
 generate_env() {
   [[ -f "$CONFIG_ENV" ]] && return
+  local activity_token="${ACTIVITY_INGEST_TOKEN:-}"
+  [[ "$activity_token" =~ ^[A-Fa-f0-9]{64}$ ]] || {
+    echo "ACTIVITY_INGEST_TOKEN debe contener el token estatico de produccion (64 hex)" >&2
+    exit 2
+  }
   install -d -o root -g root -m 0755 /etc/zynervox
   local port; port="$(choose_port)"
   local base_path="${ZYNERDESK_BASE_PATH_OVERRIDE:-/zynerdesk}"
@@ -70,6 +75,7 @@ DB_PASS=$(openssl rand -hex 24)
 INITIAL_ADMIN_USER=admin
 INITIAL_ADMIN_PASSWORD=$(openssl rand -hex 12)
 ZYNERVOX_SSO_SECRET=$(openssl rand -hex 32)
+ACTIVITY_INGEST_TOKEN=$activity_token
 COOKIE_SECURE=0
 EOF
 }
@@ -84,6 +90,10 @@ load_env() {
   [[ "$BASE_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]] || { echo "BASE_PATH inválido" >&2; exit 1; }
   [[ "$DB_NAME" =~ ^[A-Za-z0-9_]+$ ]] || { echo "DB_NAME inválido" >&2; exit 1; }
   [[ "$DB_USER" =~ ^[A-Za-z0-9_]+$ ]] || { echo "DB_USER inválido" >&2; exit 1; }
+  [[ "${ACTIVITY_INGEST_TOKEN:-}" =~ ^[A-Fa-f0-9]{64}$ ]] || {
+    echo "ACTIVITY_INGEST_TOKEN ausente o invalido en $CONFIG_ENV" >&2
+    exit 1
+  }
 }
 
 ensure_database() {
