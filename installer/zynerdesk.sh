@@ -100,11 +100,18 @@ ensure_database() {
   # DROP + CREATE siempre: garantiza estructura 100% limpia en cada init.
   # El esquema lo aplica scripts/start.js solo, en el arranque (tabla
   # schema_migrations), sobre la BD ya vacía.
+  # Grant en 'localhost' Y '127.0.0.1': mismo motivo que whatsapp.sh --
+  # DB_HOST del .env es 127.0.0.1 (TCP), y con "skip-name-resolve" activo
+  # en MariaDB (tuning tipico VICIdial/VICIbox) el grant de 'localhost' no
+  # cubre esa conexion.
   mysql -e "DROP DATABASE IF EXISTS \`$DB_NAME\`; \
 CREATE DATABASE \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; \
 CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS'; \
 ALTER USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS'; \
 GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost'; \
+CREATE USER IF NOT EXISTS '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$DB_PASS'; \
+ALTER USER '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$DB_PASS'; \
+GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'127.0.0.1'; \
 FLUSH PRIVILEGES;"
 }
 

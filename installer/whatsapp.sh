@@ -94,11 +94,21 @@ ensure_database() {
   # sin depender de que el schema sea idempotente (tiene CREATE INDEX sin
   # IF NOT EXISTS, que falla con "Duplicate key name" si se reimporta sobre
   # una BD ya migrada).
+  # Grant en 'localhost' Y '127.0.0.1': DB_HOST del .env generado es
+  # 127.0.0.1 (conexion TCP), pero con "skip-name-resolve" activo en
+  # MariaDB (tuning tipico de VICIdial/VICIbox, visto en mirmidon) el
+  # servidor NO resuelve 127.0.0.1 a "localhost" -- exige coincidencia
+  # exacta de host, y el grant de 'localhost' no cubre la conexion TCP.
+  # Encontrado reinstalando en mirmidon: "Access denied... (using
+  # password: YES)" aunque la password generada era la correcta.
   mysql -e "DROP DATABASE IF EXISTS \`$DB_NAME\`; \
 CREATE DATABASE \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; \
 CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASSWORD'; \
 ALTER USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASSWORD'; \
 GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost'; \
+CREATE USER IF NOT EXISTS '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$DB_PASSWORD'; \
+ALTER USER '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$DB_PASSWORD'; \
+GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'127.0.0.1'; \
 FLUSH PRIVILEGES;"
   MYSQL_PWD="$DB_PASSWORD" mysql -u "$DB_USER" "$DB_NAME" < "$ROOT/whatsapp/init/001-schema.sql"
 }

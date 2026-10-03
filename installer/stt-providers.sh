@@ -31,7 +31,11 @@ else
 fi
 
 # DROP + CREATE siempre: garantiza estructura 100% limpia en cada corrida.
-mysql -e "DROP DATABASE IF EXISTS \`$STT_DB_NAME\`; CREATE DATABASE \`$STT_DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE USER IF NOT EXISTS '$STT_DB_USER'@'localhost' IDENTIFIED BY '$STT_DB_PASSWORD'; ALTER USER '$STT_DB_USER'@'localhost' IDENTIFIED BY '$STT_DB_PASSWORD'; GRANT ALL PRIVILEGES ON \`$STT_DB_NAME\`.* TO '$STT_DB_USER'@'localhost'; FLUSH PRIVILEGES;"
+# Grant en 'localhost' Y '127.0.0.1': config/db.php usa 127.0.0.1 (TCP), y
+# con "skip-name-resolve" activo en MariaDB (tuning tipico VICIdial/VICIbox,
+# visto en mirmidon) el grant de 'localhost' no cubre esa conexion -- mismo
+# bug encontrado y arreglado en whatsapp.sh/zynerdesk.sh.
+mysql -e "DROP DATABASE IF EXISTS \`$STT_DB_NAME\`; CREATE DATABASE \`$STT_DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE USER IF NOT EXISTS '$STT_DB_USER'@'localhost' IDENTIFIED BY '$STT_DB_PASSWORD'; ALTER USER '$STT_DB_USER'@'localhost' IDENTIFIED BY '$STT_DB_PASSWORD'; GRANT ALL PRIVILEGES ON \`$STT_DB_NAME\`.* TO '$STT_DB_USER'@'localhost'; CREATE USER IF NOT EXISTS '$STT_DB_USER'@'127.0.0.1' IDENTIFIED BY '$STT_DB_PASSWORD'; ALTER USER '$STT_DB_USER'@'127.0.0.1' IDENTIFIED BY '$STT_DB_PASSWORD'; GRANT ALL PRIVILEGES ON \`$STT_DB_NAME\`.* TO '$STT_DB_USER'@'127.0.0.1'; FLUSH PRIVILEGES;"
 MYSQL_PWD="$STT_DB_PASSWORD" mysql -u "$STT_DB_USER" "$STT_DB_NAME" < "$VENDOR/schema.sql"
 
 install -d -o root -g "$WEB_GROUP" -m 0750 "$WEB_DEST"
