@@ -12,7 +12,10 @@ class DashboardStats {
     // Conteos activos/inactivos por tipo de registro, para la tabla
     // "Resumen del Sistema" del dashboard.
     public static function getTenantSummary() {
-        $db = Database::getInstance();
+        // $db no se usa aca -- cada countByFlag() pide su propia instancia
+        // (y ya esta protegida con try/catch). No duplicar la conexion sin
+        // protegerla: sin astguiclient.conf esto reventaba antes de llegar
+        // a countByFlag().
         $rows = [];
 
         $rows['users'] = self::countByFlag(
@@ -52,11 +55,17 @@ class DashboardStats {
     // Conteos en vivo de agentes/llamadas para las 4 tarjetas superiores.
     // Basado en la misma tabla que usa el Monitor (vicidial_live_agents).
     public static function getLiveCounts() {
-        $db = Database::getInstance();
         $out = [
             'connected' => 0, 'incall' => 0, 'ready' => 0, 'paused' => 0,
             'queue' => 0, 'ringing' => 0,
         ];
+        try {
+            $db = Database::getInstance();
+        } catch (\PDOException $e) {
+            // Sin astguiclient.conf (ej. labs sin VICIdial): conteos en 0
+            // en vez de reventar el dashboard completo.
+            return $out;
+        }
         try {
             $stmt = $db->query("SELECT status, COUNT(*) c FROM vicidial_live_agents GROUP BY status");
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
