@@ -25,6 +25,7 @@ function _svgIcon($name) {
         'whatsapp'  => '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"></path>',
         'farm'      => '<path d="M3 21V10l9-7 9 7v11"></path><path d="M7 21v-7h10v7"></path><path d="M7 10h10"></path>',
         'stt'       => '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line>',
+        'services'  => '<rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>',
     ];
     $body = $icons[$name] ?? '';
     return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' . $body . '</svg>';
@@ -93,6 +94,24 @@ function renderSidebar($activePage = 'home', $rootPrefix = '../../') {
             <?php echo _svgIcon($it['icon']); ?> <?php echo $it['label']; ?>
         </a>
         <?php endforeach; ?>
+
+        <?php
+        // "Servicios" agrupa integraciones externas empaquetadas en Docker,
+        // separadas de los módulos propios de arriba. Hoy solo trae Zypad;
+        // el array deja espacio para futuras sin tocar el <details>.
+        $servicios = [
+            ['key' => 'zypad', 'href' => 'modules/admin/services/zypad.php', 'icon' => 'stt', 'label' => 'Zypad'],
+        ];
+        $serviciosOpen = in_array($activePage, array_column($servicios, 'key'), true);
+        ?>
+        <details class="nav-group"<?php echo $serviciosOpen ? ' open' : ''; ?>>
+            <summary class="nav-item"><?php echo _svgIcon('services'); ?> Servicios</summary>
+            <?php foreach ($servicios as $sv): ?>
+            <a href="<?php echo $rootPrefix . $sv['href']; ?>" class="nav-item nav-subitem <?php echo $activePage === $sv['key'] ? 'active' : ''; ?>">
+                <?php echo _svgIcon($sv['icon']); ?> <?php echo $sv['label']; ?>
+            </a>
+            <?php endforeach; ?>
+        </details>
     </div>
 
     <a href="<?php echo $rootPrefix; ?>logout.php" class="nav-item logout-link" style="margin-top: auto; color: #ef4444;">

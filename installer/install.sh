@@ -12,6 +12,7 @@ WITH_WHATSAPP=0
 WITH_FARM=0
 WITH_STT_PROVIDERS=0
 WITH_ZYNERDESK=0
+WITH_ZYPAD=0
 INSTALL_DOCKER=0
 FARM_INSTANCE="${FARM_INSTANCE:-zynervox-farm}"
 STT_INSTANCE="${STT_INSTANCE:-zynervox-stt}"
@@ -25,6 +26,7 @@ for arg in "$@"; do
     --with-farm) WITH_FARM=1 ;;
     --with-stt-providers) WITH_STT_PROVIDERS=1 ;;
     --with-zynerdesk) WITH_ZYNERDESK=1 ;;
+    --with-zypad) WITH_ZYPAD=1 ;;
     --install-docker) INSTALL_DOCKER=1 ;;
     *) echo "Argumento desconocido: $arg" >&2; exit 2 ;;
   esac
@@ -41,7 +43,7 @@ DB_CONFIG=/etc/astguiclient.conf
 
 if [[ $DRY_RUN -eq 1 ]]; then
   [[ -f "$DB_CONFIG" ]] && integration=available || integration=partial
-  echo "DRY_RUN web=$WEB_ROOT asterisk=$ASTERISK_ROOT url=$URL_PATH migrations=$APPLY_MIGRATIONS integration=$integration skip_packages=$SKIP_PACKAGES whatsapp=$WITH_WHATSAPP farm=$WITH_FARM stt_providers=$WITH_STT_PROVIDERS zynerdesk=$WITH_ZYNERDESK install_docker=$INSTALL_DOCKER os=${ID:-unknown} web_group=$WEB_GROUP"
+  echo "DRY_RUN web=$WEB_ROOT asterisk=$ASTERISK_ROOT url=$URL_PATH migrations=$APPLY_MIGRATIONS integration=$integration skip_packages=$SKIP_PACKAGES whatsapp=$WITH_WHATSAPP farm=$WITH_FARM stt_providers=$WITH_STT_PROVIDERS zynerdesk=$WITH_ZYNERDESK zypad=$WITH_ZYPAD install_docker=$INSTALL_DOCKER os=${ID:-unknown} web_group=$WEB_GROUP"
   exit 0
 fi
 
@@ -189,6 +191,9 @@ install_stt_providers() {
 install_zynerdesk() {
   bash "$ROOT/installer/zynerdesk.sh" init && bash "$ROOT/installer/zynerdesk.sh" install-proxy
 }
+install_zypad() {
+  WEB_GROUP="$WEB_GROUP" bash "$ROOT/installer/zypad.sh"
+}
 
 # Con `if` y no con `[[ ... ]] && ...`: bajo `set -e` una condición falsa al
 # final de una lista AND devuelve 1 y abortaría la instalación.
@@ -196,6 +201,7 @@ if [[ $WITH_WHATSAPP -eq 1 ]]; then run_module "WhatsApp" install_whatsapp; fi
 if [[ $WITH_FARM -eq 1 ]]; then run_module "Farm" install_farm; fi
 if [[ $WITH_STT_PROVIDERS -eq 1 ]]; then run_module "Stt Providers" install_stt_providers; fi
 if [[ $WITH_ZYNERDESK -eq 1 ]]; then run_module "Zynerdesk" install_zynerdesk; fi
+if [[ $WITH_ZYPAD -eq 1 ]]; then run_module "Zypad" install_zypad; fi
 
 if command -v apache2ctl >/dev/null 2>&1; then
   if apache2ctl configtest; then
@@ -208,6 +214,7 @@ fi
 # reporta ahí junto con el resto.
 check_status=0
 WEB_ROOT="$WEB_ROOT" CHECK_FARM="$WITH_FARM" CHECK_STT_PROVIDERS="$WITH_STT_PROVIDERS" CHECK_ZYNERDESK="$WITH_ZYNERDESK" \
+  CHECK_ZYPAD="$WITH_ZYPAD" \
   FARM_INSTANCE="$FARM_INSTANCE" STT_INSTANCE="$STT_INSTANCE" bash "$ROOT/installer/check.sh" || check_status=$?
 
 # --- Resumen de instalación -------------------------------------------------
@@ -240,6 +247,8 @@ for module in "${MODULES_OK[@]+"${MODULES_OK[@]}"}"; do
       echo "  FARM_TOKENS=/var/lib/${FARM_INSTANCE}/internal_token (y control/control.token)" ;;
     "Stt Providers")
       echo "  STT_CONFIG=/etc/zynervox/${STT_INSTANCE}.env (incluye STT_DB_PASSWORD)" ;;
+    Zypad)
+      echo "  ZYPAD_CONFIG=/etc/zynervox/zynervox-zypad.env (incluye ZYPAD_API_KEY, ZYPAD_ADMIN_PASSWORD); también visible en Servicios > Zypad del panel" ;;
   esac
 done
 
@@ -252,7 +261,8 @@ if [[ ${#MODULES_FAILED[@]} -gt 0 ]]; then
   echo "  afectado, corrija la causa y vuelva a ejecutar su script:"
   echo "    sudo bash $ROOT/installer/<modulo>.sh init"
   echo "  Requisitos frecuentes: Farm necesita Python 3.10+; WhatsApp y"
-  echo "  Zynerdesk necesitan Docker y Docker Compose."
+  echo "  Zynerdesk necesitan Docker y Docker Compose; Zypad necesita Docker"
+  echo "  (reinstale con --install-docker)."
 fi
 
 if [[ $check_status -ne 0 ]]; then

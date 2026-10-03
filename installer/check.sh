@@ -10,6 +10,7 @@ CHECK_FARM="${CHECK_FARM:-0}"
 CHECK_STT_PROVIDERS="${CHECK_STT_PROVIDERS:-0}"
 CHECK_ZYNERDESK="${CHECK_ZYNERDESK:-0}"
 CHECK_WHATSAPP="${CHECK_WHATSAPP:-0}"
+CHECK_ZYPAD="${CHECK_ZYPAD:-0}"
 
 for command in php python3; do
   if ! command -v "$command" >/dev/null 2>&1; then
@@ -67,6 +68,15 @@ if [[ "$CHECK_ZYNERDESK" == 1 ]]; then
   else
     echo "FALTA configuración Zynerdesk"
     fail=1
+  fi
+fi
+if [[ "$CHECK_ZYPAD" == 1 ]]; then
+  [[ -f /etc/zynervox/zynervox-zypad.php ]] || { echo "FALTA configuración Zypad"; fail=1; }
+  if command -v docker >/dev/null 2>&1; then
+    [[ "$(docker inspect -f '{{.State.Running}}' zynervox-zypad 2>/dev/null)" == "true" ]] || { echo "FALTA contenedor activo: zynervox-zypad"; fail=1; }
+  else
+    echo "AVISO: docker no disponible para verificar zynervox-zypad"
+    warn=1
   fi
 fi
 if [[ ! -f /etc/astguiclient.conf && ! -f /etc/zynervox/astguiclient.conf ]]; then

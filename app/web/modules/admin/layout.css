@@ -94,6 +94,22 @@ body {
     color: #f5a3a3 !important;
 }
 
+/* Submenu nativo (details/summary, sin JS) usado por "Servicios". */
+.nav-group summary.nav-item {
+    list-style: none;
+    cursor: pointer;
+    justify-content: space-between;
+}
+.nav-group summary.nav-item::-webkit-details-marker { display: none; }
+.nav-group summary.nav-item::after {
+    content: '\25BE';
+    font-size: 0.7rem;
+    opacity: 0.6;
+    transition: transform 0.15s ease;
+}
+.nav-group[open] summary.nav-item::after { transform: rotate(180deg); }
+.nav-subitem { padding-left: 2.3rem; font-size: 0.75rem; }
+
 /* Content Area */
 .main-content {
     margin-left: 260px;
