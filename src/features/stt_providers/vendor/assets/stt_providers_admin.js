@@ -50,12 +50,12 @@
   function initProviders() {
     const select = $('f-provider');
     const selected = select.value;
-    const availableProviders = [...new Map(
-      profiles.map(profile => [profile.provider, profile.provider_label])
-    ).entries()].sort((a, b) => a[1].localeCompare(b[1], 'es'));
+    const availableProviders = Object.entries(PROVIDERS)
+      .map(([key, cfg]) => [key, cfg.label])
+      .sort((a, b) => a[1].localeCompare(b[1], 'es'));
     select.innerHTML = availableProviders.length
       ? availableProviders.map(([key, label]) => `<option value="${esc(key)}">${esc(label)}</option>`).join('')
-      : '<option value="">No hay proveedores con leads</option>';
+      : '<option value="">No hay proveedores disponibles</option>';
     if (availableProviders.some(([key]) => key === selected)) select.value = selected;
     providerChanged();
   }
