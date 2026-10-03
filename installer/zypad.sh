@@ -50,16 +50,33 @@ command -v docker >/dev/null 2>&1 || { echo "Zypad requiere Docker instalado (re
 PYTHON="$(command -v python3.11 || command -v /usr/local/bin/python3.11 || command -v /usr/bin/python3.11 || command -v python3)"
 [[ -n "$PYTHON" ]] || { echo "Zypad requiere python3 para el control-daemon" >&2; exit 1; }
 
-# Prioriza una IP privada real (RFC1918) para publicar el puerto. Si el host
-# no tiene ninguna (solo IP publica), cae a 0.0.0.0 con aviso explicito --
-# mismo riesgo ya documentado para el zypad-vosk de docker_converxa.
+# Prioriza la IP de la red privada real entre servidores. Dos casos vistos:
+# - Hosts con VLAN/VPC privada del proveedor (ej. docker_converxa): una IP
+#   RFC1918 real en la interfaz fisica (eth0/ens*).
+# - Hosts sin esa VLAN (ej. mirmidon): la "LAN" entre servidores es una
+#   malla Tailscale (interfaz "tailscale0", rango 100.64.0.0/10 CGNAT), y
+#   "hostname -I" por rango RFC1918 a secas se confunde con los bridges
+#   internos de Docker (docker0/br-*, SIEMPRE en 172.16-31.x aunque no
+#   tengan nada que ver con otros servidores). Por eso se filtra por nombre
+#   de interfaz, no solo por rango numerico.
+# Si no hay ninguna, cae a 0.0.0.0 con aviso explicito -- mismo riesgo ya
+# documentado para el zypad-vosk de docker_converxa.
 detect_bind_ip() {
-    local ip
-    for ip in $(hostname -I 2>/dev/null); do
+    local iface cidr ip
+    while read -r iface cidr; do
+        case "$iface" in
+            tailscale*) echo "${cidr%%/*}"; return ;;
+        esac
+    done < <(ip -4 -o addr show 2>/dev/null | awk '{print $2, $4}')
+    while read -r iface cidr; do
+        case "$iface" in
+            docker*|br-*|veth*|virbr*|lo) continue ;;
+        esac
+        ip="${cidr%%/*}"
         case "$ip" in
             10.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*|192.168.*) echo "$ip"; return ;;
         esac
-    done
+    done < <(ip -4 -o addr show 2>/dev/null | awk '{print $2, $4}')
     echo ""
 }
 
