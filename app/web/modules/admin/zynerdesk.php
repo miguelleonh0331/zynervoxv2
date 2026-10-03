@@ -163,9 +163,15 @@ function renderZynerdeskBody(string $html, string $baseDir, string $proxyBase, a
     );
 
     // Rutas que el upstream construye dentro de su JavaScript (no son atributos).
+    // "remoteo.html" se abre con window.open(...) desde JS (boton "Remotear" de
+    // la tabla), no como href, por lo que el reescritor de href/src de arriba no
+    // lo toca: embebido bajo /zynervox-lab/modules/admin/ el relativo resolvia a
+    // modules/admin/remoteo.html -> 404. Se reapunta al proxy real; remoteo.html
+    // deriva su WS de location.pathname y la cookie de sesion es Path=/, asi que
+    // el popup queda autenticado.
     $body = str_replace(
-        ['"api/', "'api/", '"login.html"', "'login.html'"],
-        ['"' . $proxyBase . 'api/', "'" . $proxyBase . 'api/', '"' . $proxyBase . 'login.html"', "'" . $proxyBase . "login.html'"],
+        ['"api/', "'api/", '"login.html"', "'login.html'", '"remoteo.html', "'remoteo.html"],
+        ['"' . $proxyBase . 'api/', "'" . $proxyBase . 'api/', '"' . $proxyBase . 'login.html"', "'" . $proxyBase . "login.html'", '"' . $proxyBase . 'remoteo.html', "'" . $proxyBase . 'remoteo.html'],
         $body
     );
     $body = str_replace(
