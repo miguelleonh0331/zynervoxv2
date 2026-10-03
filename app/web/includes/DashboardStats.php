@@ -38,9 +38,9 @@ class DashboardStats {
     }
 
     private static function countByFlag($sql) {
-        $db = Database::getInstance();
         $active = 0; $inactive = 0;
         try {
+            $db = Database::getInstance();
             $stmt = $db->query($sql);
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
                 if (($r['active'] ?? 'N') === 'Y') { $active = (int)$r['c']; }
