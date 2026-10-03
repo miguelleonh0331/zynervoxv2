@@ -292,6 +292,10 @@ function updateSummary(data) {
   }
   startEngineButton.disabled = data.engine_running || data.summary.total === 0 || Boolean(proxyPool.error);
   startEngineButton.textContent = data.engine_running ? "Motor iniciado" : "Iniciar motor";
+  const ttsInput = document.querySelector("#tts-api-url-input");
+  if (document.activeElement !== ttsInput) {
+    ttsInput.value = data.tts_api_url || "";
+  }
 }
 
 function openBlockedModal() {
@@ -498,6 +502,28 @@ document.querySelector("#stop-all").addEventListener("click", async () => {
   if (!confirm("¿Detener inmediatamente toda la flota? Los trabajos en curso pueden quedar para reintento.")) return;
   try { await window.controlPlane.fleetAction("stop-all"); notify("Parada inmediata enviada."); await refresh(); }
   catch (error) { notify(error.message, true); }
+});
+document.querySelector("#tts-api-url-save").addEventListener("click", async () => {
+  const input = document.querySelector("#tts-api-url-input");
+  const msg = document.querySelector("#tts-api-url-message");
+  const url = input.value.trim();
+  if (url && !/^https?:\/\//.test(url)) {
+    msg.textContent = "✘ La URL debe empezar con http:// o https://";
+    return;
+  }
+  const button = document.querySelector("#tts-api-url-save");
+  button.disabled = true; button.textContent = "Guardando…";
+  try {
+    await window.controlPlane.fleetAction("tts-api-url", { url });
+    msg.textContent = "✔ Guardado.";
+    notify("Servidor TTS actualizado.");
+    await refresh();
+  } catch (error) {
+    msg.textContent = `✘ ${error.message}`;
+    notify(error.message, true);
+  } finally {
+    button.disabled = false; button.textContent = "Guardar";
+  }
 });
 document.querySelector("#proxy-file-upload").addEventListener("click", async () => {
   const input = document.querySelector("#proxy-file-input");

@@ -54,6 +54,19 @@
 
       <section class="fleet-control panel">
         <div>
+          <p class="panel-kicker">COLA DE TRABAJOS</p>
+          <h2>Servidor TTS (tts_jobs)</h2>
+          <p>URL de la API que entrega texto pendiente y recibe el audio generado.</p>
+        </div>
+        <div class="target-control">
+          <input id="tts-api-url-input" type="text" placeholder="http://127.0.0.1/zynervox-lab/bot_ivr/tts_jobs_api.php" />
+          <button id="tts-api-url-save" class="primary">Guardar</button>
+        </div>
+        <p id="tts-api-url-message" class="subtitle"></p>
+      </section>
+
+      <section class="fleet-control panel">
+        <div>
           <p class="panel-kicker">CUENTAS PROXY</p>
           <h2>Subir archivo</h2>
           <p>Reemplaza la carga manual por FTP/SSH. El orquestador recarga la carpeta solo, sin reiniciar nada.</p>

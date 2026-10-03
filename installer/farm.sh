@@ -60,6 +60,12 @@ fi
 install -d -o root -g "$WEB_GROUP" -m 0750 "$LOG"
 getent group "$INSTANCE" >/dev/null 2>&1 || groupadd --system "$INSTANCE"
 id "$INSTANCE" >/dev/null 2>&1 || useradd --system --gid "$INSTANCE" --home-dir "$RUNTIME" --shell /usr/sbin/nologin "$INSTANCE"
+# CONFIG_ENV nace root:root 0600 (umask 077 arriba). El control-plane corre
+# como $INSTANCE (no root) y necesita escribirlo para persistir TTS_API_URL
+# entre reinicios (ver set_tts_api_url en orchestrator.py). root sigue siendo
+# dueno y puede escribir; $INSTANCE solo por el grupo.
+chown root:"$INSTANCE" "$CONFIG_ENV"
+chmod 0660 "$CONFIG_ENV"
 install -d -o "$INSTANCE" -g "$INSTANCE" -m 0750 "$RUNTIME/control/secrets"
 # control/ con grupo web (0750, solo traversal+listado, nada sensible vive
 # directo ahi -- secrets/ adentro mantiene su propio dueno/permiso mas
@@ -161,6 +167,7 @@ User=$INSTANCE
 Group=$INSTANCE
 WorkingDirectory=$RUNTIME/control
 Environment=TTS_AUTH_TOKEN_FILE=$RUNTIME/control/secrets/tts_jobs_token
+Environment=TTS_ENV_FILE=$CONFIG_ENV
 Environment=PYTHONUNBUFFERED=1
 EnvironmentFile=-$CONFIG_ENV
 ExecStart=$RUNTIME/control/.venv/bin/python $RUNTIME/control/orchestrator.py --root $RUNTIME/control --data-dir $DATA/control --host 127.0.0.1 --port $FARM_CONTROL_PORT
@@ -170,7 +177,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=$DATA/control $RUNTIME/control/proxy-accounts
+ReadWritePaths=$DATA/control $RUNTIME/control/proxy-accounts $CONFIG_ENV
 
 [Install]
 WantedBy=multi-user.target

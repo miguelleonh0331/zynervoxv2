@@ -14,7 +14,7 @@ $route = (string)($_GET['route'] ?? '');
 if ($route === 'proxy-health/test') @set_time_limit(30);
 if ($route === 'proxy-health/test-all') @set_time_limit(90);
 $allowedGet = ['snapshot', 'events'];
-$allowedPost = ['fleet/target', 'fleet/start-engine', 'fleet/stop-all', 'proxy-health/test', 'proxy-health/test-all', 'proxy-health/edit'];
+$allowedPost = ['fleet/target', 'fleet/start-engine', 'fleet/stop-all', 'fleet/tts-api-url', 'proxy-health/test', 'proxy-health/test-all', 'proxy-health/edit'];
 $valid = $method === 'GET' ? in_array($route, $allowedGet, true) : ($method === 'POST' && (in_array($route, $allowedPost, true) || preg_match('#^workers/\d+/(start|stop|pause|resume|drain|restart|rotate-proxy|auto-restart)$#', $route)));
 if (!$valid) { http_response_code(404); echo json_encode(['error'=>'Ruta no permitida']); exit; }
 

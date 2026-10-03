@@ -336,8 +336,16 @@ class Orchestrator:
         self.lock = threading.RLock()
         if str(root) not in sys.path:
             sys.path.insert(0, str(root))
-        from pc_tts_worker import api_call as tts_api_call
-        self.tts_api_call = tts_api_call
+        import pc_tts_worker
+        self._tts_worker_module = pc_tts_worker
+        self.tts_api_call = pc_tts_worker.api_call
+        # Si ya habia un valor guardado de una sesion anterior (persistido en
+        # settings, sobrevive a un reinicio del orquestador aunque el .env
+        # todavia no se haya actualizado), aplicarlo ahora -- pc_tts_worker.BASE_URL
+        # solo se lee de TTS_API_URL una vez, al importar el modulo.
+        saved_tts_url = self.store.setting("tts_api_url", "")
+        if saved_tts_url:
+            self._tts_worker_module.BASE_URL = saved_tts_url
         self.queue_stats = {
             "total": 0, "pending": 0, "claimed": 0, "done": 0,
             "failed": 0, "remaining": 0, "available": False,
@@ -988,6 +996,41 @@ class Orchestrator:
                 self.drain(index)
         self.store.event(None, "info", "fleet", f"Contadores reiniciados y pool aleatorio aplicado: {target}")
 
+    def set_tts_api_url(self, url: str) -> None:
+        url = url.strip()
+        if url and not re.match(r"^https?://", url):
+            raise ValueError("URL invalida: debe empezar con http:// o https://")
+        # 1. Efecto inmediato en este proceso: pc_tts_worker.BASE_URL se lee
+        #    una vez al importar el modulo (os.getenv), por eso hay que
+        #    pisarlo a mano -- afecta tanto a self.tts_api_call (stats, usado
+        #    por este mismo proceso) como a los workers nuevos que se
+        #    levanten de ahora en adelante (subprocess.Popen hereda os.environ).
+        self._tts_worker_module.BASE_URL = url
+        os.environ["TTS_API_URL"] = url
+        # 2. Persistencia en settings (sqlite): sobrevive a un reinicio del
+        #    orquestador aunque el .env todavia no se haya tocado.
+        self.store.set_setting("tts_api_url", url)
+        # 3. Persistencia en el .env de systemd, si se indico la ruta (ver
+        #    TTS_ENV_FILE en installer/farm.sh): para que un reinicio normal
+        #    del servicio (EnvironmentFile) tambien arranque ya con el valor
+        #    nuevo, sin depender de que esta sesion de settings siga viva.
+        env_file = os.getenv("TTS_ENV_FILE", "").strip()
+        if env_file:
+            path = Path(env_file)
+            lines = []
+            found = False
+            if path.exists():
+                for line in path.read_text(encoding="utf-8").splitlines():
+                    if line.startswith("TTS_API_URL="):
+                        lines.append(f"TTS_API_URL={url}")
+                        found = True
+                    else:
+                        lines.append(line)
+            if not found:
+                lines.append(f"TTS_API_URL={url}")
+            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        self.store.event(None, "info", "fleet", f"TTS_API_URL actualizado: {url or '(vacio)'}")
+
     def start_engine(self) -> None:
         self._reload_proxy_pool(force=True)
         if self.proxy_error:
@@ -1235,6 +1278,7 @@ class Orchestrator:
             "version": "3.0.0",
             "engine_running": self.engine_running,
             "target_workers": int(self.store.setting("target_workers", "0")),
+            "tts_api_url": self.store.setting("tts_api_url", os.getenv("TTS_API_URL", "").strip()),
             "workers": result,
             "proxy_pool": {
                 "directory": str(self.proxy_dir),
@@ -1364,6 +1408,10 @@ def make_handler(orchestrator: Orchestrator, token: str):
                         str(payload.get("port", "")), str(payload.get("username", "")),
                         str(payload.get("password", "")),
                     ))
+                    return
+                if path == "/api/fleet/tts-api-url":
+                    orchestrator.set_tts_api_url(str(payload.get("url", "")))
+                    self._json(200, {"ok": True})
                     return
                 if path == "/api/fleet/target":
                     orchestrator.apply_target(int(payload["target"]))
