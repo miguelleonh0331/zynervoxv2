@@ -9,11 +9,14 @@ getent group "$WEB_GROUP" >/dev/null || WEB_GROUP=www
 getent group "$WEB_GROUP" >/dev/null || WEB_GROUP=root
 INSTANCE="${FARM_INSTANCE:-zynervox-farm}"
 PYTHON="${FARM_PYTHON:-$(command -v python3.11 || command -v python3)}"
+SKIP_ANNEX="${FARM_SKIP_ANNEX:-0}"
 
 [[ "$INSTANCE" =~ ^[a-z0-9][a-z0-9-]{2,40}$ ]] || { echo "FARM_INSTANCE inválido" >&2; exit 2; }
 [[ $EUID -eq 0 ]] || { echo "Ejecutar como root" >&2; exit 1; }
 "$PYTHON" -c 'import sys; raise SystemExit(sys.version_info < (3, 10))' || { echo "Farm requiere Python 3.10+" >&2; exit 1; }
-for command in ss openssl systemctl baresip ffmpeg curl; do
+DEPS=(ss openssl systemctl ffmpeg curl)
+[[ "$SKIP_ANNEX" == "1" ]] || DEPS+=(baresip)
+for command in "${DEPS[@]}"; do
     command -v "$command" >/dev/null 2>&1 || { echo "Falta dependencia Farm: $command" >&2; exit 1; }
 done
 
@@ -50,15 +53,19 @@ chown -R root:"$WEB_GROUP" "$WEB_DEST"
 find "$WEB_DEST" -type d -exec chmod 0750 {} +
 find "$WEB_DEST" -type f -exec chmod 0640 {} +
 
-install -d -o root -g root -m 0755 "$RUNTIME/annex" "$DATA/annex"
+if [[ "$SKIP_ANNEX" != "1" ]]; then
+    install -d -o root -g root -m 0755 "$RUNTIME/annex" "$DATA/annex"
+fi
 install -d -o root -g "$WEB_GROUP" -m 0750 "$LOG"
 getent group "$INSTANCE" >/dev/null 2>&1 || groupadd --system "$INSTANCE"
 id "$INSTANCE" >/dev/null 2>&1 || useradd --system --gid "$INSTANCE" --home-dir "$RUNTIME" --shell /usr/sbin/nologin "$INSTANCE"
 install -d -o "$INSTANCE" -g "$INSTANCE" -m 0750 "$RUNTIME/control" "$RUNTIME/control/proxy-accounts" "$RUNTIME/control/secrets"
 install -d -o "$INSTANCE" -g "$WEB_GROUP" -m 0750 "$DATA/control"
 
-install -m 0755 "$VENDOR/services/annex/zypad_annex" "$RUNTIME/annex/zypad_annex"
-install -m 0755 "$VENDOR/services/annex/zypad_annex_daemon.py" "$RUNTIME/annex/zypad_annex_daemon.py"
+if [[ "$SKIP_ANNEX" != "1" ]]; then
+    install -m 0755 "$VENDOR/services/annex/zypad_annex" "$RUNTIME/annex/zypad_annex"
+    install -m 0755 "$VENDOR/services/annex/zypad_annex_daemon.py" "$RUNTIME/annex/zypad_annex_daemon.py"
+fi
 for file in orchestrator.py pc_tts_worker.py pc_tts_worker_proxy.py; do
     install -o "$INSTANCE" -g "$INSTANCE" -m 0640 "$VENDOR/services/control-plane/$file" "$RUNTIME/control/$file"
 done
@@ -99,6 +106,7 @@ EOF
 chown root:"$WEB_GROUP" "$WEB_DEST/config.local.php"
 chmod 0640 "$WEB_DEST/config.local.php"
 
+if [[ "$SKIP_ANNEX" != "1" ]]; then
 cat > "/etc/systemd/system/$ANNEX_SERVICE" <<EOF
 [Unit]
 Description=Zynervox Farm annex daemon ($INSTANCE)
@@ -121,6 +129,7 @@ NoNewPrivileges=true
 [Install]
 WantedBy=multi-user.target
 EOF
+fi
 
 cat > "/etc/systemd/system/$CONTROL_SERVICE" <<EOF
 [Unit]
@@ -150,7 +159,12 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable --now "$ANNEX_SERVICE" "$CONTROL_SERVICE"
+if [[ "$SKIP_ANNEX" != "1" ]]; then
+    systemctl enable --now "$ANNEX_SERVICE" "$CONTROL_SERVICE"
+else
+    systemctl enable --now "$CONTROL_SERVICE"
+fi
+if [[ "$SKIP_ANNEX" != "1" ]]; then
 for _ in $(seq 1 30); do
     curl -fsS -X POST -H 'Content-Type: application/json' -d '{"action":"status"}' \
       "http://127.0.0.1:${FARM_ANNEX_PORT}/" >/dev/null 2>&1 && break
@@ -158,6 +172,7 @@ for _ in $(seq 1 30); do
 done
 curl -fsS -X POST -H 'Content-Type: application/json' -d '{"action":"status"}' \
   "http://127.0.0.1:${FARM_ANNEX_PORT}/" >/dev/null
+fi
 for _ in $(seq 1 30); do
     if [[ -s "$DATA/control/control.token" ]]; then
         token="$(cat "$DATA/control/control.token")"
@@ -169,4 +184,8 @@ done
 token="$(cat "$DATA/control/control.token")"
 curl -fsS -H "X-Control-Token: $token" \
   "http://127.0.0.1:${FARM_CONTROL_PORT}/api/snapshot" >/dev/null
-echo "FARM_READY instance=$INSTANCE annex_port=$FARM_ANNEX_PORT control_port=$FARM_CONTROL_PORT"
+if [[ "$SKIP_ANNEX" != "1" ]]; then
+    echo "FARM_READY instance=$INSTANCE annex_port=$FARM_ANNEX_PORT control_port=$FARM_CONTROL_PORT"
+else
+    echo "FARM_READY (solo proxies, sin annex/baresip) instance=$INSTANCE control_port=$FARM_CONTROL_PORT"
+fi
