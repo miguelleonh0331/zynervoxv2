@@ -43,7 +43,11 @@ command -v docker >/dev/null 2>&1 || { echo "Zypad requiere Docker instalado (re
 # un python3 generico muy antiguo (3.6, sin "from __future__ import
 # annotations") junto a un python3.11 real instalado aparte. Mismo patron
 # que installer/farm.sh.
-PYTHON="$(command -v python3.11 || command -v python3)"
+# Candidatos por ruta absoluta ademas de PATH: bajo `sudo` en algunos hosts
+# (visto en mirmidon) el PATH efectivo no incluye /usr/local/bin -- donde
+# vive el python3.11 real -- y "command -v python3.11" sin PATH no lo
+# encuentra aunque exista.
+PYTHON="$(command -v python3.11 || command -v /usr/local/bin/python3.11 || command -v /usr/bin/python3.11 || command -v python3)"
 [[ -n "$PYTHON" ]] || { echo "Zypad requiere python3 para el control-daemon" >&2; exit 1; }
 
 # Prioriza una IP privada real (RFC1918) para publicar el puerto. Si el host

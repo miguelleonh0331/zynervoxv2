@@ -265,7 +265,9 @@ case "$action" in
     # Prioriza python3.11: algunos hosts (ej. openSUSE VICIbox) traen de
     # fabrica un python3 generico muy antiguo (3.6, sin "from __future__
     # import annotations") junto a un python3.11 real instalado aparte.
-    PYTHON="$(command -v python3.11 || command -v python3)"
+    # Candidatos por ruta absoluta ademas de PATH: bajo `sudo` en algunos
+    # hosts (visto en mirmidon) el PATH efectivo no incluye /usr/local/bin.
+    PYTHON="$(command -v python3.11 || command -v /usr/local/bin/python3.11 || command -v /usr/bin/python3.11 || command -v python3)"
     [[ -n "$PYTHON" ]] || { echo "install-control requiere python3" >&2; exit 1; }
     CONTROL_RUNTIME="/opt/$INSTANCE-control"
     CONTROL_TOKEN_FILE="/etc/zynervox/$INSTANCE-control.token"
