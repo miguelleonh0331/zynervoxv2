@@ -95,8 +95,15 @@ CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASSWORD'; \
 ALTER USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASSWORD'; \
 GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost'; \
 FLUSH PRIVILEGES;"
-  # Esquema idempotente (CREATE TABLE IF NOT EXISTS): seguro reimportar en cada init.
-  MYSQL_PWD="$DB_PASSWORD" mysql -u "$DB_USER" "$DB_NAME" < "$ROOT/whatsapp/init/001-schema.sql"
+  # El schema tiene CREATE INDEX sin IF NOT EXISTS (no soportado en todas las
+  # versiones de MySQL/MariaDB): reimportar sobre una BD ya migrada falla con
+  # "Duplicate key name". Solo se importa si todavia no existe (tabla ancla:
+  # messages). Primera vez: crea todo. Reinstalos posteriores: lo salta.
+  if ! MYSQL_PWD="$DB_PASSWORD" mysql -u "$DB_USER" -N -B -e \
+      "SELECT 1 FROM information_schema.tables WHERE table_schema='$DB_NAME' AND table_name='messages'" \
+      | grep -q 1; then
+    MYSQL_PWD="$DB_PASSWORD" mysql -u "$DB_USER" "$DB_NAME" < "$ROOT/whatsapp/init/001-schema.sql"
+  fi
 }
 
 ensure_system_user() {
