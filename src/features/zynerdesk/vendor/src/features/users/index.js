@@ -1,5 +1,16 @@
 "use strict";
 
+// Mismo criterio que el servicio de auth. Antes se usaba isAdmin(user) dentro de
+// canAccessAgent sin estar definido ni importado en este modulo: cualquier
+// llamada a canAccessAgent (session:join de remoteo, audio:start, camera:start,
+// control:input y los detalles por-agente del panel) lanzaba
+// "ReferenceError: isAdmin is not defined" y, al ocurrir dentro del handler
+// async del WebSocket, tumbaba TODO el proceso del servidor. Resultado: el
+// remoteo nunca podia iniciarse.
+function isAdmin(user) {
+  return Boolean(user) && user.role === "admin";
+}
+
 function createUsersService({ pool }) {
   async function getUserCampaigns(userId) {
     const [rows] = await pool.query(
