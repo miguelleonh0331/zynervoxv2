@@ -108,8 +108,11 @@ if ($installed) {
                     <input type="password" readonly value="<?= htmlspecialchars($config['admin_password'], ENT_QUOTES, 'UTF-8') ?>" id="zypad-adminpass">
                     <button type="button" class="btn-action" id="zypad-toggle-pass">Mostrar</button>
                 </div>
+                <p style="margin-top: 0.4rem;">
+                    <a class="btn-action" href="<?= htmlspecialchars($endpoint, ENT_QUOTES, 'UTF-8') ?>/admin" target="_blank" rel="noopener">Administrar frases de clasificación</a>
+                </p>
                 <p style="font-size: 0.7rem; color: var(--text-muted);">
-                    Accede en <code><?= htmlspecialchars($endpoint, ENT_QUOTES, 'UTF-8') ?>/admin</code> para editar las frases de clasificación.
+                    Abre <code><?= htmlspecialchars($endpoint, ENT_QUOTES, 'UTF-8') ?>/admin</code> en pestaña nueva; pide el usuario/contraseña de arriba (HTTP Basic).
                 </p>
             </div>
         </div>
