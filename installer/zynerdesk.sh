@@ -87,13 +87,15 @@ load_env() {
 }
 
 ensure_database() {
-  mysql -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; \
+  # DROP + CREATE siempre: garantiza estructura 100% limpia en cada init.
+  # El esquema lo aplica scripts/start.js solo, en el arranque (tabla
+  # schema_migrations), sobre la BD ya vacía.
+  mysql -e "DROP DATABASE IF EXISTS \`$DB_NAME\`; \
+CREATE DATABASE \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; \
 CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS'; \
 ALTER USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS'; \
 GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost'; \
 FLUSH PRIVILEGES;"
-  # El esquema lo aplica scripts/start.js solo, en cada arranque (idempotente
-  # vía tabla schema_migrations). No hace falta precargar SQL aquí.
 }
 
 ensure_system_user() {

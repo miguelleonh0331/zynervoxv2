@@ -90,20 +90,17 @@ load_env() {
 }
 
 ensure_database() {
-  mysql -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; \
+  # DROP + CREATE siempre: garantiza estructura 100% limpia en cada init,
+  # sin depender de que el schema sea idempotente (tiene CREATE INDEX sin
+  # IF NOT EXISTS, que falla con "Duplicate key name" si se reimporta sobre
+  # una BD ya migrada).
+  mysql -e "DROP DATABASE IF EXISTS \`$DB_NAME\`; \
+CREATE DATABASE \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; \
 CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASSWORD'; \
 ALTER USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASSWORD'; \
 GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost'; \
 FLUSH PRIVILEGES;"
-  # El schema tiene CREATE INDEX sin IF NOT EXISTS (no soportado en todas las
-  # versiones de MySQL/MariaDB): reimportar sobre una BD ya migrada falla con
-  # "Duplicate key name". Solo se importa si todavia no existe (tabla ancla:
-  # messages). Primera vez: crea todo. Reinstalos posteriores: lo salta.
-  if ! MYSQL_PWD="$DB_PASSWORD" mysql -u "$DB_USER" -N -B -e \
-      "SELECT 1 FROM information_schema.tables WHERE table_schema='$DB_NAME' AND table_name='messages'" \
-      | grep -q 1; then
-    MYSQL_PWD="$DB_PASSWORD" mysql -u "$DB_USER" "$DB_NAME" < "$ROOT/whatsapp/init/001-schema.sql"
-  fi
+  MYSQL_PWD="$DB_PASSWORD" mysql -u "$DB_USER" "$DB_NAME" < "$ROOT/whatsapp/init/001-schema.sql"
 }
 
 ensure_system_user() {
