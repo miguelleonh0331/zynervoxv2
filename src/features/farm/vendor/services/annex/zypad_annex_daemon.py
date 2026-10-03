@@ -37,7 +37,7 @@ class Handler(BaseHTTPRequestHandler):
             pass
         elif action in ("stop_all", "start_all"):
             pass
-        elif action == "set_destino":
+        elif action in ("set_destino", "test_destino"):
             args.append(str(data.get("host", "")))
         elif action == "create_range":
             args += [str(data.get("from", "")), str(data.get("to", ""))]
@@ -51,8 +51,14 @@ class Handler(BaseHTTPRequestHandler):
             self._reply(400, {"ok": False, "error": "Accion invalida"})
             return
 
+        # set_destino reinicia un servicio systemd por cada anexo existente
+        # (hasta 50 por lote, igual limite que create_range); con el timeout
+        # generico de 30s, mas de unos pocos anexos garantizaba timeout aunque
+        # el cambio ya se hubiera aplicado. test_destino espera una respuesta
+        # SIP real por UDP, tambien necesita mas margen que un comando local.
+        request_timeout = 180 if action in ("set_destino", "test_destino") else 30
         try:
-            proc = subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30)
+            proc = subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=request_timeout)
             out = proc.stdout.strip()
             try:
                 parsed = json.loads(out)

@@ -73,8 +73,10 @@ main{max-width:1100px;margin:0 auto;padding:20px;display:grid;gap:16px}
       <label>Servidor (host o host:puerto)
         <input id="destinoHost" placeholder="209.17.220.5">
       </label>
+      <button id="btnTestDestino" class="ghost">Probar</button>
       <button id="btnSaveDestino" class="primary">Guardar y aplicar a todos</button>
     </div>
+    <p id="destinoTestResult" class="subtitle"></p>
   </section>
 
   <section class="fleet-control panel">

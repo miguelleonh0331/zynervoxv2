@@ -14,13 +14,13 @@ header('Content-Type: application/json; charset=utf-8');
 // de eso, le pega por HTTP a zypad_annex_daemon.py, que corre como root
 // (systemd, sin setuid) escuchando solo en 127.0.0.1:8811.
 
-function call_daemon(array $payload): array {
+function call_daemon(array $payload, int $timeout = 30): array {
     $ctx = stream_context_create([
         'http' => [
             'method' => 'POST',
             'header' => "Content-Type: application/json\r\n",
             'content' => json_encode($payload),
-            'timeout' => 30,
+            'timeout' => $timeout,
             'ignore_errors' => true,
         ],
     ]);
@@ -37,7 +37,7 @@ $action = (string) ($data['action'] ?? '');
 $agent = preg_replace('/\D+/', '', (string) ($data['agent'] ?? '')) ?? '';
 $password = (string) ($data['password'] ?? $agent);
 
-$validActions = ['create', 'create_range', 'delete', 'start', 'stop', 'stop_all', 'start_all', 'status', 'status_detail', 'get_destino', 'set_destino'];
+$validActions = ['create', 'create_range', 'delete', 'start', 'stop', 'stop_all', 'start_all', 'status', 'status_detail', 'get_destino', 'set_destino', 'test_destino'];
 if (!in_array($action, $validActions, true)) {
     echo json_encode(['ok' => false, 'error' => 'Accion invalida']);
     exit;
@@ -48,15 +48,17 @@ if ($action === 'get_destino') {
     exit;
 }
 
-if ($action === 'set_destino') {
+if ($action === 'set_destino' || $action === 'test_destino') {
     $host = trim((string) ($data['host'] ?? ''));
     if (!preg_match('/^[A-Za-z0-9_.-]{1,253}(:[0-9]{1,5})?$/', $host)) {
         echo json_encode(['ok' => false, 'error' => 'Servidor invalido: use host o host:puerto']);
         exit;
     }
-    audit_event('annex_set_destino', ['host' => $host]);
+    if ($action === 'set_destino') {
+        audit_event('annex_set_destino', ['host' => $host]);
+    }
     echo json_encode(
-        call_daemon(['action' => 'set_destino', 'host' => $host]),
+        call_daemon(['action' => $action, 'host' => $host], 185),
         JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
     );
     exit;

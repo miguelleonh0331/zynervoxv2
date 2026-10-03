@@ -16,9 +16,11 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 
 ASTERISK_HOST = os.getenv("ZYPAD_ASTERISK_HOST", "").strip()
@@ -428,6 +430,68 @@ def rewrite_account_host(agent, host):
     return True
 
 
+def split_host_port(value, default_port=5060):
+    if ":" in value:
+        host, port = value.rsplit(":", 1)
+        return host, int(port)
+    return value, default_port
+
+
+def sip_options_probe(host, port, timeout=3.0):
+    """Manda un OPTIONS SIP real por UDP (mismo transporte que usan los
+    anexos, ver 'accounts' sin ;transport=). Cualquier respuesta que
+    empiece con 'SIP/2.0' confirma que es un server SIP real, sin importar
+    el codigo (200, 401, 403 todos sirven -- solo valida el protocolo, no
+    credenciales)."""
+    started = time.monotonic()
+    probe_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        probe_sock.connect((host, port))
+        local_ip, local_port = probe_sock.getsockname()
+    except Exception as exc:
+        probe_sock.close()
+        return {"reachable": False, "is_sip": False, "status_line": None, "error": str(exc)}
+
+    branch = "z9hG4bK" + uuid.uuid4().hex[:16]
+    call_id = uuid.uuid4().hex
+    tag = uuid.uuid4().hex[:8]
+    message = (
+        f"OPTIONS sip:{host} SIP/2.0\r\n"
+        f"Via: SIP/2.0/UDP {local_ip}:{local_port};branch={branch}\r\n"
+        f"Max-Forwards: 70\r\n"
+        f"To: <sip:{host}>\r\n"
+        f"From: <sip:zypad-probe@{local_ip}>;tag={tag}\r\n"
+        f"Call-ID: {call_id}\r\n"
+        f"CSeq: 1 OPTIONS\r\n"
+        f"Contact: <sip:zypad-probe@{local_ip}:{local_port}>\r\n"
+        f"Content-Length: 0\r\n\r\n"
+    )
+    try:
+        probe_sock.settimeout(timeout)
+        probe_sock.send(message.encode("utf-8"))
+        data = probe_sock.recv(4096)
+    except socket.timeout:
+        return {"reachable": False, "is_sip": False, "status_line": None,
+                "error": f"sin respuesta en {timeout:.0f}s (UDP, revisar firewall/puerto)"}
+    except Exception as exc:
+        return {"reachable": False, "is_sip": False, "status_line": None, "error": str(exc)}
+    finally:
+        probe_sock.close()
+
+    elapsed_ms = round((time.monotonic() - started) * 1000, 1)
+    text = data.decode("utf-8", errors="replace")
+    first_line = text.splitlines()[0].strip() if text else ""
+    is_sip = first_line.startswith("SIP/2.0")
+    return {"reachable": True, "is_sip": is_sip, "status_line": first_line, "elapsed_ms": elapsed_ms}
+
+
+def test_destino(value):
+    value = validate_host(value)
+    host, port = split_host_port(value)
+    result = sip_options_probe(host, port)
+    print(json.dumps({"ok": True, "action": "test_destino", "host": value, **result}))
+
+
 def get_destino():
     print(json.dumps({"ok": True, "action": "get_destino", "host": ASTERISK_HOST}))
 
@@ -452,7 +516,7 @@ def set_destino(host):
 
 def main():
     if len(sys.argv) < 2:
-        fail("uso: zypad_annex create|create_range|delete|start|stop|stop_all|start_all|status|status_detail|get_destino|set_destino [ANEXO|INICIO FIN|HOST] [PASSWORD]")
+        fail("uso: zypad_annex create|create_range|delete|start|stop|stop_all|start_all|status|status_detail|get_destino|set_destino|test_destino [ANEXO|INICIO FIN|HOST] [PASSWORD]")
     action = sys.argv[1]
     if action == "status":
         status_all()
@@ -467,6 +531,11 @@ def main():
         if len(sys.argv) < 3:
             fail("falta host")
         set_destino(sys.argv[2])
+        return
+    if action == "test_destino":
+        if len(sys.argv) < 3:
+            fail("falta host")
+        test_destino(sys.argv[2])
         return
     if action == "stop_all":
         stop_all()

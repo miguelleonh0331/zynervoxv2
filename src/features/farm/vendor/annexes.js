@@ -167,6 +167,31 @@ document.getElementById('btnStartAll').addEventListener('click', async () => {
   refresh();
 });
 
+document.getElementById('btnTestDestino').addEventListener('click', async () => {
+  const host = document.getElementById('destinoHost').value.trim();
+  const resultEl = document.getElementById('destinoTestResult');
+  if (!/^[A-Za-z0-9_.-]{1,253}(:[0-9]{1,5})?$/.test(host)) {
+    showMsg('Servidor inválido: usa host o host:puerto', false);
+    return;
+  }
+  const btn = document.getElementById('btnTestDestino');
+  btn.disabled = true; btn.textContent = 'Probando…';
+  resultEl.textContent = 'Enviando OPTIONS SIP por UDP (hasta 3s)…';
+  const data = await api('test_destino', '', '', { host });
+  btn.disabled = false; btn.textContent = 'Probar';
+  if (!data.ok) {
+    resultEl.textContent = `Error: ${data.error || 'fallo'}`;
+    return;
+  }
+  if (data.is_sip) {
+    resultEl.textContent = `✔ Responde como SIP real (${data.status_line}, ${data.elapsed_ms}ms)`;
+  } else if (data.reachable) {
+    resultEl.textContent = `⚠ Respondió pero no parece SIP: "${data.status_line || ''}"`;
+  } else {
+    resultEl.textContent = `✘ Sin respuesta: ${data.error || 'timeout'}`;
+  }
+});
+
 async function loadDestino() {
   const data = await api('get_destino', '', '');
   if (data.ok) document.getElementById('destinoHost').value = data.host || '';
