@@ -9,6 +9,7 @@ warn=0
 CHECK_FARM="${CHECK_FARM:-0}"
 CHECK_STT_PROVIDERS="${CHECK_STT_PROVIDERS:-0}"
 CHECK_ZYNERDESK="${CHECK_ZYNERDESK:-0}"
+CHECK_WHATSAPP="${CHECK_WHATSAPP:-0}"
 
 for command in php python3; do
   if ! command -v "$command" >/dev/null 2>&1; then
@@ -40,6 +41,13 @@ if [[ "$CHECK_FARM" == 1 ]]; then
 fi
 if [[ "$CHECK_STT_PROVIDERS" == 1 ]]; then
   [[ -f "$WEB_ROOT/modules/admin/stt_providers_app/config/db.php" ]] || { echo "FALTA configuración Stt Providers"; fail=1; }
+fi
+if [[ "$CHECK_WHATSAPP" == 1 ]]; then
+  [[ -f "$WEB_ROOT/modules/admin/whatsapp.php" ]] || { echo "FALTA módulo WhatsApp"; fail=1; }
+  whatsapp_service="${WHATSAPP_INSTANCE:-zynervox-whatsapp}.service"
+  systemctl is-active --quiet "$whatsapp_service" || { echo "FALTA servicio activo: $whatsapp_service"; fail=1; }
+  [[ -f "/etc/zynervox/${WHATSAPP_INSTANCE:-zynervox-whatsapp}.env" ]] || { echo "FALTA configuración WhatsApp"; fail=1; }
+  [[ -f /etc/zynervox/whatsapp.conf ]] || { echo "FALTA configuración de proxy WhatsApp (install-proxy)"; fail=1; }
 fi
 if [[ "$CHECK_ZYNERDESK" == 1 ]]; then
   [[ -f "$WEB_ROOT/modules/admin/zynerdesk.php" ]] || { echo "FALTA módulo Zynerdesk"; fail=1; }

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <base href="__APP_BASE__/">
+  <script>window.__APP_BASE__ = '__APP_BASE__';</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Synermessage opera mediante la API oficial de Meta, cumpliendo sus políticas y estándares.">
+  <title>Synermessage · Chat</title>
+  <link rel="icon" type="image/png" href="zynervox.png">
+  <link rel="apple-touch-icon" href="zynervox.png">
+  <link rel="stylesheet" href="styles.css?v=20260728-1">
+  <link rel="stylesheet" href="chat-whatsapp.css?v=20260728-1">
+  <link rel="stylesheet" href="brand.css?v=20260728-1">
+  <link rel="stylesheet" href="chat-compact.css?v=20260728-1">
+  <style>.checks{margin-left:4px;font-weight:900;letter-spacing:-2px;color:#70817d}.checks.read{color:#53bdeb}.checks.failed{color:#c62828;letter-spacing:0}</style>
+</head>
+<body class="compact-body">
+  <section id="loginView" class="login-shell">
+    <div class="login-card">
+      <img class="login-logo" src="zynervox.png" alt="Zynervox">
+      <p class="eyebrow">Zynervox Workspace</p>
+      <h1>Synermessage</h1>
+      <p class="muted">Chat directo con tu cliente.</p>
+      <p class="meta-compliance"><span aria-hidden="true">&#10003;</span> Opera mediante la API oficial de Meta, cumpliendo sus políticas y estándares.</p>
+      <form id="loginForm">
+        <label>Usuario<input name="username" autocomplete="username" required></label>
+        <label>Contraseña<input name="password" type="password" autocomplete="current-password" required></label>
+        <button type="submit">Ingresar</button>
+        <p id="loginError" class="error"></p>
+      </form>
+    </div>
+  </section>
+
+  <main id="appView" class="compact-app hidden">
+    <section id="listView" class="compact-list-view">
+      <header class="compact-header">
+        <div class="side-brand"><img src="zynervox.png" alt="Zynervox"><div><span class="eyebrow">Synermessage</span><strong id="userName"></strong></div></div>
+        <button id="logout" class="logout-button" title="Cerrar sesión">Salir</button>
+      </header>
+      <div class="search-row"><input id="search" placeholder="Buscar cliente"></div>
+      <div id="contactList" class="contact-list"></div>
+    </section>
+
+    <section id="chatView" class="compact-chat-view hidden">
+      <header class="chat-head">
+        <button id="backButton" class="icon" type="button" title="Volver" aria-label="Volver">&#8592;</button>
+        <div class="avatar" id="chatAvatar"></div>
+        <div><strong id="chatName"></strong><small id="chatPhone"></small></div>
+      </header>
+      <div id="messageList" class="messages"></div>
+      <form id="sendForm" class="composer">
+        <input id="fileInput" type="file" hidden accept="image/jpeg,image/png,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv">
+        <button id="attachButton" class="composer-icon" type="button" title="Adjuntar imagen o documento" aria-label="Adjuntar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 12.5l6.9-6.9a3 3 0 0 1 4.2 4.2l-9.2 9.2a5 5 0 0 1-7.1-7.1l9-9"/></svg>
+        </button>
+        <textarea id="messageBody" rows="1" placeholder="Escribe un mensaje"></textarea>
+        <button id="sendButton" class="mic-button" type="submit" title="Enviar" aria-label="Enviar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 8 6 8z"/></svg>
+        </button>
+      </form>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+  <script src="socket.io/socket.io.js"></script>
+  <script src="chat.js?v=20260728-1"></script>
+</body>
+</html>

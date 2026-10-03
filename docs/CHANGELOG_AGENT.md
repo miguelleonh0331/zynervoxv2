@@ -825,3 +825,41 @@ Contrato:
 
 Riesgos:
 - la ruta local documentada es específica del entorno Windows del propietario
+
+### 2026-10-03 09:52 - whatsapp_AGENT - whatsapp
+
+Tipo: refactor
+
+Resumen:
+Vendorizar codigo de Zynerwaba (extraido de la imagen 2.1.0-zynervox) en src/features/whatsapp/vendor/ como Paso 1-2 de la migracion a nativo
+
+Motivo:
+El codigo solo existia dentro de la imagen Docker; sin esto no hay forma de versionarlo ni de correr el servicio sin contenedor
+
+Archivos modificados:
+- src/features/whatsapp/vendor/** .gitattributes .gitignore src/features/whatsapp/README.md src/features/whatsapp/CONTRACT.md
+
+Contrato:
+- modificado con ADR-0016
+
+Riesgos:
+DB_PATH_MEDIA en vendor/config.js se calcula desde __dirname, no desde entorno; requiere symlink en el instalador hacia /var/lib/zynervox-whatsapp para no romper con ProtectSystem=strict
+
+### 2026-10-03 10:12 - whatsapp_AGENT - whatsapp
+
+Tipo: refactor
+
+Resumen:
+Completar migracion whatsapp docker->nativo: installer/whatsapp.sh reescrito, check.sh, smoke.sh y agente actualizados; 11 criterios de aceptacion de TAREA_WHATSAPP_NATIVO.md verificados en ciclo borrar/clonar/instalar desde feat/whatsapp-nativo
+
+Motivo:
+Cerrar ADR-0016: eliminar Docker/Compose del modulo, unificar con el patron systemd+MySQL nativo de farm/stt_providers
+
+Archivos modificados:
+- installer/whatsapp.sh installer/check.sh whatsapp/.env.example src/features/whatsapp/tests/smoke.sh agents/whatsapp_AGENT.md whatsapp/compose.yml(eliminado) whatsapp/Dockerfile(eliminado) whatsapp/overrides/(eliminado)
+
+Contrato:
+- modificado con ADR-0016
+
+Riesgos:
+Rama feat/whatsapp-nativo publicada, SIN merge a main (requiere autorizacion explicita separada). Pendiente revisar en servidores productivos reales (esta migracion se probo en WSL zynervox-borrar, no en mirmidon).
