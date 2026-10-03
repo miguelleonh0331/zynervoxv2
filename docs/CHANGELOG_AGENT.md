@@ -862,4 +862,42 @@ Contrato:
 - modificado con ADR-0016
 
 Riesgos:
-Rama feat/whatsapp-nativo publicada, SIN merge a main (requiere autorizacion explicita separada). Pendiente revisar en servidores productivos reales (esta migracion se probo en WSL zynervox-borrar, no en mirmidon).
+Rama feat/whatsapp-nativo publicada, fusionada a main el 2026-10-03 tras validar los 11 criterios en WSL (zynervox-borrar). Pendiente revisar en servidores productivos reales (no se toco mirmidon).
+
+### 2026-10-03 10:49 - zynerdesk_AGENT - zynerdesk
+
+Tipo: refactor
+
+Resumen:
+Vendorizar codigo de Synervox Remoteo (extraido de ghcr.io/miguelleonh0331/synervox-remoteo) en src/features/zynerdesk/vendor/, primer paso de la migracion a nativo
+
+Motivo:
+El codigo solo existia dentro de la imagen Docker; sin esto no hay forma de versionarlo ni de correr el servicio sin contenedor
+
+Archivos modificados:
+- src/features/zynerdesk/vendor/** src/features/zynerdesk/README.md src/features/zynerdesk/CONTRACT.md
+
+Contrato:
+- modificado con ADR-0017
+
+Riesgos:
+Modulo validado en mirmidon (produccion) en su forma Docker actual; esta rama no toca mirmidon, solo WSL de pruebas
+
+### 2026-10-03 10:59 - zynerdesk_AGENT - zynerdesk
+
+Tipo: refactor
+
+Resumen:
+Cerrar migracion zynerdesk docker->nativo: 6 pruebas de aceptacion verificadas en zynervoxv1 (WSL) - docker vacio, systemd activo, 14 tablas migradas, proxy 200, SSO HMAC real 200 con identidad correcta, sesion persiste tras reinicio del servicio
+
+Motivo:
+Cerrar ADR-0017 zynerdesk: confirmar que la migracion funciona end-to-end, no solo que arranca
+
+Archivos modificados:
+- docs/CHANGELOG_AGENT.md
+
+Contrato:
+- modificado con ADR-0017
+
+Riesgos:
+check.sh --strict sigue en FAIL solo por Asterisk local ausente (gap preexistente, no relacionado). Rama feat/zynerdesk-nativo publicada, fusionada a main el 2026-10-03. Probado en WSL zynervoxv1, no en mirmidon (produccion sigue en Docker).

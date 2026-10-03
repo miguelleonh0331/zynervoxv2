@@ -4,28 +4,43 @@
 
 Incorporar Synervox Remoteo (supervisión remota de agentes: WebRTC, telemetría
 de actividad, control de acceso) como área administrativa `Zynerdesk` del menú
-de Zynervox, como servicio Docker aislado e instalable desde el mismo
-repositorio central.
+de Zynervox, como servicio nativo (`systemd` + MySQL del host) e instalable
+desde el mismo repositorio central.
 
-## Origen y versión upstream
+## Código vendorizado (`vendor/`)
 
-- Imagen: `ghcr.io/miguelleonh0331/synervox-remoteo`
-- Revisión fijada: `24b8b44d4a3905cb493526090c0f247a81c37be6`
-- Digest inmutable: `sha256:a2a79232e0b8561a553a11fcfdb9fbc38b2cb346ef7dd400e3b65491c5de4a8b`
-- Stack real: Node.js 22, `ws` (WebSocket), `mysql2`, `bcrypt`, `dotenv`.
-- Migraciones y usuario admin inicial se aplican solos al arrancar
-  (`scripts/start.js`, idempotente vía tabla `schema_migrations`).
-- La imagen no se construye localmente: se descarga publicada y se fija por
-  digest. No usar etiquetas flotantes.
+Origen: imagen `ghcr.io/miguelleonh0331/synervox-remoteo`, extraída de `/app`
+el 2026-10-03.
+
+- Revisión fijada en la imagen origen: `24b8b44d4a3905cb493526090c0f247a81c37be6`
+- Digest de la imagen origen: `sha256:a2a79232e0b8561a553a11fcfdb9fbc38b2cb346ef7dd400e3b65491c5de4a8b`
+- Stack: Node.js 22, `ws` (WebSocket), `mysql2`, `bcrypt` (nativo, prebuild
+  `linux-x64/bcrypt.glibc.node` vía `node-gyp-build`, sin compilar), `dotenv`.
+- `node_modules/` excluido de la copia versionada: se regenera con `npm ci`
+  desde `package-lock.json`.
+- 104 archivos, ~480 KB. `node --check` pasa en todo el código propio
+  (`server.js`, `zynervox-sso.js`, `src/app.js`, 6 features, 3 scripts).
+- `src/shared/config.js` lee toda su configuración de variables de entorno,
+  sin rutas fijas problemáticas (a diferencia de `whatsapp/vendor`, que sí
+  tiene ese riesgo documentado en su propio `README.md`).
+- `scripts/start.js` es el entrypoint real (`package.json` → `"start"`):
+  aplica migraciones pendientes contra `schema_migrations`, crea/actualiza el
+  usuario admin inicial (idempotente, `ON DUPLICATE KEY UPDATE`) y recién
+  entonces levanta `server.js`. El instalador lo ejecuta tal cual, sin pasos
+  separados de bootstrap.
+- Feature `media` sin implementar (solo `CONTRACT.md`/`README.md`, sin
+  `index.js`): no hay almacenamiento de archivos que preservar todavía.
+- Feature `geo` consulta `https://api.ipapi.is` en caliente; no usa una base
+  GeoIP local.
 
 ## Responsabilidad
 
 Este módulo se encarga de:
 
-- el stack Docker (`zynerdesk/compose.yml`) de la app + su MySQL propio;
+- el servicio nativo (`systemd` + MySQL del host) de la app;
 - el instalador (`installer/zynerdesk.sh`, flag `--with-zynerdesk`);
 - el proxy Apache (`installer/apache-zynerdesk.conf.template`), que publica
-  los assets, la API y el WebSocket del upstream bajo una subruta propia;
+  los assets, la API y el WebSocket del servicio bajo una subruta propia;
 - la vista integrada `app/web/modules/admin/zynerdesk.php`, que embebe el
   panel dentro del shell de Zynervox;
 - la entrada `Zynerdesk` en `app/web/modules/admin/sidebar.php`.
@@ -51,9 +66,9 @@ tests/      pruebas del módulo
 ```
 
 En este módulo `api/services/models/tests` quedan vacíos a propósito: la
-lógica de aplicación vive en la imagen Docker upstream, no en este
-repositorio. El código propio del módulo son los artefactos de despliegue e
-integración: `zynerdesk/compose.yml`, `installer/zynerdesk.sh`,
+lógica de aplicación vive en `vendor/`, vendorizada desde el upstream (ver
+sección anterior). El código propio del módulo son los artefactos de
+despliegue e integración: `installer/zynerdesk.sh`,
 `installer/apache-zynerdesk.conf.template`,
 `app/web/modules/admin/zynerdesk.php` y la entrada de sidebar.
 
@@ -118,16 +133,15 @@ Documentadas porque volverán a aparecer al actualizar la imagen:
   conservan aparte.
 
 Si una actualización del upstream cambia alguno de estos supuestos, el síntoma
-aparece en la vista embebida, no en el contenedor: comparar siempre contra
+aparece en la vista embebida, no en el servicio nativo: comparar siempre contra
 `http://127.0.0.1:<puerto>/` directo antes de tocar el rewrite.
 
 ## Dependencias principales
 
-- Docker + Docker Compose en el host.
-- MySQL 8.4 propio (contenedor `db` del compose), sin compartir con otros módulos.
+- Node.js nativo ≥18, administrado por `systemd` (mismo patrón que `farm` y `whatsapp`).
+- MySQL nativo del host, base `syner_remoteo` y usuario propios, sin compartir con otros módulos.
 - Apache con `mod_proxy`, `mod_proxy_http`, `mod_proxy_wstunnel`.
-- PHP con `curl` (la vista integrada descarga el upstream server-side).
-- Imagen `ghcr.io/miguelleonh0331/synervox-remoteo@sha256:a2a79232e0b8561a553a11fcfdb9fbc38b2cb346ef7dd400e3b65491c5de4a8b`.
+- PHP con `curl` (la vista integrada descarga el panel server-side).
 
 ## Casos principales
 
@@ -136,7 +150,7 @@ aparece en la vista embebida, no en el contenedor: comparar siempre contra
 - Desde el panel abre `Remotear` sobre un equipo concreto, sin salir de
   Zynervox.
 - Instalación/actualización vía `installer/zynerdesk.sh init|up|install-proxy`,
-  idempotente, sin perder el volumen de datos.
+  idempotente, sin perder datos.
 
 ## Autenticación
 

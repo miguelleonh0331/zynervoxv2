@@ -51,8 +51,10 @@ if [[ "$CHECK_WHATSAPP" == 1 ]]; then
 fi
 if [[ "$CHECK_ZYNERDESK" == 1 ]]; then
   [[ -f "$WEB_ROOT/modules/admin/zynerdesk.php" ]] || { echo "FALTA módulo Zynerdesk"; fail=1; }
+  zynerdesk_service="${ZYNERDESK_INSTANCE:-zynervox-zynerdesk}.service"
+  systemctl is-active --quiet "$zynerdesk_service" || { echo "FALTA servicio activo: $zynerdesk_service"; fail=1; }
   if [[ -f /etc/zynervox/zynerdesk.conf ]]; then
-    # La vista integrada arma la pagina pidiendosela al contenedor por
+    # La vista integrada arma la pagina pidiendosela al servicio nativo por
     # loopback, asi que necesita el puerto publicado y la extension curl.
     zynerdesk_port="$(sed -n 's/^ZYNERDESK_PORT=//p' /etc/zynervox/zynerdesk.conf)"
     if [[ -z "$zynerdesk_port" ]]; then

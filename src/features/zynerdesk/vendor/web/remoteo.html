@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Remoteo</title>
+  <style>
+    :root { --bg:#0d1117; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; height:100%; background:#000; font-family:"Segoe UI",sans-serif; color:#e8eef4; }
+    body { display:flex; flex-direction:column; }
+    .bar { display:flex; align-items:center; gap:10px; padding:8px 12px; background:#0d1117; border-bottom:1px solid #2a333d; }
+    .bar strong { white-space:nowrap; }
+    .st { flex:1; font-size:12px; color:#9fb0c0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ctrl { border:1px solid #555; background:#1a2027; color:#9fb0c0; border-radius:6px; padding:7px 12px; font-weight:800; cursor:pointer; }
+    .ctrl.on { border-color:#2a5; background:rgba(34,187,85,.12); color:#5f5; }
+    .ctrl.audio-on { border-color:#d29922; background:rgba(210,153,34,.15); color:#ffd866; }
+    .ctrl.camera-on { border-color:#4c9aff; background:rgba(76,154,255,.15); color:#9cc4ff; }
+    .ctrl:disabled { opacity:.45; cursor:not-allowed; }
+    .stage { position:relative; flex:1; background:#000; min-height:0; }
+    video { width:100%; height:100%; display:block; background:#000; object-fit:contain; }
+    .overlay { position:absolute; inset:0; outline:none;
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='4' fill='%23e63946' stroke='white' stroke-width='1.5'/%3E%3C/svg%3E") 8 8, crosshair; }
+    .hint { position:absolute; left:12px; bottom:12px; background:rgba(0,0,0,.55); color:#cfe; padding:6px 10px; border-radius:6px; font-size:12px; pointer-events:none; }
+    .cam-box { position:absolute; right:12px; bottom:12px; width:220px; height:165px; border:2px solid #4c9aff;
+      border-radius:8px; overflow:hidden; background:#000; box-shadow:0 4px 16px rgba(0,0,0,.5); z-index:5; }
+    .cam-box video { width:100%; height:100%; object-fit:cover; }
+    .cam-box .cam-label { position:absolute; left:6px; top:4px; font-size:11px; color:#cfe; background:rgba(0,0,0,.55); padding:2px 6px; border-radius:4px; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <strong id="title">Remoteo</strong>
+    <span class="st" id="status">conectando...</span>
+    <button class="ctrl" id="listen" disabled>Escuchar: OFF</button>
+    <button class="ctrl" id="camera" disabled>Cámara: OFF</button>
+    <button class="ctrl" id="ctrl">Control: OFF</button>
+  </div>
+  <div class="stage">
+    <video id="video" autoplay playsinline></video>
+    <div class="overlay" id="overlay" tabindex="0"></div>
+    <div class="hint" id="hint">Esperando video del agente...</div>
+    <div class="cam-box" id="camBox" style="display:none">
+      <span class="cam-label">Cámara</span>
+      <video id="camVideo" autoplay playsinline muted></video>
+    </div>
+  </div>
+  <audio id="audioPlayer" autoplay style="display:none"></audio>
+  <script>
+    const Q = new URLSearchParams(location.search);
+    const AGENT = Q.get("agent") || "";
+    const LABEL = Q.get("label") || AGENT;
+    const BASE = location.pathname.replace(/[^/]*$/, "");
+    const WS_URL = (location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + BASE + "ws";
+    const STUN = [{ urls: "stun:stun.l.google.com:19302" }];
+
+    const el = (i) => document.getElementById(i);
+    el("title").textContent = "Remoteo · " + LABEL;
+    document.title = "Remoteo · " + LABEL;
+    const st = (t) => el("status").textContent = t;
+
+    const R = {
+      ws:null, pc:null, control:false,
+      audioPc:null, audioState:"stopped", audioAllowed:false,
+      audioAdminAllowed:false, audioAgentCapable:false,
+      audioStream:null,
+      cameraPc:null, cameraState:"stopped", cameraAllowed:false,
+      cameraAdminAllowed:false, cameraAgentCapable:false,
+      cameraStream:null
+    };
+
+    // El track de audio remoto de WebRTC solo se decodifica/reproduce en Chromium
+    // si esta enganchado a un HTMLMediaElement (srcObject). Conectarlo solo a un
+    // AudioContext (como se hacia antes) deja el track sin consumir: la conexion
+    // llega a "connected" y los bytes RTP fluyen normal, pero es silencio total.
+    // Se engancha este stream persistente al <audio> UNA sola vez, antes de que
+    // lleguen los tracks.
+    const audioPlayerStream = new MediaStream();
+    el("audioPlayer").srcObject = audioPlayerStream;
+
+    function sendControl(p){ if (R.control && R.ws && R.ws.readyState===1) R.ws.send(JSON.stringify({ type:"control:input", agentId:AGENT, control:p })); }
+
+    // El <video> usa object-fit:contain: si la proporcion del stream no coincide
+    // con la del contenedor, quedan barras negras (letterbox) arriba/abajo o a
+    // los costados. El overlay que captura el mouse cubre TODO el contenedor
+    // (inset:0), no solo el video visible -> sin esto, el clic se calculaba como
+    // fraccion del cuadro completo (con barras) en vez del video real, y el
+    // agente terminaba moviendo el cursor a un punto desplazado. videoRect()
+    // calcula el rectangulo real donde se dibuja el video dentro del contenedor.
+    function videoRect(video, container){
+      const cw = container.clientWidth, ch = container.clientHeight;
+      const vw = video.videoWidth, vh = video.videoHeight;
+      if (!vw || !vh) return { left:0, top:0, width:cw, height:ch };
+      const containerRatio = cw / ch, videoRatio = vw / vh;
+      let width, height;
+      if (videoRatio > containerRatio) { width = cw; height = cw / videoRatio; }
+      else { height = ch; width = ch * videoRatio; }
+      return { left:(cw - width) / 2, top:(ch - height) / 2, width, height };
+    }
+
+    // Convierte un evento de mouse a coordenadas relativas al video real
+    // (no al overlay completo). Devuelve null si el clic cae en una barra
+    // negra de letterbox: ahi no hay pantalla remota que mapear.
+    function pointInVideo(e, ov){
+      const video = el("video");
+      const r = ov.getBoundingClientRect();
+      const vr = videoRect(video, ov);
+      const x = e.clientX - r.left - vr.left;
+      const y = e.clientY - r.top - vr.top;
+      if (vr.width <= 0 || vr.height <= 0 || x < 0 || y < 0 || x > vr.width || y > vr.height) return null;
+      return { x, y, width: vr.width, height: vr.height };
+    }
+
+    // El mouse nativo dispara mousemove muy seguido (100+/seg). Mandar cada
+    // evento tal cual hace que, si el pipeline (VPS -> agente -> PowerShell)
+    // no vacia tan rapido como llegan, el cursor remoto vaya "masticando"
+    // posiciones viejas en vez de ir a la posicion actual -> se ve como que
+    // persigue al mouse real. Con requestAnimationFrame se manda como maximo
+    // una actualizacion por cuadro, siempre con la posicion MAS RECIENTE
+    // (las intermedias se descartan, no se encolan): el cursor sigue en vivo
+    // en vez de perseguir. Clic y rueda NUNCA se descartan, van directo.
+    let pendingMove = null, moveRaf = null;
+    function flushMove(){ moveRaf = null; if (pendingMove) { sendControl(pendingMove); pendingMove = null; } }
+
+    (function wireOverlay(){
+      const ov = el("overlay");
+      ov.onmousemove = (e)=>{
+        const p = pointInVideo(e,ov); if (!p) return;
+        pendingMove = { type:"mouse", action:"move", x:p.x, y:p.y, width:p.width, height:p.height };
+        if (!moveRaf) moveRaf = requestAnimationFrame(flushMove);
+      };
+      ov.onmousedown = (e)=>{ const p=pointInVideo(e,ov); if(p) sendControl({type:"mouse",action:"down",button:e.button,x:p.x,y:p.y,width:p.width,height:p.height}); };
+      ov.onmouseup   = (e)=>{ const p=pointInVideo(e,ov); if(p) sendControl({type:"mouse",action:"up",button:e.button,x:p.x,y:p.y,width:p.width,height:p.height}); };
+      ov.oncontextmenu = (e)=> e.preventDefault();
+      ov.onwheel = (e)=>{ e.preventDefault(); sendControl({type:"mouse",action:"wheel",deltaX:e.deltaX,deltaY:e.deltaY}); };
+      ov.onkeydown = (e)=>{ e.preventDefault(); sendControl({type:"keyboard",action:"keydown",key:e.key,code:e.code,ctrlKey:e.ctrlKey,shiftKey:e.shiftKey,altKey:e.altKey,metaKey:e.metaKey}); };
+    })();
+    el("ctrl").addEventListener("click", () => {
+      R.control = !R.control;
+      el("ctrl").textContent = "Control: " + (R.control?"ON":"OFF");
+      el("ctrl").classList.toggle("on", R.control);
+      if (R.control) el("overlay").focus();
+    });
+
+    function setAudioUi(state, detail){
+      R.audioState = state;
+      const button = el("listen");
+      const labels = { starting:"INICIANDO", listening:"ON", stopping:"DETENIENDO", stopped:"OFF", error:"ERROR" };
+      button.textContent = "Escuchar: " + (labels[state] || state.toUpperCase());
+      button.classList.toggle("audio-on", state === "listening" || state === "starting");
+      button.title = detail || (R.audioAllowed ? "Escucha del audio total de la PC, sin grabación" : "Solo administradores y agentes compatibles");
+    }
+
+    function refreshAudioPermission(){
+      R.audioAllowed = R.audioAdminAllowed && R.audioAgentCapable;
+      el("listen").disabled = !R.audioAllowed;
+      if (!R.audioAllowed && R.audioState === "stopped") {
+        const reason = !R.audioAdminAllowed ? "Escucha permitida solo a administradores" : "El agente no admite escucha autenticada";
+        setAudioUi("stopped", reason);
+      }
+    }
+
+    function closeAudioLocal(){
+      audioPlayerStream.getTracks().forEach((track) => {
+        try { audioPlayerStream.removeTrack(track); } catch {}
+        try { track.stop(); } catch {}
+      });
+      if (R.audioStream) R.audioStream.getTracks().forEach(track=>track.stop());
+      if (R.audioPc) { try{R.audioPc.close();}catch{} }
+      R.audioStream = null;
+      R.audioPc = null;
+    }
+
+    async function acceptAudioOffer(message){
+      closeAudioLocal();
+      const connection = new RTCPeerConnection({ iceServers:STUN });
+      R.audioPc = connection;
+      connection.onicecandidate = (event) => {
+        if (event.candidate && R.ws && R.ws.readyState === 1) {
+          R.ws.send(JSON.stringify({ type:"audio:ice-candidate", agentId:AGENT, candidate:event.candidate }));
+        }
+      };
+      connection.onconnectionstatechange = () => {
+        if (["failed","disconnected","closed"].includes(connection.connectionState)) {
+          closeAudioLocal();
+          setAudioUi("stopped", "Conexión de audio " + connection.connectionState);
+        }
+      };
+      connection.ontrack = (event) => {
+        const stream = event.streams[0] || new MediaStream([event.track]);
+        R.audioStream = stream;
+        stream.getAudioTracks().forEach((track) => audioPlayerStream.addTrack(track));
+        // Sin await: ontrack dispara antes de "connected", y play() puede quedar
+        // pendiente hasta que fluyan datos, bloqueando el resto del flujo.
+        el("audioPlayer").play().catch(() => {});
+        setAudioUi("listening", "Audio remoto en vivo; no se graba");
+      };
+      await connection.setRemoteDescription(message.offer);
+      const answer = await connection.createAnswer();
+      await connection.setLocalDescription(answer);
+      R.ws.send(JSON.stringify({ type:"audio:answer", agentId:AGENT, answer }));
+    }
+
+    el("listen").addEventListener("click", async () => {
+      if (!R.audioAllowed || !R.ws || R.ws.readyState !== 1) return;
+      if (R.audioState !== "stopped" && R.audioState !== "error") {
+        R.ws.send(JSON.stringify({ type:"audio:stop", agentId:AGENT }));
+        setAudioUi("stopping", "Deteniendo escucha");
+        return;
+      }
+      setAudioUi("starting", "Solicitando audio al agente");
+      R.ws.send(JSON.stringify({ type:"audio:start", agentId:AGENT }));
+    });
+
+    // ---- Camara web bajo demanda (solo-ver, sin grabacion) ----
+    function setCameraUi(state, detail){
+      R.cameraState = state;
+      const button = el("camera");
+      const labels = { starting:"INICIANDO", viewing:"ON", stopping:"DETENIENDO", stopped:"OFF", error:"ERROR" };
+      button.textContent = "Cámara: " + (labels[state] || state.toUpperCase());
+      button.classList.toggle("camera-on", state === "viewing" || state === "starting");
+      button.title = detail || (R.cameraAllowed ? "Ver la cámara web del agente, sin grabación" : "Solo administradores y agentes compatibles");
+      el("camBox").style.display = (state === "viewing" || state === "starting") ? "block" : "none";
+    }
+
+    function refreshCameraPermission(){
+      R.cameraAllowed = R.cameraAdminAllowed && R.cameraAgentCapable;
+      el("camera").disabled = !R.cameraAllowed;
+      if (!R.cameraAllowed && R.cameraState === "stopped") {
+        const reason = !R.cameraAdminAllowed ? "Ver cámara permitido solo a administradores" : "El agente no admite cámara autenticada";
+        setCameraUi("stopped", reason);
+      }
+    }
+
+    function closeCameraLocal(){
+      el("camVideo").srcObject = null;
+      if (R.cameraStream) R.cameraStream.getTracks().forEach(track=>track.stop());
+      if (R.cameraPc) { try{R.cameraPc.close();}catch{} }
+      R.cameraStream = null;
+      R.cameraPc = null;
+    }
+
+    async function acceptCameraOffer(message){
+      closeCameraLocal();
+      const connection = new RTCPeerConnection({ iceServers:STUN });
+      R.cameraPc = connection;
+      connection.onicecandidate = (event) => {
+        if (event.candidate && R.ws && R.ws.readyState === 1) {
+          R.ws.send(JSON.stringify({ type:"camera:ice-candidate", agentId:AGENT, candidate:event.candidate }));
+        }
+      };
+      connection.onconnectionstatechange = () => {
+        if (["failed","disconnected","closed"].includes(connection.connectionState)) {
+          closeCameraLocal();
+          setCameraUi("stopped", "Conexión de cámara " + connection.connectionState);
+        }
+      };
+      connection.ontrack = (event) => {
+        const stream = event.streams[0] || new MediaStream([event.track]);
+        R.cameraStream = stream;
+        el("camVideo").srcObject = stream;
+        el("camVideo").play().catch(() => {});
+        setCameraUi("viewing", "Cámara remota en vivo; no se graba");
+      };
+      await connection.setRemoteDescription(message.offer);
+      const answer = await connection.createAnswer();
+      await connection.setLocalDescription(answer);
+      R.ws.send(JSON.stringify({ type:"camera:answer", agentId:AGENT, answer }));
+    }
+
+    el("camera").addEventListener("click", async () => {
+      if (!R.cameraAllowed || !R.ws || R.ws.readyState !== 1) return;
+      if (R.cameraState !== "stopped" && R.cameraState !== "error") {
+        R.ws.send(JSON.stringify({ type:"camera:stop", agentId:AGENT }));
+        setCameraUi("stopping", "Deteniendo cámara");
+        return;
+      }
+      setCameraUi("starting", "Solicitando cámara al agente");
+      R.ws.send(JSON.stringify({ type:"camera:start", agentId:AGENT }));
+    });
+
+    function connect() {
+      R.ws = new WebSocket(WS_URL);
+      R.ws.onopen = () => { st("señalización OK · esperando agente"); R.ws.send(JSON.stringify({ type:"session:join", agentId:AGENT })); };
+      R.ws.onerror = () => st("error de señalización");
+      R.ws.onclose = () => {
+        closeAudioLocal(); setAudioUi("stopped", "WebSocket desconectado");
+        closeCameraLocal(); setCameraUi("stopped", "WebSocket desconectado");
+        st("desconectado");
+      };
+      R.ws.onmessage = async (ev) => {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === "session:ready") {
+          R.audioAdminAllowed = Boolean(msg.audioAdminAllowed);
+          R.audioAgentCapable = Boolean(msg.audioAgentCapable);
+          refreshAudioPermission();
+          setAudioUi("stopped", msg.audioAllowed ? "Escucha disponible solo bajo demanda" : "Solo administradores y agentes v0.5 compatibles");
+          R.cameraAdminAllowed = Boolean(msg.cameraAdminAllowed);
+          R.cameraAgentCapable = Boolean(msg.cameraAgentCapable);
+          refreshCameraPermission();
+          setCameraUi("stopped", msg.cameraAllowed ? "Cámara disponible solo bajo demanda" : "Solo administradores y agentes compatibles");
+          return;
+        }
+        if (msg.type === "agent:capabilities") {
+          R.audioAgentCapable = Boolean(msg.audioAgentCapable);
+          refreshAudioPermission();
+          R.cameraAgentCapable = Boolean(msg.cameraAgentCapable);
+          refreshCameraPermission();
+          return;
+        }
+        if (msg.type === "agent:offline") { st("agente sin conexión"); el("hint").textContent="El agente no está conectado."; return; }
+        if (msg.type === "webrtc:offer") {
+          st("negociando video");
+          R.pc = new RTCPeerConnection({ iceServers: STUN });
+          R.pc.ontrack = (t) => { el("video").srcObject = t.streams[0]; el("video").play().catch(()=>{});
+            el("hint").textContent = "Video en vivo. Activa Control para el mouse/teclado."; st("remoteando · " + LABEL); };
+          R.pc.onicecandidate = (c) => { if (c.candidate) R.ws.send(JSON.stringify({ type:"webrtc:ice-candidate", agentId:AGENT, candidate:c.candidate })); };
+          await R.pc.setRemoteDescription(msg.offer);
+          const ans = await R.pc.createAnswer();
+          await R.pc.setLocalDescription(ans);
+          R.ws.send(JSON.stringify({ type:"webrtc:answer", agentId:AGENT, answer:ans }));
+        }
+        if (msg.type === "webrtc:ice-candidate" && R.pc && msg.candidate) { R.pc.addIceCandidate(msg.candidate).catch(()=>{}); }
+        if (msg.type === "audio:offer") { await acceptAudioOffer(msg); return; }
+        if (msg.type === "audio:ice-candidate" && R.audioPc && msg.candidate) { R.audioPc.addIceCandidate(msg.candidate).catch(()=>{}); return; }
+        if (msg.type === "audio:status") {
+          setAudioUi(msg.state || "stopped", msg.reason || "");
+          if (["stopped","error"].includes(msg.state)) closeAudioLocal();
+          return;
+        }
+        if (msg.type === "audio:ended") {
+          closeAudioLocal();
+          setAudioUi(msg.state === "error" ? "error" : "stopped", msg.error || msg.reason || "Sesión finalizada");
+          return;
+        }
+        if (msg.type === "audio:error") {
+          closeAudioLocal();
+          setAudioUi("error", msg.detail || "Escucha rechazada");
+          st(msg.detail || "Escucha rechazada");
+          return;
+        }
+        if (msg.type === "camera:offer") { await acceptCameraOffer(msg); return; }
+        if (msg.type === "camera:ice-candidate" && R.cameraPc && msg.candidate) { R.cameraPc.addIceCandidate(msg.candidate).catch(()=>{}); return; }
+        if (msg.type === "camera:status") {
+          setCameraUi(msg.state || "stopped", msg.reason || "");
+          if (["stopped","error"].includes(msg.state)) closeCameraLocal();
+          return;
+        }
+        if (msg.type === "camera:ended") {
+          closeCameraLocal();
+          setCameraUi(msg.state === "error" ? "error" : "stopped", msg.error || msg.reason || "Sesión finalizada");
+          return;
+        }
+        if (msg.type === "camera:error") {
+          closeCameraLocal();
+          setCameraUi("error", msg.detail || "Cámara rechazada");
+          st(msg.detail || "Cámara rechazada");
+          return;
+        }
+      };
+    }
+
+    if (!AGENT) { st("falta agentId"); }
+    else (async () => {
+      if (window.ZYNERDESK_SSO_READY) await window.ZYNERDESK_SSO_READY;
+      connect();
+    })();
+    window.addEventListener("beforeunload", () => {
+      try{ if(R.audioState!=="stopped"&&R.ws&&R.ws.readyState===1) R.ws.send(JSON.stringify({type:"audio:stop",agentId:AGENT})); }catch{}
+      closeAudioLocal();
+      try{ if(R.cameraState!=="stopped"&&R.ws&&R.ws.readyState===1) R.ws.send(JSON.stringify({type:"camera:stop",agentId:AGENT})); }catch{}
+      closeCameraLocal();
+      try{R.pc&&R.pc.close();}catch{}
+      try{R.ws&&R.ws.close();}catch{}
+    });
+  </script>
+</body>
+</html>

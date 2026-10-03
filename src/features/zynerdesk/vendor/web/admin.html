@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gestión de Usuarios · Zynervox</title>
+  <style>
+    :root {
+      --nav:#2d303d; --nav-active:#3b3e4b; --nav-text:#b9c3d3;
+      --page:#f4f1eb; --card:#fff; --line:#ddd8cf; --head:#292c38;
+      --ink:#202431; --muted:#6e7481; --accent:#ff7200; --accent-dark:#d85f00;
+      --danger:#cf342d; --ok:#2f7d4a;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--ink); background:var(--page); font:13px Arial,"Segoe UI",sans-serif; }
+    button,input,select { font:inherit; }
+    .shell { min-height:100vh; display:grid; grid-template-columns:260px minmax(0,1fr); }
+    aside { background:var(--nav); color:var(--nav-text); border-top:2px solid #c7b88c; }
+    .brand { height:54px; padding:16px 15px 12px; color:var(--accent); font-size:21px; font-weight:800; letter-spacing:.5px; }
+    .nav-title { padding:8px 15px 6px; color:#858a98; font-size:10px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; }
+    .nav a { height:32px; padding:0 15px; color:var(--nav-text); text-decoration:none; display:flex; align-items:center; gap:10px; border-left:3px solid transparent; }
+    .nav a:hover { background:#353845; color:#fff; }
+    .nav a.active { color:var(--accent); background:var(--nav-active); border-left-color:var(--accent); font-weight:700; }
+    .nav .icon { width:16px; text-align:center; color:#9da4b1; }
+    .content { min-width:0; padding:18px 24px 40px; border-top:2px solid #c7b88c; }
+    .page-head { margin-bottom:9px; }
+    .page-head h1 { margin:0; font-size:19px; }
+    .page-head p { margin:1px 0 0; color:var(--muted); }
+    .panel { margin-bottom:7px; padding:10px; background:var(--card); border:1px solid var(--line); }
+    .panel-title { margin:0 0 10px; font-size:14px; }
+    .panel-tools { display:grid; grid-template-columns:minmax(260px,1fr) 170px auto; gap:7px; margin-bottom:9px; }
+    input,select { width:100%; height:31px; padding:5px 8px; color:var(--ink); background:#fff; border:1px solid var(--line); outline:none; }
+    input:focus,select:focus { border-color:var(--accent); box-shadow:0 0 0 1px rgba(255,114,0,.12); }
+    select[multiple] { height:76px; padding:3px; }
+    button { height:31px; padding:5px 14px; border:1px solid var(--line); background:#fff; color:var(--ink); cursor:pointer; }
+    button:hover { border-color:var(--accent); color:var(--accent-dark); }
+    button.primary { border-color:var(--accent); background:var(--accent); color:#fff; font-weight:700; }
+    button.primary:hover { background:var(--accent-dark); color:#fff; }
+    button.link { padding:0; height:auto; color:var(--accent-dark); background:none; border:0; text-decoration:underline; }
+    .table-wrap { overflow:auto; }
+    table { width:100%; border-collapse:collapse; table-layout:fixed; }
+    th { padding:6px 8px; color:#fff; background:var(--head); text-align:left; font-size:11px; text-transform:uppercase; }
+    td { padding:6px 8px; border:1px solid var(--line); border-top:0; vertical-align:middle; }
+    tbody tr:nth-child(even) { background:#f0efed; }
+    tbody tr.inactive { color:#8b8b8b; text-decoration:none; opacity:.68; }
+    .pill { display:inline-block; margin:1px 3px 1px 0; padding:2px 6px; color:#fff; background:#626877; font-size:10px; }
+    .level { display:inline-block; min-width:18px; padding:1px 5px; color:#fff; background:var(--accent); text-align:center; font-weight:700; }
+    .status-on { color:var(--ok); font-weight:700; } .status-off { color:var(--danger); font-weight:700; }
+    .form-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px 10px; }
+    .field label { display:block; margin-bottom:5px; color:#5e6572; font-size:11px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; }
+    .field.groups { grid-column:span 2; }
+    .advanced { margin:11px 0; padding-bottom:10px; border-bottom:1px solid var(--line); }
+    .form-actions { display:flex; align-items:center; gap:10px; }
+    .msg { min-height:18px; color:var(--muted); }
+    .msg.error { color:var(--danger); } .msg.ok { color:var(--ok); }
+    .empty { padding:18px; color:var(--muted); text-align:center; }
+    @media(max-width:900px) {
+      .shell { grid-template-columns:1fr; } aside { position:static; } .nav { display:flex; flex-wrap:wrap; padding-bottom:8px; }
+      .nav-title { width:100%; } .content { padding:14px; } .form-grid { grid-template-columns:1fr; }
+      .field.groups { grid-column:auto; } .panel-tools { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <div class="brand">ZYNERV OX</div>
+      <nav class="nav">
+        <div class="nav-title">Administración</div>
+        <a href="./"><span class="icon">◷</span>Dashboard (Inicio)</a>
+        <a href="supervicion/"><span class="icon">▣</span>Supervisión múltiple</a>
+        <a class="active" href="admin.html"><span class="icon">♙</span>Users (Usuarios)</a>
+        <a href="./"><span class="icon">⌁</span>Campaigns (Campañas)</a>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <header class="page-head">
+        <h1>Gestión de Usuarios</h1>
+        <p>Administración de cuentas, permisos y grupos</p>
+      </header>
+
+      <section class="panel">
+        <h2 class="panel-title">Usuarios <button class="link" id="newUser" style="float:right">+ Nuevo</button></h2>
+        <div class="panel-tools">
+          <input id="search" type="search" placeholder="Buscar por nombre, ID o login...">
+          <select id="groupFilter"><option value="">Todos los grupos</option></select>
+          <button id="searchButton">Buscar</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th style="width:17%">User ID</th><th style="width:21%">Nombre</th><th style="width:10%">Nivel</th><th>Grupo</th><th style="width:12%">Activo</th><th style="width:14%">Acciones</th></tr></thead>
+            <tbody id="rows"><tr><td colspan="6" class="empty">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" id="editor">
+        <h2 class="panel-title" id="formTitle">Creación de Usuario</h2>
+        <div class="form-grid">
+          <div class="field"><label for="username">ID usuario / login</label><input id="username" autocomplete="off"></div>
+          <div class="field"><label for="password">Password</label><input id="password" type="password" placeholder="Mínimo 8 caracteres"></div>
+          <div class="field"><label for="role">Nivel</label><select id="role"><option value="tecnico">Usuario</option><option value="admin">Administrador</option></select></div>
+          <div class="field groups"><label for="campaigns">Grupo de usuario</label><select id="campaigns" multiple></select></div>
+          <div class="field"><label for="active">Activo</label><select id="active"><option value="1">Sí (Y)</option><option value="0">No (N)</option></select></div>
+        </div>
+        <div class="advanced"><button class="link" type="button">Las campañas seleccionadas determinan los equipos visibles</button></div>
+        <div class="form-actions">
+          <button class="primary" id="save">Crear Usuario</button>
+          <button id="cancel" type="button" hidden>Cancelar edición</button>
+          <span class="msg" id="msg"></span>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const $=id=>document.getElementById(id); let users=[], editing=null;
+    const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    async function api(url,options={}){const r=await fetch(url,{credentials:'include',headers:{'content-type':'application/json'},...options});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||`HTTP ${r.status}`);return j}
+    function selected(){return [...$('campaigns').selectedOptions].map(o=>o.value)}
+    function message(text,kind=''){$('msg').textContent=text;$('msg').className='msg '+kind}
+    async function init(){if(window.ZYNERDESK_SSO_READY)await window.ZYNERDESK_SSO_READY;const me=await api('api/auth/me');if(!me.user){location.href='login.html';return}if(me.user.role!=='admin'){location.href='./';return}await loadCampaigns();await loadUsers()}
+    async function loadCampaigns(){const j=await api('api/campaigns');const opts=j.campaigns||[];$('campaigns').innerHTML=opts.map(c=>`<option value="${esc(c.campaign)}">${esc(c.campaign)} (${c.total})</option>`).join('');$('groupFilter').innerHTML='<option value="">Todos los grupos</option>'+opts.map(c=>`<option value="${esc(c.campaign)}">${esc(c.campaign)}</option>`).join('')}
+    async function loadUsers(){const j=await api('api/admin/users');users=j.users||[];render()}
+    function render(){const q=$('search').value.trim().toLowerCase(),g=$('groupFilter').value;const list=users.filter(u=>(!q||u.username.toLowerCase().includes(q)||String(u.id).includes(q))&&(!g||(u.campaigns||[]).includes(g)));$('rows').innerHTML=list.length?list.map(u=>`<tr class="${u.active?'':'inactive'}"><td><b>${esc(u.id)}</b></td><td>${esc(u.username)}</td><td><span class="level">${u.role==='admin'?'9':'1'}</span> ${esc(u.role)}</td><td>${(u.campaigns||[]).map(c=>`<span class="pill">${esc(c)}</span>`).join('')||'TODOS (admin)'}</td><td class="${u.active?'status-on':'status-off'}">${u.active?'Sí':'No'}</td><td><button class="link" onclick="editUser(${u.id})">Editar</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">No se encontraron usuarios.</td></tr>'}
+    function reset(){editing=null;$('formTitle').textContent='Creación de Usuario';$('save').textContent='Crear Usuario';$('cancel').hidden=true;$('username').value='';$('password').value='';$('role').value='tecnico';$('active').value='1';[...$('campaigns').options].forEach(o=>o.selected=false);message('')}
+    window.editUser=id=>{const u=users.find(x=>x.id===id);if(!u)return;editing=u;$('formTitle').textContent='Edición de Usuario';$('save').textContent='Guardar Cambios';$('cancel').hidden=false;$('username').value=u.username;$('password').value='';$('role').value=u.role;$('active').value=u.active?'1':'0';[...$('campaigns').options].forEach(o=>o.selected=(u.campaigns||[]).includes(o.value));message('Deja la contraseña vacía para conservar la actual.');$('editor').scrollIntoView({behavior:'smooth'})}
+    $('save').onclick=async()=>{try{const data={username:$('username').value.trim(),password:$('password').value,role:$('role').value,active:$('active').value==='1',campaigns:selected()};await api(editing?`api/admin/users/${editing.id}`:'api/admin/users',{method:editing?'PUT':'POST',body:JSON.stringify(data)});await loadUsers();reset();message('Usuario guardado correctamente.','ok')}catch(e){message(e.message,'error')}};
+    $('cancel').onclick=reset;$('newUser').onclick=()=>{reset();$('editor').scrollIntoView({behavior:'smooth'})};$('search').oninput=render;$('groupFilter').onchange=render;$('searchButton').onclick=render;
+    init().catch(e=>message(e.message,'error'));
+  </script>
+</body>
+</html>

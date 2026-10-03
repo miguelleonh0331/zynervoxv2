@@ -3,8 +3,9 @@
 ## Responsabilidad contractual
 
 Publicar el panel de supervisión remota Synervox Remoteo dentro del shell de
-Zynervox, como servicio Docker aislado con persistencia propia, accesible desde
-el sidebar, sin iframe y sin tocar otros módulos.
+Zynervox, como servicio nativo aislado (`systemd` + MySQL del host) con
+persistencia propia, accesible desde el sidebar, sin iframe y sin tocar otros
+módulos.
 
 ## Entradas públicas
 
@@ -25,18 +26,19 @@ el sidebar, sin iframe y sin tocar otros módulos.
 ## Salidas públicas
 
 - Entrada `Zynerdesk` en `app/web/modules/admin/sidebar.php`.
-- Contenedores `app` y `db` con healthcheck propios.
+- Servicio systemd `zynervox-zynerdesk.service` (proceso Node nativo), usuario
+  de sistema dedicado `zynervox-zynerdesk`, sin shell.
 - `installer/zynerdesk.sh` con las acciones `init`, `up`, `status`,
   `credentials`, `install-proxy`, `remove-proxy`, `backup`, `restore`, `down`.
 
 ## Errores posibles
 
 - `ZYNERDESK_PORT` ocupado al instalar → `zynerdesk.sh init` falla antes de
-  levantar el stack (escaneo de puertos libres 4100-4199).
+  levantar el servicio (escaneo de puertos libres 4100-4199).
 - MySQL no disponible → `scripts/start.js` reintenta 30 veces (60s) antes de
-  fallar; el contenedor `app` no arranca si no logra conectar.
+  fallar; el servicio no queda `active` si no logra conectar.
 - Proxy Apache mal configurado → `apache2ctl configtest` bloquea el reload.
-- Upstream caído o puerto mal escrito en la configuración → la vista muestra
+- Backend caído o puerto mal escrito en la configuración → la vista muestra
   `integration-error` en vez de romper la página de Zynervox.
 - `/etc/zynervox/zynerdesk.conf` ausente → se usa `/zynerdesk` por defecto y
   no se puede resolver el puerto, de modo que la vista queda en el mismo
@@ -47,39 +49,42 @@ el sidebar, sin iframe y sin tocar otros módulos.
 Este módulo puede depender de:
 
 - la sesión administrativa de Zynervox mediante `Includes\Auth`;
-- Docker y Docker Compose del host;
-- MySQL 8.4 propio (volumen `zynerdesk_mysql`, no compartido);
+- código vendorizado en `src/features/zynerdesk/vendor/`, origen documentado
+  en `README.md` (extraído de `ghcr.io/miguelleonh0331/synervox-remoteo`,
+  trazabilidad por commit de Git en vez de digest de imagen);
+- Node.js nativo ≥18 administrado por systemd (mismo patrón que `farm` y `whatsapp`);
+- MySQL nativo del host, base y usuario propios (mismo patrón que `whatsapp`);
 - Apache como proxy de la ruta pública (`mod_proxy`, `mod_proxy_http`,
   `mod_proxy_wstunnel`);
-- PHP con `curl`, para traer el upstream server-side;
-- la imagen publicada `ghcr.io/miguelleonh0331/synervox-remoteo` fijada por digest.
+- PHP con `curl`, para traer el panel server-side.
 
 ## Dependencias prohibidas
 
 Este módulo no debe depender de:
 
+- Docker, Compose o cualquier contenedor para este módulo;
 - tablas o esquema de VICIdial, WhatsApp, Farm o Stt Providers;
 - credenciales de otro módulo;
 - implementación interna de otros módulos;
 - módulos no declarados en "Dependencias permitidas";
-- dependencias externas no aprobadas por `ARCHITECT_AGENT`.
+- dependencias externas no aprobadas por `ARCHITECT_AGENT`;
+- código de `vendor/` editado a mano sin volver a extraer/documentar su origen.
 
 ## Garantías
 
 Este módulo garantiza que:
 
-- el contenedor `app` no se construye localmente: se descarga por digest fijo
-  desde el registro publicado;
-- los volúmenes `zynerdesk_mysql` y `zynerdesk_data` persisten entre
+- el código vendorizado queda trazado por commit de Git, no por digest de imagen;
+- la base `syner_remoteo` y el directorio de datos persisten entre
   actualizaciones (`zynerdesk.sh up` no recrea como `init`);
 - el puerto del host queda enlazado solo a `127.0.0.1`;
-- las migraciones son idempotentes (tabla `schema_migrations` del upstream);
-- la vista embebida no altera el documento del upstream en el contenedor: toda
-  la adaptación ocurre en memoria, al servir la página;
+- las migraciones son idempotentes (tabla `schema_migrations`);
+- la vista embebida no altera el código vendorizado al servir la página: toda
+  la adaptación ocurre en memoria;
 - la sesión administrativa Zynervox se intercambia por una sesión Zynerdesk
   mediante un token HMAC efímero; nunca se comparte la contraseña;
-- el CSS del upstream queda confinado en `@scope (.zynerdesk-native)` y no
-  altera el resto del panel.
+- el CSS del panel queda confinado en `@scope (.zynerdesk-native)` y no
+  altera el resto del shell.
 
 ## Prohibiciones
 
@@ -88,13 +93,12 @@ Este módulo no debe:
 - modificar otros módulos;
 - acceder a datos ajenos sin pasar por su contrato;
 - romper compatibilidad sin una decisión registrada;
-- editar archivos dentro del contenedor para adaptarlo al despliegue;
 - incorporar el instalador `.exe` del agente Windows (pendiente, fuera de
   alcance de esta etapa).
 
 ## Propiedad de datos
 
-La base `syner_remoteo` y sus volúmenes pertenecen exclusivamente a este
+La base `syner_remoteo` y sus datos pertenecen exclusivamente a este
 módulo. Ningún otro módulo los lee ni los escribe, y este módulo no consulta
 datos de los demás.
 

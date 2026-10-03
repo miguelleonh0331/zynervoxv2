@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Synervox Remoteo · Panel (test tarjetas)</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <style>
+    :root {
+      --bg:#0a0e16; --panel:#121a29; --panel2:#0e1421; --line:#232d40; --ink:#e7edf5; --muted:#8b96aa;
+      --accent:#f58a1f; --accent-dim:rgba(245,138,31,.15); --ok:#34d399; --off:#5b6577;
+      --warn:#fbbf24; --danger:#f87171; --rem:#f0a35f;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:"Segoe UI",Verdana,sans-serif; color:var(--ink); background:var(--bg); }
+    header { padding:16px 26px; border-bottom:1px solid var(--line); background:var(--panel2);
+      display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    h1 { margin:0; font-size:19px; letter-spacing:.02em; }
+    .who { color:var(--muted); font-size:13px; display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:10px; }
+    .who a { color:var(--accent); cursor:pointer; margin-left:10px; text-decoration:none; }
+    .who .dl { border:1px solid var(--accent); border-radius:6px; padding:4px 9px; font-size:12px; font-weight:700; }
+    .who .supervision-btn { margin-left:0; border:1px solid var(--rem); border-radius:7px; padding:8px 12px;
+      background:var(--rem); color:#1a0f05; text-decoration:none; font-size:12px; font-weight:800; }
+    .banner { margin:14px 26px 0; padding:10px 14px; border:1px solid var(--accent); border-radius:8px;
+      background:var(--accent-dim); color:var(--accent); font-size:12px; font-weight:700; }
+    main { padding:20px 26px 40px; }
+    .layout { display:grid; grid-template-columns:470px 1fr; gap:16px; align-items:start; }
+    /* Siempre al costado (no se apila en pantallas chicas, a pedido). */
+    .map-panel { background:var(--panel2); border:1px solid var(--line); border-radius:12px; overflow:hidden;
+      position:sticky; top:16px; }
+    .map-panel-head { padding:10px 14px; border-bottom:1px solid var(--line); display:flex; align-items:center;
+      justify-content:space-between; }
+    .map-panel-head h2 { margin:0; font-size:13px; font-weight:800; letter-spacing:.02em; }
+    .map-legend { display:flex; gap:10px; font-size:10px; color:var(--muted); }
+    .map-legend span { display:inline-flex; align-items:center; gap:4px; }
+    .map-legend .sw { width:8px; height:8px; border-radius:50%; display:inline-block; }
+    #map { height:830px; background:#0d1421; }
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip { background:var(--panel); color:var(--ink); }
+    .leaflet-popup-content { font-size:12px; }
+    .leaflet-popup-content b { display:block; margin-bottom:2px; }
+    .geo-pop-btn { margin-top:6px; display:inline-block; font-size:11px; font-weight:700; color:var(--accent);
+      border:1px solid var(--accent); border-radius:6px; padding:3px 8px; text-decoration:none; cursor:pointer; }
+    .content-col { min-width:0; }
+    .toolbar { display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+    select, .search { padding:10px 12px; border:1px solid var(--line); border-radius:8px;
+      background:var(--panel); color:var(--ink); font-size:14px; }
+    select:focus, .search:focus { outline:1px solid var(--accent); }
+    .stat { color:var(--muted); font-size:13px; }
+    .empty { padding:34px; text-align:center; color:var(--muted); }
+
+    .list { display:flex; flex-direction:column; gap:8px; }
+    .row-card { position:relative;
+      background:linear-gradient(160deg,var(--panel) 0%,var(--panel2) 100%);
+      border:1px solid var(--line); border-radius:10px; padding:10px 16px; }
+    .row-card.is-online { border-color:rgba(52,211,153,.35); }
+    .row-card::before { content:""; position:absolute; inset:0 auto 0 0; width:2px;
+      background:linear-gradient(180deg,var(--accent),transparent); opacity:.7; }
+    .row-main { display:flex; align-items:center; gap:16px; overflow-x:auto; overflow-y:hidden; }
+    .seg { display:flex; align-items:center; gap:6px; white-space:nowrap; flex:none; }
+    .div { width:1px; align-self:stretch; background:var(--line); flex:none; }
+    .dot { width:8px; height:8px; border-radius:50%; background:var(--off); flex:none; }
+    .dot.on { background:var(--ok); box-shadow:0 0 8px rgba(52,211,153,.7); }
+    .row-tag { font-size:12px; font-weight:800; letter-spacing:.02em; overflow:hidden; text-overflow:ellipsis; }
+    .row-camp { font-size:8px; letter-spacing:.06em; text-transform:uppercase; font-weight:800; color:var(--muted);
+      background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:999px; padding:3px 8px; }
+    .row-age { font-size:9px; color:var(--muted); }
+    .status-col { display:flex; flex-direction:column; gap:4px; flex:none; width:192px; overflow:hidden; }
+    .status-col .line1 { display:flex; align-items:center; gap:6px; overflow:hidden; }
+    .status-col .line2 { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+    .host-col { display:flex; flex-direction:column; gap:2px; font-size:11px; color:var(--muted);
+      flex:none; width:150px; white-space:nowrap; overflow:hidden; }
+    .host-col b { color:var(--ink); font-weight:700; overflow:hidden; text-overflow:ellipsis; }
+    .host-col span { overflow:hidden; text-overflow:ellipsis; }
+    .net-col { display:flex; flex-direction:column; gap:5px; font-size:10px; color:var(--muted);
+      flex:none; width:190px; white-space:nowrap; overflow:hidden; }
+    .net-col .line1 { display:flex; align-items:center; gap:5px; overflow:hidden; text-overflow:ellipsis; }
+    .net-col .line1 span:last-child { overflow:hidden; text-overflow:ellipsis; }
+    .net-col .line2 { display:flex; align-items:center; gap:5px; }
+    .row-net-icon { width:12px; height:12px; color:var(--muted); flex:none; }
+    .net-col .v { color:var(--ink); }
+    .k { text-transform:uppercase; letter-spacing:.05em; font-weight:800; color:#5f6b80; font-size:9px; }
+    .v { color:var(--ink); font-size:11px; }
+
+    .ping-badge { font-size:9px; font-weight:800; padding:2px 7px; border-radius:999px; white-space:nowrap; }
+    .ping-badge.ping-ok { color:var(--ok); background:rgba(52,211,153,.12); }
+    .ping-badge.ping-hi { color:var(--warn); background:rgba(251,191,36,.12); }
+    .ping-badge.ping-off { color:var(--danger); background:rgba(248,113,113,.12); }
+
+    .row-speed { display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+      background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:8px; padding:5px 10px; }
+    .row-speed .isp { font-size:9px; letter-spacing:.06em; text-transform:uppercase; font-weight:800; color:var(--accent); }
+    .row-speed .ping { font-size:9px; color:var(--muted); margin-top:1px; }
+    .row-speed .mbps { font-size:13px; font-weight:800; white-space:nowrap; }
+    .row-speed .bars-ico { width:16px; height:16px; color:var(--accent); flex:none; }
+    .row-speed.empty-speed { color:var(--muted); font-size:11px; }
+
+    .row-actions { display:flex; gap:6px; flex:none; }
+    .ic-btn { appearance:none; width:30px; height:30px; border-radius:8px; border:1px solid var(--line);
+      background:rgba(255,255,255,.04); color:var(--muted); cursor:pointer; display:flex; align-items:center; justify-content:center; flex:none; }
+    .ic-btn svg { width:15px; height:15px; }
+    .ic-btn:hover:not(:disabled) { color:var(--accent); border-color:var(--accent); box-shadow:0 0 10px rgba(245,138,31,.35); }
+    .ic-btn.active { color:var(--accent); border-color:var(--accent); background:var(--accent-dim); }
+    .ic-btn:disabled { opacity:.35; cursor:not-allowed; }
+    .ic-btn.rem-ic:hover:not(:disabled) { color:var(--rem); border-color:var(--rem); box-shadow:0 0 10px rgba(240,163,95,.35); }
+
+    .row-detail { width:100%; margin-top:8px; padding-top:8px; border-top:1px dashed var(--line); font-size:11px; color:var(--muted); display:none; }
+    .row-detail.open { display:block; }
+    .row-detail strong { color:var(--ink); display:block; margin-bottom:2px; }
+    .row-detail .muted-line { color:var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Synervox Remoteo</h1>
+    <div class="who"><a class="dl" href="downloads/Synervox-Operador-Setup-0.2.0.exe" download>⬇ Descargar Zyner Transfer Admin</a><span id="whoName">--</span><a class="supervision-btn" href="supervicion/">Supervicion multiple</a><a class="dl" href="downloads/SynerAgentSetup-0.3.1.exe" download>⬇ Descargar Agente v0.3.1</a></div>
+  </header>
+  <div class="banner">🧪 Página de prueba (test_index.html) — vista en tarjetas oscuras. No reemplaza el panel real todavía.</div>
+  <main>
+    <div class="layout">
+      <div class="map-panel">
+        <div class="map-panel-head">
+          <h2>Ubicación de equipos</h2>
+          <div class="map-legend"><span><i class="sw" style="background:var(--ok)"></i>online</span><span><i class="sw" style="background:var(--off)"></i>offline</span></div>
+        </div>
+        <div id="map"></div>
+      </div>
+      <div class="content-col">
+        <div class="toolbar">
+          <select id="campaign"><option value="">Todas las campañas</option></select>
+          <input class="search" id="search" type="search" placeholder="Buscar por tag / host / IP...">
+          <span class="stat" id="stat">--</span>
+        </div>
+        <div id="wrap"><div class="empty">Cargando...</div></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    // --- iconos SVG en línea (estilo HUD, trazo fino, monocromo -> naranja al hover) ---
+    const ICON = {
+      monitor: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>`,
+      bolt:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg>`,
+      radar:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.5v2M21.5 12h-2M12 21.5v-2M2.5 12h2"/></svg>`,
+      pin:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.7 7-12.2A7 7 0 1 0 5 8.8C5 14.3 12 21 12 21z"/><circle cx="12" cy="8.8" r="2.3"/></svg>`,
+      clock:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3.2 1.9"/></svg>`,
+      bars:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 19v-6M10 19V9M15 19V5M20 19v-8"/></svg>`,
+      net:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a12 12 0 0 1 16 0M7 13.2a8 8 0 0 1 10 0M10.3 16.4a4 4 0 0 1 3.4 0"/><circle cx="12" cy="19.2" r="1.1" fill="currentColor" stroke="none"/></svg>`,
+      ethernet:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="7" rx="1.3"/><path d="M8 10V6.5h2V10M12 10V6.5h2V10M16 10V6.5"/><path d="M9 17v2M15 17v2"/></svg>`
+    };
+
+    // Si el nombre del adaptador contiene la letra "w" ya se asume wifi
+    // (Wireless); si no, ethernet.
+    function netIcon(adapter){
+      return /w/i.test(adapter || "") ? ICON.net : ICON.ethernet;
+    }
+
+    const BASE = location.pathname.replace(/[^/]*$/, "");
+    // --- gate de login (igual que index.html) ---
+    async function me(){ const r = await fetch("api/auth/me",{credentials:"include"}); return (await r.json()).user; }
+    (async () => {
+      let u; try { u = await me(); } catch { u = null; }
+      if (!u) { location.href = "login.html"; return; }
+      document.getElementById("whoName").textContent = u.username + " (" + u.role + ")";
+      loadCampaigns(); tick(); setInterval(tick, 3000);
+    })();
+    const wrap = document.getElementById("wrap"), stat = document.getElementById("stat");
+    const campaignSel = document.getElementById("campaign"), search = document.getElementById("search");
+    let agents = [];
+    const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    function ageText(iso){ if(!iso) return "--"; const s=Math.floor((Date.now()-new Date(iso).getTime())/1000); if(s<60)return s+"s"; if(s<3600)return Math.floor(s/60)+"m"; if(s<86400)return Math.floor(s/3600)+"h"; return Math.floor(s/86400)+"d"; }
+    function parse(j){ try { return typeof j==="string"?JSON.parse(j):j; } catch { return null; } }
+
+    async function loadCampaigns(){
+      try { const j = await (await fetch("api/campaigns",{credentials:"include"})).json(); const cur = campaignSel.value;
+        campaignSel.innerHTML = '<option value="">Todas las campañas</option>' + (j.campaigns||[]).map(c=>`<option value="${esc(c.campaign)}">${esc(c.campaign)} (${c.total})</option>`).join(""); campaignSel.value = cur;
+      } catch {}
+    }
+    campaignSel.addEventListener("change", tick);
+    search.addEventListener("input", render);
+
+    // --- mapa (Leaflet + OpenStreetMap, sin API key) ---
+    const map = L.map("map", { worldCopyJump:true }).setView([-12.0464, -77.0428], 11); // Lima, Peru
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:"&copy; OpenStreetMap", maxZoom:18
+    }).addTo(map);
+    const markers = new Map();   // ip_public -> L.CircleMarker (UN marcador por IP/oficina, no por equipo)
+    const geoCache = new Map();  // ip_public -> {lat,lon,city,country,isp} | "pending" | "error"
+    const geoQueue = [];
+    let geoQueueRunning = false;
+
+    function enqueueGeo(ip, sampleAgentId){
+      if (geoCache.has(ip)) return;
+      geoCache.set(ip, "pending");
+      geoQueue.push({ ip, agentId: sampleAgentId });
+      runGeoQueue();
+    }
+
+    // Un pedido a la vez, con pausa entre cada uno: ipapi.is es un servicio
+    // externo con limite de tasa. Se cachea por IP (el servidor tambien
+    // cachea por IP), asi que varios equipos con la misma IP publica
+    // (misma oficina/NAT) comparten una sola consulta.
+    async function runGeoQueue(){
+      if (geoQueueRunning) return;
+      geoQueueRunning = true;
+      while (geoQueue.length){
+        const { ip, agentId } = geoQueue.shift();
+        try {
+          const j = await (await fetch("api/geo?agent="+encodeURIComponent(agentId),{credentials:"include"})).json();
+          const d = j.data || {};
+          if (j.ok && typeof d.lat === "number" && typeof d.lon === "number") {
+            geoCache.set(ip, {
+              lat:d.lat, lon:d.lon,
+              city:(d.location&&d.location.city)||"",
+              country:(d.location&&d.location.country)||d.cc||"",
+              isp:(d.company&&d.company.name)||d.company_name||(d.asn&&d.asn.org)||d.asn_org||""
+            });
+          } else { geoCache.set(ip, "error"); }
+        } catch { geoCache.set(ip, "error"); }
+        updateMapMarkers();
+        await new Promise(r => setTimeout(r, 400));
+      }
+      geoQueueRunning = false;
+    }
+
+    // Agrupa los equipos por IP publica: un solo punto por ubicacion.
+    // Antes cada equipo dibujaba su propio marcador y, si varios compartian
+    // IP (misma oficina), el ultimo dibujado tapaba a los demas -> un
+    // equipo offline procesado despues ocultaba el punto verde de uno
+    // online en la misma coordenada. Ahora el punto es verde si HAY AL
+    // MENOS UNO online en esa IP, y el popup lista todos los equipos ahi.
+    function updateMapMarkers(){
+      const groups = new Map(); // ip -> [agentes]
+      for (const a of agents){
+        if (!a.ip_public) continue;
+        if (!groups.has(a.ip_public)) groups.set(a.ip_public, []);
+        groups.get(a.ip_public).push(a);
+      }
+
+      for (const [ip, list] of groups){
+        const cached = geoCache.get(ip);
+        if (cached === undefined) { enqueueGeo(ip, list[0].agent_id); continue; }
+        if (cached === "pending" || cached === "error") continue;
+
+        const anyOnline = list.some(a => a.online);
+        const color = anyOnline ? "#34d399" : "#5b6577";
+        const radius = Math.min(7 + (list.length - 1) * 2, 16);
+        let mk = markers.get(ip);
+        if (!mk) {
+          mk = L.circleMarker([cached.lat, cached.lon], { radius, color, weight:2, fillColor:color, fillOpacity:.55 }).addTo(map);
+          markers.set(ip, mk);
+        } else {
+          mk.setLatLng([cached.lat, cached.lon]);
+          mk.setStyle({ color, fillColor:color, radius });
+        }
+        const place = [cached.city, cached.country].filter(Boolean).join(", ");
+        const rows = list.map(a => `<div style="display:flex;align-items:center;gap:6px;margin-top:4px">`+
+          `<span style="width:7px;height:7px;border-radius:50%;flex:none;background:${a.online?'#34d399':'#5b6577'}"></span>`+
+          `<b style="margin:0">${esc(a.tag||a.agent_id)}</b>`+
+          (a.online ? ` <a class="geo-pop-btn" style="margin-top:0;padding:1px 6px" href="remoteo.html?agent=${encodeURIComponent(a.agent_id)}&label=${encodeURIComponent(a.tag||a.hostname||a.agent_id)}" target="_blank" rel="noopener">Remotear</a>` : "")+
+          `</div>`).join("");
+        mk.bindPopup(`<b>${esc(place || ip)}</b>${esc(cached.isp)}${list.length>1?` · ${list.length} equipos`:""}<div style="margin-top:2px">${rows}</div>`);
+      }
+
+      const currentIps = new Set(groups.keys());
+      for (const [ip, mk] of markers) {
+        if (!currentIps.has(ip)) { map.removeLayer(mk); markers.delete(ip); }
+      }
+    }
+
+    async function tick(){
+      try { const q = campaignSel.value ? ("?campaign="+encodeURIComponent(campaignSel.value)) : "";
+        const r = await fetch("api/agents"+q,{credentials:"include"}); if (r.status===401){ location.href="login.html"; return; }
+        agents = (await r.json()).agents || [];
+        agents.sort((a,b) => (b.online?1:0) - (a.online?1:0) ||
+          String(a.tag||a.hostname||a.agent_id).localeCompare(String(b.tag||b.hostname||b.agent_id)));
+        render();
+        updateMapMarkers();
+      } catch { stat.textContent = "error"; }
+    }
+
+    // Ping de conexion EN VIVO (a.ping, medido continuamente) - distinto del
+    // ping que trae el resultado del speedtest manual (solo se actualiza al
+    // correr esa prueba puntual).
+    function pingBadge(p){
+      if (typeof p !== "number" || p < 0) return `<span class="ping-badge ping-off">offline</span>`;
+      const cls = p > 150 ? "ping-hi" : "ping-ok";
+      return `<span class="ping-badge ${cls}">${p} ms</span>`;
+    }
+
+    function speedBlock(s){
+      if(!s || s.status!=="done") return `<div class="seg row-speed empty-speed">Sin speedtest</div>`;
+      const r = parse(s.result_json)||{};
+      return `<div class="seg row-speed">
+        <div>
+          <div class="isp">${esc(r.isp||"speedtest")}</div>
+          <div class="ping">${esc(r.pingMs??"--")}ms ping</div>
+        </div>
+        <div class="mbps">${esc(r.downloadMbps??"--")}↓ / ${esc(r.uploadMbps??"--")}↑</div>
+      </div>`;
+    }
+
+    function row(a){
+      const off = a.online ? "" : "disabled";
+      return `<div class="row-card ${a.online?'is-online':''}" data-card="${esc(a.agent_id)}">
+        <div class="row-main">
+          <div class="seg status-col" title="${esc(a.tag||a.agent_id)}">
+            <div class="line1"><span class="dot ${a.online?'on':''}"></span><span class="row-tag">${esc(a.tag||a.agent_id)}</span></div>
+            <div class="line2">${pingBadge(a.ping)}<span class="row-camp">${esc(a.campaign||'sin campaña')}</span><span class="row-age">hace ${ageText(a.last_seen)}</span></div>
+          </div>
+          <div class="div"></div>
+          <div class="seg host-col" title="${esc(a.hostname||'--')} / ${esc(a.username||'--')}">
+            <b>${esc(a.hostname||'--')}</b>
+            <span>${esc(a.username||'--')}</span>
+          </div>
+          <div class="div"></div>
+          <div class="seg net-col" title="${esc(a.adapter||'--')} · ${esc(a.mac||'--')}">
+            <div class="line1 row-actions">
+              <button class="ic-btn rem-ic remote-btn" data-id="${esc(a.agent_id)}" data-label="${esc(a.tag||a.hostname||a.agent_id)}" ${off} title="Remotear (${esc(a.adapter||'--')})">${netIcon(a.adapter)}</button>
+              <button class="ic-btn cmd" data-cmd="speedtest" data-id="${esc(a.agent_id)}" ${off} title="Speedtest">${ICON.bolt}</button>
+              <button class="ic-btn cmd" data-cmd="network-scan" data-id="${esc(a.agent_id)}" ${off} title="Escanear LAN">${ICON.radar}</button>
+              <button class="ic-btn geo-ic" data-geo-id="${esc(a.agent_id)}" ${off} title="Ubicar">${ICON.pin}</button>
+              <button class="ic-btn hist-ic" data-hist="${esc(a.agent_id)}" title="Historial (${esc(a.historyCount||0)})">${ICON.clock}</button>
+            </div>
+            <div class="line2"><span class="k">LOC</span><span class="v">${esc(a.ip_local||'--')}</span><span class="k" style="margin-left:6px">PUB</span><span class="v">${esc(a.ip_public||'--')}</span></div>
+          </div>
+          <div class="div"></div>
+          ${speedBlock(a.speedtest)}
+        </div>
+        <div class="row-detail" id="detail-${esc(a.agent_id)}"></div>
+      </div>`;
+    }
+
+    function render(){
+      const query = search.value.trim().toLowerCase();
+      const list = query ? agents.filter(a => (String(a.tag||"")+a.hostname+(a.ip_local||"")+(a.ip_public||"")).toLowerCase().includes(query)) : agents;
+      stat.textContent = `${agents.length} agentes · ${agents.filter(a=>a.online).length} online`;
+      if(!list.length){ wrap.innerHTML = '<div class="empty">Sin agentes.</div>'; return; }
+      wrap.innerHTML = `<div class="list">${list.map(row).join("")}</div>`;
+    }
+
+    function toggleDetail(agentId, html){
+      const el = document.getElementById("detail-"+agentId);
+      if (!el) return;
+      if (el.classList.contains("open") && el.dataset.kind === html.kind) { el.classList.remove("open"); el.innerHTML=""; return; }
+      el.dataset.kind = html.kind;
+      el.innerHTML = html.body;
+      el.classList.add("open");
+    }
+
+    // --- acciones (mismo backend que index.html) ---
+    wrap.addEventListener("click", async (e) => {
+      const rem = e.target.closest(".remote-btn");
+      if (rem) { const id = rem.dataset.id; window.open("remoteo.html?agent="+encodeURIComponent(id)+"&label="+encodeURIComponent(rem.dataset.label||id), "remoteo_"+id, "width=1024,height=680,menubar=no,toolbar=no,location=no,status=no"); return; }
+
+      const cmd = e.target.closest(".cmd");
+      if (cmd) { const id=cmd.dataset.id, type=cmd.dataset.cmd; cmd.disabled=true;
+        try { const r=await fetch("api/agent/"+encodeURIComponent(id)+"/command",{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:JSON.stringify({type})}); if(!(await r.json()).ok) throw new Error("no se pudo"); await tick(); } catch(err){ alert(err.message||err); } finally { cmd.disabled=false; } return; }
+
+      const geo = e.target.closest(".geo-ic");
+      if (geo) { const id=geo.dataset.geoId; geo.disabled=true;
+        try { const j=await (await fetch("api/geo?agent="+encodeURIComponent(id),{credentials:"include"})).json();
+          let body;
+          if(j.ok){ const d=j.data||{}, loc=d.location||{}, asn=d.asn||{}, co=d.company||{};
+            body = `<strong>${esc(loc.city||"--")}, ${esc(loc.country||d.country||"--")}</strong><span class="muted-line">${esc(co.name||asn.org||"")}</span><div class="muted-line">${esc(j.ip||"")}</div>`;
+          } else { body = `<span class="muted-line">${esc(j.error||"error")}</span>`; }
+          toggleDetail(id, { kind:"geo", body });
+        } catch(err){ /* noop */ } finally { geo.disabled=false; } return; }
+
+      const hist = e.target.closest(".hist-ic");
+      if (hist) { const id=hist.dataset.hist; hist.disabled=true;
+        try { const j=await (await fetch("api/history?agent="+encodeURIComponent(id),{credentials:"include"})).json();
+          const rows=(j.history||[]).slice(0,15).map(h=>{ const r=parse(h.result_json)||{}; const det=h.type==="speedtest"?`${r.downloadMbps??"--"}↓ ${r.uploadMbps??"--"}↑ ping ${r.pingMs??"--"}`:`${r.hostCount??"--"} disp ${r.subnet||""}`; return `<div>${esc((h.acked_at||h.created_at||"").replace("T"," ").slice(0,19))} · ${esc(h.type)} · ${esc(h.status)} · ${esc(h.status==="error"?(h.error||""):det)}</div>`; }).join("");
+          toggleDetail(id, { kind:"hist", body: rows || '<span class="muted-line">Sin historial</span>' });
+        } catch(err){ /* noop */ } finally { hist.disabled=false; } return; }
+    });
+  </script>
+</body>
+</html>

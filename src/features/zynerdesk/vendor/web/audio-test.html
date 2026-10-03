@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Audio Test · frostmurpc</title>
+  <style>
+    * { box-sizing:border-box; }
+    html,body { margin:0; min-height:100%; background:#0d1117; font-family:"Segoe UI",sans-serif; color:#e8eef4; }
+    body { padding:20px; max-width:640px; margin:0 auto; }
+    h1 { font-size:18px; margin:0 0 4px; }
+    .sub { color:#8293a2; font-size:12px; margin:0 0 20px; }
+    .row { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+    button { appearance:none; border:1px solid #555; background:#1a2027; color:#9fb0c0; border-radius:8px;
+      padding:12px 20px; font-weight:800; font-size:14px; cursor:pointer; }
+    button.on { border-color:#d29922; background:rgba(210,153,34,.15); color:#ffd866; }
+    button:disabled { opacity:.45; cursor:not-allowed; }
+    #status { font-size:13px; color:#9fb0c0; }
+    .panel { background:#161b22; border:1px solid #2a333d; border-radius:10px; padding:16px; margin-top:12px; }
+    .panel h2 { font-size:13px; margin:0 0 10px; color:#8293a2; text-transform:uppercase; letter-spacing:.05em; }
+    .metric { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #21262d; font-size:13px; }
+    .metric:last-child { border-bottom:none; }
+    .metric .k { color:#8293a2; }
+    .metric .v { font-weight:700; font-variant-numeric:tabular-nums; }
+    .level-bar { height:10px; background:#0d1117; border:1px solid #2a333d; border-radius:5px; overflow:hidden; margin-top:8px; }
+    .level-fill { height:100%; width:0%; background:linear-gradient(90deg,#2cce72,#ffd866,#e63946); transition:width .15s linear; }
+    .hint { font-size:12px; color:#8293a2; margin-top:16px; line-height:1.5; }
+    .log { margin-top:12px; font-family:Consolas,monospace; font-size:11px; color:#6b7684; max-height:140px; overflow:auto; }
+  </style>
+</head>
+<body>
+  <h1>Audio Test · <span id="label">frostmurpc</span></h1>
+  <p class="sub">Página exclusiva de diagnóstico — no afecta el panel de producción. Solo audio, sin pantalla ni control.</p>
+
+  <div class="row">
+    <button id="listen" disabled>Escuchar: OFF</button>
+    <span id="status">conectando...</span>
+  </div>
+
+  <div class="panel">
+    <h2>Estadísticas en vivo (WebRTC getStats)</h2>
+    <div class="metric"><span class="k">Estado conexión</span><span class="v" id="m-state">-</span></div>
+    <div class="metric"><span class="k">audioLevel</span><span class="v" id="m-level">-</span></div>
+    <div class="metric"><span class="k">bytesReceived</span><span class="v" id="m-bytes">-</span></div>
+    <div class="metric"><span class="k">packetsReceived</span><span class="v" id="m-packets">-</span></div>
+    <div class="metric"><span class="k">jitter</span><span class="v" id="m-jitter">-</span></div>
+    <div class="level-bar"><div class="level-fill" id="level-fill"></div></div>
+  </div>
+
+  <div class="hint">
+    audioLevel va de 0 a 1. Si se queda en ~0 mientras suena algo en el agente, la captura está mandando silencio real.
+    Si sube (aunque sea 0.02-0.1) mientras hay sonido, el audio sí llega con contenido — el problema estaría en la
+    salida de tu lado (mezclador, pestaña muteada, dispositivo).
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <script>
+    const Q = new URLSearchParams(location.search);
+    const AGENT = Q.get("agent") || "1c6f25d54bcc97c1";
+    const LABEL = Q.get("label") || "frostmurpc";
+    const BASE = location.pathname.replace(/[^/]*$/, "");
+    const WS_URL = (location.protocol === "https:" ? "wss:" : "ws:") + "//" + location.host + BASE + "ws";
+
+    const el = (id) => document.getElementById(id);
+    el("label").textContent = LABEL;
+    document.title = "Audio Test · " + LABEL;
+    const st = (t) => el("status").textContent = t;
+    const logLine = (t) => {
+      const line = document.createElement("div");
+      line.textContent = "[" + new Date().toLocaleTimeString() + "] " + t;
+      el("log").prepend(line);
+    };
+
+    const R = {
+      ws: null, audioPc: null, audioState: "stopped",
+      audioAllowed: false, audioAdminAllowed: false, audioAgentCapable: false,
+      audioContext: null, audioSource: null, audioStream: null,
+      statsTimer: null
+    };
+
+    function closeAudioLocal() {
+      if (R.statsTimer) { clearInterval(R.statsTimer); R.statsTimer = null; }
+      if (R.audioSource) { try { R.audioSource.disconnect(); } catch {} }
+      if (R.audioStream) R.audioStream.getTracks().forEach((t) => t.stop());
+      if (R.audioPc) { try { R.audioPc.close(); } catch {} }
+      R.audioSource = null; R.audioStream = null; R.audioPc = null;
+      el("m-state").textContent = "-"; el("m-level").textContent = "-";
+      el("m-bytes").textContent = "-"; el("m-packets").textContent = "-"; el("m-jitter").textContent = "-";
+      el("level-fill").style.width = "0%";
+    }
+
+    function startStatsLoop() {
+      if (R.statsTimer) clearInterval(R.statsTimer);
+      R.statsTimer = setInterval(async () => {
+        if (!R.audioPc) return;
+        el("m-state").textContent = R.audioPc.connectionState;
+        const stats = await R.audioPc.getStats();
+        stats.forEach((r) => {
+          if (r.type === "inbound-rtp" && r.kind === "audio") {
+            const level = typeof r.audioLevel === "number" ? r.audioLevel : 0;
+            el("m-level").textContent = level.toFixed(4);
+            el("m-bytes").textContent = r.bytesReceived ?? "-";
+            el("m-packets").textContent = r.packetsReceived ?? "-";
+            el("m-jitter").textContent = r.jitter !== undefined ? r.jitter.toFixed(4) : "-";
+            el("level-fill").style.width = Math.min(100, level * 400) + "%";
+          }
+        });
+      }, 500);
+    }
+
+    function setAudioUi(state, detail) {
+      R.audioState = state;
+      const button = el("listen");
+      button.textContent = "Escuchar: " + (state === "listening" || state === "starting" ? "ON" : "OFF");
+      button.classList.toggle("on", state === "listening" || state === "starting");
+      st(detail || state);
+      logLine("audio " + state + (detail ? " · " + detail : ""));
+    }
+
+    function refreshAudioPermission() {
+      R.audioAllowed = R.audioAdminAllowed && R.audioAgentCapable;
+      el("listen").disabled = !R.audioAllowed;
+      if (!R.audioAllowed && R.audioState === "stopped") {
+        const reason = !R.audioAdminAllowed ? "Escucha permitida solo a administradores" : "El agente no admite escucha autenticada";
+        st(reason);
+      }
+    }
+
+    async function acceptAudioOffer(message) {
+      closeAudioLocal();
+      const connection = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+      R.audioPc = connection;
+      connection.onicecandidate = (event) => {
+        if (event.candidate && R.ws && R.ws.readyState === 1) {
+          R.ws.send(JSON.stringify({ type: "audio:ice-candidate", agentId: AGENT, candidate: event.candidate }));
+        }
+      };
+      connection.onconnectionstatechange = () => {
+        el("m-state").textContent = connection.connectionState;
+        if (["failed", "disconnected", "closed"].includes(connection.connectionState)) {
+          closeAudioLocal();
+          setAudioUi("stopped", "Conexión de audio " + connection.connectionState);
+        }
+      };
+      connection.ontrack = async (event) => {
+        const stream = event.streams[0] || new MediaStream([event.track]);
+        R.audioStream = stream;
+        if (!R.audioContext) R.audioContext = new AudioContext();
+        await R.audioContext.resume();
+        R.audioSource = R.audioContext.createMediaStreamSource(stream);
+        R.audioSource.connect(R.audioContext.destination);
+        setAudioUi("listening", "Audio remoto en vivo; no se graba");
+        startStatsLoop();
+      };
+      await connection.setRemoteDescription(message.offer);
+      const answer = await connection.createAnswer();
+      await connection.setLocalDescription(answer);
+      R.ws.send(JSON.stringify({ type: "audio:answer", agentId: AGENT, answer }));
+    }
+
+    el("listen").addEventListener("click", async () => {
+      if (!R.audioAllowed || !R.ws || R.ws.readyState !== 1) return;
+      if (R.audioState !== "stopped" && R.audioState !== "error") {
+        R.ws.send(JSON.stringify({ type: "audio:stop", agentId: AGENT }));
+        setAudioUi("stopping", "Deteniendo escucha");
+        return;
+      }
+      if (!R.audioContext) R.audioContext = new AudioContext();
+      await R.audioContext.resume();
+      setAudioUi("starting", "Solicitando audio al agente");
+      R.ws.send(JSON.stringify({ type: "audio:start", agentId: AGENT }));
+    });
+
+    function connect() {
+      R.ws = new WebSocket(WS_URL);
+      R.ws.onopen = () => { st("señalización OK · esperando agente"); R.ws.send(JSON.stringify({ type: "session:join", agentId: AGENT })); logLine("WS abierto, session:join enviado"); };
+      R.ws.onerror = () => { st("error de señalización"); logLine("WS error"); };
+      R.ws.onclose = () => { closeAudioLocal(); setAudioUi("stopped", "WebSocket desconectado"); logLine("WS cerrado"); };
+      R.ws.onmessage = async (ev) => {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === "error") { st(msg.detail || "error"); logLine("error: " + (msg.detail || "?")); return; }
+        if (msg.type === "session:ready") {
+          R.audioAdminAllowed = Boolean(msg.audioAdminAllowed);
+          R.audioAgentCapable = Boolean(msg.audioAgentCapable);
+          refreshAudioPermission();
+          st(msg.audioAllowed ? "Escucha disponible bajo demanda" : "Escucha no disponible");
+          logLine("session:ready audioAllowed=" + msg.audioAllowed + " agentCapable=" + msg.audioAgentCapable);
+          return;
+        }
+        if (msg.type === "agent:capabilities") {
+          R.audioAgentCapable = Boolean(msg.audioAgentCapable);
+          refreshAudioPermission();
+          logLine("agent:capabilities audioAgentCapable=" + msg.audioAgentCapable);
+          return;
+        }
+        if (msg.type === "agent:offline") { st("agente sin conexión"); logLine("agente offline"); return; }
+        if (msg.type === "audio:offer") { await acceptAudioOffer(msg); return; }
+        if (msg.type === "audio:ice-candidate" && R.audioPc && msg.candidate) { R.audioPc.addIceCandidate(msg.candidate).catch(() => {}); return; }
+        if (msg.type === "audio:status") {
+          setAudioUi(msg.state || "stopped", msg.reason || "");
+          if (["stopped", "error"].includes(msg.state)) closeAudioLocal();
+          return;
+        }
+        if (msg.type === "audio:ended") {
+          closeAudioLocal();
+          setAudioUi(msg.state === "error" ? "error" : "stopped", msg.error || msg.reason || "Sesión finalizada");
+          return;
+        }
+        if (msg.type === "audio:error") {
+          closeAudioLocal();
+          setAudioUi("error", msg.detail || "Escucha rechazada");
+          st(msg.detail || "Escucha rechazada");
+          logLine("audio:error " + (msg.detail || "?"));
+          return;
+        }
+      };
+    }
+
+    connect();
+    window.addEventListener("beforeunload", () => {
+      try { if (R.audioState !== "stopped" && R.ws && R.ws.readyState === 1) R.ws.send(JSON.stringify({ type: "audio:stop", agentId: AGENT })); } catch {}
+      closeAudioLocal();
+      try { R.audioContext && R.audioContext.close(); } catch {}
+      try { R.ws && R.ws.close(); } catch {}
+    });
+  </script>
+</body>
+</html>

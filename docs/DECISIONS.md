@@ -401,4 +401,28 @@ Impacto:
 modulo whatsapp (CONTRACT.md reescrito); ningun otro modulo se modifica; riesgo de permisos con ProtectSystem=strict por DB_PATH_MEDIA fijado en vendor/config.js, mitigado con symlink hacia /var/lib/zynervox-whatsapp
 
 Seguimiento:
-Validar los 11 criterios de aceptacion de docs/TAREA_WHATSAPP_NATIVO.md seccion 7 antes de fusionar a main.
+Los 11 criterios de aceptacion de docs/TAREA_WHATSAPP_NATIVO.md seccion 7 se validaron en WSL (zynervox-borrar) antes de fusionar a main el 2026-10-03.
+
+### ADR-0017 - Migrar Zynerdesk (Synervox Remoteo) de Docker a despliegue nativo
+
+Fecha: 2026-10-03
+
+Estado: aceptada
+
+Contexto:
+El codigo de Synervox Remoteo solo existia dentro de la imagen ghcr.io/miguelleonh0331/synervox-remoteo, sin repo propio versionado. farm y whatsapp ya migraron al patron nativo (vendor/ + systemd + MySQL del host); zynerdesk quedaba como el ultimo modulo Docker, duplicando MySQL y sin trazabilidad por commit. Esta instancia esta validada en mirmidon (produccion) en su forma Docker actual.
+
+Decisión:
+Extraer el codigo de la imagen, vendorizarlo en src/features/zynerdesk/vendor/, reescribir installer/zynerdesk.sh sin Docker/Compose (usuario systemd dedicado, BD syner_remoteo en el MySQL nativo del host, scripts/start.js como entrypoint real ya que migra y arranca en un solo proceso) y eliminar zynerdesk/compose.yml.
+
+Motivo:
+Unificar el modelo de despliegue con farm/whatsapp, eliminar un MySQL duplicado, quitar la dependencia de Docker y recuperar el codigo fuente que hoy solo vive en una imagen binaria.
+
+Alternativas evaluadas:
+- Mantener Docker y solo versionar zynerdesk/compose.yml (no recupera el codigo fuente real); publicar la imagen propia con digest fijado (no resuelve la falta de repo).
+
+Impacto:
+modulo zynerdesk (CONTRACT.md reescrito); ningun otro modulo se modifica; bcrypt nativo requiere prebuild linux-x64 glibc (verificado disponible, sin necesidad de compilar); mirmidon sigue en Docker hasta que se decida migrar produccion por separado, fuera de alcance de este ADR
+
+Seguimiento:
+Validado en WSL (zynervoxv1) con 6/6 pruebas de aceptacion (docker vacio, systemd activo, 14 tablas migradas, proxy 200, SSO HMAC real 200, sesion persiste tras restart) antes de fusionar a main el 2026-10-03. Migrar mirmidon requiere autorizacion explicita y separada.
