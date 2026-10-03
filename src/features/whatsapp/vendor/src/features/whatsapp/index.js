@@ -12,7 +12,7 @@ const path = require('path');
 function register(ctx) {
   const {
     app, api, db, config, upload, saveMediaBuffer, MEDIA_DIR,
-    credentialsForLine, classifyIncoming, onDeliveryReceipt, applyWebhookHealthUpdate,
+    credentialsForLine, onDeliveryReceipt,
   } = ctx;
 
   // ------------------------------------------------------------ webhook GET
@@ -86,12 +86,14 @@ function register(ctx) {
           }
 
           // Actualizaciones de salud en tiempo real → módulo salud.
-          if (applyWebhookHealthUpdate) await applyWebhookHealthUpdate(value).catch(() => {});
+          if (ctx.applyWebhookHealthUpdate) {
+            await ctx.applyWebhookHealthUpdate(value).catch(() => {});
+          }
 
           // Mensajes entrantes → módulo conversaciones.
           for (const msg of value.messages || []) {
-            if (classifyIncoming) {
-              await classifyIncoming({
+            if (ctx.classifyIncoming) {
+              await ctx.classifyIncoming({
                 line,
                 waId: msg.from,
                 profileName: value.contacts?.[0]?.profile?.name || null,

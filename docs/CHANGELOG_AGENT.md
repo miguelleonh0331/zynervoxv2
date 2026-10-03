@@ -923,3 +923,25 @@ Contrato:
 
 Riesgos:
 - cambio localizado a la verificacion GET; la recepcion POST y el envio a Graph API no cambian
+
+### 2026-10-03 23:32 - whatsapp_AGENT - whatsapp
+
+Tipo: fix
+
+Resumen:
+Resolver dinamicamente los callbacks tardios de conversaciones y salud desde el webhook POST de Meta.
+
+Motivo:
+`whatsapp` se registra antes que `conversaciones` y `salud`; al desestructurar `classifyIncoming` y `applyWebhookHealthUpdate` durante el registro, ambos quedaban permanentemente `undefined` y los POST de Meta se aceptaban con HTTP 200 sin crear mensajes.
+
+Archivos modificados:
+- src/features/whatsapp/vendor/src/features/whatsapp/index.js
+- src/features/whatsapp/tests/webhook-late-handlers.test.js
+- src/features/whatsapp/README.md
+- docs/CHANGELOG_AGENT.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- no cambia el orden de modulos ni las APIs; los callbacks se consultan en `ctx` al procesar cada evento
