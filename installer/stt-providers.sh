@@ -42,7 +42,7 @@ find "$WEB_DEST" -type f -exec chmod 0640 {} +
 cat > "$CONFIG_PHP" <<EOF
 <?php
 return [
-    'host' => 'localhost',
+    'host' => '127.0.0.1',
     'database' => '$STT_DB_NAME',
     'user' => '$STT_DB_USER',
     'password' => '$STT_DB_PASSWORD',
