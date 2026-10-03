@@ -51,7 +51,12 @@ if (!move_uploaded_file($_FILES['proxy_file']['tmp_name'], $dest)) {
     echo json_encode(['ok' => false, 'error' => 'No se pudo guardar el archivo']);
     exit;
 }
-chmod($dest, 0660);
+// 0664 y no 0660: el archivo queda con dueno/grupo www-data (lo crea PHP),
+// pero quien lo LEE es orchestrator.py, que corre como el usuario de la
+// instancia Farm -- no esta en el grupo www-data, asi que necesita el bit de
+// lectura de "otros". No expone nada: el directorio contenedor sigue 0770,
+// solo el usuario Farm y www-data pueden siquiera entrar en el.
+chmod($dest, 0664);
 
 audit_event('proxy_file_upload', ['file' => $safeName, 'original' => $originalName, 'size' => $_FILES['proxy_file']['size']]);
 echo json_encode(['ok' => true, 'file' => $safeName]);
