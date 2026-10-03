@@ -22,10 +22,22 @@ class Config {
             // Podríamos mockearlo o lanzar una excepción.
             // En producción debe existir.
             error_log("Config file not found: " . self::$configFile);
-            return [];
+        } else {
+            self::loadFile(self::$configFile);
         }
 
-        $lines = file(self::$configFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        // BD propia de zynervox (zynervox_core / zynervox_users), separada de
+        // astguiclient.conf: claves distintas (CORE_DB_*), sin colisión.
+        self::loadFile('/etc/zynervox/zynervox-core.conf');
+
+        return self::$settings;
+    }
+
+    private static function loadFile($path) {
+        if (!file_exists($path)) {
+            return;
+        }
+        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         foreach ($lines as $line) {
             // Ignorar comentarios
             if (strpos(trim($line), '#') === 0) continue;
@@ -36,8 +48,6 @@ class Config {
                 self::$settings[$key] = $value;
             }
         }
-
-        return self::$settings;
     }
 
     public static function get($key, $default = null) {

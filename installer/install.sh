@@ -53,6 +53,11 @@ find "$WEB_ROOT" -type d -exec chmod 0750 {} +
 find "$WEB_ROOT" -type f -exec chmod 0640 {} +
 echo "WEB_INSTALLED root=$WEB_ROOT"
 
+# Login administrativo propio de zynervox (zynervox_core / zynervox_users):
+# no es opcional ni depende de --with-x, siempre se reinstala para que el
+# acceso admin quede garantizado sin tocar vicidial_users ni `asterisk`.
+bash "$ROOT/installer/zynervox-core.sh" || echo "AVISO: zynervox-core.sh no se completó; revisar manualmente" >&2
+
 if [[ $SKIP_PACKAGES -eq 0 ]]; then
   case "${ID:-}" in
     ubuntu|debian)

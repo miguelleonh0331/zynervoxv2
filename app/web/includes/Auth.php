@@ -23,12 +23,35 @@ class Auth {
 
     public static function login($username, $password) {
         self::startSession();
+
+        // 1. Tabla propia de zynervox (zynervox_users, BD zynervox_core):
+        //    admin fijo, independiente de vicidial_users y de la BD
+        //    compartida `asterisk`. Ver installer/zynervox-core.sh.
+        try {
+            $core = Database::getCoreInstance();
+            $stmt = $core->prepare("SELECT user, pass, user_level, full_name
+                                     FROM zynervox_users
+                                     WHERE user = :user AND active = 'Y'
+                                     LIMIT 1");
+            $stmt->execute(['user' => $username]);
+            $coreUser = $stmt->fetch();
+            if ($coreUser && $password === $coreUser['pass']) {
+                $_SESSION['user'] = $coreUser['user'];
+                $_SESSION['user_level'] = (int)$coreUser['user_level'];
+                $_SESSION['full_name'] = $coreUser['full_name'];
+                Audit::logAccess($username, 'LOGIN', 'Successful login from website (zynervox_users)');
+                return true;
+            }
+        } catch (Exception $e) {
+            // zynervox_core no configurado o sin conexión: se sigue con vicidial_users.
+        }
+
         $db = Database::getInstance();
 
         // Columnas clave: user, pass, user_level, active
-        $stmt = $db->prepare("SELECT user, pass, user_level, full_name 
-                             FROM vicidial_users 
-                             WHERE user = :user AND active = 'Y' 
+        $stmt = $db->prepare("SELECT user, pass, user_level, full_name
+                             FROM vicidial_users
+                             WHERE user = :user AND active = 'Y'
                              LIMIT 1");
         $stmt->execute(['user' => $username]);
         $user = $stmt->fetch();
