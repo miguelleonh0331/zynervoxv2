@@ -58,6 +58,13 @@ class Handler(BaseHTTPRequestHandler):
                 parsed = json.loads(out)
             except Exception:
                 parsed = {"ok": False, "error": out or "sin respuesta"}
+            if action == "set_destino" and parsed.get("ok"):
+                # El daemon es un proceso de larga vida que cargo
+                # ZYPAD_ASTERISK_HOST una sola vez al arrancar (EnvironmentFile).
+                # Sin esto, los subprocesos siguientes (create/get_destino)
+                # heredarian el valor viejo hasta reiniciar el daemon, aunque
+                # el .env ya haya sido actualizado en disco.
+                os.environ["ZYPAD_ASTERISK_HOST"] = str(parsed.get("host", ""))
             self._reply(200, parsed)
         except Exception as exc:
             self._reply(500, {"ok": False, "error": str(exc)})
