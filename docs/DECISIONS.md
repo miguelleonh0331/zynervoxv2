@@ -378,3 +378,27 @@ lógica de aplicación. Secretos y datos operativos continúan fuera de Git.
 Seguimiento:
 Verificar en cada despliegue el commit, tag o digest instalado y registrar el
 resultado de las pruebas remotas.
+
+### ADR-0016 - Migrar WhatsApp (Zynerwaba) de Docker a despliegue nativo
+
+Fecha: 2026-10-03
+
+Estado: aceptada
+
+Contexto:
+El codigo de Zynerwaba solo existia dentro de la imagen Docker miguelleonh0331/zynerwabav2:2.1.0-zynervox, sin repo propio. farm y stt_providers ya migraron a un patron nativo (vendor/ + systemd + MySQL del host) y whatsapp quedaba como la unica excepcion Docker, duplicando MySQL y sin trazabilidad por commit.
+
+Decisión:
+Extraer el codigo de la imagen, vendorizarlo en src/features/whatsapp/vendor/, reescribir installer/whatsapp.sh sin Docker/Compose (usuario systemd dedicado, BD zynerwabav2 en el MySQL nativo del host) y eliminar whatsapp/compose.yml, Dockerfile y overrides/ (ya fusionados en la imagen, verificado por hash).
+
+Motivo:
+Unificar el modelo de despliegue con farm/stt_providers, eliminar un MySQL duplicado, quitar la dependencia de Docker y recuperar el codigo fuente que hoy solo vive en una imagen binaria.
+
+Alternativas evaluadas:
+- Mantener Docker y solo versionar el Dockerfile+overrides (no recupera el codigo fuente real); publicar la imagen en un registro con digest fijado (no resuelve la falta de repo).
+
+Impacto:
+modulo whatsapp (CONTRACT.md reescrito); ningun otro modulo se modifica; riesgo de permisos con ProtectSystem=strict por DB_PATH_MEDIA fijado en vendor/config.js, mitigado con symlink hacia /var/lib/zynervox-whatsapp
+
+Seguimiento:
+Validar los 11 criterios de aceptacion de docs/TAREA_WHATSAPP_NATIVO.md seccion 7 antes de fusionar a main.

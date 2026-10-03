@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="es">
+<head>
+<base href="__APP_BASE__/">
+<script>window.__APP_BASE__ = '__APP_BASE__';</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Envío masivo · Synermessage</title>
+<link rel="icon" type="image/png" href="zynervox.png">
+<style>
+:root{--bg:#f2f4f7;--card:#fff;--ink:#353642;--muted:#6b7280;--line:#e3e6ec;--brand:#f58a1f;--brand-dark:#d8660b;--ok:#1f9d55;--bad:#c62828;--info:#0a7cff;--wait:#8a6d3b}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+header.top{background:#30313c;color:#fff;padding:13px 22px;display:flex;align-items:center;gap:14px}
+header.top img{height:28px}
+header.top h1{font-size:16px;margin:0;font-weight:600}
+header.top .spacer{flex:1}
+header.top a{color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.35);padding:7px 13px;border-radius:9px;font-size:13px}
+header.top a:hover{background:rgba(255,255,255,.12)}
+nav.tabs{background:#fff;border-bottom:1px solid var(--line);padding:0 22px;display:flex;gap:4px}
+nav.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:13px 16px;font:inherit;font-weight:600;color:var(--muted);cursor:pointer;border-radius:0}
+nav.tabs button.active{color:var(--brand-dark);border-bottom-color:var(--brand)}
+main{max-width:1200px;margin:20px auto;padding:0 18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+@media(max-width:960px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border-radius:14px;padding:19px;border-top:4px solid var(--brand);box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:18px}
+.card h2{margin:0 0 4px;font-size:15px}
+.card p.hint,.hint{color:var(--muted);font-size:12.5px;line-height:1.5}
+.card p.hint{margin:0 0 14px}
+label{display:block;font-size:13px;font-weight:600;margin:13px 0 5px}
+select,input[type=text],input[type=file],textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;font:inherit;background:#fff}
+button{font:inherit;font-weight:600;border:0;border-radius:9px;padding:9px 15px;cursor:pointer;background:var(--brand);color:#fff}
+button:hover{background:var(--brand-dark)}
+button.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+button.ghost:hover{background:#f6f7f9}
+button.sm{padding:6px 11px;font-size:12.5px}
+button:disabled{opacity:.55;cursor:not-allowed}
+.preview{border:1px solid var(--line);border-radius:11px;background:#e5ddd5;padding:13px;margin-top:12px}
+.bubble{background:#fff;border-radius:10px;padding:10px 12px;font-size:13.5px;line-height:1.45;white-space:pre-wrap;box-shadow:0 1px 1px rgba(0,0,0,.12)}
+.bubble .hd{font-weight:700;margin-bottom:6px}
+.bubble .ft{color:var(--muted);font-size:11.5px;margin-top:8px}
+.bubble .imgph{background:#d9dde2;border-radius:7px;height:105px;display:grid;place-items:center;color:#71767c;font-size:12px;margin-bottom:9px;overflow:hidden}
+.bubble .imgph img{width:100%;height:100%;object-fit:cover}
+.btns{margin-top:8px;display:grid;gap:4px}
+.btns span{display:block;text-align:center;color:var(--info);background:#fff;border-top:1px solid var(--line);padding:6px;font-size:12.5px}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;background:#eef1f5;color:var(--muted);margin-left:6px}
+.badge.ok{background:#e5f6ec;color:var(--ok)}
+.badge.bad{background:#fdecea;color:var(--bad)}
+.badge.run{background:#fff4e3;color:var(--wait)}
+.msg{margin-top:12px;font-size:13px;padding:10px 12px;border-radius:9px;display:none}
+.msg.show{display:block}
+.msg.err{background:#fdecea;color:var(--bad)}
+.msg.ok{background:#e5f6ec;color:var(--ok)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 7px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.bar{height:6px;background:#eceff3;border-radius:20px;overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;background:var(--ok);width:0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:11px}
+.warn{background:#fff8e6;border:1px solid #f2d999;color:#7a5b13;font-size:12.5px;padding:10px 12px;border-radius:9px;margin-top:12px;line-height:1.5}
+code{background:#eef1f5;padding:1px 5px;border-radius:4px;font-size:12px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:11px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:11px;padding:13px}
+.kpi b{display:block;font-size:23px;line-height:1.2;font-variant-numeric:tabular-nums}
+.kpi span{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.kpi small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+.item{border-bottom:1px solid var(--line);padding:13px 0}
+.item:last-child{border-bottom:0}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header class="top">
+  <img src="zynervox.png" alt="Zynervox">
+  <h1>Envío masivo por plantilla</h1>
+  <div class="spacer"></div>
+  <a href="plantillas">Crear plantilla</a>
+  <a href="">← Volver a la bandeja</a>
+</header>
+<div style="max-width:1200px;margin:14px auto 0;padding:0 18px"><div class="warn">¿No ves tu plantilla? <a href="plantillas">Créala aquí</a> y espera la aprobación de Meta.</div></div>
+
+<nav class="tabs">
+  <button data-tab="campaigns" class="active">Campañas</button>
+  <button data-tab="lists">Listas</button>
+  <button data-tab="stats">Estadísticas</button>
+</nav>
+
+<main>
+  <!-- ================= CAMPAÑAS ================= -->
+  <section id="tab-campaigns" class="grid">
+    <div>
+      <div class="card">
+        <h2>Nueva campaña</h2>
+        <p class="hint">Una campaña fija la <strong>línea</strong> y la <strong>plantilla</strong>. Después le agregas envíos, uno por cada lista de clientes.</p>
+        <form id="campaignForm">
+          <label>Nombre de la campaña<input type="text" name="name" placeholder="SOAT Julio 2026" maxlength="80" required></label>
+          <label>Línea / número de WhatsApp<select id="lineSelect" required></select></label>
+          <label>Plantilla aprobada<select id="templateSelect" required></select></label>
+          <div id="imageField" class="hidden">
+            <label>Imagen de cabecera (JPG o PNG)<input type="file" id="imageInput" accept="image/jpeg,image/png"></label>
+          </div>
+          <div id="preview" class="preview hidden">
+            <div class="bubble">
+              <div class="imgph hidden" id="pvImage">Imagen de cabecera</div>
+              <div class="hd hidden" id="pvHeader"></div>
+              <div id="pvBody"></div>
+              <div class="ft hidden" id="pvFooter"></div>
+              <div class="btns" id="pvButtons"></div>
+            </div>
+          </div>
+          <div id="tplWarn" class="warn hidden"></div>
+          <div class="row">
+            <button type="submit" id="campaignBtn">Crear campaña</button>
+            <button type="button" class="ghost" id="reloadTemplates">Recargar plantillas</button>
+          </div>
+          <div id="campaignMsg" class="msg"></div>
+        </form>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Campañas activas</h2>
+        <p class="hint">Abre una campaña para lanzar un envío a una lista y ver su avance.</p>
+        <div id="campaignList"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= LISTAS ================= -->
+  <section id="tab-lists" class="grid hidden">
+    <div>
+      <div class="card">
+        <h2>Nueva lista de clientes</h2>
+        <p class="hint">Sube el <code>.txt</code> con un número por línea. La lista queda guardada y se reutiliza en cualquier campaña.</p>
+        <form id="listForm">
+          <label>Nombre de la lista<input type="text" name="name" placeholder="Inscritos web julio" maxlength="80" required></label>
+          <label>Descripción (opcional)<input type="text" name="description" placeholder="Formulario SOAT de la web, 1-31 julio" maxlength="200"></label>
+          <label>Archivo de números (.txt)<input type="file" id="listNumbers" accept=".txt,text/plain" required></label>
+          <div id="listNumbersInfo" class="hint" style="margin-top:6px"></div>
+          <div class="row"><button type="submit" id="listBtn">Crear lista</button></div>
+          <div id="listMsg" class="msg"></div>
+        </form>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Listas guardadas</h2>
+        <div id="listsTable"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ESTADÍSTICAS ================= -->
+  <section id="tab-stats" class="hidden">
+    <div class="card">
+      <h2>Resumen global</h2>
+      <div class="kpis" id="kpis"></div>
+    </div>
+    <div class="card">
+      <h2>Por campaña</h2>
+      <div id="statsCampaigns"></div>
+    </div>
+    <div class="card">
+      <h2>Por lista</h2>
+      <p class="hint">Rendimiento histórico acumulado de cada lista en todas las campañas.</p>
+      <div id="statsLists"></div>
+    </div>
+    <div class="card">
+      <h2>Bajas (opt-out)</h2>
+      <p class="hint">Números que respondieron BAJA o "No me interesa". Quedan excluidos automáticamente de todo envío futuro.</p>
+      <div id="statsOptouts"></div>
+    </div>
+  </section>
+</main>
+
+<script src="socket.io/socket.io.js"></script>
+<script>
+const BASE = window.__APP_BASE__;
+const $ = (s) => document.querySelector(s);
+let templates = [], lists = [], campaigns = [];
+
+async function api(path, options = {}) {
+  const isForm = options.body instanceof FormData;
+  const response = await fetch(BASE + '/api' + path, isForm ? options : { headers: { 'Content-Type': 'application/json' }, ...options });
+  const data = await response.json().catch(() => ({}));
+  if (response.status === 401) { location.href = BASE + '/'; throw new Error('Sesión expirada'); }
+  if (!response.ok) throw new Error(data.error || 'Error de servidor');
+  return data;
+}
+const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function show(node, kind, text) { node.className = 'msg show ' + kind; node.textContent = text; }
+function hide(node) { node.className = 'msg'; }
+function pct(part, whole) { return whole ? Math.round(part * 100 / whole) + '%' : '—'; }
+function fecha(value) { return value ? new Date(String(value).replace(' ', 'T') + 'Z').toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'; }
+
+document.querySelectorAll('nav.tabs button').forEach((button) => {
+  button.onclick = () => {
+    document.querySelectorAll('nav.tabs button').forEach((b) => b.classList.toggle('active', b === button));
+    for (const tab of ['campaigns', 'lists', 'stats']) $('#tab-' + tab).classList.toggle('hidden', tab !== button.dataset.tab);
+    if (button.dataset.tab === 'stats') loadStats();
+  };
+});
+
+/* ---------- contador local de números del .txt ---------- */
+function countNumbers(text) {
+  const seen = new Set(); let invalid = 0;
+  for (const raw of text.split(/[\r\n,;]+/)) {
+    const clean = raw.trim(); if (!clean) continue;
+    let digits = clean.replace(/\D/g, '');
+    if (/^9\d{8}$/.test(digits)) digits = '51' + digits;
+    if (digits.length < 8 || digits.length > 15) { invalid++; continue; }
+    seen.add(digits);
+  }
+  return { valid: seen.size, invalid };
+}
+$('#listNumbers').onchange = async (event) => {
+  const file = event.target.files[0]; const info = $('#listNumbersInfo');
+  if (!file) return info.textContent = '';
+  const { valid, invalid } = countNumbers(await file.text());
+  info.innerHTML = `<strong>${valid}</strong> números válidos y únicos` + (invalid ? ` · <span style="color:#c62828">${invalid} descartados</span>` : '');
+};
+
+/* ---------- plantillas ---------- */
+async function loadLines() {
+  const { lines } = await api('/classifications');
+  $('#lineSelect').innerHTML = lines.map((l) => `<option value="${l.id}">${esc(l.name)}</option>`).join('') || '<option value="">(sin líneas)</option>';
+}
+async function loadTemplates() {
+  const select = $('#templateSelect');
+  select.innerHTML = '<option value="">Cargando…</option>';
+  try {
+    const data = await api('/broadcast/templates');
+    templates = data.approved || [];
+    const pending = (data.others || []).filter((t) => t.status === 'PENDING');
+    select.innerHTML = '<option value="">— Selecciona —</option>' + templates.map((t, i) =>
+      `<option value="${i}">${esc(t.name)} · ${t.language}${t.header_format === 'IMAGE' ? ' · con imagen' : ''}</option>`).join('');
+    if (!templates.length) show($('#campaignMsg'), 'err', pending.length
+      ? `No hay plantillas aprobadas. ${pending.length} en revisión (${pending.map((t) => t.name).join(', ')}).`
+      : 'No hay plantillas aprobadas en esta cuenta.');
+    else hide($('#campaignMsg'));
+  } catch (error) { select.innerHTML = '<option value="">(error)</option>'; show($('#campaignMsg'), 'err', error.message); }
+}
+function renderPreview() {
+  const template = templates[$('#templateSelect').value];
+  if (!template) { $('#preview').classList.add('hidden'); $('#tplWarn').classList.add('hidden'); $('#imageField').classList.add('hidden'); return; }
+  $('#preview').classList.remove('hidden');
+  $('#pvBody').textContent = template.body;
+  $('#pvHeader').classList.toggle('hidden', !template.header_text); $('#pvHeader').textContent = template.header_text || '';
+  $('#pvFooter').classList.toggle('hidden', !template.footer); $('#pvFooter').textContent = template.footer || '';
+  $('#pvButtons').innerHTML = (template.buttons || []).map((b) => `<span>${esc(b)}</span>`).join('');
+  const needsImage = template.header_format === 'IMAGE';
+  $('#pvImage').classList.toggle('hidden', !needsImage);
+  $('#imageField').classList.toggle('hidden', !needsImage);
+  $('#imageInput').required = needsImage;
+  const notes = [];
+  if (template.variables > 0) notes.push(`⚠️ Tiene <strong>${template.variables} variable(s)</strong> <code>{{n}}</code>. Este panel solo envía plantillas sin variables.`);
+  if (template.category === 'MARKETING') notes.push('Categoría <strong>MARKETING</strong>: consume tu límite diario de conversaciones iniciadas y exige opt-in previo.');
+  $('#tplWarn').innerHTML = notes.join('<br><br>');
+  $('#tplWarn').classList.toggle('hidden', !notes.length);
+  $('#campaignBtn').disabled = template.variables > 0;
+}
+$('#templateSelect').onchange = renderPreview;
+$('#reloadTemplates').onclick = loadTemplates;
+$('#imageInput').onchange = (event) => {
+  const file = event.target.files[0];
+  if (file) $('#pvImage').innerHTML = `<img src="${URL.createObjectURL(file)}" alt="">`;
+};
+
+/* ---------- campañas ---------- */
+$('#campaignForm').onsubmit = async (event) => {
+  event.preventDefault();
+  const template = templates[$('#templateSelect').value];
+  if (!template) return show($('#campaignMsg'), 'err', 'Selecciona una plantilla');
+  const body = new FormData();
+  body.append('name', $('#campaignForm').elements.name.value);
+  body.append('line_id', $('#lineSelect').value);
+  body.append('template_name', template.name);
+  body.append('template_language', template.language);
+  body.append('header_format', template.header_format);
+  if (template.header_format === 'IMAGE' && $('#imageInput').files[0]) body.append('image', $('#imageInput').files[0]);
+  $('#campaignBtn').disabled = true;
+  try {
+    await api('/campaigns', { method: 'POST', body });
+    show($('#campaignMsg'), 'ok', 'Campaña creada. Ahora agrégale un envío eligiendo una lista.');
+    $('#campaignForm').reset(); renderPreview(); await loadCampaigns();
+  } catch (error) { show($('#campaignMsg'), 'err', error.message); }
+  finally { $('#campaignBtn').disabled = false; }
+};
+
+const SEND_STATUS = { pending: ['En cola', ''], running: ['Enviando', 'run'], paused: ['Pausada', 'run'], done: ['Completado', 'ok'], failed: ['Con error', 'bad'], cancelled: ['Cancelado', 'bad'] };
+
+async function loadCampaigns() {
+  campaigns = await api('/campaigns');
+  if (!campaigns.length) return $('#campaignList').innerHTML = '<p class="hint">Todavía no hay campañas.</p>';
+  $('#campaignList').innerHTML = campaigns.map((c) => `
+    <div class="item">
+      <div><strong>${esc(c.name)}</strong>${c.status === 'archived' ? '<span class="badge">Archivada</span>' : ''}</div>
+      <div class="hint" style="margin:3px 0 7px">${esc(c.template_name)} · ${c.template_language} · línea ${esc(c.line_name)} · ${c.sends} envío(s)</div>
+      <div class="hint">${c.sent} enviados · ${c.delivered} entregados · ${c.read_count} leídos · <strong>${c.replied} respondieron</strong> · ${c.failed} fallidos</div>
+      <div class="row">
+        <button class="sm" data-open="${c.id}">Envíos y detalle</button>
+        <button class="ghost sm" data-archive="${c.id}">${c.status === 'archived' ? 'Reactivar' : 'Archivar'}</button>
+        <button class="ghost sm" data-delcamp="${c.id}">Borrar</button>
+      </div>
+      <div id="camp-${c.id}"></div>
+    </div>`).join('');
+}
+
+async function renderCampaignDetail(campaignId) {
+  const box = document.getElementById('camp-' + campaignId);
+  if (box.innerHTML) { box.innerHTML = ''; return; }
+  const { campaign, sends } = await api('/campaigns/' + campaignId);
+  const options = lists.map((l) => `<option value="${l.id}">${esc(l.name)} (${l.contacts})</option>`).join('');
+  box.innerHTML = `
+    <div style="background:#f8f9fb;border:1px solid var(--line);border-radius:11px;padding:13px;margin-top:11px">
+      <strong style="font-size:13px">Nuevo envío</strong>
+      <div class="row">
+        <select id="sendList-${campaignId}" style="flex:1;min-width:190px">${options || '<option value="">(crea una lista primero)</option>'}</select>
+        <button class="sm" data-send="${campaignId}">Enviar a esta lista</button>
+      </div>
+      <div class="hint" style="margin-top:6px">Se excluyen automáticamente las bajas y los números que ya recibieron esta campaña.</div>
+      <div id="sendMsg-${campaignId}" class="msg"></div>
+    </div>
+    ${sends.length ? `<table style="margin-top:12px">
+      <tr><th>Lista</th><th>Estado</th><th class="num">Env.</th><th class="num">Entr.</th><th class="num">Leídos</th><th class="num">Resp.</th><th class="num">Fall.</th><th></th></tr>
+      ${sends.map((s) => {
+        const [label, cls] = SEND_STATUS[s.status] || [s.status, ''];
+        const done = s.sent_rows + s.failed_rows;
+        return `<tr>
+          <td>${esc(s.list_name || s.name)}<div class="bar"><i style="width:${s.total_rows ? Math.round(done * 100 / s.total_rows) : 0}%"></i></div>
+            <div class="hint">${fecha(s.created_at)}${s.skipped ? ` · ${s.skipped} excluidos` : ''}</div></td>
+          <td><span class="badge ${cls}">${label}</span></td>
+          <td class="num">${s.sent_rows}/${s.total_rows}</td>
+          <td class="num">${s.delivered_rows}</td>
+          <td class="num">${s.read_rows}</td>
+          <td class="num"><strong>${s.replied_rows}</strong></td>
+          <td class="num">${s.failed_rows}</td>
+          <td>${s.status === 'running' ? `<button class="ghost sm" data-pause="${s.id}">Pausar</button>` : ''}
+              ${['paused', 'failed', 'pending'].includes(s.status) ? `<button class="ghost sm" data-resume="${s.id}">Reanudar</button>` : ''}
+              ${!['done', 'cancelled'].includes(s.status) ? `<button class="ghost sm" data-cancel="${s.id}">Cancelar</button>` : ''}
+              <button class="ghost sm" data-detail="${s.id}">Fallos</button></td>
+        </tr><tr><td colspan="8" style="border:0;padding:0"><div id="send-${s.id}"></div></td></tr>`;
+      }).join('')}
+    </table>` : '<p class="hint" style="margin-top:11px">Esta campaña todavía no tiene envíos.</p>'}`;
+}
+
+$('#campaignList').onclick = async (event) => {
+  const button = event.target.closest('button'); if (!button) return;
+  const d = button.dataset;
+  try {
+    if (d.open) return renderCampaignDetail(Number(d.open));
+    if (d.archive) {
+      const campaign = campaigns.find((c) => c.id === Number(d.archive));
+      await api('/campaigns/' + d.archive, { method: 'PATCH', body: JSON.stringify({ status: campaign.status === 'archived' ? 'active' : 'archived' }) });
+      return loadCampaigns();
+    }
+    if (d.delcamp) {
+      if (!confirm('¿Borrar la campaña y todo su historial de envíos?')) return;
+      await api('/campaigns/' + d.delcamp, { method: 'DELETE' }); return loadCampaigns();
+    }
+    if (d.send) {
+      const select = document.getElementById('sendList-' + d.send);
+      const node = document.getElementById('sendMsg-' + d.send);
+      if (!select.value) return show(node, 'err', 'Crea una lista primero');
+      const listName = select.options[select.selectedIndex].text;
+      if (!confirm(`¿Iniciar el envío a "${listName}"?`)) return;
+      button.disabled = true;
+      try {
+        const result = await api(`/campaigns/${d.send}/sends`, { method: 'POST', body: JSON.stringify({ list_id: Number(select.value) }) });
+        show(node, 'ok', `Envío iniciado: ${result.total} números en cola${result.skipped ? `, ${result.skipped} excluidos` : ''}.`);
+        document.getElementById('camp-' + d.send).innerHTML = '';
+        await renderCampaignDetail(Number(d.send));
+      } catch (error) { show(node, 'err', error.message); }
+      finally { button.disabled = false; }
+      return;
+    }
+    if (d.pause) await api(`/broadcasts/${d.pause}/pause`, { method: 'POST' });
+    if (d.resume) await api(`/broadcasts/${d.resume}/resume`, { method: 'POST' });
+    if (d.cancel && confirm('¿Cancelar este envío? No se enviarán los pendientes.')) await api(`/broadcasts/${d.cancel}/cancel`, { method: 'POST' });
+    if (d.detail) {
+      const box = document.getElementById('send-' + d.detail);
+      if (box.innerHTML) { box.innerHTML = ''; return; }
+      const { recipients } = await api('/broadcasts/' + d.detail);
+      const failed = recipients.filter((r) => r.status === 'failed');
+      box.innerHTML = failed.length
+        ? `<table>${failed.slice(0, 200).map((r) => `<tr><td>${r.phone}</td><td>${esc(r.error || '')}</td></tr>`).join('')}</table>`
+        : '<p class="hint" style="padding:8px 0">Sin fallos en este envío.</p>';
+      return;
+    }
+    const parent = button.closest('[id^=camp-]');
+    if (parent) { const id = parent.id.replace('camp-', ''); parent.innerHTML = ''; await renderCampaignDetail(Number(id)); }
+  } catch (error) { alert(error.message); }
+};
+
+/* ---------- listas ---------- */
+$('#listForm').onsubmit = async (event) => {
+  event.preventDefault();
+  const form = $('#listForm');
+  const body = new FormData();
+  body.append('name', form.elements.name.value);
+  body.append('description', form.elements.description.value);
+  body.append('numbers', $('#listNumbers').files[0]);
+  $('#listBtn').disabled = true;
+  try {
+    const result = await api('/broadcast-lists', { method: 'POST', body });
+    show($('#listMsg'), 'ok', `Lista creada con ${result.added} números` + (result.duplicated ? `, ${result.duplicated} duplicados omitidos` : '') + (result.invalid?.length ? `, ${result.invalid.length} inválidos` : '') + '.');
+    form.reset(); $('#listNumbersInfo').textContent = ''; await loadLists();
+  } catch (error) { show($('#listMsg'), 'err', error.message); }
+  finally { $('#listBtn').disabled = false; }
+};
+
+async function loadLists() {
+  lists = await api('/broadcast-lists');
+  $('#listsTable').innerHTML = lists.length ? `<table>
+    <tr><th>Lista</th><th class="num">Números</th><th class="num">Bajas</th><th class="num">Envíos</th><th class="num">Resp.</th><th></th></tr>
+    ${lists.map((l) => `<tr>
+      <td><strong>${esc(l.name)}</strong>${l.description ? `<div class="hint">${esc(l.description)}</div>` : ''}
+        <div class="hint">Último envío: ${fecha(l.last_send)}</div></td>
+      <td class="num">${l.contacts}</td>
+      <td class="num">${l.optouts}</td>
+      <td class="num">${l.sends}</td>
+      <td class="num">${l.replied}<div class="hint">${pct(l.replied, l.sent)}</div></td>
+      <td><button class="ghost sm" data-dellist="${l.id}">Borrar</button></td>
+    </tr>`).join('')}</table>` : '<p class="hint">Todavía no hay listas.</p>';
+}
+
+$('#listsTable').onclick = async (event) => {
+  const button = event.target.closest('button'); if (!button?.dataset.dellist) return;
+  if (!confirm('¿Borrar esta lista?')) return;
+  try { await api('/broadcast-lists/' + button.dataset.dellist, { method: 'DELETE' }); await loadLists(); }
+  catch (error) { alert(error.message); }
+};
+
+/* ---------- estadísticas ---------- */
+async function loadStats() {
+  const { totals, campaigns: cs, lists: ls, optouts } = await api('/broadcast-stats');
+  $('#kpis').innerHTML = [
+    ['Contactados', totals.total, ''],
+    ['Enviados', totals.sent, pct(totals.sent, totals.total)],
+    ['Entregados', totals.delivered, pct(totals.delivered, totals.sent)],
+    ['Leídos', totals.read_count, pct(totals.read_count, totals.delivered)],
+    ['Respondieron', totals.replied, pct(totals.replied, totals.sent)],
+    ['Fallidos', totals.failed, pct(totals.failed, totals.total)],
+    ['En cola', totals.pending, ''],
+    ['Bajas', totals.optouts, ''],
+  ].map(([label, value, sub]) => `<div class="kpi"><span>${label}</span><b>${value || 0}</b><small>${sub || '&nbsp;'}</small></div>`).join('');
+
+  $('#statsCampaigns').innerHTML = cs.length ? `<table>
+    <tr><th>Campaña</th><th>Plantilla</th><th class="num">Contactados</th><th class="num">Entregados</th><th class="num">Leídos</th><th class="num">Respuestas</th><th class="num">Fallidos</th></tr>
+    ${cs.map((c) => `<tr>
+      <td><strong>${esc(c.name)}</strong><div class="hint">${esc(c.line_name)} · ${c.sends} envío(s)</div></td>
+      <td>${esc(c.template_name)}<div class="hint">${c.template_language}</div></td>
+      <td class="num">${c.total}</td>
+      <td class="num">${c.delivered}<div class="hint">${pct(c.delivered, c.sent)}</div></td>
+      <td class="num">${c.read_count}<div class="hint">${pct(c.read_count, c.delivered)}</div></td>
+      <td class="num"><strong>${c.replied}</strong><div class="hint">${pct(c.replied, c.sent)}</div></td>
+      <td class="num">${c.failed}</td></tr>`).join('')}</table>` : '<p class="hint">Sin datos todavía.</p>';
+
+  $('#statsLists').innerHTML = ls.length ? `<table>
+    <tr><th>Lista</th><th class="num">Números</th><th class="num">Envíos</th><th class="num">Enviados</th><th class="num">Entregados</th><th class="num">Leídos</th><th class="num">Respuestas</th><th class="num">Bajas</th></tr>
+    ${ls.map((l) => `<tr>
+      <td><strong>${esc(l.name)}</strong><div class="hint">Último: ${fecha(l.last_send)}</div></td>
+      <td class="num">${l.contacts}</td><td class="num">${l.sends}</td><td class="num">${l.sent}</td>
+      <td class="num">${l.delivered}<div class="hint">${pct(l.delivered, l.sent)}</div></td>
+      <td class="num">${l.read_count}<div class="hint">${pct(l.read_count, l.delivered)}</div></td>
+      <td class="num"><strong>${l.replied}</strong><div class="hint">${pct(l.replied, l.sent)}</div></td>
+      <td class="num">${l.optouts}</td></tr>`).join('')}</table>` : '<p class="hint">Sin datos todavía.</p>';
+
+  $('#statsOptouts').innerHTML = optouts.length ? `<table>
+    <tr><th>Número</th><th>Motivo</th><th>Fecha</th></tr>
+    ${optouts.map((o) => `<tr><td>${o.phone}</td><td>${esc(o.reason || '')}</td><td>${fecha(o.created_at)}</td></tr>`).join('')}</table>`
+    : '<p class="hint">Ningún cliente se ha dado de baja.</p>';
+}
+
+/* ---------- tiempo real ---------- */
+const socket = io({ path: BASE + '/socket.io' });
+let refreshTimer = null;
+function scheduleRefresh() {
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(async () => {
+    await loadCampaigns();
+    if (!$('#tab-stats').classList.contains('hidden')) await loadStats();
+  }, 1200);
+}
+socket.on('broadcast:progress', scheduleRefresh);
+socket.on('broadcast:campaigns', scheduleRefresh);
+socket.on('broadcast:optout', scheduleRefresh);
+socket.on('broadcast:lists', () => loadLists());
+
+(async () => { await loadLines(); await loadTemplates(); await loadLists(); await loadCampaigns(); })();
+</script>
+</body>
+</html>

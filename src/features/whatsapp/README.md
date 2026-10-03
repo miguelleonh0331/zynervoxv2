@@ -28,6 +28,43 @@ independiente, sin mezclar su base MySQL con `asterisk` ni duplicar su lógica.
 - `whatsapp/overrides/`: correcciones de compatibilidad versionadas sobre la imagen fijada.
 - `/zynerwabav2/`: ruta pública proxificada.
 
+## Código vendorizado (`vendor/`)
+
+Origen: imagen `miguelleonh0331/zynerwabav2:2.1.0-zynervox`, extraída de `/app` el
+2026-10-03. Esa imagen se construyó sobre
+`miguelleonh0331/zynerwabav2:2.0.0@sha256:b6e3ac4ba9115435b151482c6d8c06fbbfe96a572c77cc1e83778c3e68e4c624`
+aplicando los cuatro overrides de `whatsapp/overrides/`.
+
+Antes de vendorizar se verificó, archivo por archivo, que el contenido de la imagen
+coincide exactamente con `whatsapp/overrides/` normalizando CRLF: los overrides ya
+estaban fusionados en la imagen, así que `vendor/` los contiene y
+`whatsapp/overrides/` deja de ser necesario.
+
+Qué se excluyó de la copia versionada:
+
+- `node_modules/`: se regenera con `npm ci` desde `package-lock.json`.
+- `data/`: adjuntos de runtime, nunca se versionan.
+
+Hechos verificados sobre este código (2026-10-03):
+
+- 81 archivos, ~2,3 MB. Cero dependencias nativas: ninguna que compilar
+  (`bcryptjs`, no `bcrypt`).
+- `src/shared/config.js` lee toda su configuración de variables de entorno, sin
+  hosts, puertos ni rutas de base de datos escritos en el código.
+- Pasa `node --check` completo con Node 22 nativo (`server.js`, `src/shared/*.js`
+  y los ocho `src/features/*/index.js`).
+- `POST /sso/zynervox` vive en `src/features/empresas/index.js` y lee
+  `ZYNERVOX_SSO_SECRET` del entorno.
+
+Limitación conocida: `package.json` declara los scripts `db:schema`, `repo:map` y
+`repo:validate` apuntando a un directorio `scripts/` que la imagen no incluye; esos
+tres scripts no funcionan en la copia vendorizada y no se usan en runtime.
+
+Aviso para quien modifique `vendor/`: `src/shared/config.js` calcula
+`DB_PATH_MEDIA` a partir de `__dirname`, no de una variable de entorno, así que el
+directorio de adjuntos queda fijado a `<vendor>/data/media` relativo al código
+instalado. El despliegue debe resolverlo con un enlace, no cambiando configuración.
+
 ## Dependencias principales
 
 - Zynerwaba `2.0.0` fijada por digest.

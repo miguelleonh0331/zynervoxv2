@@ -825,3 +825,22 @@ Contrato:
 
 Riesgos:
 - la ruta local documentada es específica del entorno Windows del propietario
+
+### 2026-10-03 09:52 - whatsapp_AGENT - whatsapp
+
+Tipo: refactor
+
+Resumen:
+Vendorizar codigo de Zynerwaba (extraido de la imagen 2.1.0-zynervox) en src/features/whatsapp/vendor/ como Paso 1-2 de la migracion a nativo
+
+Motivo:
+El codigo solo existia dentro de la imagen Docker; sin esto no hay forma de versionarlo ni de correr el servicio sin contenedor
+
+Archivos modificados:
+- src/features/whatsapp/vendor/** .gitattributes .gitignore src/features/whatsapp/README.md src/features/whatsapp/CONTRACT.md
+
+Contrato:
+- modificado con ADR-0016
+
+Riesgos:
+DB_PATH_MEDIA en vendor/config.js se calcula desde __dirname, no desde entorno; requiere symlink en el instalador hacia /var/lib/zynervox-whatsapp para no romper con ProtectSystem=strict

@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="es">
+<head>
+<base href="__APP_BASE__/">
+<script>window.__APP_BASE__ = '__APP_BASE__';</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ADB Pilot · Synermessage</title>
+<style>
+:root{--bg:#17191f;--panel:#22252d;--panel2:#1c1f26;--line:#353944;--ink:#f3f1ec;--muted:#a8adb8;--orange:#f58a1f;--orange2:#ffad55;--green:#43c982;--amber:#f5c451;--red:#ff6b67;--blue:#77a7ff}
+*{box-sizing:border-box}
+html{color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,Roboto,Arial,sans-serif;font-size:14px}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}
+:focus-visible{outline:3px solid rgba(245,138,31,.5);outline-offset:2px}
+.topbar{min-height:64px;padding:0 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:15px;background:#1b1d23}
+.brand-mark{width:8px;height:32px;background:var(--orange)}
+.title h1{font-size:18px;margin:0;letter-spacing:.01em}.title small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.pilot{border:1px solid rgba(245,138,31,.5);color:var(--orange2);padding:4px 7px;font:700 10px ui-monospace,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:9px}
+.connection{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px}.connection i{width:7px;height:7px;border-radius:50%;background:var(--amber)}
+.btn,.link-btn{border:1px solid transparent;background:var(--orange);color:#1d1710;font-weight:700;padding:9px 13px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px}
+.btn:hover{background:var(--orange2)}.btn.secondary,.link-btn{background:transparent;color:var(--ink);border-color:var(--line)}.btn.secondary:hover,.link-btn:hover{border-color:#666c79;background:#262932}
+.btn.danger{color:var(--red)}.btn.small{min-height:32px;padding:6px 9px;font-size:12px}
+main{max-width:1480px;margin:auto;padding:22px 28px 45px}
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--line);margin-bottom:20px}
+.metric{padding:15px 17px;background:var(--panel2);border-right:1px solid var(--line)}.metric:last-child{border:0}
+.metric span{display:block;color:var(--muted);text-transform:uppercase;font-size:10px;font-weight:700;letter-spacing:.1em}.metric strong{display:block;font:700 25px ui-monospace,Consolas,monospace;margin-top:5px}.metric strong.orange{color:var(--orange2)}
+.work{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);gap:20px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--orange);margin-bottom:20px}
+.panel-head{padding:16px 18px 13px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:start}.panel-head h2{font-size:15px;margin:0}.panel-head p{color:var(--muted);font-size:12px;margin:4px 0 0;line-height:1.45}.panel-body{padding:18px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px 15px}.full{grid-column:1/-1}
+label{display:block;color:#d8d9dd;font-size:12px;font-weight:650;margin-bottom:6px}
+input,select,textarea{width:100%;border:1px solid #414651;background:#181b21;color:var(--ink);padding:10px 11px;min-height:41px;border-radius:2px}
+textarea{min-height:118px;resize:vertical;line-height:1.45}input::placeholder,textarea::placeholder{color:#707681}
+.delay{display:grid;grid-template-columns:1fr 22px 1fr;align-items:end;gap:6px}.delay em{text-align:center;color:var(--muted);font-style:normal;padding-bottom:12px}
+.form-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.image-note{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px}.image-note b{color:var(--amber);border:1px solid rgba(245,196,81,.35);padding:4px 7px;font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+.message{display:none;margin-top:12px;padding:10px 12px;border-left:3px solid;font-size:12px}.message.show{display:block}.message.ok{background:rgba(67,201,130,.08);border-color:var(--green);color:#9ae5bc}.message.err{background:rgba(255,107,103,.08);border-color:var(--red);color:#ffaaa7}
+.device-list{display:grid;gap:10px}.device{border:1px solid var(--line);background:#1b1e24;padding:13px 14px;position:relative}.device.online{border-left:3px solid var(--green)}.device.offline{border-left:3px solid #646a75}
+.device-top{display:flex;align-items:center;gap:9px}.heartbeat{width:9px;height:9px;border-radius:50%;background:#656b76;box-shadow:0 0 0 4px rgba(101,107,118,.12)}.online .heartbeat{background:var(--green);box-shadow:0 0 0 4px rgba(67,201,130,.12);animation:pulse 2s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 7px rgba(67,201,130,0)}}.device-name{font-weight:700}.status-label{margin-left:auto;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.online .status-label{color:var(--green)}
+.device-id{font:11px ui-monospace,Consolas,monospace;color:#858b98;margin:5px 0 11px 18px}.queue-counts{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:9px 0}.queue-counts div{text-align:center;border-right:1px solid var(--line)}.queue-counts div:last-child{border:0}.queue-counts b{display:block;font:700 14px ui-monospace,Consolas,monospace}.queue-counts small{font-size:9px;color:var(--muted);text-transform:uppercase}.device-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;color:var(--muted);font-size:11px}
+.register-box{margin-top:14px;padding-top:14px;border-top:1px dashed #484d59}.register-box summary{cursor:pointer;font-weight:700;color:var(--orange2);font-size:12px}.register-box .form-grid{margin-top:12px}
+.agent-runbook{margin-top:16px;border:1px solid #414651;background:#181b21}.runbook-head{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}.runbook-step{font:800 10px ui-monospace,Consolas,monospace;letter-spacing:.1em;color:#17191f;background:var(--orange);padding:4px 6px}.runbook-head h3{font-size:13px;margin:0}.runbook-body{padding:13px 14px}.runbook-body>p{color:var(--muted);font-size:12px;line-height:1.55;margin:0 0 12px}.runbook-list{margin:0 0 13px;padding-left:19px;color:#d8d9dd;font-size:12px;line-height:1.55}.runbook-list li+li{margin-top:5px}.code-row{position:relative;margin-top:8px}.code-row code{display:block;padding:11px 80px 11px 12px;background:#0e1014;border-left:3px solid #505662;color:#d9e4f7;font:11px/1.55 ui-monospace,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}.copy-code{position:absolute;right:7px;top:7px;min-height:28px;padding:4px 8px;border:1px solid #454b57;background:#20242c;color:var(--ink);font-size:10px;font-weight:700}.copy-code:hover{border-color:var(--orange);color:var(--orange2)}.runbook-note{margin-top:11px!important;margin-bottom:0!important;padding-top:10px;border-top:1px dashed #3d424d}.runbook-note strong{color:var(--amber)}
+.queue-panel{margin-top:2px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:900px}th{text-align:left;color:#9298a4;font-size:10px;text-transform:uppercase;letter-spacing:.08em;background:#1b1e24}th,td{padding:11px 13px;border-bottom:1px solid var(--line);vertical-align:middle}td{font-size:12px}.campaign-name{font-weight:700;font-size:13px}.campaign-sub{color:var(--muted);font-size:11px;margin-top:3px}.lane{display:inline-flex;align-items:center;gap:7px}.lane i{width:7px;height:7px;border-radius:50%;background:var(--green)}.lane.off i{background:#666c77}
+.status{font-size:10px;text-transform:uppercase;font-weight:800;letter-spacing:.07em}.running{color:var(--green)}.paused{color:var(--amber)}.done{color:var(--blue)}.failed{color:var(--red)}
+.progress{min-width:175px}.bar{height:7px;background:#111319;margin-bottom:5px}.bar span{display:block;height:100%;background:var(--orange)}.progress small{color:var(--muted);font:10px ui-monospace,Consolas,monospace}.counts{font:11px ui-monospace,Consolas,monospace;line-height:1.6}.counts .bad{color:var(--red)}
+.state-box{padding:26px;text-align:center;color:var(--muted);border:1px dashed #454a55}.state-box strong{display:block;color:var(--ink);margin-bottom:5px}.loading::before{content:"";display:inline-block;width:11px;height:11px;border:2px solid #555b67;border-top-color:var(--orange);border-radius:50%;margin-right:8px;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+dialog{border:1px solid #555b67;border-top:3px solid var(--orange);background:var(--panel);color:var(--ink);padding:0;width:min(560px,calc(100% - 28px));box-shadow:0 30px 90px #000}dialog::backdrop{background:rgba(5,6,8,.78)}.dialog-head{padding:17px 19px;border-bottom:1px solid var(--line)}.dialog-head h2{margin:0;font-size:16px}.dialog-body{padding:18px 19px}.token-warning{color:#ffd083;background:rgba(245,196,81,.08);border-left:3px solid var(--amber);padding:10px 12px;font-size:12px;line-height:1.5}.token{font:12px ui-monospace,Consolas,monospace;overflow-wrap:anywhere;background:#111319;border:1px solid var(--line);padding:13px;margin:14px 0}.dialog-actions{display:flex;justify-content:flex-end;gap:8px}
+@media(max-width:950px){.work{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(3,1fr)}.metric:nth-child(3){border-right:0}.metric:nth-child(-n+3){border-bottom:1px solid var(--line)}}
+@media(max-width:620px){.topbar{padding:11px 15px;flex-wrap:wrap}.top-actions{width:100%;margin:0}.top-actions .connection{margin-right:auto}.title small{display:none}main{padding:14px 12px 35px}.metrics{grid-template-columns:1fr 1fr}.metric{border-bottom:1px solid var(--line)}.metric:nth-child(3){border-right:1px solid var(--line)}.metric:nth-child(even){border-right:0}.metric:last-child{grid-column:1/-1}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}.panel-body{padding:14px}.form-foot{align-items:stretch;flex-direction:column}.form-foot .btn{width:100%}.code-row code{padding:42px 10px 10px}.copy-code{left:7px;right:auto}.queue-panel .table-wrap{overflow:visible}table,tbody{display:block;min-width:0}thead{display:none}tr{display:block;border:1px solid var(--line);margin:10px;background:#1b1e24;padding:12px}td{display:flex;justify-content:space-between;gap:12px;border:0;padding:5px 0;text-align:right}td::before{content:attr(data-label);color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em;text-align:left}.progress{width:60%;min-width:0}.top-actions .link-btn{font-size:0}.top-actions .link-btn::after{content:"←";font-size:16px}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <span class="brand-mark" aria-hidden="true"></span>
+  <div class="title"><h1>ADB Pilot</h1><small>Control de colas locales · Synermessage</small></div>
+  <span class="pilot">Piloto</span>
+  <div class="top-actions">
+    <span class="connection" id="connection"><i></i><span>Conectando…</span></span>
+    <button class="btn secondary small" id="refreshBtn" type="button">↻ Actualizar</button>
+    <a class="link-btn small" href="">← Volver</a>
+  </div>
+</header>
+<main>
+  <section class="metrics" aria-label="Resumen general">
+    <div class="metric"><span>Equipos</span><strong id="mDevices">—</strong></div>
+    <div class="metric"><span>En línea</span><strong id="mOnline">—</strong></div>
+    <div class="metric"><span>Pendientes</span><strong class="orange" id="mPending">—</strong></div>
+    <div class="metric"><span>Enviados</span><strong id="mSent">—</strong></div>
+    <div class="metric"><span>Fallidos</span><strong id="mFailed">—</strong></div>
+  </section>
+
+  <section class="work">
+    <article class="panel">
+      <header class="panel-head"><div><h2>Nueva campaña</h2><p>Crea una cola independiente para un equipo registrado.</p></div></header>
+      <div class="panel-body">
+        <form id="campaignForm">
+          <div class="form-grid">
+            <div><label for="campaignName">Nombre de campaña</label><input id="campaignName" name="name" maxlength="80" placeholder="Renovaciones agosto" required></div>
+            <div><label for="deviceSelect">Equipo de envío</label><select id="deviceSelect" name="device_id" required><option value="">Cargando equipos…</option></select></div>
+            <div class="full"><label for="numbers">Números · uno por línea</label><textarea id="numbers" name="numbers" placeholder="51987654321&#10;51912345678" required></textarea><small id="numberCount" style="color:var(--muted)">0 números detectados</small></div>
+            <div class="full"><label for="messageText">Texto / pie de imagen</label><textarea id="messageText" name="message" maxlength="4000" placeholder="Hola, tenemos información importante para ti…" required></textarea></div>
+            <div class="full delay">
+              <div><label for="delayMin">Delay mínimo (seg.)</label><input id="delayMin" name="delay_min" type="number" min="1" value="15" required></div><em>—</em>
+              <div><label for="delayMax">Delay máximo (seg.)</label><input id="delayMax" name="delay_max" type="number" min="1" value="30" required></div>
+            </div>
+          </div>
+          <div class="form-foot"><span class="image-note"><b>Imagen local fija</b> configurada en cada agente</span><button class="btn" id="campaignBtn" type="submit">Crear e iniciar cola</button></div>
+          <div class="message" id="campaignMsg" role="status"></div>
+        </form>
+      </div>
+    </article>
+
+    <article class="panel">
+      <header class="panel-head"><div><h2>Equipos ADB</h2><p>Cada agente Python consume únicamente su propia cola.</p></div></header>
+      <div class="panel-body">
+        <div id="deviceList" class="device-list"><div class="state-box loading">Cargando equipos</div></div>
+        <details class="register-box">
+          <summary>+ Registrar nuevo equipo</summary>
+          <form id="deviceForm">
+            <div class="form-grid">
+              <div><label for="deviceName">Nombre del equipo</label><input id="deviceName" name="name" maxlength="80" placeholder="PC Ventas 01" required></div>
+              <div><label for="deviceDescription">Descripción opcional</label><input id="deviceDescription" name="description" maxlength="180" placeholder="Samsung S10 · Oficina"></div>
+            </div>
+            <div class="form-foot"><span></span><button class="btn small" id="deviceBtn" type="submit">Registrar y generar token</button></div>
+            <div class="message" id="deviceMsg" role="status"></div>
+          </form>
+        </details>
+        <aside class="agent-runbook" aria-labelledby="agentRunbookTitle">
+          <div class="runbook-head"><span class="runbook-step">CMD</span><h3 id="agentRunbookTitle">Conectar agente Windows</h3></div>
+          <div class="runbook-body">
+            <p>Registra primero el equipo y copia el token cuando aparezca. Por seguridad se muestra una sola vez.</p>
+            <ol class="runbook-list">
+              <li>Guarda el token de forma permanente desde Windows CMD.</li>
+              <li>Cierra esa ventana de CMD y abre una nueva: <code>setx</code> solo afecta terminales nuevas.</li>
+              <li>Entra en la carpeta del agente y ejecútalo con la imagen fija.</li>
+            </ol>
+            <div class="code-row"><code>setx ADB_PILOT_TOKEN "TOKEN"</code><button class="copy-code" type="button" data-copy-code>Copiar</button></div>
+            <div class="code-row"><code>cd /d E:\Proyectos\whatsapp-out\adb-sender
+python cloud_agent.py --image "C:\ruta\imagen-fija.jpeg"</code><button class="copy-code" type="button" data-copy-code>Copiar</button></div>
+            <p class="runbook-note"><strong>Solo para la CMD actual:</strong> usa la alternativa siguiente; se perderá al cerrar la terminal.</p>
+            <div class="code-row"><code>set ADB_PILOT_TOKEN=TOKEN</code><button class="copy-code" type="button" data-copy-code>Copiar</button></div>
+          </div>
+        </aside>
+      </div>
+    </article>
+  </section>
+
+  <section class="panel queue-panel">
+    <header class="panel-head"><div><h2>Colas por campaña</h2><p>Avance de cada dispositivo. Se actualiza automáticamente cada 5 segundos.</p></div></header>
+    <div id="campaignList"><div class="state-box loading">Consultando colas</div></div>
+  </section>
+</main>
+
+<dialog id="tokenDialog" aria-labelledby="tokenTitle">
+  <div class="dialog-head"><h2 id="tokenTitle">Token del agente</h2></div>
+  <div class="dialog-body">
+    <div class="token-warning"><strong>Guárdalo ahora.</strong> El nuevo token se muestra una sola vez y no puede recuperarse después. El servidor conserva únicamente su hash SHA-256. Configúralo en el agente Python y no lo compartas.</div>
+    <div class="token" id="tokenValue"></div>
+    <div class="dialog-actions"><button class="btn secondary" id="copyToken" type="button">Copiar token</button><button class="btn" id="closeDialog" type="button">Entendido</button></div>
+  </div>
+</dialog>
+
+<script>
+const BASE = window.__APP_BASE__;
+const API = BASE + '/api/adb-pilot';
+const $ = (s) => document.querySelector(s);
+let state = { devices: [], campaigns: [] };
+let pollTimer;
+const esc = (v) => String(v ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const num = (v) => Number(v || 0);
+const date = (v) => v ? new Date(v).toLocaleString('es-PE',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : 'Sin conexión';
+const statusLabel = {running:'En ejecución',paused:'Pausada',done:'Completada',completed:'Completada',failed:'Con error',pending:'Pendiente'};
+
+async function request(path='', options={}) {
+  const response = await fetch(API + path, {headers:{'Content-Type':'application/json'}, ...options});
+  if (response.status === 401) { location.href = BASE + '/'; throw new Error('Sesión expirada'); }
+  const data = await response.json().catch(()=>({}));
+  if (!response.ok) throw new Error(data.error || 'No fue posible completar la operación');
+  return data;
+}
+function notice(node, type, text){ node.className='message show '+type; node.textContent=text; }
+function setConnection(ok, text){ $('#connection').innerHTML=`<i style="background:${ok?'var(--green)':'var(--red)'}"></i><span>${esc(text)}</span>`; }
+function countsOf(item){ return {pending:num(item.pending ?? item.pending_count),processing:num(item.processing ?? item.processing_count),sent:num(item.sent ?? item.sent_count),failed:num(item.failed ?? item.failed_count)}; }
+
+function renderDevices(){
+  const devices=state.devices || [];
+  const deviceSelect=$('#deviceSelect'), selectedDevice=deviceSelect.value;
+  deviceSelect.innerHTML=devices.length?'<option value="">— Selecciona un equipo —</option>'+devices.map(d=>`<option value="${esc(d.id)}">${esc(d.name)}${d.online?' · en línea':' · sin conexión'}</option>`).join(''):'<option value="">Registra un equipo primero</option>';
+  if(selectedDevice && devices.some(d=>String(d.id)===String(selectedDevice))) deviceSelect.value=selectedDevice;
+  $('#deviceList').innerHTML=devices.length?devices.map(d=>{
+    const c=countsOf(d), online=Boolean(d.online ?? d.is_online);
+    return `<section class="device ${online?'online':'offline'}">
+      <div class="device-top"><i class="heartbeat" aria-hidden="true"></i><span class="device-name">${esc(d.name)}</span><span class="status-label">${online?'En línea':'Sin conexión'}</span></div>
+      <div class="device-id">${esc(d.description || ('equipo #'+d.id))}</div>
+      <div class="queue-counts"><div><b>${c.pending}</b><small>Pend.</small></div><div><b>${c.processing}</b><small>Proceso</small></div><div><b>${c.sent}</b><small>Enviados</small></div><div><b>${c.failed}</b><small>Fallidos</small></div></div>
+      <div class="device-meta"><span>Latido: ${date(d.last_seen_at ?? d.last_heartbeat)}</span><button type="button" class="btn secondary small" data-rotate="${esc(d.id)}">Generar / ver token</button></div>
+    </section>`;
+  }).join(''):'<div class="state-box"><strong>No hay equipos registrados</strong>Registra el primer agente local para comenzar.</div>';
+}
+function renderCampaigns(){
+  const campaigns=state.campaigns || [];
+  if(!campaigns.length){ $('#campaignList').innerHTML='<div class="state-box"><strong>La cola está vacía</strong>Crea una campaña para iniciar el primer envío.</div>'; return; }
+  $('#campaignList').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Campaña</th><th>Equipo / carril</th><th>Estado</th><th>Progreso</th><th>Resultados</th><th>Delay</th><th>Creada</th><th>Control</th></tr></thead><tbody>${campaigns.map(c=>{
+    const counts=countsOf(c), total=num(c.total ?? c.total_count ?? (counts.pending+counts.processing+counts.sent+counts.failed)),done=counts.sent+counts.failed,pct=total?Math.min(100,Math.round(done*100/total)):0,status=c.status||'pending',dev=state.devices.find(d=>String(d.id)===String(c.device_id));
+    return `<tr>
+      <td data-label="Campaña"><div><div class="campaign-name">${esc(c.name)}</div><div class="campaign-sub">#${esc(c.id)}</div></div></td>
+      <td data-label="Equipo"><span class="lane ${dev?.online?'':'off'}"><i></i>${esc(c.device_name || dev?.name || 'Equipo')}</span></td>
+      <td data-label="Estado"><span class="status ${esc(status)}">${esc(statusLabel[status]||status)}</span></td>
+      <td data-label="Progreso"><div class="progress"><div class="bar"><span style="width:${pct}%"></span></div><small>${done} / ${total} · ${pct}%</small></div></td>
+      <td data-label="Resultados"><div class="counts">${counts.sent} enviados<br><span class="bad">${counts.failed} fallidos</span></div></td>
+      <td data-label="Delay"><span class="counts">${num(c.delay_min)}–${num(c.delay_max)}s</span></td>
+      <td data-label="Creada">${date(c.created_at)}</td>
+      <td data-label="Control">${['running','pending'].includes(status)?`<button class="btn secondary small" data-status="paused" data-id="${esc(c.id)}">Pausar</button>`:status==='paused'?`<button class="btn small" data-status="running" data-id="${esc(c.id)}">Reanudar</button>`:'—'}</td>
+    </tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+function renderMetrics(){
+  const ds=state.devices||[], cs=state.campaigns||[], totals=state.totals||{};
+  const sum=k=>cs.reduce((a,c)=>a+countsOf(c)[k],0);
+  $('#mDevices').textContent=ds.length; $('#mOnline').textContent=ds.filter(d=>d.online??d.is_online).length;
+  $('#mPending').textContent=totals.pending??sum('pending'); $('#mSent').textContent=totals.sent??sum('sent'); $('#mFailed').textContent=totals.failed??sum('failed');
+}
+async function loadState(manual=false){
+  if(manual){ $('#refreshBtn').disabled=true; $('#refreshBtn').textContent='Actualizando…'; }
+  try{
+    const data=await request('/state');
+    state={devices:data.devices||[],campaigns:data.campaigns||[],totals:data.totals||{}};
+    renderDevices(); renderCampaigns(); renderMetrics(); setConnection(true,'API conectada · ahora');
+  }catch(error){
+    setConnection(false,'Sin conexión');
+    if(!(state.devices||[]).length) $('#deviceList').innerHTML=`<div class="state-box"><strong>Error al cargar equipos</strong>${esc(error.message)}</div>`;
+    if(!(state.campaigns||[]).length) $('#campaignList').innerHTML=`<div class="state-box"><strong>Error al consultar colas</strong>${esc(error.message)}</div>`;
+  }finally{ if(manual){$('#refreshBtn').disabled=false;$('#refreshBtn').textContent='↻ Actualizar';} }
+}
+function revealToken(token){ $('#tokenValue').textContent=token; $('#copyToken').textContent='Copiar token'; $('#tokenDialog').showModal(); }
+
+$('#numbers').addEventListener('input',e=>{const n=e.target.value.split(/[\r\n,;]+/).map(x=>x.trim()).filter(Boolean).length;$('#numberCount').textContent=`${n} número${n===1?'':'s'} detectado${n===1?'':'s'}`});
+$('#refreshBtn').onclick=()=>loadState(true);
+$('#closeDialog').onclick=()=>$('#tokenDialog').close();
+$('#copyToken').onclick=async()=>{await navigator.clipboard.writeText($('#tokenValue').textContent);$('#copyToken').textContent='✓ Copiado'};
+$('#tokenDialog').addEventListener('click',e=>{if(e.target===$('#tokenDialog'))$('#tokenDialog').close()});
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-copy-code]'); if(!b)return;
+  const text=b.parentElement.querySelector('code').textContent;
+  try{await navigator.clipboard.writeText(text);b.textContent='Copiado';setTimeout(()=>b.textContent='Copiar',1600)}
+  catch{b.textContent='No copiado';setTimeout(()=>b.textContent='Copiar',1600)}
+});
+
+$('#deviceForm').onsubmit=async e=>{
+  e.preventDefault(); const f=e.currentTarget,b=$('#deviceBtn'); b.disabled=true;
+  try{const data=await request('/devices',{method:'POST',body:JSON.stringify({name:f.name.value.trim(),description:f.description.value.trim()})}); f.reset(); notice($('#deviceMsg'),'ok','Equipo registrado correctamente.'); revealToken(data.token||data.device?.token||'Token no recibido'); await loadState();}
+  catch(error){notice($('#deviceMsg'),'err',error.message)}finally{b.disabled=false}
+};
+$('#deviceList').onclick=async e=>{
+  const b=e.target.closest('[data-rotate]'); if(!b)return;
+  if(!confirm('Generar un token nuevo invalidará inmediatamente el anterior y detendrá cualquier agente que todavía lo esté usando. El nuevo token se mostrará una sola vez y no podrá recuperarse después.\n\n¿Deseas continuar?'))return;
+  b.disabled=true;try{const data=await request(`/devices/${b.dataset.rotate}/rotate-token`,{method:'POST',body:'{}'});revealToken(data.token||data.device?.token||'Token no recibido');await loadState()}catch(error){alert(error.message)}finally{b.disabled=false}
+};
+$('#campaignForm').onsubmit=async e=>{
+  e.preventDefault();const f=e.currentTarget,b=$('#campaignBtn'),min=num(f.delay_min.value),max=num(f.delay_max.value);
+  if(min>max)return notice($('#campaignMsg'),'err','El delay mínimo no puede superar al máximo.');
+  const numbers=f.numbers.value.split(/[\r\n,;]+/).map(x=>x.trim()).filter(Boolean);
+  if(!numbers.length)return notice($('#campaignMsg'),'err','Agrega al menos un número.');
+  b.disabled=true;
+  try{await request('/campaigns',{method:'POST',body:JSON.stringify({name:f.name.value.trim(),device_id:f.device_id.value,message:f.message.value.trim(),numbers,delay_min:min,delay_max:max})});notice($('#campaignMsg'),'ok',`Campaña creada con ${numbers.length} destinos.`);f.reset();$('#numberCount').textContent='0 números detectados';f.delay_min.value=15;f.delay_max.value=30;await loadState()}
+  catch(error){notice($('#campaignMsg'),'err',error.message)}finally{b.disabled=false}
+};
+$('#campaignList').onclick=async e=>{
+  const b=e.target.closest('[data-status]');if(!b)return;b.disabled=true;
+  try{await request(`/campaigns/${b.dataset.id}/status`,{method:'POST',body:JSON.stringify({status:b.dataset.status})});await loadState()}catch(error){alert(error.message)}finally{b.disabled=false}
+};
+loadState(); pollTimer=setInterval(loadState,5000);
+</script>
+</body>
+</html>

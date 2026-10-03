@@ -1,0 +1,23 @@
+{
+  "name": "zynerwabav2",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Bandeja multiempresa para WhatsApp Cloud API — v2 modular (Zonic) con MySQL",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check src/shared/*.js && node --check src/features/*/index.js",
+    "db:schema": "mysql -u root -p < scripts/schema.sql",
+    "repo:map": "python3 scripts/repo_agent.py map --repo .",
+    "repo:validate": "python3 scripts/repo_agent.py validate --repo ."
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "multer": "^2.0.2",
+    "mysql2": "^3.11.0",
+    "read-excel-file": "^6.0.1",
+    "socket.io": "^4.7.5"
+  }
+}

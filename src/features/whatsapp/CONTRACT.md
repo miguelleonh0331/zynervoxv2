@@ -15,44 +15,53 @@ aislado, reproducible y reversible.
 - La vista `Empresas` solo aparece para `superadmin` y consume el CRUD `/api/empresas/:id/...`.
 - Un `admin` de empresa solo ve `Usuarios` y `Líneas`; las funciones operativas no se presentan en esta ruta.
 - `installer/whatsapp.sh init|up|status|credentials|install-proxy|remove-proxy|backup|restore|down`.
-- Variables generadas en `whatsapp/.env`; nunca se versionan.
+- Variables generadas en `/etc/zynervox/zynervox-whatsapp.env`; nunca se versionan.
 
 ## Salidas públicas
 
-- Ruta `/zynerwabav2/` servida por Apache hacia el puerto local elegido.
-- Servicios Compose `app` y `db`, nombrados y aislados por `COMPOSE_PROJECT_NAME`.
-- Volúmenes `whatsapp_data` y `whatsapp_mysql`, prefijados por el proyecto Compose.
+- Ruta `/zynerwabav2/` servida por Apache hacia el puerto local elegido (`127.0.0.1:<puerto>`).
+- Servicio systemd `zynervox-whatsapp.service` (proceso Node nativo), usuario de
+  sistema dedicado `zynervox-whatsapp`, sin shell.
+- Base de datos `zynerwabav2` en el MySQL nativo del host, usuario propio con
+  `GRANT` limitado a esa base. Nunca comparte motor con `asterisk` ni `zynervox_stt`.
+- Directorio de adjuntos en `/var/lib/zynervox-whatsapp/data/media`, enlazado desde
+  la ruta que el código vendorizado espera (ver `README.md`, limitación `DB_PATH_MEDIA`).
 - Credenciales consultables localmente mediante `credentials`.
 
 ## Errores posibles
 
-- Docker, Compose, curl o Apache ausentes.
-- Ningún puerto libre entre 3022 y 3099.
-- Imagen o base no saludables.
+- Node (≥18), npm, mysql, openssl o Apache ausentes.
+- Ningún puerto libre en el rango asignado.
+- `systemctl is-active zynervox-whatsapp` distinto de `active`.
 - `apache2ctl configtest` inválido; en ese caso no se recarga Apache.
 - Firma SSO inválida, vencida o sin secreto local: HTTP 403.
+- Fallo de permisos entre el usuario de servicio y el directorio de adjuntos si el
+  enlace a `/var/lib/zynervox-whatsapp` no existe o `ProtectSystem=strict` lo bloquea.
 
 ## Dependencias permitidas
 
 - Contrato de autenticación Zynervox mediante `Includes\Auth`.
-- Imagen integrada `miguelleonh0331/zynerwabav2:2.1.0-zynervox`, construida
-  sobre `miguelleonh0331/zynerwabav2:2.0.0` fijada por digest.
-- MySQL 8.4 y el esquema saneado versionado.
+- Código vendorizado en `src/features/whatsapp/vendor/`, origen documentado en
+  `README.md` (extraído de `miguelleonh0331/zynerwabav2:2.1.0-zynervox`,
+  trazabilidad por commit de Git en vez de digest de imagen).
+- Node.js nativo ≥18 administrado por systemd (mismo patrón que `farm`).
+- MySQL nativo del host, base y usuario propios (mismo patrón que `stt_providers`).
 - Apache como proxy de la ruta pública.
 
 ## Dependencias prohibidas
 
+- Docker, Compose o cualquier contenedor para este módulo.
 - Tablas internas de Zynerwaba desde PHP Zynervox.
-- Base `asterisk` para datos WhatsApp.
+- Base `asterisk` ni `zynervox_stt` para datos WhatsApp.
 - Contraseñas compartidas o publicadas; SSO usa un secreto de instalación independiente.
-- Imágenes móviles sin etiqueta y digest.
+- Código de `vendor/` editado a mano sin volver a extraer/documentar su origen.
 
 ## Garantías
 
-- Bases, credenciales, puertos y volúmenes permanecen separados.
-- La imagen se verifica por digest.
+- Bases, credenciales, puertos y directorios de datos permanecen separados.
+- El código vendorizado queda trazado por commit de Git, no por digest de imagen.
 - Los secretos se generan con `openssl` y quedan fuera de Git.
-- `down` conserva persistencia.
+- `down`/`systemctl stop` conserva persistencia (BD y adjuntos fuera de `/opt`).
 - Zynervox no recibe contraseñas Zynerwaba ni accede a sus tablas.
 - La identidad se crea/actualiza en Zynerwaba solo tras validar HMAC-SHA256 y expiración.
 
