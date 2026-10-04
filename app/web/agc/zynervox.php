@@ -23359,8 +23359,17 @@ $zi=2;
 		background:#2D2F3B; color:#9CA0AC; padding:1.25rem 0;
 		font-family:Arial, Helvetica, sans-serif;
 	}
-	#zv-sidebar-brand { font-size:1.25rem; font-weight:700; letter-spacing:1px; color:#F5821F; padding:0 1rem; }
-	#zv-sidebar-sub { font-size:.65rem; color:#9CA0AC; text-transform:uppercase; letter-spacing:1px; margin-top:4px; padding:0 1rem; opacity:.7; }
+	#zv-sidebar-brand { font-size:1.25rem; font-weight:700; letter-spacing:1px; color:#F5821F; }
+	#zv-sidebar-sub { font-size:.65rem; color:#9CA0AC; text-transform:uppercase; letter-spacing:1px; margin-top:4px; opacity:.7; }
+	/* ZYNERVOX 2026-10-04: fila de cabecera para poder poner una pestana externa
+	   (WhatsApp/Zynerwaba) al costado de la marca, sin tocar el padding original
+	   de brand/sub (se movio al contenedor de la fila). */
+	#zv-sidebar-header { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; padding:0 1rem; }
+	#zv-tab-whatsapp { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center;
+		margin-top:2px; padding:.3rem .55rem; border-radius:3px 3px 0 0; background:rgba(255,255,255,.06);
+		color:#9CA0AC; font-size:.6rem; font-weight:700; letter-spacing:.5px; text-transform:uppercase;
+		text-decoration:none; cursor:pointer; white-space:nowrap; }
+	#zv-tab-whatsapp:hover { background:rgba(255,255,255,.12); color:#F5821F; }
 	/* zv-main es el contexto de posicionamiento: todos los paneles position:absolute
 	   originales de VICIdial (Header, Tabs, MainPanel, modales, etc.) quedan anclados
 	   aqui en vez del viewport completo, por eso se corren a la derecha del sidebar. */
@@ -23451,8 +23460,16 @@ $zi=2;
 
 <div id="zv-app-shell">
 <div id="zv-sidebar">
-	<div id="zv-sidebar-brand">ZYNERVOX</div>
-	<div id="zv-sidebar-sub">Panel de Agente</div>
+	<div id="zv-sidebar-header">
+		<div>
+			<div id="zv-sidebar-brand">ZYNERVOX</div>
+			<div id="zv-sidebar-sub">Panel de Agente</div>
+		</div>
+		<!-- ZYNERVOX 2026-10-04: pestana externa a Zynerwaba (WhatsApp), abre en
+		     pestana nueva del navegador: no reemplaza el iframe CRM ni afecta la
+		     sesion SIP/webphone de este mismo tab. -->
+		<a id="zv-tab-whatsapp" href="http://wtp.zynervox.site/zynerwabav2/" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+	</div>
 
 	<div id="zv-controls" style="margin-top:22px;">
 		<div class="zv-controls-row">
