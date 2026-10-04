@@ -49,7 +49,6 @@ main{max-width:1100px;margin:0 auto;padding:20px;display:grid;gap:16px}
   <div>
     <p class="eyebrow">SYNERV0X · HUMAN SUPERVISION</p>
     <h1>Zypad Pool -- anexos reales</h1>
-    <p class="subtitle">Anexos SIP (baresip, un proceso/puerto por anexo). El destino SIP queda deshabilitado hasta configurarlo explícitamente.</p>
   </div>
 </header>
 
