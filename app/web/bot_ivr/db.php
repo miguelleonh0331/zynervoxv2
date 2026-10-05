@@ -1,8 +1,6 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../config/Config.php';
-
 const BOT_IVR_DB_CONFIG = '/etc/asterisk/synervox/secrets/bot_ivr_db.json';
 
 function bot_ivr_db_config(): array {
@@ -11,16 +9,13 @@ function bot_ivr_db_config(): array {
         if (!is_array($config)) throw new RuntimeException('Configuración de Bot IVR inválida.');
         return $config;
     }
-    return [
-        'server' => \Config\Config::get('VARDB_server', ''),
-        'port' => \Config\Config::get('VARDB_port', '3306'),
-        'database' => \Config\Config::get('VARDB_database', ''),
-        'user' => \Config\Config::get('VARDB_user', ''),
-        'password' => \Config\Config::get('VARDB_pass', ''),
-    ];
+    throw new RuntimeException('Configura la conexión mediante el botón Configurar conexión a base de datos.');
 }
 
 function bot_ivr_db_connect(array $config): PDO {
+    if (($config['database'] ?? '') !== 'zynervox') {
+        throw new RuntimeException('Bot IVR requiere la base de datos zynervox.');
+    }
     foreach (['server', 'database', 'user'] as $key) {
         if (!isset($config[$key]) || trim((string) $config[$key]) === '' || preg_match('/[;\x00-\x1f]/', (string) $config[$key])) {
             throw new RuntimeException('Servidor, base de datos y usuario son obligatorios y deben ser válidos.');

@@ -2,7 +2,6 @@
 """Persistencia SQL compartida del motor Bot IVR; no crea estado en disco."""
 from __future__ import annotations
 
-import re
 import json
 import uuid
 from pathlib import Path
@@ -11,26 +10,20 @@ from typing import Mapping, Optional
 import pymysql
 from pymysql.cursors import DictCursor
 
-DB_CONFIG = Path('/etc/astguiclient.conf')
 BOT_IVR_DB_CONFIG = Path('/etc/asterisk/synervox/secrets/bot_ivr_db.json')
 
 
 def _config() -> dict[str, str]:
-    if BOT_IVR_DB_CONFIG.exists():
-        config = json.loads(BOT_IVR_DB_CONFIG.read_text(encoding='utf-8'))
-        keys = {'server': 'VARDB_server', 'port': 'VARDB_port',
-                'database': 'VARDB_database', 'user': 'VARDB_user', 'password': 'VARDB_pass'}
-        return {target: str(config[source]) for source, target in keys.items()}
-    values: dict[str, str] = {}
-    for raw in DB_CONFIG.read_text(encoding='utf-8').splitlines():
-        match = re.match(r'^\s*(VARDB_(?:server|port|database|user|pass))\s*=\s*(.*?)\s*$', raw)
-        if match:
-            values[match.group(1)] = match.group(2).lstrip('> ').strip('"\'')
-    required = ('VARDB_server', 'VARDB_database', 'VARDB_user', 'VARDB_pass')
-    missing = [key for key in required if key not in values]
-    if missing:
-        raise RuntimeError('Configuración DB incompleta: ' + ', '.join(missing))
-    return values
+    if not BOT_IVR_DB_CONFIG.exists():
+        raise RuntimeError('Configura la conexión desde el botón Configurar conexión a base de datos.')
+    config = json.loads(BOT_IVR_DB_CONFIG.read_text(encoding='utf-8'))
+    if not isinstance(config, dict) or config.get('database') != 'zynervox':
+        raise RuntimeError('Bot IVR requiere la base de datos zynervox.')
+    keys = {'server': 'VARDB_server', 'port': 'VARDB_port',
+            'database': 'VARDB_database', 'user': 'VARDB_user', 'password': 'VARDB_pass'}
+    if any(key not in config for key in keys):
+        raise RuntimeError('Configuración DB incompleta.')
+    return {target: str(config[source]) for source, target in keys.items()}
 
 
 def connect():

@@ -243,9 +243,10 @@ if (isset($_SESSION['bot_ivr_flash_message'])) {
 $action = (string) ($_POST['action'] ?? '');
 
 if (empty($_SESSION['bot_ivr_db_csrf'])) $_SESSION['bot_ivr_db_csrf'] = bin2hex(random_bytes(32));
-$dbConfig = [];
+$dbConfig = ['database' => 'zynervox', 'port' => '3306'];
 try { $dbConfig = bot_ivr_db_config(); }
-catch (Throwable $e) { $error = 'No se pudo leer la configuración de conexión.'; }
+catch (Throwable $e) { $error = $e->getMessage(); }
+$dbConfig['database'] = 'zynervox';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save_db_config') {
     try {
         if (!hash_equals($_SESSION['bot_ivr_db_csrf'], (string) ($_POST['csrf'] ?? ''))) {
@@ -908,7 +909,7 @@ initial_survey_page_start('Bot IVR', 'Crear y administrar campañas de discado')
       <?php foreach (['server'=>'Servidor', 'port'=>'Puerto', 'database'=>'Base de datos', 'user'=>'Usuario'] as $key=>$label): ?>
       <div class="carsa-field">
         <label for="db_<?php echo h($key); ?>"><?php echo h($label); ?></label>
-        <input id="db_<?php echo h($key); ?>" name="db_<?php echo h($key); ?>" value="<?php echo h($dbConfig[$key] ?? ''); ?>" required <?php echo $key === 'port' ? 'type="number" min="1" max="65535"' : 'type="text"'; ?>>
+        <input id="db_<?php echo h($key); ?>" name="db_<?php echo h($key); ?>" value="<?php echo h($dbConfig[$key] ?? ''); ?>" required <?php echo $key === 'database' ? 'readonly' : ''; ?> <?php echo $key === 'port' ? 'type="number" min="1" max="65535"' : 'type="text"'; ?>>
       </div>
       <?php endforeach; ?>
       <div class="carsa-field">

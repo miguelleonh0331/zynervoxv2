@@ -1046,3 +1046,16 @@ Riesgos:
 - Archivos previos cotejados contra dbc993b y respaldados por push.py como .bak.20261005-*.
 - Verificacion remota: lint PHP completo, sintaxis Python, permisos como wwwrun, SELECT 1 con conexion actual, HTTP 302 al login y render del boton en sesion administrativa CLI.
 - No se cambian credenciales ni se reinician servicios; formulario de guardado pendiente de uso con las credenciales elegidas por el administrador.
+
+
+## 2026-10-05 - Bot IVR: creación de base zynervox en mirmidon
+
+- Creada zynervox con 11 tablas vacías: campañas, cola local, resultados,
+  resumen de estado, procesos, eventos, construcciones/archivos de audio y
+  ejecuciones/variables/eventos de llamada. SQL reproducible bajo bot_ivr/models.
+- Base fija en el botón; PHP y worker bloquean configuración ausente y otras bases.
+- No se guardan credenciales fuera del botón. Configuración aún pendiente del administrador.
+- Desplegados db.php, index.php y runtime_store.py con backups .bak.20261005-1648*.
+- Verificación: PHP lint, Python AST, rechazo de configuración ausente/base incorrecta,
+  inserción/listado de campaña con rollback y render administrativo del botón/campo fijo.
+- Base demo intacta; sin procesos activos de los workers inspeccionados ni reinicios.

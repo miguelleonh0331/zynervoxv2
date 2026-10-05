@@ -426,3 +426,14 @@ modulo zynerdesk (CONTRACT.md reescrito); ningun otro modulo se modifica; bcrypt
 
 Seguimiento:
 Validado en WSL (zynervoxv1) con 6/6 pruebas de aceptacion (docker vacio, systemd activo, 14 tablas migradas, proxy 200, SSO HMAC real 200, sesion persiste tras restart) antes de fusionar a main el 2026-10-03. Migrar mirmidon requiere autorizacion explicita y separada.
+
+
+### 2026-10-05 - Bot IVR: base zynervox y configuración obligatoria
+
+Aprobación ARCHITECT_AGENT: alcance exclusivo de bot_ivr y despliegue de sus
+copias. Base fija zynervox; configuración guardada por el botón existente;
+sin fallback a Config.php ni astguiclient.conf. Preservar carsa_initial_survey
+y tablas auxiliares locales. No cambiar ivr_builder ni su conexión.
+Contrato existente conservado. DDL propio en models/001-zynervox.sql, sin
+cargar datos de demo. Aislamiento multiempresa y ejecución de llamadas no
+forman parte de esta etapa de creación de campañas.
