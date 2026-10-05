@@ -1059,3 +1059,11 @@ Riesgos:
 - Verificación: PHP lint, Python AST, rechazo de configuración ausente/base incorrecta,
   inserción/listado de campaña con rollback y render administrativo del botón/campo fijo.
 - Base demo intacta; sin procesos activos de los workers inspeccionados ni reinicios.
+
+## 2026-10-05 - Bot IVR: usuario propio en mirmidon
+
+- Creadas cuentas zynervox_bot_ivr@localhost y @127.0.0.1 con contraseña propia.
+- Permisos SELECT, INSERT, UPDATE, DELETE exclusivamente sobre zynervox.*.
+- Conexión TCP 127.0.0.1 y creación/lectura de campaña verificadas con rollback.
+- Credenciales entregadas al administrador; guardado por botón pendiente.
+- No cambia estructura ni datos de negocio; integración en instalador pendiente.
