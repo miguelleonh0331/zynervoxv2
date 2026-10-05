@@ -1083,3 +1083,14 @@ Riesgos:
   lint PHP y render CLI: listado, formulario, detalle, CSRF y escape XSS.
 - Datos de prueba revertidos. Carga de leads/ejecución de horarios/motor e
   integración en instalador quedan fuera de esta etapa.
+
+## 2026-10-05 - Bot IVR: ordenar detalle de campaña
+
+- Formulario compacto por filas: etiquetas izquierda, campos derecha y botón
+  Guardar centrado; estilo alternado azul siguiendo referencia del administrador.
+- Activo y horario diario usan selectores Sí/No; valor 0 se persiste desactivado.
+- Listado debajo del formulario; creación de lista en diálogo desde botón junto al listado.
+- Ajuste CSS local para evitar el fondo oscuro global de th y controles desalineados.
+- Verificado render HTML de campaña 8 en agent-browser, captura escritorio y móvil,
+  apertura del diálogo y prueba SQL con rollback para persistencia de No.
+- Sin cambios de esquema ni datos existentes; despliegue con backups automáticos.

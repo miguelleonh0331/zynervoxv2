@@ -34,38 +34,70 @@ try {
 }
 bot_campaign_header($campaign ? 'Campaña #'.$campaignId.' — '.$campaign['name'] : 'Campaña');
 if ($campaign): ?>
-<div class="carsa-card bot-form">
+<style>
+.main-content{min-width:0}.campaign-detail{max-width:980px}
+.campaign-detail .carsa-card{padding:10px;margin-bottom:16px}
+.campaign-detail h2{text-align:center;margin:0 0 10px;font-size:13px}
+.campaign-fields{table-layout:fixed;margin:0;width:100%;border-collapse:collapse;font-size:13px}
+.campaign-fields tr:nth-child(odd){background:#dce8fa}
+.campaign-fields tr:nth-child(even){background:#cbdff9}
+.campaign-fields th{width:240px;padding:5px 9px;text-align:right;font-weight:normal;color:#172b45;background:transparent;border:none;text-transform:none}
+.campaign-fields td{padding:4px 9px;text-align:left}
+.campaign-fields label{text-transform:none;font-size:13px;letter-spacing:0;font-weight:normal;color:inherit}
+.campaign-fields input,.campaign-fields select{display:inline-block;width:auto;max-width:100%;margin:0;padding:3px 6px;min-height:26px;background:#fff;color:#172b45;border:1px solid #aab8c9;border-radius:2px;font-size:13px}
+.campaign-fields input[type=text]{width:340px;box-sizing:border-box}
+.campaign-fields input[type=time]{width:135px}
+.campaign-fields select{min-width:70px}
+.campaign-detail .compact-submit{display:inline-block;width:auto;padding:5px 16px;font-size:12px}
+.campaign-fields .submit-row td{text-align:center;padding:8px}
+.campaign-detail .list-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.campaign-detail .list-head h2{text-align:left;margin:0}
+.campaign-detail .carsa-table{margin-top:0}
+.campaign-detail .carsa-table th,.campaign-detail .carsa-table td{padding:5px 8px}
+.campaign-detail details summary{cursor:pointer;color:var(--primary)}
+.campaign-detail details .carsa-form{min-width:190px;max-width:260px;padding-top:8px}
+.campaign-detail details input[type=checkbox]{width:auto;display:inline-block;margin:0 5px 0 0}
+@media(max-width:600px){.campaign-fields th{width:125px;padding:5px}.campaign-fields td{padding:4px}.campaign-fields input[type=text]{width:100%}.campaign-detail .list-head{align-items:flex-start}}
+</style>
+<div class="campaign-detail">
+<section class="carsa-card">
 <h2>Configuración de campaña</h2>
-<form method="post" class="carsa-form">
+<form method="post">
 <input type="hidden" name="action" value="update_campaign"><?php bot_campaign_token(); ?>
-<div class="carsa-field"><label>ID de campaña</label><input value="<?php echo (int)$campaignId; ?>" readonly></div>
-<div class="carsa-field"><label for="campaign_name">Nombre</label><input id="campaign_name" name="name" maxlength="120" value="<?php echo h($campaign['name']); ?>" required></div>
-<div><label><input type="checkbox" name="active" value="1" <?php echo $campaign['active'] ? 'checked' : ''; ?>> Activo</label></div>
-<div><label><input type="checkbox" name="scheduled" value="1" <?php echo $campaign['scheduled'] ? 'checked' : ''; ?>> Habilitar horario diario</label></div>
-<div class="carsa-field"><label for="start_time">Hora de activación</label><input id="start_time" type="time" name="start_time" value="<?php echo h(substr($campaign['start_time'],0,5)); ?>" required></div>
-<div class="carsa-field"><label for="end_time">Hora de bloqueo</label><input id="end_time" type="time" name="end_time" value="<?php echo h(substr($campaign['end_time'],0,5)); ?>" required></div>
-<button class="carsa-btn">Guardar campaña</button>
+<table class="campaign-fields"><tbody>
+<tr><th scope="row">ID de campaña:</th><td><strong><?php echo (int)$campaignId; ?></strong></td></tr>
+<tr><th scope="row"><label for="campaign_name">Nombre:</label></th><td><input type="text" id="campaign_name" name="name" maxlength="120" value="<?php echo h($campaign['name']); ?>" required></td></tr>
+<tr><th scope="row">Última modificación:</th><td><?php echo h($campaign['updated_at']); ?></td></tr>
+<tr><th scope="row"><label for="campaign_active">Activo:</label></th><td><select id="campaign_active" name="active"><option value="1" <?php echo $campaign['active'] ? 'selected' : ''; ?>>Sí</option><option value="0" <?php echo !$campaign['active'] ? 'selected' : ''; ?>>No</option></select></td></tr>
+<tr><th scope="row"><label for="campaign_scheduled">Habilitar horario diario:</label></th><td><select id="campaign_scheduled" name="scheduled"><option value="1" <?php echo $campaign['scheduled'] ? 'selected' : ''; ?>>Sí</option><option value="0" <?php echo !$campaign['scheduled'] ? 'selected' : ''; ?>>No</option></select></td></tr>
+<tr><th scope="row"><label for="start_time">Hora de activación:</label></th><td><input id="start_time" type="time" name="start_time" value="<?php echo h(substr($campaign['start_time'],0,5)); ?>" required></td></tr>
+<tr><th scope="row"><label for="end_time">Hora de bloqueo:</label></th><td><input id="end_time" type="time" name="end_time" value="<?php echo h(substr($campaign['end_time'],0,5)); ?>" required></td></tr>
+<tr class="submit-row"><td colspan="2"><button class="carsa-btn compact-submit">Guardar campaña</button></td></tr>
+</tbody></table>
 </form>
-</div>
-<div class="carsa-card">
-<h2>Listas de la campaña</h2>
-<div class="bot-table-wrap"><table class="carsa-table"><thead><tr><th>List ID</th><th>Campaign ID</th><th>Nombre</th><th>Activo</th><th>Leads</th><th>Modificar</th></tr></thead><tbody>
+</section>
+<section class="carsa-card">
+<div class="list-head"><h2>Listas de la campaña</h2><button type="button" class="carsa-btn compact-submit" onclick="document.getElementById('createListModal').showModal()">Crear lista</button></div>
+<div class="bot-table-wrap"><table class="carsa-table"><thead><tr><th>List ID</th><th>Campaign ID</th><th>Nombre</th><th>Leads</th><th>Activo</th><th>Modificar</th></tr></thead><tbody>
 <?php foreach ($lists as $list): ?>
-<tr><td><?php echo (int)$list['list_id']; ?></td><td><?php echo (int)$list['campaign_id']; ?></td><td><?php echo h($list['name']); ?></td><td><?php echo $list['active'] ? 'Sí' : 'No'; ?></td><td><?php echo (int)$list['leads_count']; ?></td><td>
+<tr><td><?php echo (int)$list['list_id']; ?></td><td><?php echo (int)$list['campaign_id']; ?></td><td><?php echo h($list['name']); ?></td><td><?php echo (int)$list['leads_count']; ?></td><td><?php echo $list['active'] ? 'Sí' : 'No'; ?></td><td>
 <details><summary>Modificar</summary><form method="post" class="carsa-form">
 <input type="hidden" name="action" value="update_list"><input type="hidden" name="list_id" value="<?php echo (int)$list['list_id']; ?>"><?php bot_campaign_token(); ?>
 <input aria-label="Nombre de lista <?php echo (int)$list['list_id']; ?>" name="list_name" maxlength="120" value="<?php echo h($list['name']); ?>" required>
 <label><input type="checkbox" name="active" value="1" <?php echo $list['active'] ? 'checked' : ''; ?>> Activo</label>
-<button class="carsa-btn secondary">Guardar lista</button></form></details></td></tr>
+<button class="carsa-btn secondary compact-submit">Guardar lista</button></form></details></td></tr>
 <?php endforeach; ?>
 <?php if (!$lists): ?><tr><td colspan="6">Esta campaña todavía no tiene listas.</td></tr><?php endif; ?>
 </tbody></table></div>
+</section>
 </div>
-<div class="carsa-card bot-form"><h2>Crear y asignar lista</h2>
+<dialog id="createListModal" aria-labelledby="createListTitle">
+<h2 id="createListTitle">Crear y asignar lista</h2>
 <form method="post" class="carsa-form"><input type="hidden" name="action" value="create_list"><?php bot_campaign_token(); ?>
 <div class="carsa-field"><label for="list_name">Nombre de lista</label><input id="list_name" name="list_name" maxlength="120" required></div>
-<div><label><input type="checkbox" name="active" value="1" checked> Activo</label></div>
-<button class="carsa-btn">Crear lista</button></form>
-</div>
+<label style="display:flex;align-items:center;gap:6px"><input type="checkbox" name="active" value="1" checked style="width:auto;margin:0"> Activo</label>
+<div class="carsa-actions"><button class="carsa-btn">Crear lista</button><button type="button" class="carsa-btn secondary" onclick="document.getElementById('createListModal').close()">Cancelar</button></div>
+</form>
+</dialog>
 <?php endif;
 bot_campaign_footer();

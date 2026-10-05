@@ -23,6 +23,9 @@ try {
     catch (RuntimeException $e) {}
     try { bot_campaign_name(' '); throw new LogicException('Empty name accepted'); }
     catch (RuntimeException $e) {}
+    bot_campaign_update($db, $id, ['name'=>'Desactivada','active'=>'0','scheduled'=>'0','start_time'=>'08:00','end_time'=>'17:45']);
+    $disabled = bot_campaign_get($db, $id);
+    verify((int)$disabled['active'] === 0 && (int)$disabled['scheduled'] === 0, 'Select No must disable flags');
     $list = bot_campaign_list_create($db, $id, 'Lista de prueba', true);
     $other = bot_campaign_create($db, '__other_campaign__', true);
     try { bot_campaign_list_update($db, $other, $list, 'Incorrecto', false); throw new LogicException('Cross-campaign edit accepted'); }

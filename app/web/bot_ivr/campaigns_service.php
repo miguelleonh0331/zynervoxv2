@@ -35,10 +35,10 @@ function bot_campaign_update(PDO $db, int $id, array $input): void {
     $name = bot_campaign_name((string)($input['name'] ?? ''));
     $start = bot_campaign_time((string)($input['start_time'] ?? ''));
     $end = bot_campaign_time((string)($input['end_time'] ?? ''));
-    $scheduled = isset($input['scheduled']) ? 1 : 0;
+    $scheduled = (string)($input['scheduled'] ?? '') === '1' ? 1 : 0;
     if ($scheduled && $start === $end) throw new RuntimeException('Activación y bloqueo deben tener horas distintas.');
     $stmt = $db->prepare('UPDATE zynervox_bot_campaigns SET name=:name,active=:active,scheduled=:scheduled,start_time=:start,end_time=:end WHERE campaign_id=:id');
-    $stmt->execute([':name'=>$name, ':active'=>isset($input['active']) ? 1 : 0,
+    $stmt->execute([':name'=>$name, ':active'=>(string)($input['active'] ?? '') === '1' ? 1 : 0,
         ':scheduled'=>$scheduled, ':start'=>$start, ':end'=>$end, ':id'=>$id]);
 }
 
