@@ -1035,3 +1035,14 @@ Riesgos:
 - Validación: lint PHP del módulo, sintaxis Python, pruebas de fallback/override
   del worker y rechazo PHP de puertos/parámetros inv?lidos. Sin BD real disponible
   en esta copia local; no se verifica conexión productiva ni despliegue.
+
+
+## 2026-10-05 - Despliegue Bot IVR en mirmidon
+
+- Desplegado con zynertools en /srv/www/htdocs/zynervoxv2205/bot_ivr/.
+- Worker: /etc/asterisk/zynervoxv2205/modules/bot_ivr/runtime_store.py.
+- Adaptacion de la ruta de secretos en las copias desplegadas: /etc/asterisk/zynervoxv2205/secrets/bot_ivr_db.json.
+- Directorio de secretos creado wwwrun:www 0750; nuevo db.php root:www 0640.
+- Archivos previos cotejados contra dbc993b y respaldados por push.py como .bak.20261005-*.
+- Verificacion remota: lint PHP completo, sintaxis Python, permisos como wwwrun, SELECT 1 con conexion actual, HTTP 302 al login y render del boton en sesion administrativa CLI.
+- No se cambian credenciales ni se reinician servicios; formulario de guardado pendiente de uso con las credenciales elegidas por el administrador.
