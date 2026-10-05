@@ -1109,3 +1109,17 @@ Riesgos:
   render real de campaña 8 en navegador, ancho completo y dos/una columna.
 - Configuración de marcación/grabación/grupo aún no controla motor ni ACL;
   sin cambios en tablas legacy, otras bases ni datos de campaña existente.
+
+## 2026-10-05 - Bot IVR: distribución y paleta Zynervox
+
+- Reorganizado detalle en cuatro grupos dentro de dos columnas: datos generales,
+  horarios, marcación y leads/grabación; listado de listas debajo a ancho completo.
+- Colores exclusivamente de variables de layout.css: encabezados oscuros,
+  tarjetas blancas, filas blancas/grises y naranja para navegación y acciones.
+- Guardado alineado a la derecha; resumen de listas/leads junto al listado;
+  navegación y diálogos homologados a la paleta del producto.
+- Verificación visual del HTML real de campaña 8 en navegador: cuatro grupos,
+  dos columnas en escritorio, una en pantalla estrecha; colores calculados
+  correctos, creación de lista y configuración de conexión abren correctamente.
+- PHP lint correcto y campos únicos conservados. Despliegue con backups
+  20261005-1814*/1815*. No cambia esquema ni lógica de persistencia.

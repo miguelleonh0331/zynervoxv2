@@ -39,7 +39,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '')
 function bot_campaign_header(string $title): void {
     global $message, $error;
     initial_survey_page_start($title);
-    echo '<style>.bot-nav{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}.bot-form{max-width:520px}.bot-table-wrap{overflow-x:auto}dialog{border:1px solid #888;border-radius:2px;max-width:480px;width:calc(100% - 48px)}dialog::backdrop{background:#0008}</style>';
+    echo <<<'CSS'
+<style>
+.bot-nav{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.bot-nav a{color:var(--primary-hover);font-size:13px;text-decoration:none;font-weight:600}.bot-nav a:hover{text-decoration:underline}
+.bot-nav button{margin-left:auto}.bot-form{max-width:520px}.bot-table-wrap{overflow-x:auto}
+dialog{border:1px solid var(--border);border-radius:2px;max-width:520px;width:calc(100% - 48px);padding:18px;background:var(--bg-card);color:var(--text)}
+dialog h2{font-size:14px;margin-bottom:14px}dialog::backdrop{background:rgba(45,47,59,.45)}
+@media(max-width:600px){.bot-nav button{margin-left:0}}
+</style>
+CSS;
+
     echo '<nav class="bot-nav"><a href="index.php">Mostrar campañas</a><a href="index.php?view=create">Crear campaña</a><button type="button" class="carsa-btn secondary" onclick="document.getElementById(\'dbConfigModal\').showModal()">Configurar conexión a base de datos</button></nav>';
     if ($message !== '') echo '<div class="carsa-msg">'.h($message).'</div>';
     if ($error !== '') echo '<div class="carsa-err">'.h($error).'</div>';
