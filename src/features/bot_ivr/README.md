@@ -57,3 +57,26 @@ el administrador aún requieren integración en el instalador (sin secretos en G
 
 Prueba SQL con datos revertidos:
 `php src/features/bot_ivr/tests/campaigns-db.php /ruta/web/bot_ivr`
+
+
+## Detalle de ancho completo en dos columnas
+
+Aplicar `models/003-campaign-details.sql` tras 001 y 002. Es aditiva e idempotente
+(MariaDB ADD COLUMN IF NOT EXISTS). La referencia inspeccionada fue
+`asterisk.vicidial_campaigns` en mirmidon; no se modifica esa tabla ni su código.
+El detalle usa todo el ancho del contenido: izquierda datos generales/horarios,
+derecha parámetros de marcación. Se apila en pantallas de hasta 1050 px.
+Listas y leads se muestran como totales calculados, sin duplicar datos guardados.
+
+Nuevos campos: campaign_description(255), user_group(20), dial_method,
+lead_order, dial_statuses(255), hopper_level, auto_dial_level,
+dial_timeout, dial_prefix(20), campaign_cid(20), campaign_recording, max_channels.
+Las opciones de método y grabación son un subconjunto de las opciones reales
+VICIdial; orden de leads usa el subconjunto propio DOWN/UP/RANDOM.
+Los estados se guardan como códigos únicos mayúsculos de 1-6 caracteres,
+separados por espacios, sin delimitadores legacy (por ejemplo NEW NA B).
+Validación propia: hopper 0-1000000, nivel automático 0-20 con hasta dos decimales,
+timeout 1-255 segundos, canales 1-1000; prefijo/caller ID aceptan +, dígitos, * y #.
+Campos desconocidos no se interpolan en SQL y no se guardan.
+Se preservan metadatos al enviar un formulario anterior sin estos campos.
+Estos parámetros no controlan todavía el motor ni permisos de grupos.

@@ -32,22 +32,46 @@ try {
     http_response_code($campaignId ? 404 : 400);
     $error = $e->getMessage();
 }
+function bot_campaign_field_row(string $key, array $campaign): void {
+    $field = BOT_CAMPAIGN_FIELDS[$key];
+    $value = (string)$campaign[$key];
+    echo '<tr><th scope="row"><label for="field_' . h($key) . '">' . h($field['label']) . ':</label></th><td>';
+    if ($field['type'] === 'select') {
+        echo '<select id="field_' . h($key) . '" name="' . h($key) . '">';
+        foreach ($field['options'] as $option) {
+            echo '<option value="' . h($option) . '"' . ($value === $option ? ' selected' : '') . '>' . h($option) . '</option>';
+        }
+        echo '</select>';
+    } else {
+        $numeric = in_array($field['type'], ['number','decimal'], true);
+        echo '<input id="field_' . h($key) . '" name="' . h($key) . '" type="' . ($numeric ? 'number' : 'text') . '" value="' . h($value) . '"';
+        if ($numeric) echo ' min="' . $field['min'] . '" max="' . $field['max'] . '" step="' . ($field['type'] === 'decimal' ? '0.01' : '1') . '" required';
+        else echo ' maxlength="' . $field['length'] . '"' . (!empty($field['required']) ? ' required' : '');
+        echo '>';
+    }
+    echo '</td></tr>';
+}
 bot_campaign_header($campaign ? 'Campaña #'.$campaignId.' — '.$campaign['name'] : 'Campaña');
 if ($campaign): ?>
 <style>
-.main-content{min-width:0}.campaign-detail{max-width:980px}
+.main-content{min-width:0}.campaign-detail{width:100%;max-width:none}
+.campaign-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start}
+.campaign-column{min-width:0}.campaign-column h3{font-size:13px;text-align:center;margin:4px 0 8px}
+.campaign-save{text-align:center;background:#cbdff9;padding:8px;margin-top:10px}
 .campaign-detail .carsa-card{padding:10px;margin-bottom:16px}
 .campaign-detail h2{text-align:center;margin:0 0 10px;font-size:13px}
 .campaign-fields{table-layout:fixed;margin:0;width:100%;border-collapse:collapse;font-size:13px}
 .campaign-fields tr:nth-child(odd){background:#dce8fa}
 .campaign-fields tr:nth-child(even){background:#cbdff9}
-.campaign-fields th{width:240px;padding:5px 9px;text-align:right;font-weight:normal;color:#172b45;background:transparent;border:none;text-transform:none;white-space:normal}
+.campaign-fields th{width:42%;padding:5px 9px;text-align:right;font-weight:normal;color:#172b45;background:transparent;border:none;text-transform:none;white-space:normal}
 .campaign-fields td{padding:4px 9px;text-align:left}
 .campaign-fields label{text-transform:none;font-size:13px;letter-spacing:0;font-weight:normal;color:inherit;white-space:normal}
 .campaign-fields input,.campaign-fields select{display:inline-block;width:auto;max-width:100%;margin:0;padding:3px 6px;min-height:26px;background:#fff;color:#172b45;border:1px solid #aab8c9;border-radius:2px;font-size:13px}
-.campaign-fields input[type=text]{width:340px;box-sizing:border-box}
+.campaign-fields input[type=text]{width:100%;box-sizing:border-box}
 .campaign-fields input[type=time]{width:135px}
-.campaign-fields select{min-width:70px}
+.campaign-fields select{min-width:70px;max-width:100%;box-sizing:border-box}
+.campaign-fields input[type=number]{width:100px;box-sizing:border-box}
+.campaign-fields td{overflow-wrap:anywhere}
 .campaign-detail .compact-submit{display:inline-block;width:auto;padding:5px 16px;font-size:12px}
 .campaign-fields .submit-row td{text-align:center;padding:8px}
 .campaign-detail .list-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
@@ -57,6 +81,7 @@ if ($campaign): ?>
 .campaign-detail details summary{cursor:pointer;color:var(--primary)}
 .campaign-detail details .carsa-form{min-width:190px;max-width:260px;padding-top:8px}
 .campaign-detail details input[type=checkbox]{width:auto;display:inline-block;margin:0 5px 0 0}
+@media(max-width:1050px){.campaign-columns{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:600px){.campaign-fields th{width:125px;padding:5px}.campaign-fields td{padding:4px}.campaign-fields input[type=text]{width:100%}.campaign-detail .list-head{align-items:flex-start}}
 </style>
 <div class="campaign-detail">
@@ -64,16 +89,28 @@ if ($campaign): ?>
 <h2>Configuración de campaña</h2>
 <form method="post">
 <input type="hidden" name="action" value="update_campaign"><?php bot_campaign_token(); ?>
+<div class="campaign-columns">
+<div class="campaign-column"><h3>Datos generales y horarios</h3>
 <table class="campaign-fields"><tbody>
 <tr><th scope="row">ID de campaña:</th><td><strong><?php echo (int)$campaignId; ?></strong></td></tr>
 <tr><th scope="row"><label for="campaign_name">Nombre:</label></th><td><input type="text" id="campaign_name" name="name" maxlength="120" value="<?php echo h($campaign['name']); ?>" required></td></tr>
-<tr><th scope="row">Última modificación:</th><td><?php echo h($campaign['updated_at']); ?></td></tr>
+<?php bot_campaign_field_row('campaign_description', $campaign); ?>
 <tr><th scope="row"><label for="campaign_active">Activo:</label></th><td><select id="campaign_active" name="active"><option value="1" <?php echo $campaign['active'] ? 'selected' : ''; ?>>Sí</option><option value="0" <?php echo !$campaign['active'] ? 'selected' : ''; ?>>No</option></select></td></tr>
+<?php bot_campaign_field_row('user_group', $campaign); ?>
+<tr><th scope="row">Fecha de creación:</th><td><?php echo h($campaign['created_at']); ?></td></tr>
+<tr><th scope="row">Última modificación:</th><td><?php echo h($campaign['updated_at']); ?></td></tr>
 <tr><th scope="row"><label for="campaign_scheduled">Habilitar horario diario:</label></th><td><select id="campaign_scheduled" name="scheduled"><option value="1" <?php echo $campaign['scheduled'] ? 'selected' : ''; ?>>Sí</option><option value="0" <?php echo !$campaign['scheduled'] ? 'selected' : ''; ?>>No</option></select></td></tr>
 <tr><th scope="row"><label for="start_time">Hora de activación:</label></th><td><input id="start_time" type="time" name="start_time" value="<?php echo h(substr($campaign['start_time'],0,5)); ?>" required></td></tr>
 <tr><th scope="row"><label for="end_time">Hora de bloqueo:</label></th><td><input id="end_time" type="time" name="end_time" value="<?php echo h(substr($campaign['end_time'],0,5)); ?>" required></td></tr>
-<tr class="submit-row"><td colspan="2"><button class="carsa-btn compact-submit">Guardar campaña</button></td></tr>
-</tbody></table>
+<tr><th scope="row">Listas asignadas:</th><td><?php echo count($lists); ?></td></tr>
+<tr><th scope="row">Total de leads:</th><td><?php echo (int)array_sum(array_column($lists,'leads_count')); ?></td></tr>
+</tbody></table></div>
+<div class="campaign-column"><h3>Parámetros de marcación</h3>
+<table class="campaign-fields"><tbody>
+<?php foreach (['dial_method','auto_dial_level','max_channels','lead_order','dial_statuses','hopper_level','dial_timeout','dial_prefix','campaign_cid','campaign_recording'] as $key) bot_campaign_field_row($key, $campaign); ?>
+</tbody></table></div>
+</div>
+<div class="campaign-save"><button class="carsa-btn compact-submit">Guardar campaña</button></div>
 </form>
 </section>
 <section class="carsa-card">

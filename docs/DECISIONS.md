@@ -450,3 +450,15 @@ Motor legacy no consume campañas nuevas; no activar ejecución hasta migración
 posterior. Horarios se guardan como ventana diaria sin despachar llamadas.
 La cuenta propia y contraseña común acordada se integrarán al instalador en
 una etapa posterior; credenciales nunca se incluyen en estos documentos.
+
+
+### 2026-10-05 - Bot IVR: ampliar metadatos con referencia VICIdial
+
+ARCHITECT_AGENT autoriza migración 003 y extensión del contrato dentro de bot_ivr.
+Referencia read-only: columnas reales de asterisk.vicidial_campaigns en mirmidon.
+Añadir 12 campos administrativos mediante ALTER aditivo/idempotente; conservar
+campaña existente y timestamps. max_channels es propio de Bot IVR. Método y
+ grabación restringidos al subconjunto documentado de opciones reales; estados
+normalizados sin delimitadores legacy. Nada de FK ni dependencia de otros módulos.
+Formulario de ancho completo con dos columnas sin duplicar atributos.
+No conectar metadatos al motor ni usar user_group como ACL en esta etapa.

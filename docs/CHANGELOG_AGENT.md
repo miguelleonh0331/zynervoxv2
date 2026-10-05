@@ -1094,3 +1094,18 @@ Riesgos:
 - Verificado render HTML de campaña 8 en agent-browser, captura escritorio y móvil,
   apertura del diálogo y prueba SQL con rollback para persistencia de No.
 - Sin cambios de esquema ni datos existentes; despliegue con backups automáticos.
+
+## 2026-10-05 - Bot IVR: ancho completo y metadatos de campaña
+
+- Detalle en dos columnas sobre todo el ancho disponible; datos generales/horarios
+  y parámetros de marcación. Totales de listas/leads y fecha de creación visibles.
+- Migración 003-campaign-details.sql: 12 campos propios con referencia VICIdial;
+  aplicada dos veces verificando preservación de ID/nombre/flags/horarios/fechas.
+- Campos nuevos validan longitud, opciones y rangos; consultas preparadas y HTML
+  escapado. Envíos de formularios anteriores preservan metadatos no enviados.
+- Desplegados campaign_edit.php y campaigns_service.php con backups 20261005-1803*.
+- Pruebas: lint PHP, persistencia de campos, rechazo de valores inválidos sin
+  guardado parcial, compatibilidad de formularios, listas/FK y rollback;
+  render real de campaña 8 en navegador, ancho completo y dos/una columna.
+- Configuración de marcación/grabación/grupo aún no controla motor ni ACL;
+  sin cambios en tablas legacy, otras bases ni datos de campaña existente.
