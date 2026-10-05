@@ -1176,3 +1176,10 @@ Riesgos:
 - Repositorio compartido extiende métodos con argumento opcional conservando formularios previos.
 - Sin cambios de contactos, workers o IVR Builder. Pruebas creación/edición,
   IDs inválidos y preservación por omisión con fixtures revertidos.
+
+
+## 2026-10-05 — Trazado y muestra de gTTS
+- Localizado proveedor macelioai de CARSA y generador Python gTTS/ffmpeg/sox.
+- Prueba real aislada con texto ficticio: WAV PCM16 mono 8kHz de 7.51 segundos.
+- MP3 de escucha descargado al espejo local; sin cambios de listas ni llamadas.
+- Documentado trazado en README Bot IVR; integración de generación por lista pendiente.

@@ -129,3 +129,20 @@ indicar id_flujo positivo. Listas existentes muestran Sin asignar hasta guardarl
 Guardar ID no ejecuta audio ni verifica publicación; integración de generación
 por lista queda pendiente y deberá consumir el flujo por contrato público.
 Prueba: php src/features/bot_ivr/tests/list-flow-db.php /ruta/web/bot_ivr (rollback).
+
+## Prueba gTTS de CARSA (2026-10-05)
+
+Trazado confirmado: campaign_console.php opción macelioai (gTTS gratis) →
+launch_campaign_prebuild.php → services/dynamic_ivr/prebuild_campaign_audios.py →
+services/dynamic_ivr/tts_providers.py → services/tts/generate_macelioai_wav.py.
+Base de referencia: /srv/www/htdocs/synervox/encuestas/carsa. Python:
+venvs/gtts_env/bin/python. Generador recibe --text, --output, --lang es y --speed 1.3.
+Usa gTTS tld=com, slow=False, timeout=25; MP3 temporal, ffmpeg a WAV PCM
+8000 Hz mono s16 y sox tempo. workers de prebuild controlan concurrencia,
+no la velocidad de voz. Referencia CARSA no es dependencia instalada de Bot IVR.
+
+Prueba aislada ejecutó generador real con texto ficticio, sin BD ni llamadas.
+Salida /tmp/zynervox_gtts_demo_20261005.wav: 7.51 s, 8000 Hz, mono, PCM16.
+Copia MP3 para escucha /tmp/zynervox_gtts_demo_20261005.mp3. Archivos descargados
+al espejo local zynertools. Próxima integración debe copiar/adaptar generador sin
+rutas CARSA, dependencias propias y jobs por listas con id_flujo; no reutilizar IDs legacy.
