@@ -48,10 +48,13 @@ nombre/name/cliente/nombres alimentan customer_name (máximo 160 caracteres).
 
 Se valida el archivo completo antes de insertar: errores de formato/cabecera
 abandonan la carga y registros inválidos se contabilizan con motivos. Se
-conserva la primera aparición válida de un teléfono por archivo y no se
-reinsertan teléfonos presentes en esa lista. Otras listas pueden repetirlos.
+conserva la primera aparición válida de un teléfono por archivo. Otras listas
+pueden repetirlos.
 Importación transaccional serializada por bloqueo del padre FOR UPDATE.
-No se reemplazan contactos existentes. Se muestran cargados/duplicados/rechazados.
+La carga reemplaza todos los leads de esa lista tras validar el archivo. Archivo
+sin contactos válidos aborta antes de borrar. DELETE por list_id e INSERT son
+atómicos; ante fallo se conserva la base anterior. En transacción externa se usa
+savepoint. Se muestran cargados/duplicados/rechazados.
 Límites: 10 MB (o límite PHP menor), 50000 registros, 1000 caracteres por variable.
 La página de carga muestra resultado y total, sin detalle de leads. No publica trabajos al motor legacy.
 

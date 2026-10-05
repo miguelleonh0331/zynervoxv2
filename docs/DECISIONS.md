@@ -488,3 +488,14 @@ Sin dependencia de otros módulos ni publicación de trabajos legacy.
   Prohibido cambiar otros módulos, tablas, datos o workers.
 - Motivo: mantener PHP sin servicio extra ni duplicación SQL en dos lenguajes;
   extensión a motores exige schema/transacciones/bloqueos y pruebas, no solo un DSN.
+
+
+## 2026-10-05 — Carga reemplaza base de lista
+
+- Estado: aceptada; solicitada explícitamente por usuario y aprobada por
+  ARCHITECT_AGENT /root/php_queries_arch.
+- Decisión: validar archivo primero y rechazar cero filas válidas; bloquear padre,
+  verificar campaña, DELETE por list_id e INSERT atómicos. Deduplicación del archivo.
+- Errores: rollback propio o savepoint si hay transacción externa; preservar base anterior.
+- Impacto: contrato Bot IVR/compartido, repositorio leads, UI Reemplazar base y pruebas.
+  Sin cambios de esquema, workers, metadatos u otras listas.

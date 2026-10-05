@@ -41,10 +41,12 @@ no normaliza fechas ni cambia zona horaria/valores existentes.
 
 SQL parametrizado en mysql/bot_ivr; identificadores dinámicos se limitan a lista fija.
 MySQL/MariaDB comparten adaptador. Ninguna selección dinámica de archivo desde HTTP.
-Carga: FOR UPDATE de lista perteneciente a campaña, deduplicación por lista,
-inserción por lotes, JSON sin normalización TTS. No sobrescribe contactos existentes.
+Carga: rechaza rows vacío antes de escribir; FOR UPDATE de lista perteneciente a
+campaña, DELETE únicamente por list_id e INSERT por lotes. Deduplicación dentro
+del archivo, JSON sin normalización TTS; reemplaza todos los contactos de esa lista.
 Si importLeads abre transacción, confirma éxito y revierte error. Si recibe conexión
-con transacción existente, no hace commit/rollback: la propiedad sigue en llamador.
+con transacción existente, usa savepoint: libera al éxito o revierte al savepoint
+ante error, manteniendo la transacción externa. Fallos conservan contactos previos.
 No borra tablas ni ejecuta migraciones o llamadas telefónicas.
 
 ## Errores posibles

@@ -23,7 +23,7 @@ try {
     $result = bot_list_import($repository, $list, $campaign, $parsed);
     list_verify($result['saved'] === 2 && $result['duplicates'] === 1 && $result['rejected'] === 1, 'Import counters');
     $again = bot_list_import($repository, $list, $campaign, $parsed);
-    list_verify($again['saved'] === 0 && $again['duplicates'] === 3, 'Reupload must not duplicate leads');
+    list_verify($again['saved'] === 2 && $again['duplicates'] === 1 && $repository->leadCount($list) === 2, 'Reupload replaces without accumulating leads');
     $stmt = $db->prepare('SELECT customer_name,extra_json FROM zynervox_bot_list WHERE list_id=? AND phone=?');
     $stmt->execute([$list,'51999000001']);
     $row = $stmt->fetch();
@@ -35,5 +35,22 @@ try {
     $separate = bot_campaign_list_create($repository, $other, '__separate_list__', false);
     $independent = bot_list_import($repository, $separate, $other, $parsed);
     list_verify($independent['saved'] === 2, 'Phone deduplication must be scoped to list');
-    echo "PASS: UTF8/BOM, headers, CSV parsing, counters, raw variables, reupload dedupe and list ownership\n";
+    $replacement = bot_list_parse_txt("numero,nombre\n999000002,Actualizado\n999000003,Nuevo\n");
+    bot_list_import($repository, $list, $campaign, $replacement);
+    $stmt = $db->prepare('SELECT phone,customer_name FROM zynervox_bot_list WHERE list_id=? ORDER BY phone');
+    $stmt->execute([$list]);
+    $expected = $stmt->fetchAll();
+    list_verify($expected === [['phone'=>'999000002','customer_name'=>'Actualizado'],['phone'=>'999000003','customer_name'=>'Nuevo']], 'Old contacts removed, retained phone updated, new contact inserted');
+    list_verify($repository->leadCount($separate) === 2, 'Other list changed');
+    foreach ([bot_list_parse_txt("numero,nombre\n"), bot_list_parse_txt("numero,nombre\n,Inválido\n")] as $empty) {
+        try { bot_list_import($repository, $list, $campaign, $empty); throw new LogicException('Empty replacement accepted'); }
+        catch (RuntimeException $e) {}
+    }
+    $bad = $replacement;
+    $bad['rows'][0]['extra'] = ['invalid'=>"\xFF"];
+    try { bot_list_import($repository, $list, $campaign, $bad); throw new LogicException('Invalid JSON accepted'); }
+    catch (JsonException $e) {}
+    $stmt->execute([$list]);
+    list_verify($stmt->fetchAll() === $expected && $db->inTransaction(), 'Failed replacement must restore contacts and preserve caller transaction');
+    echo "PASS: parsing, replacement, reupload, empty file preservation, failed replacement savepoint rollback, ownership and other-list isolation\n";
 } finally { $db->rollBack(); }

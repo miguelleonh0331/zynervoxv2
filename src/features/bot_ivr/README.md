@@ -109,3 +109,14 @@ BotIvrRepository; SQL agrupado por motor y módulo. MySQL/MariaDB disponibles en
 Configurar conexión a base de datos. Config previa sin engine sigue funcionando.
 La carga solo muestra resultado/conteo; workers y motor legacy quedan para después.
 Ver src/features/zynervox_queries/README.md para añadir módulos/motores y pruebas.
+
+
+## Reemplazo de base por lista (2026-10-05)
+
+Reemplazar base valida TXT antes de escribir y sustituye exclusivamente los leads
+de la lista abierta. Duplicados se descartan dentro del nuevo archivo. Archivos
+sin filas válidas conservan la base anterior. Bloqueo del padre, DELETE por list_id
+e INSERT comparten transacción; fallo revierte; transacción externa usa savepoint.
+No modifica metadatos de lista/campaña ni otras listas. Prueba list-import-db.php
+verifica reemplazo, reupload, actualización de teléfono retenido, archivo vacío,
+fallo tras borrar con rollback y aislamiento entre listas; datos de prueba revertidos.

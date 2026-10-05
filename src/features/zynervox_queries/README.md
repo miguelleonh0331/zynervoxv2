@@ -67,3 +67,14 @@ validan MariaDB 10.6.14 mediante PDO MySQL; no certifican otros servidores/versi
 
 Leer README, CONTRACT y agents/_DEFAULT_MODULE_AGENT.md. Cambios transversales
 requieren ARCHITECT_AGENT. No tocar otros consumidores ni workers automáticamente.
+
+
+## Reemplazo de base por lista (2026-10-05)
+
+Reemplazar base valida TXT antes de escribir y sustituye exclusivamente los leads
+de la lista abierta. Duplicados se descartan dentro del nuevo archivo. Archivos
+sin filas válidas conservan la base anterior. Bloqueo del padre, DELETE por list_id
+e INSERT comparten transacción; fallo revierte; transacción externa usa savepoint.
+No modifica metadatos de lista/campaña ni otras listas. Prueba list-import-db.php
+verifica reemplazo, reupload, actualización de teléfono retenido, archivo vacío,
+fallo tras borrar con rollback y aislamiento entre listas; datos de prueba revertidos.

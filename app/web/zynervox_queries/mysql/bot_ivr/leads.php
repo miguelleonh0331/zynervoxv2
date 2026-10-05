@@ -8,19 +8,18 @@ trait LeadQueries {
         return (int)$stmt->fetchColumn();
     }
     public function importLeads(int $listId, int $campaignId, array $parsed): array {
+        if (empty($parsed['rows'])) throw new \RuntimeException('El archivo no contiene contactos válidos. Se conserva la base actual.');
         $ownsTransaction = !$this->db->inTransaction();
+        $savepoint = 'bot_import_'.bin2hex(random_bytes(8));
         if ($ownsTransaction) $this->db->beginTransaction();
+        else $this->db->exec('SAVEPOINT '.$savepoint);
         try {
-            // Serialize imports for the same list, preserving existing contacts.
+            // Replace only this list, atomically and serialized with other uploads.
             $lock = $this->db->prepare('SELECT list_id FROM zynervox_bot_lists WHERE list_id=:list AND campaign_id=:campaign FOR UPDATE');
             $lock->execute([':list'=>$listId, ':campaign'=>$campaignId]);
             if (!$lock->fetch()) throw new \RuntimeException('La lista no pertenece a esta campaña.');
+            $this->db->prepare('DELETE FROM zynervox_bot_list WHERE list_id=:list')->execute([':list'=>$listId]);
             $existing = [];
-            foreach (array_chunk(array_column($parsed['rows'], 'phone'), 500) as $phones) {
-                $stmt = $this->db->prepare('SELECT phone FROM zynervox_bot_list WHERE list_id=? AND phone IN ('.implode(',', array_fill(0, count($phones), '?')).')');
-                $stmt->execute(array_merge([$listId], $phones));
-                while (($phone = $stmt->fetchColumn()) !== false) $existing[(string)$phone] = true;
-            }
             $saved = 0;
             $duplicates = (int)$parsed['duplicates'];
             foreach (array_chunk($parsed['rows'], 100) as $batch) {
@@ -38,9 +37,14 @@ trait LeadQueries {
                 }
             }
             if ($ownsTransaction) $this->db->commit();
+            else $this->db->exec('RELEASE SAVEPOINT '.$savepoint);
             return ['saved'=>$saved, 'duplicates'=>$duplicates, 'rejected'=>(int)$parsed['rejected'], 'errors'=>$parsed['errors']];
         } catch (\Throwable $e) {
             if ($ownsTransaction && $this->db->inTransaction()) $this->db->rollBack();
+            elseif (!$ownsTransaction && $this->db->inTransaction()) {
+                $this->db->exec('ROLLBACK TO SAVEPOINT '.$savepoint);
+                $this->db->exec('RELEASE SAVEPOINT '.$savepoint);
+            }
             throw $e;
         }
     }

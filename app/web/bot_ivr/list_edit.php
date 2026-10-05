@@ -24,7 +24,7 @@ try {
             if ($contents === false) throw new RuntimeException('No se pudo leer el archivo.');
             $parsed = bot_list_parse_txt($contents);
             $result = bot_list_import($db, $listId, $campaignId, $parsed);
-            $summary = 'Carga finalizada. Cargados: '.$result['saved'].'. Duplicados: '.$result['duplicates'].'. Rechazados: '.$result['rejected'].'.';
+            $summary = 'Base reemplazada. Cargados: '.$result['saved'].'. Duplicados: '.$result['duplicates'].'. Rechazados: '.$result['rejected'].'.';
             if ($result['errors']) $summary .= ' '.implode(' · ', $result['errors']);
             bot_campaign_redirect('list_edit.php?id='.$listId.'&campaign_id='.$campaignId, $summary);
         } catch (Throwable $e) { $error = $e->getMessage(); }
@@ -62,9 +62,9 @@ if ($list): ?>
 <div class="list-guide"><strong>Cabecera del TXT — formato libre</strong>
 <p>De 2 a 10 columnas separadas por comas. La columna obligatoria es <code>numero</code>; las demás se conservan como variables del contacto.</p>
 <p>Ejemplo: <code>numero,nombre,monto,direccion</code></p>
-<p>Archivo en <strong>UTF-8</strong>. Se conservan los contactos existentes y se descartan teléfonos repetidos dentro del archivo o ya presentes en esta lista. Se informa cuántos registros se cargaron, duplicaron o rechazaron.</p>
+<p>Archivo en <strong>UTF-8</strong>. <strong>Esta carga reemplaza todos los contactos actuales de esta lista.</strong> Se descartan teléfonos repetidos dentro del archivo y se informa cuántos registros se cargaron, duplicaron o rechazaron. Si el archivo no contiene contactos válidos o la carga falla, se conserva la base anterior.</p>
 <p>Máximo: 10 MB o el límite de esta instalación (<?php echo h(ini_get('upload_max_filesize')); ?> por archivo; <?php echo h(ini_get('post_max_size')); ?> por solicitud). Hasta 50000 registros.</p></div>
-<div class="list-form-actions"><button class="carsa-btn">Cargar base</button><a class="carsa-btn secondary" href="plantilla_carga.php" download>Descargar plantilla</a></div>
+<div class="list-form-actions"><button class="carsa-btn">Reemplazar base</button><a class="carsa-btn secondary" href="plantilla_carga.php" download>Descargar plantilla</a></div>
 </form></section>
 </div>
 <?php endif;

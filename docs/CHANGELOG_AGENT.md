@@ -1157,3 +1157,13 @@ Riesgos:
   carga/duplicados/pertenencia/FK/rollback, secretos sin cambios tras rechazos.
 - Sin cambios de esquema ni migración de datos. MODULE_MAP regenerado por herramienta.
 - Desplegado en mirmidon bajo /srv/www/htdocs/zynervoxv2205/zynervox_queries; verificación posterior correcta de páginas, selector, pertenencia/CSRF, repositorios y rollback de importación fallida.
+
+
+## 2026-10-05 — Reemplazar base de lista al cargar
+
+- Carga ahora reemplaza contactos de lista en transacción, deduplica nuevo archivo
+  y conserva base anterior ante archivo sin filas válidas o fallo de inserción.
+- Savepoint protege reemplazo dentro de transacciones externas.
+- UI informa sustitución y botón Reemplazar base; resultado Base reemplazada.
+- Pruebas staging correctas: reemplazo, archivo vacío, reupload, fallo tras DELETE
+  revertido, pertenencia y aislamiento. Fixtures revertidos con rollback.
