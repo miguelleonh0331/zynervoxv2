@@ -146,3 +146,27 @@ Salida /tmp/zynervox_gtts_demo_20261005.wav: 7.51 s, 8000 Hz, mono, PCM16.
 Copia MP3 para escucha /tmp/zynervox_gtts_demo_20261005.mp3. Archivos descargados
 al espejo local zynertools. Próxima integración debe copiar/adaptar generador sin
 rutas CARSA, dependencias propias y jobs por listas con id_flujo; no reutilizar IDs legacy.
+
+## Laboratorio de audio: prueba desde texto
+
+Entrar por Prueba de audios en navegación Bot IVR o bot_ivr/audio_lab.php. Elegir
+gTTS, escribir hasta1000 caracteres y Crear audio. Historial de cinco resultados
+con reproductor y Descargar WAV. Español, velocidad1.3, PCM16 mono8000Hz.
+Sin campañas/leads/flujo ni conexión SQL para generar. Sesión admin y CSRF obligatorios.
+
+Instalación (rutas adaptar según despliegue):
+- Python3.11: crear venv /etc/asterisk/synervox/venvs/audio_lab y pip install -r
+  src/features/bot_ivr/models/audio-lab-requirements.txt (gTTS2.5.4 probado).
+- Instalar ffmpeg/sox host y script asterisk/synervox/modules/bot_ivr/audio_lab_generate.py.
+- Crear /var/lib/asterisk/synervox/bot_ivr/audio_lab, propietario usuario PHP, modo0700.
+- Desplegar audio_lab.php/audio_lab_service.php y navegación campaigns_page.php.
+En mirmidon synervox en rutas de runtime se adapta a zynervoxv2205.
+Audios modo0600 fuera webroot, accesibles por endpoint autenticado. Cinco audios
+por sesión; sesiones abandonadas no tienen purga periódica en esta prueba.
+
+Proveedor separado mediante registro PHP y ejecutor Python. Para otro servidor,
+crear adaptador explícito y configuración privada, conservando formulario/resultado;
+no se habilita todavía un proveedor remoto ficticio ni URLs arbitrarias del usuario.
+Prueba php src/features/bot_ivr/tests/audio-lab.php /ruta/web/bot_ivr con usuario PHP.
+Verificación mirmidon: POST HTTP real, redirect, streamWAV, desconocido404,
+CSRF, validaciones y generación con venvpropio; navegador reproduce sin error.

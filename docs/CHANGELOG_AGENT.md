@@ -1183,3 +1183,13 @@ Riesgos:
 - Prueba real aislada con texto ficticio: WAV PCM16 mono 8kHz de 7.51 segundos.
 - MP3 de escucha descargado al espejo local; sin cambios de listas ni llamadas.
 - Documentado trazado en README Bot IVR; integración de generación por lista pendiente.
+
+
+## 2026-10-05 — Prueba de audios desde texto en web
+
+- Creada audio_lab.php con proveedor gTTS, texto, Crear audio, reproductor y descarga.
+- Servicio/sessionownership y script propio gTTS/ffmpeg/sox, venv aislado en mirmidon.
+- Enlace Prueba de audios en navegación; mantiene botón Configurar conexión BD.
+- Pruebas PHP/Python, generación bajo wwwrun, HTTPPOST→redirect→WAV PCM16mono8k,
+  ID404, CSRF y sesión ajena; navegador playback readyState4 sin errores.
+- Sin modificaciones de BD/CARSA/campañas/listas ni llamadas. Desplegado mirmidon.

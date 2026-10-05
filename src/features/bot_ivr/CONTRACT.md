@@ -79,3 +79,19 @@ Formularios antiguos que omiten el campo conservan el ID actual; creación antig
 sin campo permite NULL. Campo enviado vacío/inválido no modifica lista.
 ID referencia conceptual al flujo futuro IVR Builder, sin FK ni lectura de sus
 internos: guardar ID no certifica existencia/publicación ni genera audios.
+
+
+## Laboratorio de audio independiente (2026-10-05)
+
+GET/POST audio_lab.php ofrece texto -> proveedor TTS -> WAV reproducible en la
+misma página. Sin campañas/listas/leads/flujos/BD/jobs ni llamadas. Reutiliza
+sesión admin, CSRF, navegación y botón de conexión; no abre conexión BD para audio.
+Texto UTF8 1..1000, proveedor allowlist gtts, español y voz1.3 fijos.
+Registro de proveedores en audio_lab_service.php y ejecución en script propio
+Python audio_lab_generate.py; futuros proveedores de otra red requieren adaptador
+server-side, no URL/credenciales desde formulario. No dependencia CARSA.
+Ejecución proc_open argv + JSON stdin, timeout90s; error genérico y validación WAV
+RIFF/WAVE, 100bytes..10MB. Runtime fuera webroot, nombre random32hex, asociado a sesión.
+action=audio&id transmite únicamente archivo de sesión autenticada; desconocido404,
+Content-Type audio/wav y nosniff/no-store. Historial cinco; expulsados se eliminan.
+No hay purga periódica de sesiones abandonadas en este POC.

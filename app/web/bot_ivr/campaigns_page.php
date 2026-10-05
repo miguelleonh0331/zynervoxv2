@@ -50,7 +50,7 @@ dialog h2{font-size:14px;margin-bottom:14px}dialog::backdrop{background:rgba(45,
 </style>
 CSS;
 
-    echo '<nav class="bot-nav"><a href="index.php">Mostrar campañas</a><a href="index.php?view=create">Crear campaña</a><button type="button" class="carsa-btn secondary" onclick="document.getElementById(\'dbConfigModal\').showModal()">Configurar conexión a base de datos</button></nav>';
+    echo '<nav class="bot-nav"><a href="index.php">Mostrar campañas</a><a href="index.php?view=create">Crear campaña</a><a href="audio_lab.php">Prueba de audios</a><button type="button" class="carsa-btn secondary" onclick="document.getElementById(\'dbConfigModal\').showModal()">Configurar conexión a base de datos</button></nav>';
     if ($message !== '') echo '<div class="carsa-msg">'.h($message).'</div>';
     if ($error !== '') echo '<div class="carsa-err">'.h($error).'</div>';
 }

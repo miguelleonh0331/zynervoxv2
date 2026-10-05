@@ -509,3 +509,14 @@ Sin dependencia de otros módulos ni publicación de trabajos legacy.
 - Formularios nuevos requieren entero positivo representable por PHP; omitido en
   formulario anterior conserva valor, listas previas permanecen sin asignar.
 - No certifica publicación/existencia ni implementa generación o modifica builder.
+
+
+## 2026-10-05 — Laboratorio independiente texto a audio
+
+- Aceptada por ARCHITECT_AGENT /root/php_queries_arch; usuario redefine prueba
+  independiente sin listas/flujo, aprueba voz gTTS1.3 y autoriza implementación.
+- PHP página/servicio propios, Python ejecutor y venv propio gTTS2.5.4; no usar
+  dependencias CARSA. Registro explícito extensible a proveedor de otra red futuro.
+- WAV fuera webroot, ownership sesión, CSRF/admin, texto<=1000, argv+JSONstdin,
+  timeout90s, resultados validados, historial cinco y reproductor nativo.
+- No BD, jobs, llamadas, workerslegacy ni conexión compartida nueva.
