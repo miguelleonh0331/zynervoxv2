@@ -1137,3 +1137,9 @@ Riesgos:
 - Lint PHP correcto; render real y selección de archivo verificados en navegador.
 - Desplegados tres archivos con backups del detalle previo; sin modificar esquema.
 - Motor/TTS sigue separado; carga no inicia llamadas ni modifica otras listas.
+
+
+## 2026-10-05 — Carga de listas: resultado sin detalle de leads
+- Por solicitud del usuario se retira la tabla de contactos y su paginación de list_edit.php.
+- Se conserva el formulario, el total de leads y el mensaje de resultado con cargados, duplicados y rechazados.
+- Desplegado en mirmidon; PHP lint correcto.
