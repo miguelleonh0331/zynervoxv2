@@ -41,9 +41,9 @@ if ($campaign): ?>
 .campaign-fields{table-layout:fixed;margin:0;width:100%;border-collapse:collapse;font-size:13px}
 .campaign-fields tr:nth-child(odd){background:#dce8fa}
 .campaign-fields tr:nth-child(even){background:#cbdff9}
-.campaign-fields th{width:240px;padding:5px 9px;text-align:right;font-weight:normal;color:#172b45;background:transparent;border:none;text-transform:none}
+.campaign-fields th{width:240px;padding:5px 9px;text-align:right;font-weight:normal;color:#172b45;background:transparent;border:none;text-transform:none;white-space:normal}
 .campaign-fields td{padding:4px 9px;text-align:left}
-.campaign-fields label{text-transform:none;font-size:13px;letter-spacing:0;font-weight:normal;color:inherit}
+.campaign-fields label{text-transform:none;font-size:13px;letter-spacing:0;font-weight:normal;color:inherit;white-space:normal}
 .campaign-fields input,.campaign-fields select{display:inline-block;width:auto;max-width:100%;margin:0;padding:3px 6px;min-height:26px;background:#fff;color:#172b45;border:1px solid #aab8c9;border-radius:2px;font-size:13px}
 .campaign-fields input[type=text]{width:340px;box-sizing:border-box}
 .campaign-fields input[type=time]{width:135px}
