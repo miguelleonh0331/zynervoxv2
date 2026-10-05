@@ -68,3 +68,14 @@ Configuración engine=mysql|mariadb, ausente equivale mysql para instalaciones p
 Bot IVR conserva base zynervox, secretos fuera de Git y botón obligatorio. Legacy
 mantiene carsa_db(): PDO usando conector común compatible. Workers no cambian.
 Otros motores no se habilitan hasta adapter/esquema/pruebas; no migración de datos.
+
+
+## Flujo por lista (2026-10-05)
+
+Migración 004-list-flow.sql añade zynervox_bot_lists.id_flujo BIGINT UNSIGNED NULL.
+Listas existentes conservan NULL. Formularios nuevos de creación/edición piden
+entero positivo 1..PHP_INT_MAX y muestran el ID en campaña y detalle de lista.
+Formularios antiguos que omiten el campo conservan el ID actual; creación antigua
+sin campo permite NULL. Campo enviado vacío/inválido no modifica lista.
+ID referencia conceptual al flujo futuro IVR Builder, sin FK ni lectura de sus
+internos: guardar ID no certifica existencia/publicación ni genera audios.

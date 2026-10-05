@@ -15,9 +15,9 @@ try {
             if ($action === 'update_campaign') {
                 bot_campaign_update($db, $campaignId, $_POST);
             } elseif ($action === 'create_list') {
-                bot_campaign_list_create($db, $campaignId, (string)($_POST['list_name'] ?? ''), isset($_POST['active']));
+                bot_campaign_list_create($db, $campaignId, (string)($_POST['list_name'] ?? ''), isset($_POST['active']), array_key_exists('id_flujo', $_POST) ? $_POST['id_flujo'] : null);
             } elseif ($action === 'update_list') {
-                bot_campaign_list_update($db, $campaignId, (int)($_POST['list_id'] ?? 0), (string)($_POST['list_name'] ?? ''), isset($_POST['active']));
+                bot_campaign_list_update($db, $campaignId, (int)($_POST['list_id'] ?? 0), (string)($_POST['list_name'] ?? ''), isset($_POST['active']), array_key_exists('id_flujo', $_POST) ? $_POST['id_flujo'] : null);
             } else {
                 throw new RuntimeException('Acción inválida.');
             }
@@ -115,16 +115,17 @@ if ($campaign): ?>
 </section>
 <section class="carsa-card">
 <div class="list-head"><h2>Listas de la campaña<span class="list-summary">Listas: <?php echo count($lists); ?> · Leads: <?php echo (int)array_sum(array_column($lists,'leads_count')); ?></span></h2><button type="button" class="carsa-btn compact-submit" onclick="document.getElementById('createListModal').showModal()">Crear lista</button></div>
-<div class="bot-table-wrap"><table class="carsa-table"><thead><tr><th>List ID</th><th>Campaign ID</th><th>Nombre</th><th>Leads</th><th>Activo</th><th>Fecha de creación</th><th>Abrir</th><th>Modificar</th></tr></thead><tbody>
+<div class="bot-table-wrap"><table class="carsa-table"><thead><tr><th>List ID</th><th>Campaign ID</th><th>Nombre</th><th>ID flujo</th><th>Leads</th><th>Activo</th><th>Fecha de creación</th><th>Abrir</th><th>Modificar</th></tr></thead><tbody>
 <?php foreach ($lists as $list): ?>
-<tr><td><?php echo (int)$list['list_id']; ?></td><td><?php echo (int)$list['campaign_id']; ?></td><td><?php echo h($list['name']); ?></td><td><?php echo (int)$list['leads_count']; ?></td><td><?php echo $list['active'] ? 'Sí' : 'No'; ?></td><td><?php echo h($list['created_at']); ?></td><td><a class="carsa-btn secondary compact-submit" href="list_edit.php?id=<?php echo (int)$list['list_id']; ?>&amp;campaign_id=<?php echo (int)$campaignId; ?>">Abrir lista</a></td><td>
+<tr><td><?php echo (int)$list['list_id']; ?></td><td><?php echo (int)$list['campaign_id']; ?></td><td><?php echo h($list['name']); ?></td><td><?php echo $list['id_flujo'] === null ? 'Sin asignar' : h($list['id_flujo']); ?></td><td><?php echo (int)$list['leads_count']; ?></td><td><?php echo $list['active'] ? 'Sí' : 'No'; ?></td><td><?php echo h($list['created_at']); ?></td><td><a class="carsa-btn secondary compact-submit" href="list_edit.php?id=<?php echo (int)$list['list_id']; ?>&amp;campaign_id=<?php echo (int)$campaignId; ?>">Abrir lista</a></td><td>
 <details><summary>Modificar</summary><form method="post" class="carsa-form">
 <input type="hidden" name="action" value="update_list"><input type="hidden" name="list_id" value="<?php echo (int)$list['list_id']; ?>"><?php bot_campaign_token(); ?>
 <input aria-label="Nombre de lista <?php echo (int)$list['list_id']; ?>" name="list_name" maxlength="120" value="<?php echo h($list['name']); ?>" required>
+<label>ID de flujo (IVR Builder)<input name="id_flujo" type="number" min="1" max="<?php echo PHP_INT_MAX; ?>" step="1" value="<?php echo h($list['id_flujo'] ?? ''); ?>" required></label>
 <label><input type="checkbox" name="active" value="1" <?php echo $list['active'] ? 'checked' : ''; ?>> Activo</label>
 <button class="carsa-btn secondary compact-submit">Guardar lista</button></form></details></td></tr>
 <?php endforeach; ?>
-<?php if (!$lists): ?><tr><td colspan="8">Esta campaña todavía no tiene listas.</td></tr><?php endif; ?>
+<?php if (!$lists): ?><tr><td colspan="9">Esta campaña todavía no tiene listas.</td></tr><?php endif; ?>
 </tbody></table></div>
 </section>
 </div>
@@ -132,6 +133,7 @@ if ($campaign): ?>
 <h2 id="createListTitle">Crear y asignar lista</h2>
 <form method="post" class="carsa-form"><input type="hidden" name="action" value="create_list"><?php bot_campaign_token(); ?>
 <div class="carsa-field"><label for="list_name">Nombre de lista</label><input id="list_name" name="list_name" maxlength="120" required></div>
+<div class="carsa-field"><label for="list_flow">ID de flujo (IVR Builder)</label><input id="list_flow" name="id_flujo" type="number" min="1" max="<?php echo PHP_INT_MAX; ?>" step="1" required></div>
 <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" name="active" value="1" checked style="width:auto;margin:0"> Activo</label>
 <div class="carsa-actions"><button class="carsa-btn">Crear lista</button><button type="button" class="carsa-btn secondary" onclick="document.getElementById('createListModal').close()">Cancelar</button></div>
 </form>

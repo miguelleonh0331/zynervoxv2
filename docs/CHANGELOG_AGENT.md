@@ -1167,3 +1167,12 @@ Riesgos:
 - UI informa sustitución y botón Reemplazar base; resultado Base reemplazada.
 - Pruebas staging correctas: reemplazo, archivo vacío, reupload, fallo tras DELETE
   revertido, pertenencia y aislamiento. Fixtures revertidos con rollback.
+
+
+## 2026-10-05 — Asignación de flujo por lista
+
+- Migración 004 añade id_flujo nullable a zynervox_bot_lists en zynervox.
+- Crear/Modificar lista guarda ID positivo; tabla de campaña y detalle lo muestran.
+- Repositorio compartido extiende métodos con argumento opcional conservando formularios previos.
+- Sin cambios de contactos, workers o IVR Builder. Pruebas creación/edición,
+  IDs inválidos y preservación por omisión con fixtures revertidos.

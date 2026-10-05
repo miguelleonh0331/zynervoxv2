@@ -50,6 +50,7 @@ if ($list): ?>
 <table class="carsa-table list-meta"><tbody>
 <tr><th scope="row">List ID</th><td><?php echo (int)$listId; ?></td></tr>
 <tr><th scope="row">Nombre</th><td><?php echo h($list['name']); ?></td></tr>
+<tr><th scope="row">ID de flujo</th><td><?php echo $list['id_flujo'] === null ? 'Sin asignar' : h($list['id_flujo']); ?></td></tr>
 <tr><th scope="row">Campaña</th><td>#<?php echo (int)$campaignId; ?> — <?php echo h($list['campaign_name']); ?></td></tr>
 <tr><th scope="row">Activo</th><td><?php echo $list['active'] ? 'Sí' : 'No'; ?></td></tr>
 <tr><th scope="row">Fecha de creación</th><td><?php echo h($list['created_at']); ?></td></tr>

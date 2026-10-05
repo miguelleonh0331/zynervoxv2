@@ -80,9 +80,15 @@ function bot_campaign_update(\ZynervoxQueries\BotIvrRepository $db, int $id, arr
     }
     $db->updateCampaign($id, $values);
 }
-function bot_campaign_list_create(\ZynervoxQueries\BotIvrRepository $db, int $campaignId, string $name, bool $active): int {
-    return $db->createList($campaignId, bot_campaign_name($name), $active);
+function bot_list_flow_id($value): int {
+    if (!is_scalar($value) || !preg_match('/^[1-9][0-9]*$/', (string)$value)) throw new RuntimeException('El ID de flujo debe ser un entero positivo.');
+    $id = filter_var($value, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1, 'max_range'=>PHP_INT_MAX]]);
+    if ($id === false) throw new RuntimeException('ID de flujo fuera del rango permitido.');
+    return $id;
 }
-function bot_campaign_list_update(\ZynervoxQueries\BotIvrRepository $db, int $campaignId, int $listId, string $name, bool $active): void {
-    $db->updateList($campaignId, $listId, bot_campaign_name($name), $active);
+function bot_campaign_list_create(\ZynervoxQueries\BotIvrRepository $db, int $campaignId, string $name, bool $active, $flowId = null): int {
+    return $db->createList($campaignId, bot_campaign_name($name), $active, $flowId === null ? null : bot_list_flow_id($flowId));
+}
+function bot_campaign_list_update(\ZynervoxQueries\BotIvrRepository $db, int $campaignId, int $listId, string $name, bool $active, $flowId = null): void {
+    $db->updateList($campaignId, $listId, bot_campaign_name($name), $active, $flowId === null ? null : bot_list_flow_id($flowId));
 }

@@ -499,3 +499,13 @@ Sin dependencia de otros módulos ni publicación de trabajos legacy.
 - Errores: rollback propio o savepoint si hay transacción externa; preservar base anterior.
 - Impacto: contrato Bot IVR/compartido, repositorio leads, UI Reemplazar base y pruebas.
   Sin cambios de esquema, workers, metadatos u otras listas.
+
+
+## 2026-10-05 — id_flujo en listas Bot IVR
+
+- Aceptada por ARCHITECT_AGENT /root/php_queries_arch ante definición del usuario:
+  cada lista referenciará un flujo de IVR Builder para audios futuros.
+- Columna BIGINT UNSIGNED nullable, migración 004 aditiva, sin FK a otro módulo.
+- Formularios nuevos requieren entero positivo representable por PHP; omitido en
+  formulario anterior conserva valor, listas previas permanecen sin asignar.
+- No certifica publicación/existencia ni implementa generación o modifica builder.

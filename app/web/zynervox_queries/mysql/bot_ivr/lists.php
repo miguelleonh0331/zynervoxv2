@@ -14,13 +14,15 @@ trait ListQueries {
         if (!$row) throw new \RuntimeException('La lista no existe o no pertenece a esta campaña.');
         return $row;
     }
-    public function createList(int $campaignId, string $name, bool $active): int {
+    public function createList(int $campaignId, string $name, bool $active, ?int $flowId = null): int {
         $this->campaign($campaignId);
-        $this->db->prepare('INSERT INTO zynervox_bot_lists (campaign_id,name,active) VALUES (:campaign,:name,:active)')->execute([':campaign'=>$campaignId, ':name'=>$name, ':active'=>(int)$active]);
+        if ($flowId !== null && $flowId < 1) throw new \RuntimeException('ID de flujo inválido.');
+        $this->db->prepare('INSERT INTO zynervox_bot_lists (campaign_id,name,active,id_flujo) VALUES (:campaign,:name,:active,:flow)')->execute([':campaign'=>$campaignId, ':name'=>$name, ':active'=>(int)$active, ':flow'=>$flowId]);
         return (int)$this->db->lastInsertId();
     }
-    public function updateList(int $campaignId, int $listId, string $name, bool $active): void {
+    public function updateList(int $campaignId, int $listId, string $name, bool $active, ?int $flowId = null): void {
         $this->list($listId, $campaignId);
-        $this->db->prepare('UPDATE zynervox_bot_lists SET name=:name,active=:active WHERE list_id=:list AND campaign_id=:campaign')->execute([':name'=>$name, ':active'=>(int)$active, ':list'=>$listId, ':campaign'=>$campaignId]);
+        if ($flowId !== null && $flowId < 1) throw new \RuntimeException('ID de flujo inválido.');
+        $this->db->prepare('UPDATE zynervox_bot_lists SET name=:name,active=:active,id_flujo=COALESCE(:flow,id_flujo) WHERE list_id=:list AND campaign_id=:campaign')->execute([':name'=>$name, ':active'=>(int)$active, ':list'=>$listId, ':campaign'=>$campaignId, ':flow'=>$flowId]);
     }
 }

@@ -120,3 +120,12 @@ e INSERT comparten transacción; fallo revierte; transacción externa usa savepo
 No modifica metadatos de lista/campaña ni otras listas. Prueba list-import-db.php
 verifica reemplazo, reupload, actualización de teléfono retenido, archivo vacío,
 fallo tras borrar con rollback y aislamiento entre listas; datos de prueba revertidos.
+
+
+## Asignar flujo de IVR Builder a lista
+
+Aplicar models/004-list-flow.sql tras 001-003. Crear lista y Modificar permiten
+indicar id_flujo positivo. Listas existentes muestran Sin asignar hasta guardarlo.
+Guardar ID no ejecuta audio ni verifica publicación; integración de generación
+por lista queda pendiente y deberá consumir el flujo por contrato público.
+Prueba: php src/features/bot_ivr/tests/list-flow-db.php /ruta/web/bot_ivr (rollback).

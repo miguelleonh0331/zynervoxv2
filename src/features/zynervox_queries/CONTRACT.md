@@ -70,3 +70,12 @@ Cada módulo añade contrato y carpeta por motor; cada nuevo motor requiere adap
 esquema, bloqueos/identidad/transacciones y suite equivalente antes de habilitarse.
 SQL Server y PostgreSQL no están implementados ni ofrecidos como opciones.
 Cambios contractuales requieren aprobación arquitectónica y registro en DECISIONS/CHANGELOG.
+
+
+## Extensión de flujo por lista (2026-10-05)
+
+createList y updateList incorporan cuarto/quinto argumento opcional ?int flowId.
+createList guarda id_flujo nullable; updateList con null conserva valor existente.
+ID no-null debe ser positivo. list()/lists() incluyen id_flujo. Migración 004 es
+aditiva y deja existentes NULL, sin FK externa. No verifica existencia/publicación
+IVR Builder ni accede al módulo; generación de audio no se implementa en esta extensión.
