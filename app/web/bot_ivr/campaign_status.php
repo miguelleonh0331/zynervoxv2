@@ -6,7 +6,7 @@ ob_end_clean();
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 initial_survey_require_login();
-require __DIR__ . '/../lib/db.php';
+require __DIR__ . '/db.php';
 require __DIR__ . '/campaign_audio_readiness.php';
 require __DIR__ . '/campaign_recordings.php';
 require __DIR__ . '/campaign_state_summary.php';

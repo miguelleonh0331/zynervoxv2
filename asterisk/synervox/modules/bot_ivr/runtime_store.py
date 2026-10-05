@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import json
 import uuid
 from pathlib import Path
 from typing import Mapping, Optional
@@ -11,9 +12,15 @@ import pymysql
 from pymysql.cursors import DictCursor
 
 DB_CONFIG = Path('/etc/astguiclient.conf')
+BOT_IVR_DB_CONFIG = Path('/etc/asterisk/synervox/secrets/bot_ivr_db.json')
 
 
 def _config() -> dict[str, str]:
+    if BOT_IVR_DB_CONFIG.exists():
+        config = json.loads(BOT_IVR_DB_CONFIG.read_text(encoding='utf-8'))
+        keys = {'server': 'VARDB_server', 'port': 'VARDB_port',
+                'database': 'VARDB_database', 'user': 'VARDB_user', 'password': 'VARDB_pass'}
+        return {target: str(config[source]) for source, target in keys.items()}
     values: dict[str, str] = {}
     for raw in DB_CONFIG.read_text(encoding='utf-8').splitlines():
         match = re.match(r'^\s*(VARDB_(?:server|port|database|user|pass))\s*=\s*(.*?)\s*$', raw)

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 function initial_survey_configured_agents(string $baseDir): array {
-    require_once __DIR__.'/../lib/db.php';
+    require_once __DIR__.'/db.php';
     $rows=carsa_db()->query('SELECT extension FROM synervox_bot_agents WHERE active=1 ORDER BY sort_order,extension')->fetchAll(PDO::FETCH_COLUMN);
     return array_values(array_map('strval',$rows));
 }

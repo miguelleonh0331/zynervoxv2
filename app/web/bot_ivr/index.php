@@ -6,7 +6,7 @@ declare(strict_types=1);
 // NOTA rutas: bot_ivr/ vive UN nivel bajo la raiz de Zynervox (el original
 // vivia DOS niveles bajo la raiz de CARSA) -- todas las referencias
 // relativas se ajustaron a esa profundidad. Nada de rutas absolutas nuevas.
-require __DIR__ . '/../lib/db.php';
+require __DIR__ . '/db.php';
 require __DIR__ . '/auth.php';
 require __DIR__ . '/page.php';
 require __DIR__ . '/campaign_runtime.php';
@@ -241,6 +241,27 @@ if (isset($_SESSION['bot_ivr_flash_message'])) {
     unset($_SESSION['bot_ivr_flash_message'], $_SESSION['bot_ivr_flash_error']);
 }
 $action = (string) ($_POST['action'] ?? '');
+
+if (empty($_SESSION['bot_ivr_db_csrf'])) $_SESSION['bot_ivr_db_csrf'] = bin2hex(random_bytes(32));
+$dbConfig = [];
+try { $dbConfig = bot_ivr_db_config(); }
+catch (Throwable $e) { $error = 'No se pudo leer la configuración de conexión.'; }
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save_db_config') {
+    try {
+        if (!hash_equals($_SESSION['bot_ivr_db_csrf'], (string) ($_POST['csrf'] ?? ''))) {
+            throw new RuntimeException('Sesión inválida. Recarga la página.');
+        }
+        $candidate = [];
+        foreach (['server', 'port', 'database', 'user'] as $key) $candidate[$key] = trim((string) ($_POST['db_' . $key] ?? ''));
+        $candidate['password'] = (string) ($_POST['db_password'] ?? '');
+        if ($candidate['password'] === '') $candidate['password'] = (string) ($dbConfig['password'] ?? '');
+        bot_ivr_db_save($candidate);
+        $_SESSION['bot_ivr_flash_message'] = 'Conexión verificada y configuración guardada.';
+        header('Location: index.php');
+        exit;
+    } catch (Throwable $e) { $error = $e->getMessage(); }
+}
+
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'add_test01_client') {
     try {
@@ -629,6 +650,9 @@ initial_survey_page_start('Bot IVR', 'Crear y administrar campañas de discado')
 <?php if ($message !== ''): ?><div class="carsa-msg"><?php echo h($message); ?></div><?php endif; ?>
 <?php if ($error !== ''): ?><div class="carsa-err"><?php echo h($error); ?></div><?php endif; ?>
 
+<div class="carsa-actions" style="margin-bottom:12px">
+  <button type="button" class="carsa-btn secondary" onclick="document.getElementById('dbConfigModal').classList.add('open')">Configurar conexión a base de datos</button>
+</div>
 <div class="cc-tabs">
   <button type="button" class="cc-tab-btn active" data-tab="campanas" onclick="showBotIvrTab('campanas')">Campañas</button>
   <button type="button" class="cc-tab-btn" data-tab="consola" onclick="showBotIvrTab('consola')">Consola</button>
@@ -872,6 +896,30 @@ initial_survey_page_start('Bot IVR', 'Crear y administrar campañas de discado')
 
 </div>
 
+<div id="dbConfigModal" class="cmp-modal" onclick="if(event.target===this)closeDbConfig()">
+  <div class="cmp-modal-box" style="width:min(480px,100%)" role="dialog" aria-modal="true" aria-labelledby="dbConfigTitle">
+    <div class="cmp-modal-head">
+      <h2 id="dbConfigTitle">Conexión a base de datos</h2>
+      <button type="button" class="carsa-btn secondary" onclick="closeDbConfig()">Cerrar</button>
+    </div>
+    <form method="post" class="carsa-form" autocomplete="off">
+      <input type="hidden" name="action" value="save_db_config">
+      <input type="hidden" name="csrf" value="<?php echo h($_SESSION['bot_ivr_db_csrf']); ?>">
+      <?php foreach (['server'=>'Servidor', 'port'=>'Puerto', 'database'=>'Base de datos', 'user'=>'Usuario'] as $key=>$label): ?>
+      <div class="carsa-field">
+        <label for="db_<?php echo h($key); ?>"><?php echo h($label); ?></label>
+        <input id="db_<?php echo h($key); ?>" name="db_<?php echo h($key); ?>" value="<?php echo h($dbConfig[$key] ?? ''); ?>" required <?php echo $key === 'port' ? 'type="number" min="1" max="65535"' : 'type="text"'; ?>>
+      </div>
+      <?php endforeach; ?>
+      <div class="carsa-field">
+        <label for="db_password">Contraseña</label>
+        <input id="db_password" name="db_password" type="password" autocomplete="new-password" placeholder="Vacío: conservar contraseña actual">
+      </div>
+      <button class="carsa-btn">Probar y guardar</button>
+    </form>
+  </div>
+</div>
+
 <div id="clientsModal" class="cmp-modal" onclick="if(event.target===this)closeClients()">
   <div class="cmp-modal-box">
     <div class="cmp-modal-head">
@@ -941,6 +989,7 @@ initial_survey_page_start('Bot IVR', 'Crear y administrar campañas de discado')
 </div>
 
 <script>
+function closeDbConfig(){ document.getElementById('dbConfigModal').classList.remove('open'); document.getElementById('db_password').value = ''; }
 function openUpload(campaignId){
   document.getElementById('uploadCampaignId').value = campaignId;
   document.getElementById('uploadCampaignLabel').textContent = 'Campaña #' + campaignId;
@@ -961,7 +1010,7 @@ function closeClients(){
   document.getElementById('clientsModal').classList.remove('open');
 }
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape') { closeClients(); closeUpload(); }
+  if (event.key === 'Escape') { closeClients(); closeUpload(); closeDbConfig(); }
 });
 // Poblar el selector de flujos desde ivr_builder (mismos credenciales de sesión)
 (async function(){

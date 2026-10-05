@@ -1022,3 +1022,16 @@ Contrato:
 
 Riesgos:
 - los fallos de Socket.IO permanecen fail-open y no interrumpen la persistencia
+
+
+## 2026-10-05 — bot_ivr: conexión configurable
+
+- Botón y formulario de conexión en app/web/bot_ivr/index.php para administradores.
+- Servidor, puerto, base de datos, usuario y contraseña; CSRF y prueba antes de guardar.
+- Persistencia atómica fuera de la raíz web en secrets/bot_ivr_db.json (0640).
+- Adaptador propio app/web/bot_ivr/db.php consumido por los endpoints del módulo;
+  runtime_store.py lee la misma configuración y conserva el fallback previo.
+- No cambia CONTRACT.md ni la configuración compartida de otros módulos.
+- Validación: lint PHP del módulo, sintaxis Python, pruebas de fallback/override
+  del worker y rechazo PHP de puertos/parámetros inv?lidos. Sin BD real disponible
+  en esta copia local; no se verifica conexión productiva ni despliegue.

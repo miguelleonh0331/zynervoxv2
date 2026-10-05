@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-require __DIR__ . '/../lib/db.php';
+require __DIR__ . '/db.php';
 
 const TTS_JOBS_TOKEN_FILE = '/etc/asterisk/synervox/secrets/tts_jobs_token';
 const TTS_JOBS_BLOB_DIR = '/var/lib/asterisk/sounds/voicebot/runtime/tts_jobs';

@@ -4,7 +4,7 @@ ob_start();
 require __DIR__ . '/auth.php';
 ob_end_clean();
 initial_survey_require_login();
-require __DIR__ . '/../lib/db.php';
+require __DIR__ . '/db.php';
 require __DIR__ . '/campaign_recordings.php';
 
 $campaignId = (int)($_GET['campaign_id'] ?? 0);

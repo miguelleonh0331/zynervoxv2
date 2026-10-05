@@ -3,7 +3,7 @@ declare(strict_types=1);
 // Migrado desde modules/initial_survey/campaign_edit.php.
 // NOTA rutas: bot_ivr/ vive UN nivel bajo la raiz de Zynervox -- ver
 // comentario equivalente en index.php.
-require __DIR__ . '/../lib/db.php';
+require __DIR__ . '/db.php';
 require __DIR__ . '/auth.php';
 require __DIR__ . '/page.php';
 require __DIR__ . '/campaign_runtime.php';
