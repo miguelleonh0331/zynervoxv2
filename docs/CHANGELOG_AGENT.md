@@ -1067,3 +1067,19 @@ Riesgos:
 - Conexión TCP 127.0.0.1 y creación/lectura de campaña verificadas con rollback.
 - Credenciales entregadas al administrador; guardado por botón pendiente.
 - No cambia estructura ni datos de negocio; integración en instalador pendiente.
+
+## 2026-10-05 - Bot IVR: administración nueva de campañas y listas
+
+- Aplicada 002-campaign-lists.sql en mirmidon: tres tablas nuevas, FK e índices,
+  sin borrar tablas anteriores ni importar datos de demo.
+- index.php: listado inicial, botón Crear campaña, ID automático/nombre/activo
+  en formulario separado y redirección al detalle. Sin requisito de flujo ni archivo.
+- campaign_edit.php: editar campaña, activación/bloqueo y alta/edición de listas
+  vinculadas a campaign_id; bloqueo de edición cruzada entre campañas.
+- campaigns_page.php comparte sesión/CSRF/configuración obligatoria; repositorio
+  campaigns_service.php usa exclusivamente el nuevo esquema.
+- Despliegue de cuatro archivos con backups de pantallas previas .bak.20261005-1727*.
+- Pruebas SQL transaccionales: ID/activo, horarios, listas y pertenencia, FK;
+  lint PHP y render CLI: listado, formulario, detalle, CSRF y escape XSS.
+- Datos de prueba revertidos. Carga de leads/ejecución de horarios/motor e
+  integración en instalador quedan fuera de esta etapa.

@@ -437,3 +437,16 @@ y tablas auxiliares locales. No cambiar ivr_builder ni su conexión.
 Contrato existente conservado. DDL propio en models/001-zynervox.sql, sin
 cargar datos de demo. Aislamiento multiempresa y ejecución de llamadas no
 forman parte de esta etapa de creación de campañas.
+
+
+### 2026-10-05 - Bot IVR: campañas, listas y leads con esquema propio
+
+ARCHITECT_AGENT aprueba migración aditiva: zynervox_bot_campaigns(campaign_id),
+zynervox_bot_lists(list_id,campaign_id), zynervox_bot_list(lead_id,list_id).
+FK ON DELETE RESTRICT; conservar tablas y endpoints legacy sin mezclar IDs.
+Listado inicial y creación sin flujo/carga de leads; detalle con listas y horarios.
+Contrato actualizado con aprobación arquitectónica. No modifica otros módulos.
+Motor legacy no consume campañas nuevas; no activar ejecución hasta migración
+posterior. Horarios se guardan como ventana diaria sin despachar llamadas.
+La cuenta propia y contraseña común acordada se integrarán al instalador en
+una etapa posterior; credenciales nunca se incluyen en estos documentos.
