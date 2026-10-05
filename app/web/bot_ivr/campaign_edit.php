@@ -117,16 +117,16 @@ if ($campaign): ?>
 </section>
 <section class="carsa-card">
 <div class="list-head"><h2>Listas de la campaña<span class="list-summary">Listas: <?php echo count($lists); ?> · Leads: <?php echo (int)array_sum(array_column($lists,'leads_count')); ?></span></h2><button type="button" class="carsa-btn compact-submit" onclick="document.getElementById('createListModal').showModal()">Crear lista</button></div>
-<div class="bot-table-wrap"><table class="carsa-table"><thead><tr><th>List ID</th><th>Campaign ID</th><th>Nombre</th><th>Leads</th><th>Activo</th><th>Modificar</th></tr></thead><tbody>
+<div class="bot-table-wrap"><table class="carsa-table"><thead><tr><th>List ID</th><th>Campaign ID</th><th>Nombre</th><th>Leads</th><th>Activo</th><th>Fecha de creación</th><th>Abrir</th><th>Modificar</th></tr></thead><tbody>
 <?php foreach ($lists as $list): ?>
-<tr><td><?php echo (int)$list['list_id']; ?></td><td><?php echo (int)$list['campaign_id']; ?></td><td><?php echo h($list['name']); ?></td><td><?php echo (int)$list['leads_count']; ?></td><td><?php echo $list['active'] ? 'Sí' : 'No'; ?></td><td>
+<tr><td><?php echo (int)$list['list_id']; ?></td><td><?php echo (int)$list['campaign_id']; ?></td><td><?php echo h($list['name']); ?></td><td><?php echo (int)$list['leads_count']; ?></td><td><?php echo $list['active'] ? 'Sí' : 'No'; ?></td><td><?php echo h($list['created_at']); ?></td><td><a class="carsa-btn secondary compact-submit" href="list_edit.php?id=<?php echo (int)$list['list_id']; ?>&amp;campaign_id=<?php echo (int)$campaignId; ?>">Abrir lista</a></td><td>
 <details><summary>Modificar</summary><form method="post" class="carsa-form">
 <input type="hidden" name="action" value="update_list"><input type="hidden" name="list_id" value="<?php echo (int)$list['list_id']; ?>"><?php bot_campaign_token(); ?>
 <input aria-label="Nombre de lista <?php echo (int)$list['list_id']; ?>" name="list_name" maxlength="120" value="<?php echo h($list['name']); ?>" required>
 <label><input type="checkbox" name="active" value="1" <?php echo $list['active'] ? 'checked' : ''; ?>> Activo</label>
 <button class="carsa-btn secondary compact-submit">Guardar lista</button></form></details></td></tr>
 <?php endforeach; ?>
-<?php if (!$lists): ?><tr><td colspan="6">Esta campaña todavía no tiene listas.</td></tr><?php endif; ?>
+<?php if (!$lists): ?><tr><td colspan="8">Esta campaña todavía no tiene listas.</td></tr><?php endif; ?>
 </tbody></table></div>
 </section>
 </div>

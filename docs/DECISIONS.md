@@ -462,3 +462,14 @@ campaña existente y timestamps. max_channels es propio de Bot IVR. Método y
 normalizados sin delimitadores legacy. Nada de FK ni dependencia de otros módulos.
 Formulario de ancho completo con dos columnas sin duplicar atributos.
 No conectar metadatos al motor ni usar user_group como ACL en esta etapa.
+
+
+### 2026-10-05 - Bot IVR: carga de leads desde el detalle de lista
+
+ARCHITECT_AGENT autoriza nuevo detalle/importador y actualización del contrato.
+Fecha created_at ya existente, sin cambio de esquema. Validar pertenencia de
+list_id/campaign_id y sesión/CSRF. TXT UTF8, 2-10 columnas, numero obligatorio;
+variables raw en extra_json sin TTS. Dedupe por archivo/lista, conservar datos
+existentes y bloquear padre FOR UPDATE para serializar cargas concurrentes.
+Se valida archivo completo antes de INSERT y se reportan filas rechazadas.
+Sin dependencia de otros módulos ni publicación de trabajos legacy.

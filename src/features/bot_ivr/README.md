@@ -51,8 +51,8 @@ Las FK restringen eliminaciones de padres con hijos. Formularios protegidos
 por sesión de administrador, CSRF y consultas preparadas; salida HTML escapada.
 La configuración de conexión sigue disponible desde ambas pantallas.
 
-La ventana diaria se almacena; su ejecución automática y la carga de leads
-quedan para otra etapa. La cuenta de BD y contraseña compartida acordada con
+La ventana diaria se almacena; su ejecución automática queda para otra etapa.
+La carga de leads está disponible desde el detalle de cada lista. La cuenta de BD y contraseña compartida acordada con
 el administrador aún requieren integración en el instalador (sin secretos en Git).
 
 Prueba SQL con datos revertidos:
@@ -80,3 +80,23 @@ timeout 1-255 segundos, canales 1-1000; prefijo/caller ID aceptan +, dígitos, *
 Campos desconocidos no se interpolan en SQL y no se guardan.
 Se preservan metadatos al enviar un formulario anterior sin estos campos.
 Estos parámetros no controlan todavía el motor ni permisos de grupos.
+
+
+## Abrir lista y cargar su base
+
+campaign_edit.php muestra fecha de creación y botón Abrir lista para cada lista.
+list_edit.php?id=<list_id>&campaign_id=<campaign_id> presenta los datos de la
+lista, formulario TXT, plantilla autenticada y leads paginados (50 por página).
+La carga solo se hace dentro de una lista, nunca al crear la campaña.
+
+list_service.php valida UTF-8/BOM, CSV de 2-10 columnas y numero obligatorio;
+normaliza cabeceras y guarda valores originales en extra_json. Detecta filas
+inválidas y reporta motivos (máximo cinco ejemplos), duplicados en archivo y
+existentes en la lista. No elimina datos ni normaliza TTS. Dos listas distintas
+pueden contener el mismo número. Procesa hasta 50000 registros/10 MB, sujeto a
+upload_max_filesize/post_max_size del servidor (mirmidon: 2M/8M al verificar).
+Importación usa bloqueo transaccional de la lista, consultas por lotes y
+inserciones por lotes de 100. Configuración mediante botón sigue obligatoria.
+
+Prueba con datos de prueba revertidos:
+`php src/features/bot_ivr/tests/list-import-db.php /ruta/web/bot_ivr`

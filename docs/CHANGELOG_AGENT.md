@@ -1123,3 +1123,17 @@ Riesgos:
   correctos, creación de lista y configuración de conexión abren correctamente.
 - PHP lint correcto y campos únicos conservados. Despliegue con backups
   20261005-1814*/1815*. No cambia esquema ni lógica de persistencia.
+
+## 2026-10-05 - Bot IVR: fecha de lista, apertura y carga TXT
+
+- Fecha de creación y botón Abrir lista en listado de campaña.
+- list_edit.php: datos de lista, formulario TXT/plantilla y tabla de leads paginada;
+  tema Zynervox, botón de conexión y vínculo para volver a campaña.
+- list_service.php: parser UTF8/cabeceras flexibles, variables raw, dedupe dentro
+  del archivo y contra lista existente; inserción transaccional por lotes y
+  protección de pertenencia campaign_id/list_id.
+- Pruebas con rollback: BOM/UTF8/cabeceras, contadores, valores guardados,
+  recarga sin duplicar, listas independientes y rechazo de campaña ajena.
+- Lint PHP correcto; render real y selección de archivo verificados en navegador.
+- Desplegados tres archivos con backups del detalle previo; sin modificar esquema.
+- Motor/TTS sigue separado; carga no inicia llamadas ni modifica otras listas.
