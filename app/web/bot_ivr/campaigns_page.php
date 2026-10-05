@@ -22,13 +22,13 @@ function bot_campaign_redirect(string $target, string $message): void {
 $message = (string)($_SESSION['bot_campaign_message'] ?? '');
 unset($_SESSION['bot_campaign_message']);
 $error = '';
-$dbConfig = ['database'=>'zynervox', 'port'=>'3306'];
+$dbConfig = ['engine'=>'mysql', 'database'=>'zynervox', 'port'=>'3306'];
 try { $dbConfig = bot_ivr_db_config(); } catch (Throwable $e) { $error = $e->getMessage(); }
 $dbConfig['database'] = 'zynervox';
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '') === 'save_db_config') {
     try {
         bot_campaign_csrf();
-        $candidate = ['database'=>'zynervox'];
+        $candidate = ['database'=>'zynervox', 'engine'=>(string)($_POST['db_engine'] ?? ($dbConfig['engine'] ?? 'mysql'))];
         foreach (['server','port','user'] as $key) $candidate[$key] = trim((string)($_POST['db_'.$key] ?? ''));
         $candidate['password'] = (string)($_POST['db_password'] ?? '');
         if ($candidate['password'] === '') $candidate['password'] = (string)($dbConfig['password'] ?? '');
@@ -62,6 +62,11 @@ function bot_campaign_footer(): void {
       <form method="post" class="carsa-form" autocomplete="off">
         <input type="hidden" name="action" value="save_db_config">
         <?php bot_campaign_token(); ?>
+        <div class="carsa-field"><label for="db_engine">Motor de base de datos</label>
+        <select id="db_engine" name="db_engine" required>
+        <?php foreach (['mysql'=>'MySQL', 'mariadb'=>'MariaDB'] as $engine=>$label): ?>
+        <option value="<?php echo $engine; ?>" <?php echo ($dbConfig['engine'] ?? 'mysql') === $engine ? 'selected' : ''; ?>><?php echo $label; ?></option>
+        <?php endforeach; ?></select></div>
         <?php foreach (['server'=>'Servidor','port'=>'Puerto','database'=>'Base de datos','user'=>'Usuario'] as $key=>$label): ?>
         <div class="carsa-field"><label for="db_<?php echo $key; ?>"><?php echo $label; ?></label>
         <input id="db_<?php echo $key; ?>" name="db_<?php echo $key; ?>" value="<?php echo h($dbConfig[$key] ?? ''); ?>" required <?php echo $key==='database' ? 'readonly' : ''; ?> <?php echo $key==='port' ? 'type="number" min="1" max="65535"' : 'type="text"'; ?>></div>

@@ -53,4 +53,15 @@ reinsertan teléfonos presentes en esa lista. Otras listas pueden repetirlos.
 Importación transaccional serializada por bloqueo del padre FOR UPDATE.
 No se reemplazan contactos existentes. Se muestran cargados/duplicados/rechazados.
 Límites: 10 MB (o límite PHP menor), 50000 registros, 1000 caracteres por variable.
-Detalle de leads paginado a 50 registros. No publica trabajos al motor legacy.
+La página de carga muestra resultado y total, sin detalle de leads. No publica trabajos al motor legacy.
+
+
+## Capa PHP compartida de consultas (2026-10-05)
+
+Administración nueva consume contrato público BotIvrRepository de zynervox_queries
+mediante factory; SQL reside en mysql/bot_ivr (también MariaDB). Páginas y servicios
+consumen operaciones; validaciones de negocio y parser TXT quedan en Bot IVR.
+Configuración engine=mysql|mariadb, ausente equivale mysql para instalaciones previas.
+Bot IVR conserva base zynervox, secretos fuera de Git y botón obligatorio. Legacy
+mantiene carsa_db(): PDO usando conector común compatible. Workers no cambian.
+Otros motores no se habilitan hasta adapter/esquema/pruebas; no migración de datos.

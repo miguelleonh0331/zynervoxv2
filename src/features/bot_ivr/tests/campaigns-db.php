@@ -7,48 +7,49 @@ function verify(bool $condition, string $message): void {
     if (!$condition) throw new RuntimeException($message);
 }
 $db = carsa_db();
+$repository = \ZynervoxQueries\botIvrRepository(bot_ivr_db_config(), $db);
 $db->beginTransaction();
 try {
-    $id = bot_campaign_create($db, '__test_campaign__', false);
+    $id = bot_campaign_create($repository, '__test_campaign__', false);
     verify($id > 0, 'ID must be generated');
-    $campaign = bot_campaign_get($db, $id);
+    $campaign = bot_campaign_get($repository, $id);
     verify((int)$campaign['active'] === 0, 'Inactive creation');
     $stmt = $db->prepare('SELECT COUNT(*) FROM zynervox_bot_lists WHERE campaign_id=?');
     $stmt->execute([$id]);
     verify((int)$stmt->fetchColumn() === 0, 'Creation must not add lists');
-    bot_campaign_update($db, $id, ['name'=>'Horario nocturno','active'=>'1','scheduled'=>'1','start_time'=>'22:00','end_time'=>'06:00']);
-    $campaign = bot_campaign_get($db, $id);
+    bot_campaign_update($repository, $id, ['name'=>'Horario nocturno','active'=>'1','scheduled'=>'1','start_time'=>'22:00','end_time'=>'06:00']);
+    $campaign = bot_campaign_get($repository, $id);
     verify($campaign['start_time'] === '22:00:00' && $campaign['end_time'] === '06:00:00', 'Schedule persistence');
     try { bot_campaign_time('25:00'); throw new LogicException('Invalid time accepted'); }
     catch (RuntimeException $e) {}
     try { bot_campaign_name(' '); throw new LogicException('Empty name accepted'); }
     catch (RuntimeException $e) {}
-    bot_campaign_update($db, $id, ['name'=>'Desactivada','active'=>'0','scheduled'=>'0','start_time'=>'08:00','end_time'=>'17:45']);
-    $disabled = bot_campaign_get($db, $id);
+    bot_campaign_update($repository, $id, ['name'=>'Desactivada','active'=>'0','scheduled'=>'0','start_time'=>'08:00','end_time'=>'17:45']);
+    $disabled = bot_campaign_get($repository, $id);
     verify((int)$disabled['active'] === 0 && (int)$disabled['scheduled'] === 0, 'Select No must disable flags');
     $metadata = ['name'=>'Campaña ampliada', 'active'=>'1', 'scheduled'=>'0', 'start_time'=>'08:00', 'end_time'=>'17:45',
         'campaign_description'=>'Descripción de prueba', 'user_group'=>'---ALL---', 'dial_method'=>'RATIO',
         'lead_order'=>'RANDOM', 'dial_statuses'=>'new  na new', 'hopper_level'=>'25', 'auto_dial_level'=>'1.25',
         'dial_timeout'=>'45', 'dial_prefix'=>'9', 'campaign_cid'=>'+51999000000', 'campaign_recording'=>'ALLCALLS', 'max_channels'=>'12'];
-    bot_campaign_update($db, $id, $metadata);
-    $expanded = bot_campaign_get($db, $id);
+    bot_campaign_update($repository, $id, $metadata);
+    $expanded = bot_campaign_get($repository, $id);
     verify($expanded['campaign_description'] === 'Descripción de prueba' && $expanded['dial_method'] === 'RATIO'
         && $expanded['dial_statuses'] === 'NEW NA' && (float)$expanded['auto_dial_level'] === 1.25
         && (int)$expanded['max_channels'] === 12 && $expanded['campaign_recording'] === 'ALLCALLS', 'Metadata persistence');
     foreach (['dial_method'=>'UNKNOWN', 'max_channels'=>'0', 'auto_dial_level'=>'1.234', 'dial_timeout'=>'256', 'dial_statuses'=>'NEW; DELETE', 'campaign_cid'=>'<script>'] as $key=>$invalid) {
-        try { bot_campaign_update($db, $id, array_replace($metadata, [$key=>$invalid])); throw new LogicException('Invalid metadata accepted: '.$key); }
+        try { bot_campaign_update($repository, $id, array_replace($metadata, [$key=>$invalid])); throw new LogicException('Invalid metadata accepted: '.$key); }
         catch (RuntimeException $e) {}
     }
-    $unchanged = bot_campaign_get($db, $id);
+    $unchanged = bot_campaign_get($repository, $id);
     verify($unchanged['dial_statuses'] === 'NEW NA' && (int)$unchanged['max_channels'] === 12, 'Invalid input must not partially save');
-    bot_campaign_update($db, $id, ['name'=>'Formulario anterior', 'active'=>'0', 'scheduled'=>'0', 'start_time'=>'08:00', 'end_time'=>'17:45']);
-    $preserved = bot_campaign_get($db, $id);
+    bot_campaign_update($repository, $id, ['name'=>'Formulario anterior', 'active'=>'0', 'scheduled'=>'0', 'start_time'=>'08:00', 'end_time'=>'17:45']);
+    $preserved = bot_campaign_get($repository, $id);
     verify($preserved['campaign_description'] === 'Descripción de prueba' && (int)$preserved['max_channels'] === 12, 'Older forms must preserve metadata');
-    $list = bot_campaign_list_create($db, $id, 'Lista de prueba', true);
-    $other = bot_campaign_create($db, '__other_campaign__', true);
-    try { bot_campaign_list_update($db, $other, $list, 'Incorrecto', false); throw new LogicException('Cross-campaign edit accepted'); }
+    $list = bot_campaign_list_create($repository, $id, 'Lista de prueba', true);
+    $other = bot_campaign_create($repository, '__other_campaign__', true);
+    try { bot_campaign_list_update($repository, $other, $list, 'Incorrecto', false); throw new LogicException('Cross-campaign edit accepted'); }
     catch (RuntimeException $e) {}
-    bot_campaign_list_update($db, $id, $list, 'Actualizada', false);
+    bot_campaign_list_update($repository, $id, $list, 'Actualizada', false);
     $stmt = $db->prepare('SELECT name,active FROM zynervox_bot_lists WHERE list_id=?');
     $stmt->execute([$list]);
     $row = $stmt->fetch();

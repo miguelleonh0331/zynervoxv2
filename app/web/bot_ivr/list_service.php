@@ -4,12 +4,8 @@ declare(strict_types=1);
 const BOT_LIST_UPLOAD_BYTES = 10485760;
 const BOT_LIST_UPLOAD_ROWS = 50000;
 
-function bot_list_get(PDO $db, int $listId, int $campaignId): array {
-    $stmt = $db->prepare('SELECT l.*,c.name campaign_name FROM zynervox_bot_lists l JOIN zynervox_bot_campaigns c ON c.campaign_id=l.campaign_id WHERE l.list_id=:list AND l.campaign_id=:campaign');
-    $stmt->execute([':list'=>$listId, ':campaign'=>$campaignId]);
-    $list = $stmt->fetch();
-    if (!$list) throw new RuntimeException('La lista no existe o no pertenece a esta campaña.');
-    return $list;
+function bot_list_get(\ZynervoxQueries\BotIvrRepository $db, int $listId, int $campaignId): array {
+    return $db->list($listId, $campaignId);
 }
 
 function bot_list_header(string $value): string {
@@ -72,40 +68,6 @@ function bot_list_parse_txt(string $contents): array {
     } finally { fclose($stream); }
 }
 
-function bot_list_import(PDO $db, int $listId, int $campaignId, array $parsed): array {
-    $ownsTransaction = !$db->inTransaction();
-    if ($ownsTransaction) $db->beginTransaction();
-    try {
-        // Serialize imports for the same list, preserving existing contacts.
-        $lock = $db->prepare('SELECT list_id FROM zynervox_bot_lists WHERE list_id=:list AND campaign_id=:campaign FOR UPDATE');
-        $lock->execute([':list'=>$listId, ':campaign'=>$campaignId]);
-        if (!$lock->fetch()) throw new RuntimeException('La lista no pertenece a esta campaña.');
-        $existing = [];
-        foreach (array_chunk(array_column($parsed['rows'], 'phone'), 500) as $phones) {
-            $stmt = $db->prepare('SELECT phone FROM zynervox_bot_list WHERE list_id=? AND phone IN ('.implode(',', array_fill(0, count($phones), '?')).')');
-            $stmt->execute(array_merge([$listId], $phones));
-            while (($phone = $stmt->fetchColumn()) !== false) $existing[(string)$phone] = true;
-        }
-        $saved = 0;
-        $duplicates = (int)$parsed['duplicates'];
-        foreach (array_chunk($parsed['rows'], 100) as $batch) {
-            $values = [];
-            $bindings = [];
-            foreach ($batch as $row) {
-                if (isset($existing[$row['phone']])) { $duplicates++; continue; }
-                $existing[$row['phone']] = true;
-                $values[] = '(?,?,?,?)';
-                array_push($bindings, $listId, $row['phone'], $row['customer_name'], json_encode($row['extra'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
-            }
-            if ($values) {
-                $db->prepare('INSERT INTO zynervox_bot_list (list_id,phone,customer_name,extra_json) VALUES '.implode(',', $values))->execute($bindings);
-                $saved += count($values);
-            }
-        }
-        if ($ownsTransaction) $db->commit();
-        return ['saved'=>$saved, 'duplicates'=>$duplicates, 'rejected'=>(int)$parsed['rejected'], 'errors'=>$parsed['errors']];
-    } catch (Throwable $e) {
-        if ($ownsTransaction && $db->inTransaction()) $db->rollBack();
-        throw $e;
-    }
+function bot_list_import(\ZynervoxQueries\BotIvrRepository $db, int $listId, int $campaignId, array $parsed): array {
+    return $db->importLeads($listId, $campaignId, $parsed);
 }

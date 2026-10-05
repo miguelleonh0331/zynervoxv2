@@ -1143,3 +1143,17 @@ Riesgos:
 - Por solicitud del usuario se retira la tabla de contactos y su paginación de list_edit.php.
 - Se conserva el formulario, el total de leads y el mensaje de resultado con cargados, duplicados y rechazados.
 - Desplegado en mirmidon; PHP lint correcto.
+
+
+## 2026-10-05 — Consultas compartidas PHP e integración Bot IVR
+
+- Nuevo módulo zynervox_queries: conexión/factory común, contrato de repositorio,
+  consultas mysql/bot_ivr separadas en campañas/listas/leads y reutilizadas por MariaDB.
+- Administración nueva elimina SQL de páginas/services; conserva parser/validación,
+  propiedad transaccional, deduplicación y pertenencia de listas.
+- Botón obligatorio añade selector MySQL/MariaDB; config previa compatible,
+  otros motores rechazados antes de conectar/guardar. Workers sin cambios.
+- Pruebas en staging mirmidon: lint PHP, lectura equivalente, CRUD/horarios/metadatos,
+  carga/duplicados/pertenencia/FK/rollback, secretos sin cambios tras rechazos.
+- Sin cambios de esquema ni migración de datos. MODULE_MAP regenerado por herramienta.
+- Desplegado en mirmidon bajo /srv/www/htdocs/zynervoxv2205/zynervox_queries; verificación posterior correcta de páginas, selector, pertenencia/CSRF, repositorios y rollback de importación fallida.

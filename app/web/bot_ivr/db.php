@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__.'/../zynervox_queries/factory.php';
+
 const BOT_IVR_DB_CONFIG = '/etc/asterisk/synervox/secrets/bot_ivr_db.json';
 
 function bot_ivr_db_config(): array {
@@ -16,20 +18,7 @@ function bot_ivr_db_connect(array $config): PDO {
     if (($config['database'] ?? '') !== 'zynervox') {
         throw new RuntimeException('Bot IVR requiere la base de datos zynervox.');
     }
-    foreach (['server', 'database', 'user'] as $key) {
-        if (!isset($config[$key]) || trim((string) $config[$key]) === '' || preg_match('/[;\x00-\x1f]/', (string) $config[$key])) {
-            throw new RuntimeException('Servidor, base de datos y usuario son obligatorios y deben ser válidos.');
-        }
-    }
-    $port = filter_var($config['port'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 65535]]);
-    if ($port === false) throw new RuntimeException('El puerto debe estar entre 1 y 65535.');
-    return new PDO("mysql:host={$config['server']};port=$port;dbname={$config['database']};charset=utf8mb4",
-        (string) $config['user'], (string) ($config['password'] ?? ''), [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-            PDO::ATTR_TIMEOUT => 5,
-        ]);
+    return \ZynervoxQueries\connect($config);
 }
 
 function bot_ivr_db_save(array $config): void {
@@ -55,4 +44,13 @@ function carsa_db(): PDO {
     static $connection = null;
     if ($connection === null) $connection = bot_ivr_db_connect(bot_ivr_db_config());
     return $connection;
+}
+
+function bot_ivr_repository(): \ZynervoxQueries\BotIvrRepository {
+    static $repository = null;
+    if ($repository === null) {
+        $config = bot_ivr_db_config();
+        $repository = \ZynervoxQueries\botIvrRepository($config, carsa_db());
+    }
+    return $repository;
 }

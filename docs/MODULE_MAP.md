@@ -2,7 +2,7 @@
 
 Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 
-Última generación: 2026-10-02 11:16
+Última generación: 2026-10-05 19:11
 
 ## Módulos
 
@@ -20,6 +20,7 @@ Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 | telephony | src/features/telephony | telephony_AGENT.md | (sin descripción) | src/features/telephony/CONTRACT.md |
 | whatsapp | src/features/whatsapp | whatsapp_AGENT.md | Incorporar la operación WhatsApp a Zynervox reutilizando Zynerwaba v2 como servicio | src/features/whatsapp/CONTRACT.md |
 | zynerdesk | src/features/zynerdesk | zynerdesk_AGENT.md | Incorporar Synervox Remoteo (supervisión remota de agentes: WebRTC, telemetría | src/features/zynerdesk/CONTRACT.md |
+| zynervox_queries | src/features/zynervox_queries | _DEFAULT_MODULE_AGENT.md | Centralizar conexión PHP/PDO y consultas por motor y módulo, con contratos de repositorio. | src/features/zynervox_queries/CONTRACT.md |
 
 ## Dependencias entre módulos
 
@@ -32,12 +33,14 @@ Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 | stt_providers | PHP 7.4+ con PDO MySQL, cURL, JSON y sesiones | módulo inexistente |
 | stt_providers | MariaDB/MySQL con usuario limitado a su base | módulo inexistente |
 | whatsapp | Contrato de autenticación Zynervox mediante `Includes\Auth` | módulo inexistente |
-| whatsapp | Imagen integrada `miguelleonh0331/zynerwabav2:2.1.0-zynervox`, construida | módulo inexistente |
-| whatsapp | MySQL 8.4 y el esquema saneado versionado | módulo inexistente |
+| whatsapp | Código vendorizado en `src/features/whatsapp/vendor/`, origen documentado en | módulo inexistente |
+| whatsapp | Node.js nativo ≥18 administrado por systemd (mismo patrón que `farm`) | módulo inexistente |
+| whatsapp | MySQL nativo del host, base y usuario propios (mismo patrón que `stt_providers`) | módulo inexistente |
 | whatsapp | Apache como proxy de la ruta pública | módulo inexistente |
 | zynerdesk | la sesión administrativa de Zynervox mediante `Includes\Auth`; | módulo inexistente |
-| zynerdesk | Docker y Docker Compose del host; | módulo inexistente |
-| zynerdesk | MySQL 8.4 propio (volumen `zynerdesk_mysql`, no compartido); | módulo inexistente |
+| zynerdesk | código vendorizado en `src/features/zynerdesk/vendor/`, origen documentado | módulo inexistente |
+| zynerdesk | Node.js nativo ≥18 administrado por systemd (mismo patrón que `farm` y `whatsapp`); | módulo inexistente |
+| zynerdesk | MySQL nativo del host, base y usuario propios (mismo patrón que `whatsapp`); | módulo inexistente |
 | zynerdesk | Apache como proxy de la ruta pública (`mod_proxy`, `mod_proxy_http`, | módulo inexistente |
-| zynerdesk | PHP con `curl`, para traer el upstream server-side; | módulo inexistente |
-| zynerdesk | la imagen publicada `ghcr.io/miguelleonh0331/synervox-remoteo` fijada por digest | módulo inexistente |
+| zynerdesk | PHP con `curl`, para traer el panel server-side | módulo inexistente |
+| zynervox_queries | PHP 7.4+ y PDO MySQL; esquema administrativo nuevo de Bot IVR según su contrato | módulo inexistente |

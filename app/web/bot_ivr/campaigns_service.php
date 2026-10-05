@@ -60,50 +60,29 @@ function bot_campaign_time(string $value): string {
     return $value . ':00';
 }
 
-function bot_campaign_create(PDO $db, string $name, bool $active): int {
-    $stmt = $db->prepare('INSERT INTO zynervox_bot_campaigns (name,active) VALUES (:name,:active)');
-    $stmt->execute([':name'=>bot_campaign_name($name), ':active'=>(int)$active]);
-    return (int)$db->lastInsertId();
+function bot_campaign_create(\ZynervoxQueries\BotIvrRepository $db, string $name, bool $active): int {
+    return $db->createCampaign(bot_campaign_name($name), $active);
 }
-
-function bot_campaign_get(PDO $db, int $id): array {
-    $stmt = $db->prepare('SELECT * FROM zynervox_bot_campaigns WHERE campaign_id=:id');
-    $stmt->execute([':id'=>$id]);
-    $row = $stmt->fetch();
-    if (!$row) throw new RuntimeException('Campaña inexistente.');
-    return $row;
+function bot_campaign_get(\ZynervoxQueries\BotIvrRepository $db, int $id): array {
+    return $db->campaign($id);
 }
-
-function bot_campaign_update(PDO $db, int $id, array $input): void {
-    $existing = bot_campaign_get($db, $id);
+function bot_campaign_update(\ZynervoxQueries\BotIvrRepository $db, int $id, array $input): void {
+    $existing = $db->campaign($id);
     $name = bot_campaign_name((string)($input['name'] ?? ''));
     $start = bot_campaign_time((string)($input['start_time'] ?? ''));
     $end = bot_campaign_time((string)($input['end_time'] ?? ''));
     $scheduled = (string)($input['scheduled'] ?? '') === '1' ? 1 : 0;
     if ($scheduled && $start === $end) throw new RuntimeException('Activación y bloqueo deben tener horas distintas.');
-    $values = [':name'=>$name, ':active'=>(string)($input['active'] ?? '') === '1' ? 1 : 0,
-        ':scheduled'=>$scheduled, ':start'=>$start, ':end'=>$end, ':id'=>$id];
-    $assignments = [];
+    $values = ['name'=>$name, 'active'=>(string)($input['active'] ?? '') === '1' ? 1 : 0,
+        'scheduled'=>$scheduled, 'start_time'=>$start, 'end_time'=>$end];
     foreach (BOT_CAMPAIGN_FIELDS as $key=>$field) {
-        // Older open forms must preserve metadata that they do not submit.
-        $values[':'.$key] = bot_campaign_field_value($key, $input[$key] ?? $existing[$key]);
-        $assignments[] = $key . '=:' . $key;
+        $values[$key] = bot_campaign_field_value($key, $input[$key] ?? $existing[$key]);
     }
-    $stmt = $db->prepare('UPDATE zynervox_bot_campaigns SET name=:name,active=:active,scheduled=:scheduled,start_time=:start,end_time=:end,' . implode(',', $assignments) . ' WHERE campaign_id=:id');
-    $stmt->execute($values);
+    $db->updateCampaign($id, $values);
 }
-
-function bot_campaign_list_create(PDO $db, int $campaignId, string $name, bool $active): int {
-    bot_campaign_get($db, $campaignId);
-    $stmt = $db->prepare('INSERT INTO zynervox_bot_lists (campaign_id,name,active) VALUES (:campaign,:name,:active)');
-    $stmt->execute([':campaign'=>$campaignId, ':name'=>bot_campaign_name($name), ':active'=>(int)$active]);
-    return (int)$db->lastInsertId();
+function bot_campaign_list_create(\ZynervoxQueries\BotIvrRepository $db, int $campaignId, string $name, bool $active): int {
+    return $db->createList($campaignId, bot_campaign_name($name), $active);
 }
-
-function bot_campaign_list_update(PDO $db, int $campaignId, int $listId, string $name, bool $active): void {
-    $owned = $db->prepare('SELECT list_id FROM zynervox_bot_lists WHERE list_id=:list AND campaign_id=:campaign');
-    $owned->execute([':list'=>$listId, ':campaign'=>$campaignId]);
-    if (!$owned->fetch()) throw new RuntimeException('La lista no pertenece a esta campaña.');
-    $stmt = $db->prepare('UPDATE zynervox_bot_lists SET name=:name,active=:active WHERE list_id=:list AND campaign_id=:campaign');
-    $stmt->execute([':name'=>bot_campaign_name($name), ':active'=>(int)$active, ':list'=>$listId, ':campaign'=>$campaignId]);
+function bot_campaign_list_update(\ZynervoxQueries\BotIvrRepository $db, int $campaignId, int $listId, string $name, bool $active): void {
+    $db->updateList($campaignId, $listId, bot_campaign_name($name), $active);
 }

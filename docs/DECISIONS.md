@@ -473,3 +473,18 @@ variables raw en extra_json sin TTS. Dedupe por archivo/lista, conservar datos
 existentes y bloquear padre FOR UPDATE para serializar cargas concurrentes.
 Se valida archivo completo antes de INSERT y se reportan filas rechazadas.
 Sin dependencia de otros módulos ni publicación de trabajos legacy.
+
+
+## 2026-10-05 — Capa compartida zynervox_queries en PHP
+
+- Estado: aceptada. Aprobada por ARCHITECT_AGENT /root/php_queries_arch.
+- Contexto: usuario autoriza procede para separar consultas por motor/módulo;
+  workers se posponen. Web PHP/PDO; MultiBase Python es referencia arquitectónica.
+- Decisión: conexión/factory y contrato BotIvrRepository compartidos; mysql/bot_ivr
+  contiene SQL, MariaDB comparte implementación, validaciones quedan en consumidor.
+- Compatibilidad: base zynervox, botón obligatorio, config sin engine equivale mysql;
+  acceso PDO legacy y workers intactos. SQLServer/PostgreSQL se rechazan por ahora.
+- Alcance: capa nueva y admin Bot IVR, pruebas, contratos y documentación.
+  Prohibido cambiar otros módulos, tablas, datos o workers.
+- Motivo: mantener PHP sin servicio extra ni duplicación SQL en dos lenguajes;
+  extensión a motores exige schema/transacciones/bloqueos y pruebas, no solo un DSN.

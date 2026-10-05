@@ -10,14 +10,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '')
     $active = isset($_POST['active']);
     try {
         bot_campaign_csrf();
-        $id = bot_campaign_create(carsa_db(), $name, $active);
+        $id = bot_campaign_create(bot_ivr_repository(), $name, $active);
         bot_campaign_redirect('campaign_edit.php?id='.$id, 'Campaña creada. Ahora puedes asignarle listas.');
     } catch (Throwable $e) { $error = $e->getMessage(); }
 }
 $campaigns = [];
 if (!$creating) {
     try {
-        $campaigns = carsa_db()->query('SELECT c.*, (SELECT COUNT(*) FROM zynervox_bot_lists l WHERE l.campaign_id=c.campaign_id) lists_count FROM zynervox_bot_campaigns c ORDER BY c.campaign_id DESC')->fetchAll();
+        $campaigns = bot_ivr_repository()->campaigns();
     } catch (Throwable $e) { if ($error === '') $error = $e->getMessage(); }
 }
 bot_campaign_header($creating ? 'Crear campaña' : 'Campañas');

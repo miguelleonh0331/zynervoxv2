@@ -42,3 +42,14 @@ autenticación es de doble puerta y sin credenciales compartidas: sesión
 Zynervox nivel 9 para la vista, y el login propio del upstream para la app.
 El agente Windows que se conecta a Zynerdesk (`synervox-remoteo-agent`) queda
 fuera de alcance de esta etapa: solo se documenta la relación futura.
+
+
+## Consultas PHP compartidas por motor y módulo (2026-10-05)
+
+zynervox_queries posee conexión/factory común y contratos de repositorio en
+app/web/zynervox_queries. Administración nueva Bot IVR es primer consumidor;
+validaciones permanecen en el módulo, SQL en mysql/bot_ivr. MySQL y MariaDB
+comparten implementación. Futuras extensiones incorporan contrato y carpeta
+por módulo/motor, migraciones y suite contractual antes de habilitar UI.
+No añade servicio Python ni migra otros módulos/workers. Config sin engine
+mantiene compatibilidad MySQL; Bot IVR sigue exigiendo zynervox y su botón.

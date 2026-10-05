@@ -6,7 +6,7 @@ $campaign = null;
 $lists = [];
 try {
     if ($campaignId === false || $campaignId === null) throw new RuntimeException('ID de campaña inválido.');
-    $db = carsa_db();
+    $db = bot_ivr_repository();
     $campaign = bot_campaign_get($db, $campaignId);
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '') !== 'save_db_config') {
         try {
@@ -25,9 +25,7 @@ try {
         } catch (Throwable $e) { $error = $e->getMessage(); }
     }
     $campaign = bot_campaign_get($db, $campaignId);
-    $stmt = $db->prepare('SELECT l.*, (SELECT COUNT(*) FROM zynervox_bot_list d WHERE d.list_id=l.list_id) leads_count FROM zynervox_bot_lists l WHERE l.campaign_id=:id ORDER BY l.list_id');
-    $stmt->execute([':id'=>$campaignId]);
-    $lists = $stmt->fetchAll();
+    $lists = $db->lists($campaignId);
 } catch (Throwable $e) {
     http_response_code($campaignId ? 404 : 400);
     $error = $e->getMessage();

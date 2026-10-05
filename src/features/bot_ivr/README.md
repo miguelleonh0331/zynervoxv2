@@ -100,3 +100,12 @@ inserciones por lotes de 100. Configuración mediante botón sigue obligatoria.
 
 Prueba con datos de prueba revertidos:
 `php src/features/bot_ivr/tests/list-import-db.php /ruta/web/bot_ivr`
+
+
+## Consultas compartidas PHP
+
+Administración nueva usa app/web/zynervox_queries/factory.php y el contrato
+BotIvrRepository; SQL agrupado por motor y módulo. MySQL/MariaDB disponibles en
+Configurar conexión a base de datos. Config previa sin engine sigue funcionando.
+La carga solo muestra resultado/conteo; workers y motor legacy quedan para después.
+Ver src/features/zynervox_queries/README.md para añadir módulos/motores y pruebas.
