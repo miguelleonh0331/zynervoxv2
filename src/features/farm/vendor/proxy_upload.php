@@ -58,5 +58,24 @@ if (!move_uploaded_file($_FILES['proxy_file']['tmp_name'], $dest)) {
 // solo el usuario Farm y www-data pueden siquiera entrar en el.
 chmod($dest, 0664);
 
-audit_event('proxy_file_upload', ['file' => $safeName, 'original' => $originalName, 'size' => $_FILES['proxy_file']['size']]);
-echo json_encode(['ok' => true, 'file' => $safeName]);
+// Inventario puramente administrativo (que cuenta Gmail genero este archivo).
+// Vive en un sidecar .inventory.json dentro de la misma carpeta; orchestrator.py
+// lo ignora porque su lector de proxies solo toma archivos con sufijo .txt.
+$account = trim((string)($_POST['cuenta'] ?? ''));
+$account = mb_substr($account, 0, 120);
+$inventoryPath = rtrim($dir, '/').'/.inventory.json';
+$inventory = [];
+if (is_file($inventoryPath)) {
+    $raw = @file_get_contents($inventoryPath);
+    $decoded = $raw !== false ? json_decode($raw, true) : null;
+    if (is_array($decoded)) $inventory = $decoded;
+}
+$inventory[$safeName] = [
+    'account' => $account !== '' ? $account : null,
+    'original_name' => $originalName,
+    'uploaded_at' => gmdate('c'),
+];
+file_put_contents($inventoryPath, json_encode($inventory, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+
+audit_event('proxy_file_upload', ['file' => $safeName, 'original' => $originalName, 'size' => $_FILES['proxy_file']['size'], 'account' => $account !== '' ? $account : null]);
+echo json_encode(['ok' => true, 'file' => $safeName, 'account' => $account !== '' ? $account : null]);

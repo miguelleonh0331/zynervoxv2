@@ -448,6 +448,69 @@ function renderBlockedProxies(list) {
   blockedList.appendChild(fragment);
 }
 
+async function refreshProxyInventory() {
+  const body = document.querySelector("#proxy-inventory-body");
+  try {
+    const files = await window.controlPlane.listProxyFiles();
+    body.textContent = "";
+    if (!files.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 4;
+      cell.textContent = "No hay archivos de proxies cargados.";
+      row.appendChild(cell);
+      body.appendChild(row);
+      return;
+    }
+    const fragment = document.createDocumentFragment();
+    files.forEach(item => {
+      const row = document.createElement("tr");
+
+      const fileCell = document.createElement("td");
+      fileCell.textContent = item.file;
+
+      const accountCell = document.createElement("td");
+      accountCell.textContent = item.account || "Sin cuenta registrada";
+
+      const dateCell = document.createElement("td");
+      dateCell.textContent = item.uploaded_at ? relativeTime(item.uploaded_at) : "—";
+
+      const actionsCell = document.createElement("td");
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "ghost";
+      deleteButton.textContent = "Eliminar";
+      deleteButton.addEventListener("click", async () => {
+        if (!confirm(`¿Eliminar ${item.file}? El orquestador dejará de usar sus proxies en el próximo refresh.`)) return;
+        deleteButton.disabled = true;
+        deleteButton.textContent = "Eliminando…";
+        try {
+          await window.controlPlane.deleteProxyFile(item.file);
+          notify(`Archivo ${item.file} eliminado.`);
+          await refreshProxyInventory();
+        } catch (error) {
+          notify(error.message, true);
+          deleteButton.disabled = false;
+          deleteButton.textContent = "Eliminar";
+        }
+      });
+      actionsCell.appendChild(deleteButton);
+
+      row.append(fileCell, accountCell, dateCell, actionsCell);
+      fragment.appendChild(row);
+    });
+    body.appendChild(fragment);
+  } catch (error) {
+    body.textContent = "";
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 4;
+    cell.textContent = `✘ ${error.message}`;
+    row.appendChild(cell);
+    body.appendChild(row);
+  }
+}
+
 function connection(online, detail) {
   const box = document.querySelector(".connection");
   box.classList.toggle("online", online);
@@ -527,17 +590,20 @@ document.querySelector("#tts-api-url-save").addEventListener("click", async () =
 });
 document.querySelector("#proxy-file-upload").addEventListener("click", async () => {
   const input = document.querySelector("#proxy-file-input");
+  const accountInput = document.querySelector("#proxy-account-input");
   const msg = document.querySelector("#proxy-upload-message");
   const file = input.files && input.files[0];
   if (!file) { notify("Elige un archivo primero.", true); return; }
   const button = document.querySelector("#proxy-file-upload");
   button.disabled = true; button.textContent = "Subiendo…";
   try {
-    const result = await window.controlPlane.uploadProxyFile(file);
-    msg.textContent = `✔ Subido como ${result.file}. El orquestador lo recoge solo.`;
+    const result = await window.controlPlane.uploadProxyFile(file, accountInput.value.trim());
+    msg.textContent = `✔ Subido como ${result.file}${result.account ? ` (cuenta: ${result.account})` : ""}. El orquestador lo recoge solo.`;
     input.value = "";
+    accountInput.value = "";
     notify("Archivo de proxies subido.");
     await refresh();
+    await refreshProxyInventory();
   } catch (error) {
     msg.textContent = `✘ ${error.message}`;
     notify(error.message, true);
@@ -593,4 +659,5 @@ failedSummary.addEventListener("keydown", event => {
 });
 
 refresh();
+refreshProxyInventory();
 setInterval(refresh, 1500);

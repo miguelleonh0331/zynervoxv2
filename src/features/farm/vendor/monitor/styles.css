@@ -66,6 +66,14 @@ input[type="number"] { width: 62px; background: #0a0f18; border: 1px solid var(-
 .operation-message { margin: 0 0 14px; border: 1px solid rgba(68,217,202,.3); background: rgba(68,217,202,.08); color: #a8eee6; border-radius: 10px; padding: 10px 13px; font-size: 12px; }
 .operation-message.error { border-color: rgba(255,100,119,.35); background: rgba(255,100,119,.09); color: #ffa1ac; }
 
+.proxy-upload-control { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.proxy-upload-control input[type="text"] { background: #0a0f18; border: 1px solid var(--line); border-radius: 8px; color: white; padding: 8px 10px; min-width: 160px; flex: 1 1 160px; }
+.proxy-upload-control input[type="file"] { color: var(--muted); flex: 2 1 220px; }
+.proxy-inventory-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 12px; }
+.proxy-inventory-table th { text-align: left; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.proxy-inventory-table td { padding: 8px; border-bottom: 1px solid var(--line); }
+.proxy-inventory-table td button { white-space: nowrap; }
+
 .workspace { display: grid; grid-template-columns: minmax(0,1fr) 360px; gap: 14px; align-items: start; }
 .agent-status { padding: 14px; }
 .agent-status > summary { cursor: pointer; list-style: none; }

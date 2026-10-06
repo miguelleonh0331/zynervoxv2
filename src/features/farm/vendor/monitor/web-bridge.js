@@ -13,9 +13,10 @@
     if (!response.ok) throw new Error(data.error || `Error HTTP ${response.status}`);
     return data;
   }
-  async function uploadProxyFile(file) {
+  async function uploadProxyFile(file, account = '') {
     const body = new FormData();
     body.append('proxy_file', file);
+    body.append('cuenta', account || '');
     const endpoint = window.ZYNERVOX_FARM_PROXY_UPLOAD_API || 'proxy_upload.php';
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -27,9 +28,34 @@
     if (!response.ok || !data.ok) throw new Error(data.error || `Error HTTP ${response.status}`);
     return data;
   }
+  async function listProxyFiles() {
+    const endpoint = window.ZYNERVOX_FARM_PROXY_FILES_API || 'proxy_files.php';
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers: {'X-CSRF-Token': csrf},
+      credentials: 'same-origin'
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok) throw new Error(data.error || `Error HTTP ${response.status}`);
+    return data.files || [];
+  }
+  async function deleteProxyFile(file) {
+    const endpoint = window.ZYNERVOX_FARM_PROXY_FILES_API || 'proxy_files.php';
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'X-CSRF-Token': csrf},
+      body: JSON.stringify({action: 'delete', file}),
+      credentials: 'same-origin'
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok) throw new Error(data.error || `Error HTTP ${response.status}`);
+    return data;
+  }
   window.controlPlane = {
     snapshot: () => request('snapshot'),
     uploadProxyFile,
+    listProxyFiles,
+    deleteProxyFile,
     events: (workerId = null) => request(`events${workerId ? `?worker=${Number(workerId)}` : ''}`),
     workerAction: (id, action, payload = {}) => request(`workers/${Number(id)}/${action}`, {method:'POST', body:payload}),
     fleetAction: (action, payload = {}) => request(`fleet/${action}`, {method:'POST', body:payload}),

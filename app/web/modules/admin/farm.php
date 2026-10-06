@@ -56,6 +56,7 @@ if ($farmView === 'annexes' && preg_match_all('~<style[^>]*>(.*?)</style>~is', $
     window.ZYNERVOX_FARM_API = 'farm_app/api.php';
     window.ZYNERVOX_FARM_PROXY_API = 'farm_app/proxy_gateway.php';
     window.ZYNERVOX_FARM_PROXY_UPLOAD_API = 'farm_app/proxy_upload.php';
+    window.ZYNERVOX_FARM_PROXY_FILES_API = 'farm_app/proxy_files.php';
     </script>
     <section class="integration-native farm-native">
         <?= $farmBody ?>

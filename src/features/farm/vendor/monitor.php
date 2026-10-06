@@ -71,11 +71,20 @@
           <h2>Subir archivo</h2>
           <p>Reemplaza la carga manual por FTP/SSH. El orquestador recarga la carpeta solo, sin reiniciar nada.</p>
         </div>
-        <div class="target-control">
+        <div class="proxy-upload-control">
+          <input id="proxy-account-input" type="text" placeholder="Cuenta (ej. gmail2)" maxlength="120" aria-label="Cuenta de origen del archivo" />
           <input id="proxy-file-input" type="file" accept=".txt,.csv,.json" aria-label="Archivo de cuentas proxy" />
           <button id="proxy-file-upload" class="primary">Subir</button>
         </div>
         <p id="proxy-upload-message" class="subtitle"></p>
+        <table class="proxy-inventory-table" id="proxy-inventory-table">
+          <thead>
+            <tr><th>Archivo</th><th>Cuenta</th><th>Subido</th><th></th></tr>
+          </thead>
+          <tbody id="proxy-inventory-body">
+            <tr><td colspan="4">Cargando inventario…</td></tr>
+          </tbody>
+        </table>
       </section>
 
       <div id="operation-message" class="operation-message" hidden></div>
