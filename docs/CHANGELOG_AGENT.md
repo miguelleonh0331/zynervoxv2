@@ -1022,3 +1022,41 @@ Contrato:
 
 Riesgos:
 - los fallos de Socket.IO permanecen fail-open y no interrumpen la persistencia
+
+### 2026-10-06 12:52 - CLAUDE_AGENT - farm
+
+Tipo: feature
+
+Resumen:
+Inventario de cuentas Gmail para archivos de proxies subidos (proxy_files.php nuevo, UI de carga con campo cuenta y tabla con eliminar)
+
+Motivo:
+El usuario usa mas de 3 cuentas Gmail para generar cuentas Webshare y necesitaba rastrear de que cuenta viene cada archivo .txt subido, ademas de poder eliminarlos desde la web
+
+Archivos modificados:
+- src/features/farm/vendor/proxy_files.php, src/features/farm/vendor/proxy_upload.php, src/features/farm/vendor/monitor.php, src/features/farm/vendor/monitor/renderer.js, src/features/farm/vendor/monitor/web-bridge.js, src/features/farm/vendor/monitor/styles.css, app/web/modules/admin/farm.php
+
+Contrato:
+- sin cambios
+
+Riesgos:
+ninguno conocido; capa aditiva via sidecar .inventory.json que orchestrator.py ignora (solo lee *.txt), no cambia el parseo ni el modelo de datos existente
+
+### 2026-10-06 12:52 - CLAUDE_AGENT - farm
+
+Tipo: fix
+
+Resumen:
+orchestrator.py purga proxies inactivos del pool sin exigir detener el motor completo
+
+Motivo:
+La regla original retenia CUALQUIER proxy removido del disco mientras el motor estuviera encendido sin distinguir si estaba en uso, obligando a un stop completo (cortando workers activos) solo para limpiar credenciales ya inactivas
+
+Archivos modificados:
+- src/features/farm/vendor/services/control-plane/orchestrator.py
+
+Contrato:
+- sin cambios
+
+Riesgos:
+ninguno conocido; verificado con harness aislado (Orchestrator.__new__ + stubs de Store) cubriendo purga con motor encendido, no-purga si busy, no-purga con proceso vivo, purga total con motor apagado (comportamiento original preservado) y caso sin removidos. Desplegado en docker_converxa con el motor detenido y 0 workers activos
