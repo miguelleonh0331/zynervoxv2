@@ -511,14 +511,38 @@ class Orchestrator:
             loaded_by_endpoint = {self._endpoint_key(item): item for item in loaded}
             removed = [key for key in current_by_endpoint if key not in loaded_by_endpoint]
 
+            # No se retira una credencial que pueda estar en uso: solo se purga
+            # de inmediato si su worker esta "stopped" y sin proceso vivo (en
+            # diseno original esto no se evaluaba por-proxy: CUALQUIER proxy
+            # removido se retenia mientras el motor estuviera encendido,
+            # obligando a detener el motor completo para purgar hasta un
+            # proxy ya inactivo). Las que siguen en uso (busy/draining/etc. o
+            # con proceso vivo) se difieren igual que antes hasta el proximo
+            # stop.
+            purged_keys = set()
             if self.engine_running and removed:
-                # No se retira una credencial que pueda estar en uso. Se aplicará al detener el motor.
-                merged = list(self.workers)
-                known = set(current_by_endpoint)
+                for key in removed:
+                    item = current_by_endpoint[key]
+                    index = item["index"]
+                    status = self.runtime.get(index, {}).get("status", "stopped")
+                    in_use = index in self.processes or status != "stopped"
+                    if not in_use:
+                        purged_keys.add(key)
+                if purged_keys:
+                    self.store.event(
+                        None, "info", "proxy_reload",
+                        f"{len(purged_keys)} proxies inactivos purgados del pool tras eliminar su archivo (motor en marcha)",
+                    )
+                    for key in purged_keys:
+                        self.runtime.pop(current_by_endpoint[key]["index"], None)
+
+                merged = [item for item in self.workers if self._endpoint_key(item) not in purged_keys]
+                known = {self._endpoint_key(item) for item in merged}
+                live_by_endpoint = {self._endpoint_key(item): item for item in merged}
                 for proxy in loaded:
                     key = self._endpoint_key(proxy)
-                    if key in current_by_endpoint:
-                        current_by_endpoint[key].update(proxy)
+                    if key in live_by_endpoint:
+                        live_by_endpoint[key].update(proxy)
                     elif key not in known:
                         merged.append(proxy)
                         known.add(key)
@@ -533,11 +557,14 @@ class Orchestrator:
                 stable = []
                 used = set()
                 for current in self.workers:
-                    incoming = loaded_by_endpoint.get(self._endpoint_key(current))
+                    key = self._endpoint_key(current)
+                    if key in purged_keys:
+                        continue
+                    incoming = loaded_by_endpoint.get(key)
                     if incoming:
                         current.update(incoming)
                     stable.append(current)
-                    used.add(self._endpoint_key(current))
+                    used.add(key)
                 next_index = max((item["index"] for item in stable), default=0) + 1
                 for proxy in loaded:
                     key = self._endpoint_key(proxy)
