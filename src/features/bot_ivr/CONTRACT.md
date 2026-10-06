@@ -86,12 +86,27 @@ internos: guardar ID no certifica existencia/publicación ni genera audios.
 GET/POST audio_lab.php ofrece texto -> proveedor TTS -> WAV reproducible en la
 misma página. Sin campañas/listas/leads/flujos/BD/jobs ni llamadas. Reutiliza
 sesión admin, CSRF, navegación y botón de conexión; no abre conexión BD para audio.
-Texto UTF8 1..1000, proveedor allowlist gtts, español y voz1.3 fijos.
+Texto UTF8 1..1000, proveedores allowlist gtts/rga, español y voz1.3 fijos.
 Registro de proveedores en audio_lab_service.php y ejecución en script propio
 Python audio_lab_generate.py; futuros proveedores de otra red requieren adaptador
 server-side, no URL/credenciales desde formulario. No dependencia CARSA.
-Ejecución proc_open argv + JSON stdin, timeout90s; error genérico y validación WAV
+Ejecución proc_open argv + JSON stdin, timeout90s local/180s RGA; error sanitizado y validación WAV
 RIFF/WAVE, 100bytes..10MB. Runtime fuera webroot, nombre random32hex, asociado a sesión.
 action=audio&id transmite únicamente archivo de sesión autenticada; desconocido404,
 Content-Type audio/wav y nosniff/no-store. Historial cinco; expulsados se eliminan.
 No hay purga periódica de sesiones abandonadas en este POC.
+
+
+## Proveedor RGA del laboratorio (2026-10-06)
+
+RGA (Remote Generation Audio), clave rga, usa POST /v1/audio/speech del gateway
+configurado en secrets/audio_lab_rga.json, relativo al despliegue Asterisk.
+Config endpoint/token privada fuera webroot/Git; formulario no acepta URLs/token.
+JSON input/language=es/speed=1.3/format=wav; Bearer server-side. El WAV se devuelve
+sin volver a acelerar localmente. No fallback a gTTS local.
+requests stream con timeout conexión5/lectura145 y deadline150; proceso PHP180s
+corta y limpia parciales. allow_redirects=False evita reenviar Bearer; límite10MB
+durante lectura y validación WAV PCM16 mono8000Hz con frames no vacíos.
+Errores400/401/502/503/red/formato se traducen a mensajes fijos sin respuesta
+remota, token, proxy o trace. Ownership/historial/reproductor permanecen iguales.
+Solo clienteRGA: no modifica gateway, Farm, BD, campañas o workers.

@@ -166,7 +166,27 @@ por sesión; sesiones abandonadas no tienen purga periódica en esta prueba.
 
 Proveedor separado mediante registro PHP y ejecutor Python. Para otro servidor,
 crear adaptador explícito y configuración privada, conservando formulario/resultado;
-no se habilita todavía un proveedor remoto ficticio ni URLs arbitrarias del usuario.
+RGA ya dispone de adaptador real; no se permiten URLs arbitrarias desde el formulario.
 Prueba php src/features/bot_ivr/tests/audio-lab.php /ruta/web/bot_ivr con usuario PHP.
 Verificación mirmidon: POST HTTP real, redirect, streamWAV, desconocido404,
 CSRF, validaciones y generación con venvpropio; navegador reproduce sin error.
+
+
+## RGA — Remote Generation Audio
+
+Selector del laboratorio incluye gTTS local y RGA. RGA envía texto al gateway
+172.16.10.26:8820/v1/audio/speech con es,1.3,wav. No convierte fallos a gTTS local.
+Instalar configuración según models/audio-lab-rga.example.json en
+/etc/asterisk/synervox/secrets/audio_lab_rga.json (adaptar nombre despliegue).
+Token real solo en secretos del servidor, nunca Git/browser; permisos0640 root:grupoPHP.
+En mirmidon grupoApache es www (runuser CLI puede usar wwwrun, no es el mismo grupo).
+Archivo de configuración en /etc/asterisk/zynervoxv2205/secrets/audio_lab_rga.json.
+requests2.34.2 ya estaba instalado en el venv de gTTS, ahora dependencia explícita.
+
+No seguir redirects; descarga streaming≤10MB y validación monoPCM16 8kHz. PHP
+180s, solicitud conexión5/lectura145 con deadline150. Traduce errores remotos a
+mensajes fijos. Historial identifica proveedor de cada audio y mantiene ownership.
+Health puede mostrar candidatos sin garantizar generación. Al 2026-10-06,
+prueba desde mirmidon logró generación RGA real y HTTPPOST→WAV reproducible;
+manual temporal anterior indicaba fallos de proxies, no representa esta prueba.
+Suite aislada sin credenciales: python tests/test_audio_lab_rga.py /ruta/audio_lab_generate.py.

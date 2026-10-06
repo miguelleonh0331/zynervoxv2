@@ -27,6 +27,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') ==
         bot_campaign_csrf();
         $text = (string)($_POST['audio_text'] ?? '');
         $provider = (string)($_POST['provider'] ?? '');
+        set_time_limit($provider === 'rga' ? 190 : 100);
         bot_audio_lab_generate($text, $provider);
         bot_campaign_redirect('audio_lab.php', 'Audio creado. Puedes escucharlo abajo.');
     } catch (Throwable $e) { $error = $e->getMessage(); }
@@ -53,7 +54,7 @@ bot_campaign_header('Prueba de creación de audios');
 <?php $history = array_reverse($_SESSION['bot_audio_lab'] ?? [], true); ?>
 <?php if (!$history): ?><p class="audio-example">Los audios aparecerán aquí después de crearlos.</p><?php endif; ?>
 <?php foreach ($history as $id=>$item): ?>
-<article class="audio-result"><strong><?php echo h($item['created_at']); ?></strong><p><?php echo h($item['text']); ?></p>
+<article class="audio-result"><strong><?php echo h($item['created_at']); ?></strong><div class="audio-example"><?php echo h(bot_audio_lab_providers()[$item['provider']] ?? $item['provider']); ?></div><p><?php echo h($item['text']); ?></p>
 <audio controls preload="none" src="audio_lab.php?action=audio&amp;id=<?php echo h($id); ?>">Tu navegador no permite reproducir audio.</audio>
 <a class="carsa-btn secondary" href="audio_lab.php?action=audio&amp;id=<?php echo h($id); ?>" download="zynervox-prueba.wav">Descargar WAV</a></article>
 <?php endforeach; ?>

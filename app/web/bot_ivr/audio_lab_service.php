@@ -7,7 +7,7 @@ const BOT_AUDIO_LAB_SCRIPT = '/etc/asterisk/synervox/modules/bot_ivr/audio_lab_g
 
 function bot_audio_lab_providers(): array {
     // Add future network providers here and in the executor, never from request URLs.
-    return ['gtts'=>'gTTS (gratis, voz básica)'];
+    return ['gtts'=>'gTTS (gratis, voz básica)', 'rga'=>'RGA (Remote Generation Audio)'];
 }
 function bot_audio_lab_validate(string $text, string $provider): string {
     $text = trim($text);
@@ -42,7 +42,7 @@ function bot_audio_lab_generate(string $text, string $provider): string {
         fclose($pipes[0]);
         stream_set_blocking($pipes[1], false);
         stream_set_blocking($pipes[2], false);
-        $deadline = microtime(true) + 90;
+        $deadline = microtime(true) + ($provider === 'rga' ? 180 : 90);
         $response = '';
         do {
             $response .= stream_get_contents($pipes[1]);
@@ -57,6 +57,19 @@ function bot_audio_lab_generate(string $text, string $provider): string {
         } while (true);
         $response .= stream_get_contents($pipes[1]);
         $result = json_decode($response, true);
+        if (empty($result['ok']) && $provider === 'rga') {
+            $messages = [
+                'rga_config'=>'RGA no está configurado en este servidor.',
+                'rga_auth'=>'RGA rechazó la autenticación. Revisa el token del servidor.',
+                'rga_bad_request'=>'RGA rechazó el texto o los parámetros enviados.',
+                'rga_unavailable'=>'RGA no tiene proxies disponibles o alcanzó su límite de generación. Intenta más tarde.',
+                'rga_proxy_failed'=>'Los proxies de RGA no pudieron generar el audio. Intenta más tarde.',
+                'rga_connection'=>'No se pudo conectar con RGA o el servidor tardó demasiado.',
+                'rga_invalid_audio'=>'RGA devolvió un audio inválido o de formato distinto al esperado.',
+                'rga_error'=>'RGA no pudo completar la generación.',
+            ];
+            throw new RuntimeException($messages[$result['code'] ?? 'rga_error'] ?? $messages['rga_error']);
+        }
         if (empty($result['ok']) || !is_file($path) || filesize($path) < 100 || filesize($path) > 10*1024*1024) {
             throw new RuntimeException('No se pudo generar el audio. Intenta nuevamente.');
         }

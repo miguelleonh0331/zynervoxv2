@@ -520,3 +520,14 @@ Sin dependencia de otros módulos ni publicación de trabajos legacy.
 - WAV fuera webroot, ownership sesión, CSRF/admin, texto<=1000, argv+JSONstdin,
   timeout90s, resultados validados, historial cinco y reproductor nativo.
 - No BD, jobs, llamadas, workerslegacy ni conexión compartida nueva.
+
+
+## 2026-10-06 — RGA como proveedor remoto de laboratorio
+
+- Aceptada por ARCHITECT_AGENT /root/php_queries_arch a solicitud del usuario.
+- Cliente síncrono de gateway del manual; credenciales privadas, endpoint fijo
+  server-side, Bearer, JSON y WAV. Selector rga separado de gtts sin fallback.
+- requests sin redirects, descarga acotada, validación formato, timeout PHP180s
+  y errores sanitizados; conservar ownership e historial.
+- Cambios limitados a laboratorio/proveedor/configuraciónsecretaprivada.
+  Sin cambios Farm, gateway, BD, campañas o workers.

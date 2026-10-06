@@ -1193,3 +1193,14 @@ Riesgos:
 - Pruebas PHP/Python, generación bajo wwwrun, HTTPPOST→redirect→WAV PCM16mono8k,
   ID404, CSRF y sesión ajena; navegador playback readyState4 sin errores.
 - Sin modificaciones de BD/CARSA/campañas/listas ni llamadas. Desplegado mirmidon.
+
+
+## 2026-10-06 — Proveedor RGA en Prueba de audios
+
+- Selector RGA Remote Generation Audio y adapter Python HTTP del gateway.
+- Token en secrets fuera Git, permisos0640 root:www acordes a Apache de mirmidon.
+- Envía voz1.3; validación WAV monoPCM16 8kHz, streamingacotado/redirectsdeshabilitados.
+- Historial identifica proveedor; mensajes específicos de error sin datos sensibles.
+- Tests aislados5correctos; generación real remota79KB, POSTHTTP→redirect→stream
+  y navegador reproduciendo4.246s, readyState4 sin error.
+- Health actual reportó190candidatos; ninguna modificación del pool/gateway.
