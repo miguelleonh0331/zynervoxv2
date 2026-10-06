@@ -1056,11 +1056,23 @@ class Orchestrator:
                 self._set_desired(item["index"], "stopped")
             self.store.event(None, "info", "fleet", f"Concurrencia preparada: {target}; motor detenido")
             return
-        rows = self.store.worker_rows()
         with self.lock:
             busy = [index for index, state in self.runtime.items() if state["status"] == "busy"]
         retained = set(busy[:target])
-        available = [index for index in rows if index not in retained and not self._is_blocked(index)]
+        # Bug real preexistente (encontrado 2026-10-06 al bajar el pool de 200
+        # a 10 proxies): la tabla SQLite "workers" es append-only, nunca borra
+        # filas de indices que ya no estan en self.workers (ensure_workers solo
+        # inserta/actualiza). Iterar "rows" (todo el historico, hasta 200) en
+        # vez de los indices REALMENTE presentes en self.workers (ahora solo
+        # 10) hacia que _is_blocked(index) intentara self.workers[index-1]
+        # para un indice fantasma -> "list index out of range" al pulsar
+        # "Iniciar motor". El dominio correcto son los indices que existen
+        # de verdad en el pool cargado ahora mismo.
+        current_indexes = {item["index"] for item in self.workers}
+        available = [
+            index for index in current_indexes
+            if index not in retained and not self._is_blocked(index)
+        ]
         retained.update(secrets.SystemRandom().sample(available, min(max(0, target - len(retained)), len(available))))
         for item in self.workers:
             index = item["index"]

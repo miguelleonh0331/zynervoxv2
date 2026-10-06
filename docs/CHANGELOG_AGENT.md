@@ -1079,3 +1079,22 @@ Contrato:
 
 Riesgos:
 El auto-stop se valida de forma centralizada en el orquestador (cola realmente vacia segun mirmidon Y ningun worker busy), no por el autorreporte de un worker individual, para no arriesgar cortar una generacion en curso. Verificado con harnesses aislados (Orchestrator.__new__ y ejecucion directa de run_worker con api_call/sleep mockeados): secuencia de sleeps exacta 3-6-12-30-60-60-60, reset a 3 tras un job real, y 6 escenarios del watchdog (busy bloquea, cola no confirmada bloquea, no dispara antes de tiempo, dispara al umbral, reset limpio en start/stop). Desplegado en docker_converxa, servidor de pruebas
+
+### 2026-10-06 15:09 - CLAUDE_AGENT - farm
+
+Tipo: fix
+
+Resumen:
+apply_target() ya no revienta con 'list index out of range' al iniciar el motor tras reducir el pool de proxies
+
+Motivo:
+La tabla SQLite workers es append-only (ensure_workers solo inserta/actualiza, nunca borra). Al bajar el pool real de 200 a 10 proxies, apply_target() seguia iterando TODAS las filas historicas (hasta indice 200) para elegir candidatos aleatorios, y _is_blocked(index) intentaba self.workers[index-1] con un indice fantasma fuera de rango. Se reprodujo en vivo al pulsar Iniciar motor en docker_converxa tras cargar solo 10 proxies Webshare
+
+Archivos modificados:
+- src/features/farm/vendor/services/control-plane/orchestrator.py
+
+Contrato:
+- sin cambios
+
+Riesgos:
+Bug preexistente, no introducido por los cambios de esta sesion (purga/backoff). Verificado con harness aislado que reproduce el escenario exacto (200 filas SQLite historicas, 10 workers reales): antes del fix synthetic test habria fallado con IndexError via _is_blocked, despues de el fix resume los 10 sin error y el caso normal (target menor al pool) sigue repartiendo resumed/drained correctamente
