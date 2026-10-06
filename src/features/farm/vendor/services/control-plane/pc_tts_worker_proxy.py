@@ -38,6 +38,10 @@ from pc_tts_worker import (
 
 IP_LOCATION_URL = os.getenv("TTS_IP_LOCATION_URL", "https://ipwho.is/")
 IP_COUNTRY_URL = "https://api.country.is/"
+# Backoff progresivo de polling mientras la cola esta vacia: 3 -> 6 -> 12 ->
+# 30 -> 60s. Se reinicia a 3s en cuanto hay un trabajo real. Debe coincidir
+# con IDLE_AUTO_STOP_SECONDS (suma de esta tupla) en orchestrator.py.
+IDLE_BACKOFF_SECONDS = (3, 6, 12, 30, 60)
 DEFAULT_PROXY_FILE = Path(__file__).with_name("proxy-accounts") / "cuenta1.txt"
 HUMAN_FIRST_NAMES = (
     "Mateo", "Sofia", "Lucas", "Valentina", "Daniel", "Camila", "Martin", "Lucia",
@@ -272,7 +276,18 @@ def run_worker(worker_name, proxy_url, proxy_host):
     take = max(1, int(os.getenv("TTS_WORKER_TAKE", str(TAKE))))
     max_jobs = max(0, int(os.getenv("TTS_WORKER_MAX_JOBS", "0")))
     processed_jobs = 0
-    last_heartbeat = 0
+    # Backoff progresivo mientras no hay trabajo (2026-10-06, a pedido del
+    # usuario): sin esto, cada worker activo golpea tts_jobs_api.php cada
+    # POLL_IDLE_SECONDS (3s) de forma indefinida aunque la cola lleve horas
+    # vacia -- con concurrencia alta eso es carga de fondo constante en
+    # mirmidon sin ningun beneficio. Ahora el intervalo sube 3 -> 6 -> 12 ->
+    # 30 -> 60s mientras siga vacio, y vuelve a 3s apenas aparece un trabajo
+    # real. El orquestador (orchestrator.py, _check_idle_auto_stop) vigila
+    # por su cuenta cuanto tiempo lleva la cola realmente vacia y sin ningun
+    # worker ocupado; tras el mismo ritmo (111s) detiene todo el motor solo,
+    # exigiendo un "Iniciar motor" manual -- este worker no decide eso, solo
+    # reduce su propia frecuencia de consulta.
+    idle_tier = 0
     while True:
         try:
             if control_file_exists(DRAIN_FILE):
@@ -295,15 +310,17 @@ def run_worker(worker_name, proxy_url, proxy_host):
                 continue
             jobs = data.get("jobs", [])
             if not jobs:
-                now = time.monotonic()
-                if now - last_heartbeat >= 30:
-                    metadata = {key: value for key, value in data.items() if key != "jobs"}
-                    detail = json.dumps(metadata, ensure_ascii=False, separators=(",", ":"))[:400]
-                    print(f"[{time.strftime('%H:%M:%S')}] HEARTBEAT idle pull={detail}", flush=True)
-                    last_heartbeat = now
-                time.sleep(POLL_IDLE_SECONDS)
+                wait_seconds = IDLE_BACKOFF_SECONDS[idle_tier]
+                print(
+                    f"[{time.strftime('%H:%M:%S')}] HEARTBEAT idle backoff={wait_seconds}s "
+                    f"tier={idle_tier + 1}/{len(IDLE_BACKOFF_SECONDS)}",
+                    flush=True,
+                )
+                time.sleep(wait_seconds)
+                idle_tier = min(idle_tier + 1, len(IDLE_BACKOFF_SECONDS) - 1)
                 continue
 
+            idle_tier = 0
             for job in jobs:
                 process_job(job, worker_name, proxy_url)
                 processed_jobs += 1

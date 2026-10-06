@@ -1060,3 +1060,22 @@ Contrato:
 
 Riesgos:
 ninguno conocido; verificado con harness aislado (Orchestrator.__new__ + stubs de Store) cubriendo purga con motor encendido, no-purga si busy, no-purga con proceso vivo, purga total con motor apagado (comportamiento original preservado) y caso sin removidos. Desplegado en docker_converxa con el motor detenido y 0 workers activos
+
+### 2026-10-06 13:59 - CLAUDE_AGENT - farm
+
+Tipo: feature
+
+Resumen:
+Backoff progresivo de polling (3-6-12-30-60s) en workers TTS y auto-stop del motor tras 111s de inactividad confirmada
+
+Motivo:
+Con varias decenas/cientos de workers activos, el polling fijo cada 3s a tts_jobs_api.php generaba carga constante de fondo en mirmidon incluso con la cola vacia. El usuario pidio una escalera de reintento que suba hasta 60s y que, al agotarse sin trabajo, detenga todo el motor (requiere reinicio manual) en vez de seguir consultando indefinidamente
+
+Archivos modificados:
+- src/features/farm/vendor/services/control-plane/pc_tts_worker_proxy.py, src/features/farm/vendor/services/control-plane/orchestrator.py
+
+Contrato:
+- sin cambios
+
+Riesgos:
+El auto-stop se valida de forma centralizada en el orquestador (cola realmente vacia segun mirmidon Y ningun worker busy), no por el autorreporte de un worker individual, para no arriesgar cortar una generacion en curso. Verificado con harnesses aislados (Orchestrator.__new__ y ejecucion directa de run_worker con api_call/sleep mockeados): secuencia de sleeps exacta 3-6-12-30-60-60-60, reset a 3 tras un job real, y 6 escenarios del watchdog (busy bloquea, cola no confirmada bloquea, no dispara antes de tiempo, dispara al umbral, reset limpio en start/stop). Desplegado en docker_converxa, servidor de pruebas

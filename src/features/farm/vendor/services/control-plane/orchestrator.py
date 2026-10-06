@@ -49,6 +49,13 @@ ACTIVE_STATES = {"starting", "idle", "busy", "pausing", "paused", "draining", "r
 # Se resetea a 0 en cada exito; se limpia por completo solo con una prueba
 # manual exitosa desde el panel ("Proxies con problemas" -> "Probar").
 PROXY_BLOCK_THRESHOLD = 3
+# Auto-stop del motor por inactividad (2026-10-06, a pedido del usuario):
+# debe coincidir con la suma de IDLE_BACKOFF_SECONDS en pc_tts_worker_proxy.py
+# (3+6+12+30+60=111). No se basa en lo que reporte un worker individual --
+# se vigila de forma centralizada (cola realmente vacia segun mirmidon Y
+# ningun worker "busy") para no arriesgarse a cortar una generacion en curso
+# solo porque un worker puntual lleva rato sin que le toque trabajo.
+IDLE_AUTO_STOP_SECONDS = 3 + 6 + 12 + 30 + 60
 GENERATING_RE = re.compile(r"generando\s+([0-9a-fA-F]+)\.\.\.\s+\((\d+) chars\)")
 OK_RE = re.compile(r"\]\s+OK\s+([0-9a-fA-F]+)\s+\((\d+) bytes\)")
 FAIL_RE = re.compile(r"\]\s+FAIL\s+([0-9a-fA-F]+):\s*(.*)")
@@ -352,6 +359,10 @@ class Orchestrator:
             "updated_at": None,
         }
         self.queue_next_refresh = 0.0
+        # Marca de tiempo desde la que la cola esta confirmada vacia Y ningun
+        # worker esta "busy"; None mientras no se cumplan ambas condiciones.
+        # Vigilado por _check_idle_auto_stop().
+        self._idle_since: float | None = None
         self.processes: dict[int, subprocess.Popen] = {}
         self.workers: list[dict] = []
         self.runtime: dict[int, dict] = {}
@@ -635,6 +646,7 @@ class Orchestrator:
                     time.sleep(1)
                     continue
                 self._refresh_queue_stats()
+                self._check_idle_auto_stop()
                 self._rebalance_random_pool()
                 rows = self.store.worker_rows()
                 for item in list(self.workers):
@@ -701,6 +713,41 @@ class Orchestrator:
                 "available": True,
                 "updated_at": utc_now(),
             }
+
+    def _check_idle_auto_stop(self) -> None:
+        """Para todo el motor solo tras IDLE_AUTO_STOP_SECONDS de inactividad
+        real confirmada (2026-10-06, a pedido del usuario): cola vacia segun
+        mirmidon (no solo "sin verificar") Y ningun worker en "busy" en este
+        instante. Deliberadamente NO se basa en el backoff local de un worker
+        individual (ver pc_tts_worker_proxy.py) -- un worker puede llevar
+        rato sin que le toque trabajo mientras otro sigue generando un audio
+        largo; solo esta vigilancia centralizada, con visibilidad de TODOS
+        los workers y de la cola real, decide si de verdad no hay nada
+        pendiente en ningun lado. Al disparar, llama a stop_all() (mismo
+        efecto que "Parada inmediata"): el usuario debe iniciar el motor de
+        nuevo a mano, no se reinicia solo."""
+        if not self.engine_running:
+            self._idle_since = None
+            return
+        with self.lock:
+            busy = any(state.get("status") == "busy" for state in self.runtime.values())
+            queue = dict(self.queue_stats)
+        queue_confirmed_empty = bool(queue.get("available")) and int(queue.get("remaining", 0)) == 0
+        if busy or not queue_confirmed_empty:
+            self._idle_since = None
+            return
+        now = time.time()
+        if self._idle_since is None:
+            self._idle_since = now
+            return
+        if now - self._idle_since >= IDLE_AUTO_STOP_SECONDS:
+            self.store.event(
+                None, "warning", "engine",
+                f"Motor detenido automaticamente tras {IDLE_AUTO_STOP_SECONDS}s sin trabajos "
+                "pendientes (cola vacia y ningun worker ocupado). Requiere iniciar el motor "
+                "manualmente para reanudar.",
+            )
+            self.stop_all()
 
     def start(self, index: int, persist: bool = True, restarted: bool = False) -> None:
         self._validate_index(index)
@@ -1068,6 +1115,12 @@ class Orchestrator:
             return
         self.engine_running = True
         self.queue_next_refresh = 0.0
+        # Limpio cualquier marca de inactividad de una corrida anterior: sin
+        # esto, un arranque nuevo podria heredar un _idle_since viejo (de
+        # horas atras) y el watchdog de auto-stop dispararia de inmediato en
+        # el primer ciclo del manager, confundiendo "acabo de iniciar" con
+        # "lleva 111s vacio".
+        self._idle_since = None
         target = max(0, min(int(self.store.setting("target_workers", "0")), len(self.workers)))
         if target == 0:
             target = min(25, len(self.workers))
@@ -1077,6 +1130,7 @@ class Orchestrator:
 
     def stop_all(self) -> None:
         self.engine_running = False
+        self._idle_since = None
         self._proxy_signature = None
         self.store.set_setting("target_workers", "0")
         for item in self.workers:
