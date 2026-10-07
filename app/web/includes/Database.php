@@ -11,6 +11,7 @@ require_once __DIR__ . '/../config/Config.php';
 class Database {
     private static $instance = null;
     private static $coreInstance = null;
+    private static $botIvrInstance = null;
     private $conn;
 
     private function __construct($host, $db, $user, $pass, $port, $missingMessage) {
@@ -61,5 +62,23 @@ class Database {
             );
         }
         return self::$coreInstance->conn;
+    }
+
+    // BD propia del IVR Builder (tablas bot_ivr_flow*): vive en "zynervox",
+    // no en "asterisk" ni en "zynervox_core". Credenciales en
+    // /etc/zynervox/zynervoxv2205-bot_ivr.conf (usuario zynervox_bot_ivr,
+    // permisos SELECT/INSERT/UPDATE/DELETE solo sobre esa base).
+    public static function getBotIvrInstance() {
+        if (self::$botIvrInstance == null) {
+            self::$botIvrInstance = new Database(
+                Config::get('BOT_IVR_DB_server'),
+                Config::get('BOT_IVR_DB_database'),
+                Config::get('BOT_IVR_DB_user'),
+                Config::get('BOT_IVR_DB_pass'),
+                Config::get('BOT_IVR_DB_port', '3306'),
+                "Error de configuración: falta /etc/zynervox/zynervoxv2205-bot_ivr.conf"
+            );
+        }
+        return self::$botIvrInstance->conn;
     }
 }

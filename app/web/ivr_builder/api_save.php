@@ -243,7 +243,7 @@ foreach ($clean as $id => $node) {
 }
 
 $result = ['flow_code' => $flowCode, 'name' => $name, 'start' => $start, 'nodes' => $clean, 'updated_at' => gmdate('c')];
-$db = carsa_db();
+$db = bot_ivr_db();
 try {
     flow_store($db, $result);
     $published = flow_publish($db, $result);

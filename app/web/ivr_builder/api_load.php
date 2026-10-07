@@ -13,7 +13,7 @@ if (!preg_match('/^\d{2}$/', $code)) {
     echo json_encode(['error' => 'Código inválido'], JSON_UNESCAPED_UNICODE);
     exit;
 }
-$db = carsa_db();
+$db = bot_ivr_db();
 $flow = flow_load($db, $code);
 if ($flow === null) {
     // Flujo nuevo/vacio (aun no guardado): devolver plantilla minima en vez
