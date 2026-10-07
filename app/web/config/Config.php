@@ -30,6 +30,10 @@ class Config {
         // astguiclient.conf: claves distintas (CORE_DB_*), sin colisión.
         self::loadFile('/etc/zynervox/zynervox-core.conf');
 
+        // BD propia del IVR Builder (tablas bot_ivr_flow*), base "zynervox"
+        // dedicada, separada de astguiclient.conf y de zynervox-core.conf.
+        self::loadFile('/etc/zynervox/zynervoxv2205-bot_ivr.conf');
+
         return self::$settings;
     }
 

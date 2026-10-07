@@ -189,6 +189,9 @@ run_module() {
   fi
 }
 
+install_macelioai_tts() {
+  WEB_ROOT="$WEB_ROOT" WEB_GROUP="$WEB_GROUP" bash "$ROOT/installer/macelioai-tts.sh"
+}
 install_whatsapp() {
   bash "$ROOT/installer/whatsapp.sh" init && bash "$ROOT/installer/whatsapp.sh" install-proxy
 }
@@ -206,6 +209,12 @@ install_zynerdesk() {
 install_zypad() {
   WEB_GROUP="$WEB_GROUP" bash "$ROOT/installer/zypad.sh"
 }
+
+# Macelioai TTS (motor local "Marcelo IA" del IVR Builder) no es opcional:
+# siempre corre, igual que zynervox-core.sh, porque ivr_builder siempre se
+# despliega como parte de app/web. Va por run_module (no por `||`) para que
+# quede en el resumen final igual que los demás módulos.
+run_module "Macelioai TTS" install_macelioai_tts
 
 # Con `if` y no con `[[ ... ]] && ...`: bajo `set -e` una condición falsa al
 # final de una lista AND devuelve 1 y abortaría la instalación.

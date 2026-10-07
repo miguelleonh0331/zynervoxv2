@@ -29,6 +29,9 @@ if (!preg_match('/^\d{2}$/', $flowCode)) fail('Código de flujo inválido');
 $name = trim((string) ($flow['name'] ?? ''));
 $start = (string) ($flow['start'] ?? '');
 $nodes = $flow['nodes'] ?? null;
+$listIdRaw = $flow['list_id'] ?? null;
+$listId = ($listIdRaw === null || $listIdRaw === '') ? null : (int) $listIdRaw;
+if ($listId !== null && $listId < 1) fail('Lista inválida');
 if ($name === '' || strlen($name) > 100) fail('Nombre inválido');
 if (!is_array($nodes) || !$nodes) fail('Debe existir al menos un nodo');
 if (!isset($nodes[$start])) fail('Nodo inicial inexistente');
@@ -242,8 +245,8 @@ foreach ($clean as $id => $node) {
     if (in_array(($node['type'] ?? ''), ['amd', 'amd_ari'], true) && $node['fallback'] === '') fail("Destino continuar (fallback) requerido en $id");
 }
 
-$result = ['flow_code' => $flowCode, 'name' => $name, 'start' => $start, 'nodes' => $clean, 'updated_at' => gmdate('c')];
-$db = carsa_db();
+$result = ['flow_code' => $flowCode, 'name' => $name, 'start' => $start, 'list_id' => $listId, 'nodes' => $clean, 'updated_at' => gmdate('c')];
+$db = bot_ivr_db();
 try {
     flow_store($db, $result);
     $published = flow_publish($db, $result);

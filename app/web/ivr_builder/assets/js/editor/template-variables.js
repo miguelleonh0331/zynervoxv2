@@ -125,6 +125,14 @@
     }finally{$("templateFile").value="";}
   }
 
+  function clearVariables(){
+    availableVariables=[];
+    $("templateName").textContent="Carga una plantilla TXT o selecciona una lista para ver sus variables.";
+    $("templateVariables").innerHTML='<span class="variable-empty">Sin plantilla</span>';
+  }
+
   window.openTemplatePicker=function(){$("templateFile").click();};
+  window.showVariables=showVariables;
+  window.clearVariables=clearVariables;
   $("templateFile").addEventListener("change",event=>loadTemplate(event.target.files[0]));
 })();

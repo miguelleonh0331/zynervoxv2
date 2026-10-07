@@ -7,7 +7,7 @@ ivr_builder_require_login(true);
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
-$db = carsa_db();
+$db = bot_ivr_db();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode((string) file_get_contents('php://input'), true);

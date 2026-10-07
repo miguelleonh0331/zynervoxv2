@@ -20,3 +20,11 @@ if (!function_exists('carsa_db')) {
         return \Includes\Database::getInstance();
     }
 }
+
+// Conexion dedicada para las tablas bot_ivr_flow* (flujos del IVR Builder),
+// que viven en la base "zynervox" -- no en "asterisk" (carsa_db()).
+if (!function_exists('bot_ivr_db')) {
+    function bot_ivr_db(): \PDO {
+        return \Includes\Database::getBotIvrInstance();
+    }
+}

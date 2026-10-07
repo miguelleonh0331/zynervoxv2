@@ -15,8 +15,7 @@ $text = trim((string) ($data['text'] ?? ''));
 if ($text === '' || mb_strlen($text, 'UTF-8') > 2000) fail('Texto requerido, maximo 2000 caracteres');
 // PENDIENTE: este proveedor (macelioai/gTTS) depende de un venv de Python
 // (venvs/gtts_env) que todavia no existe en zynerdesk -- fallara con un
-// error claro hasta que se instale ese pipeline. Usa Qwen TTS mientras
-// tanto (generate_qwen_wav.php), que si funciona (solo necesita curl+ffmpeg).
+// error claro hasta que se instale ese pipeline.
 $base = realpath(__DIR__ . '/..') ?: __DIR__ . '/..';
 $python = $base . '/venvs/gtts_env/bin/python';
 $script = $base . '/services/tts/generate_macelioai_wav.py';
@@ -28,7 +27,7 @@ $cached = is_file($file) && filesize($file) > 500;
 $start = microtime(true);
 if (!$cached) {
     if (!is_file($python) || !is_file($script)) {
-        fail('Proveedor macelioai no instalado todavía en este servidor. Usa Qwen TTS.', 501);
+        fail('Proveedor macelioai no instalado todavía en este servidor.', 501);
     }
     $cmd = escapeshellcmd($python) . ' ' . escapeshellarg($script)
         . ' --text ' . escapeshellarg($text) . ' --output ' . escapeshellarg($file) . ' 2>&1';

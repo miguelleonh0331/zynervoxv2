@@ -14,7 +14,6 @@ secrets/
 runtime/
 recordings/
 app/web/config/reporting_mirror.json
-app/web/ivr_builder/qwen_key.txt
 app/web/agc/*_auth_entries.txt
 app/web/agc/vicidial_mysqli_errors.txt
 asterisk/synervox/secrets/
