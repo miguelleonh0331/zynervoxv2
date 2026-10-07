@@ -60,8 +60,9 @@ todos los módulos y exige escalar.
   módulo (ADR-0016). El código vive vendorizado en
   `src/features/zynerdesk/vendor/`; al actualizarlo, documentar el origen
   exacto en `README.md` (igual que se hizo al vendorizar la primera vez).
-- No editar `vendor/` a mano para adaptarlo al despliegue. Toda la adaptación
-  visual ocurre al servir la página, en `zynerdesk.php`.
+- `vendor/` es fuente mantenida por este repositorio desde ADR-0018. No
+  reemplazarla ni importar otro upstream sin documentar origen y revisión.
+  La adaptación específica del shell sigue ocurriendo en `zynerdesk.php`.
 - No agregar reglas de reescritura ad-hoc por cadena: la resolución de rutas
   es genérica. Una vista nueva se declara en `$ZYNERDESK_VIEWS` y debería
   funcionar sin tocar el motor de reescritura.

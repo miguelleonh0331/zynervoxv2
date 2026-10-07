@@ -27,7 +27,7 @@ NODE_BIN="$RUNTIME/.bin/node"
 LOG="/var/log/$INSTANCE"
 SERVICE="$INSTANCE.service"
 
-usage() { echo "Uso: $0 init|up|status|credentials|install-proxy|remove-proxy|install-control|backup <archivo>|restore <archivo>|down"; }
+usage() { echo "Uso: $0 init|upgrade [backup.sql.gz]|up|status|credentials|install-proxy|remove-proxy|install-control|backup <archivo>|restore <archivo>|down"; }
 
 require_runtime() {
   local missing=()
@@ -122,19 +122,20 @@ ensure_system_user() {
 }
 
 install_code() {
-  install -d -o root -g root -m 0755 "$RUNTIME"
-  tar -C "$VENDOR" -cf - . | tar -C "$RUNTIME" -xf -
-  (cd "$RUNTIME" && npm ci --omit=dev --no-audit --no-fund)
+  local target="${1:-$RUNTIME}"
+  install -d -o root -g root -m 0755 "$target"
+  tar -C "$VENDOR" -cf - . | tar -C "$target" -xf -
+  (cd "$target" && npm ci --omit=dev --no-audit --no-fund)
 
-  chown -R root:root "$RUNTIME"
-  find "$RUNTIME" -type d -exec chmod 0755 {} +
-  find "$RUNTIME" -type f -exec chmod 0644 {} +
+  chown -R root:root "$target"
+  find "$target" -type d -exec chmod 0755 {} +
+  find "$target" -type f -exec chmod 0644 {} +
 
   # Copia propia del binario de Node, nunca la ruta original: evita depender
   # de permisos fuera de nuestro control (ej. node bajo /root, 0700, ilegible
   # para el usuario de servicio sin importar el hardening de systemd).
-  install -d -o root -g root -m 0755 "$RUNTIME/.bin"
-  install -m 0755 -o root -g root "$NODE_BIN_SRC" "$NODE_BIN"
+  install -d -o root -g root -m 0755 "$target/.bin"
+  install -m 0755 -o root -g root "$NODE_BIN_SRC" "$target/.bin/node"
 
   install -d -o root -g "$WEB_GROUP" -m 0750 "$LOG"
 }
@@ -178,7 +179,18 @@ wait_app() {
   done
   echo "Zynerdesk no quedó disponible" >&2
   journalctl -u "$SERVICE" --no-pager -n 30 >&2 || true
-  exit 1
+  return 1
+}
+
+backup_database() {
+  local output="$1"
+  local backup_dir
+  backup_dir="$(dirname "$output")"
+  [[ -d "$backup_dir" ]] || install -d -o root -g root -m 0700 "$backup_dir"
+  umask 077
+  MYSQL_PWD="$DB_PASS" mysqldump -h 127.0.0.1 -u "$DB_USER" \
+    --single-transaction --routines --events --triggers "$DB_NAME" | gzip > "$output"
+  echo "ZYNERDESK_BACKUP_READY file=$output"
 }
 
 action="${1:-}"
@@ -199,6 +211,33 @@ case "$action" in
     systemctl restart "$SERVICE"
     wait_app
     echo "ZYNERDESK_READY host=127.0.0.1 port=$PORT path=$BASE_PATH"
+    ;;
+  upgrade)
+    [[ $EUID -eq 0 ]] || { echo "Ejecutar como root" >&2; exit 1; }
+    require_runtime
+    load_env
+    [[ -d "$RUNTIME" ]] || { echo "Runtime no encontrado: $RUNTIME; ejecute init" >&2; exit 1; }
+    timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+    backup_file="${2:-/var/backups/zynervox/${INSTANCE}-${timestamp}.sql.gz}"
+    stage="${RUNTIME}.upgrade.$$"
+    previous="${RUNTIME}.previous.${timestamp}"
+    failed="${RUNTIME}.failed.${timestamp}"
+    backup_database "$backup_file"
+    install_code "$stage"
+    systemctl stop "$SERVICE"
+    mv "$RUNTIME" "$previous"
+    mv "$stage" "$RUNTIME"
+    if systemctl restart "$SERVICE" && wait_app; then
+      echo "ZYNERDESK_UPGRADE_OK service=$SERVICE backup=$backup_file previous=$previous"
+    else
+      systemctl stop "$SERVICE" || true
+      mv "$RUNTIME" "$failed"
+      mv "$previous" "$RUNTIME"
+      systemctl restart "$SERVICE"
+      wait_app || true
+      echo "ZYNERDESK_UPGRADE_ROLLBACK service=$SERVICE failed=$failed" >&2
+      exit 1
+    fi
     ;;
   up)
     [[ $EUID -eq 0 ]] || { echo "Ejecutar como root" >&2; exit 1; }
@@ -441,10 +480,7 @@ EOF
     load_env
     output="${2:-}"
     [[ -n "$output" ]] || { usage; exit 2; }
-    umask 077
-    MYSQL_PWD="$DB_PASS" mysqldump -h 127.0.0.1 -u "$DB_USER" \
-      --single-transaction --routines --events --triggers "$DB_NAME" | gzip > "$output"
-    echo "ZYNERDESK_BACKUP_READY file=$output"
+    backup_database "$output"
     ;;
   restore)
     load_env

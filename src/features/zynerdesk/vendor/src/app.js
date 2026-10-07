@@ -11,6 +11,7 @@ const { createAuthService } = require("./features/auth");
 const { createUsersService } = require("./features/users");
 const { createWebService } = require("./features/web");
 const { createGeoService } = require("./features/geo");
+const { createAgentsService } = require("./features/agents");
 const config = require("./shared/config");
 const { pool } = require("./shared/db");
 const { verifyZynervoxSso } = require("../zynervox-sso");
@@ -101,6 +102,8 @@ const { normalizeProcessName, normalizeActivityEvent, recalculateAgentDailyStats
 
 const { getUserCampaigns, canAccessAgent, replaceUserCampaigns } =
   createUsersService({ pool });
+
+const { setRetired } = createAgentsService({ pool });
 
 const { serveStatic } = createWebService({ send });
 
@@ -285,6 +288,23 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { ok: true });
     }
 
+    // ----- MANTENIMIENTO DE EQUIPOS (retiro logico reversible, solo admin) -----
+    const agentRetirementMatch = p.match(/^\/api\/admin\/agents\/([^/]+)\/(retire|restore)$/);
+    if (agentRetirementMatch && method === "POST") {
+      const user = await getSessionUser(req);
+      if (!user) return send(res, 401, { error: "No autenticado" });
+      if (!isAdmin(user)) return send(res, 403, { error: "Solo administradores" });
+      const agentId = limitedString(decodeURIComponent(agentRetirementMatch[1]), 120);
+      if (!agentId || !/^[a-zA-Z0-9._:-]+$/.test(agentId)) {
+        return send(res, 400, { error: "agentId invalido" });
+      }
+      const retired = agentRetirementMatch[2] === "retire";
+      if (!(await setRetired(agentId, user.id, retired))) {
+        return send(res, 404, { error: "Equipo no encontrado" });
+      }
+      return send(res, 200, { ok: true, agentId, retired });
+    }
+
     // ----- AGENTE: reporte (guarda/actualiza en MySQL para historico) -----
     if (p === "/api/agent/report" && method === "POST") {
       const b = await readBody(req);
@@ -442,8 +462,11 @@ const server = http.createServer(async (req, res) => {
       const user = await getSessionUser(req);
       if (!user) return send(res, 401, { error: "No autenticado" });
       const campaign = url.searchParams.get("campaign");
+      const retired = url.searchParams.get("retired") === "1";
+      if (retired && !isAdmin(user)) return send(res, 403, { error: "Solo administradores" });
       let sql = `SELECT a.agent_id, a.tag, a.campaign, a.hostname, a.username, a.platform,
                         a.adapter, a.mac, a.kind, a.ip_local, a.ip_public, a.ping, a.first_seen, a.last_seen,
+                        a.retired_at, a.retired_by_user_id,
                         (a.last_seen > (NOW() - INTERVAL 30 SECOND)) AS online,
                         COALESCE(ds.semaphore,'gray') AS activity_semaphore,
                         ds.activity_pct, COALESCE(ds.semaphore_overridden,0) AS semaphore_overridden
@@ -452,13 +475,13 @@ const server = http.createServer(async (req, res) => {
                      ON ds.agent_id=a.agent_id
                     AND ds.work_day=DATE(CONVERT_TZ(UTC_TIMESTAMP(),'+00:00','-05:00'))`;
       const params = [];
-      const filters = [];
+      const filters = [retired ? `a.retired_at IS NOT NULL` : `a.retired_at IS NULL`];
       if (!isAdmin(user)) {
         filters.push(`a.campaign IN (SELECT campaign FROM user_campaigns WHERE user_id = ?)`);
         params.push(user.id);
       }
       if (campaign) { filters.push(`a.campaign = ?`); params.push(campaign); }
-      if (filters.length) sql += ` WHERE ` + filters.join(" AND ");
+      sql += ` WHERE ` + filters.join(" AND ");
       sql += ` ORDER BY online DESC, a.last_seen DESC`;
       const [rows] = await pool.query(sql, params);
       // Adjuntar ultimos resultados de pruebas + pendientes + conteo historial.
@@ -535,7 +558,7 @@ const server = http.createServer(async (req, res) => {
       const user = await getSessionUser(req);
       if (!user) return send(res, 401, { error: "No autenticado" });
       const params = [];
-      let scope = `campaign IS NOT NULL AND campaign <> ''`;
+      let scope = `retired_at IS NULL AND campaign IS NOT NULL AND campaign <> ''`;
       if (!isAdmin(user)) {
         scope += ` AND campaign IN (SELECT campaign FROM user_campaigns WHERE user_id = ?)`;
         params.push(user.id);

@@ -1,6 +1,6 @@
 {
   "name": "synervox-remoteov2",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Supervision remota modular con WebRTC, telemetria y control de acceso",
   "main": "server.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "start:app": "node server.js",
     "env:generate": "node scripts/generate-env.js",
     "check": "node --check server.js && node --check zynervox-sso.js && node --check src/app.js && node --check scripts/start.js",
-    "test": "npm run check && node --test tests/zynervox-sso.test.js"
+    "test": "npm run check && node --test tests"
   },
   "license": "ISC",
   "dependencies": {
