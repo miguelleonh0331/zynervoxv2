@@ -34,6 +34,15 @@ done
 [[ -f "$WEB_ROOT/index.php" ]] || { echo "FALTA archivo: $WEB_ROOT/index.php"; fail=1; }
 [[ -f "$WEB_ROOT/modules/admin/farm.php" ]] || { echo "FALTA módulo Farm"; fail=1; }
 [[ -f "$WEB_ROOT/modules/admin/stt_providers.php" ]] || { echo "FALTA módulo Stt Providers"; fail=1; }
+
+# runtime/ la crea install.sh (0770 root:WEB_GROUP); DevChecklist.php y
+# ServerInfo.php dependen de que www-data pueda escribir ahí.
+if [[ -d "$WEB_ROOT/runtime" ]]; then
+  sudo -u www-data test -w "$WEB_ROOT/runtime" 2>/dev/null || { echo "FALTA permiso de escritura www-data en $WEB_ROOT/runtime"; fail=1; }
+else
+  echo "FALTA directorio: $WEB_ROOT/runtime"
+  fail=1
+fi
 if [[ "$CHECK_FARM" == 1 ]]; then
   for service in "${FARM_INSTANCE:-zynervox-farm}-annex.service" "${FARM_INSTANCE:-zynervox-farm}-control.service"; do
     systemctl is-active --quiet "$service" || { echo "FALTA servicio activo: $service"; fail=1; }

@@ -28,6 +28,12 @@ sudo ./installer/install.sh --dry-run
 sudo ./installer/install.sh --apply-migrations
 ```
 
+El instalador crea `$WEB_ROOT/runtime` (0770, propietario `root:$WEB_GROUP`):
+es la única carpeta del webroot donde `www-data` puede escribir en caliente
+(estado de `DevChecklist.php`, notas de `ServerInfo.php`, etc.); el resto del
+webroot queda 0750/0640 a propósito. No crear esta carpeta a mano en el
+servidor — si falta o le faltan permisos, `installer/check.sh` lo reporta.
+
 `--skip-packages` permite desplegar solo los archivos sin alterar paquetes del host.
 `--install-docker` instala y habilita Docker cuando falta. **Ningún módulo
 actual lo requiere ya**: `--with-whatsapp` (ADR-0016), `--with-farm`,
