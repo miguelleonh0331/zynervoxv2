@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/../includes/Database.php';
 
 const IVR_PUBLISHED_DIR = '/etc/asterisk/synervox/modules/flows/published';
 
@@ -109,17 +110,60 @@ function flow_load_children(PDO $db, string $code, array &$nodes): void {
 function flow_publish(PDO $db, array $flow): array {
     $json = json_encode($flow, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT);
     if ($json === false) throw new RuntimeException('No se pudo serializar el flujo publicado');
+    $json .= "\n";
+
+    $cfg = \Includes\Database::loadIvrDeployConfig();
+    $apiUrl = trim((string) ($cfg['asterisk_api_url'] ?? ''));
+    $apiToken = (string) ($cfg['asterisk_api_token'] ?? '');
+
+    if ($apiUrl !== '' && $apiToken !== '') {
+        $result = publish_flow_via_api($apiUrl, $apiToken, (string) $flow['flow_code'], $json);
+    } else {
+        // Fallback: servidor Asterisk y web todavia en la misma maquina y
+        // sin configurar el panel -- escribe directo a disco local, igual
+        // que el comportamiento original.
+        $result = publish_flow_to_local_disk((string) $flow['flow_code'], $json);
+    }
+
+    $stmt = $db->prepare('UPDATE bot_ivr_flows SET published_at=NOW(),published_sha256=:s WHERE flow_code=:c');
+    $stmt->execute([':s' => $result['sha256'], ':c' => $flow['flow_code']]);
+    return $result;
+}
+
+function publish_flow_via_api(string $apiUrl, string $token, string $code, string $json): array {
+    $ch = curl_init(rtrim($apiUrl, '/') . '/asterisk_receive.php');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'X-IVR-Token: ' . $token],
+        CURLOPT_POSTFIELDS => json_encode(['flow_code' => $code, 'json' => $json], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+    ]);
+    $body = curl_exec($ch);
+    $err = curl_error($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($body === false) throw new RuntimeException('No se pudo contactar el API Asterisk: ' . $err);
+    $resp = json_decode((string) $body, true);
+    if ($httpCode !== 200 || !is_array($resp) || empty($resp['ok'])) {
+        $error = is_array($resp) ? ($resp['error'] ?? $body) : $body;
+        throw new RuntimeException('El API Asterisk rechazó la publicación: ' . $error);
+    }
+    return ['path' => (string) ($resp['path'] ?? ''), 'sha256' => (string) ($resp['sha256'] ?? hash('sha256', $json))];
+}
+
+function publish_flow_to_local_disk(string $code, string $json): array {
     if (!is_dir(IVR_PUBLISHED_DIR) && !mkdir(IVR_PUBLISHED_DIR, 0770, true) && !is_dir(IVR_PUBLISHED_DIR)) throw new RuntimeException('No se pudo crear el directorio de publicación');
-    $path=IVR_PUBLISHED_DIR.'/'.$flow['flow_code'].'.json';
-    $tmp=tempnam(IVR_PUBLISHED_DIR,'.'.$flow['flow_code'].'.tmp.');
-    if($tmp===false) throw new RuntimeException('No se pudo crear el archivo temporal');
+    $path = IVR_PUBLISHED_DIR . '/' . $code . '.json';
+    $tmp = tempnam(IVR_PUBLISHED_DIR, '.' . $code . '.tmp.');
+    if ($tmp === false) throw new RuntimeException('No se pudo crear el archivo temporal');
     try {
-        if(file_put_contents($tmp,$json."\n",LOCK_EX)===false) throw new RuntimeException('No se pudo escribir la publicación');
-        chmod($tmp,0640);
-        if(!rename($tmp,$path)) throw new RuntimeException('No se pudo publicar atómicamente');
-    } finally { if(is_file($tmp)) @unlink($tmp); }
-    $sha=hash('sha256',$json."\n");
-    $stmt=$db->prepare('UPDATE bot_ivr_flows SET published_at=NOW(),published_sha256=:s WHERE flow_code=:c');
-    $stmt->execute([':s'=>$sha,':c'=>$flow['flow_code']]);
-    return ['path'=>$path,'sha256'=>$sha];
+        if (file_put_contents($tmp, $json, LOCK_EX) === false) throw new RuntimeException('No se pudo escribir la publicación');
+        chmod($tmp, 0640);
+        if (!rename($tmp, $path)) throw new RuntimeException('No se pudo publicar atómicamente');
+    } finally {
+        if (is_file($tmp)) @unlink($tmp);
+    }
+    return ['path' => $path, 'sha256' => hash('sha256', $json)];
 }

@@ -11,6 +11,17 @@
 .builder-toolbar #testPhone{width:125px;min-width:125px;flex:0 0 125px}
 .builder-toolbar #status{min-width:90px;white-space:normal;font-size:12px}
 .builder-toolbar select:disabled{cursor:not-allowed;opacity:.65}
+.config-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:center;justify-content:center}
+.config-panel{width:420px;max-width:92vw;max-height:88vh;overflow:auto;background:var(--bg-card);border-radius:3px;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+.config-panel>header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--dark);color:#fff;height:auto}
+.config-panel .config-close{background:transparent;border:0;color:#fff;font-size:14px;padding:4px 8px}
+.config-panel section{padding:12px 14px;border-bottom:1px solid var(--border)}
+.config-panel section:last-child{border-bottom:0}
+.config-panel h3{margin:0 0 8px;font-size:13px}
+.config-panel label{display:block;margin:7px 0;font-size:11px;color:var(--text-muted);text-transform:uppercase}
+.config-panel label input{display:block;width:100%;margin-top:3px;text-transform:none;font-size:13px}
+.config-actions{display:flex;gap:8px;align-items:center;margin-top:8px}
+.config-actions .small{flex:1}
 .template-variables{margin:12px 0;padding:10px;background:var(--glass);border:1px solid var(--border);border-radius:2px}
 .template-variables>strong{display:block;margin-bottom:6px}
 .template-variables .small{margin:0 0 8px;overflow-wrap:anywhere}
