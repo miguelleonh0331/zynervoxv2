@@ -17,6 +17,12 @@ módulos.
   `127.0.0.1:${ZYNERDESK_PORT}`. Sirve los assets, la API y el login del
   upstream, que la página embebida consume desde el navegador.
 - `${ZYNERDESK_BASE_PATH}/ws`: WebSocket, proxyeado con `upgrade=websocket`.
+- `${ZYNERDESK_BASE_PATH}/api/admin/agents/<id>/retire`: retiro lógico,
+  reversible e idempotente de un equipo. Requiere sesión con rol `admin`.
+- `${ZYNERDESK_BASE_PATH}/api/admin/agents/<id>/restore`: restaura un equipo
+  retirado. Requiere sesión con rol `admin`.
+- `${ZYNERDESK_BASE_PATH}/api/agents?retired=1`: lista de equipos retirados,
+  disponible solo para administradores. La lista normal excluye retirados.
 - `/etc/zynervox/zynerdesk.conf`: contrato de configuración entre el
   instalador y la web. Claves `ZYNERDESK_BASE_PATH`, `ZYNERDESK_PORT` y
   `ZYNERVOX_SSO_SECRET`. Lo
@@ -29,7 +35,9 @@ módulos.
 - Servicio systemd `zynervox-zynerdesk.service` (proceso Node nativo), usuario
   de sistema dedicado `zynervox-zynerdesk`, sin shell.
 - `installer/zynerdesk.sh` con las acciones `init`, `up`, `status`,
-  `credentials`, `install-proxy`, `remove-proxy`, `backup`, `restore`, `down`.
+  `upgrade`, `credentials`, `install-proxy`, `remove-proxy`, `backup`,
+  `restore`, `down`. `upgrade` respalda la base, reemplaza solo el runtime del
+  módulo y revierte automáticamente el código si la salud posterior falla.
 
 ## Errores posibles
 
@@ -49,9 +57,9 @@ módulos.
 Este módulo puede depender de:
 
 - la sesión administrativa de Zynervox mediante `Includes\Auth`;
-- código vendorizado en `src/features/zynerdesk/vendor/`, origen documentado
-  en `README.md` (extraído de `ghcr.io/miguelleonh0331/synervox-remoteo`,
-  trazabilidad por commit de Git en vez de digest de imagen);
+- código históricamente vendorizado en `src/features/zynerdesk/vendor/`, cuyo
+  origen base está documentado en `README.md` y que desde ADR-0018 se mantiene
+  directamente, con trazabilidad por commits de este repositorio;
 - Node.js nativo ≥18 administrado por systemd (mismo patrón que `farm` y `whatsapp`);
 - MySQL nativo del host, base y usuario propios (mismo patrón que `whatsapp`);
 - Apache como proxy de la ruta pública (`mod_proxy`, `mod_proxy_http`,
@@ -68,7 +76,7 @@ Este módulo no debe depender de:
 - implementación interna de otros módulos;
 - módulos no declarados en "Dependencias permitidas";
 - dependencias externas no aprobadas por `ARCHITECT_AGENT`;
-- código de `vendor/` editado a mano sin volver a extraer/documentar su origen.
+- reemplazos o nuevas importaciones de `vendor/` sin documentar su origen.
 
 ## Garantías
 
@@ -81,6 +89,8 @@ Este módulo garantiza que:
 - las migraciones son idempotentes (tabla `schema_migrations`);
 - la vista embebida no altera el código vendorizado al servir la página: toda
   la adaptación ocurre en memoria;
+- retirar un equipo no borra su registro ni su historial, no se revierte por
+  nuevos reportes del agente y puede deshacerse explícitamente por un admin;
 - la sesión administrativa Zynervox se intercambia por una sesión Zynerdesk
   mediante un token HMAC efímero; nunca se comparte la contraseña;
 - el CSS del panel queda confinado en `@scope (.zynerdesk-native)` y no

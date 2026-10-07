@@ -1098,3 +1098,33 @@ Contrato:
 
 Riesgos:
 Bug preexistente, no introducido por los cambios de esta sesion (purga/backoff). Verificado con harness aislado que reproduce el escenario exacto (200 filas SQLite historicas, 10 workers reales): antes del fix synthetic test habria fallado con IndexError via _is_blocked, despues de el fix resume los 10 sin error y el caso normal (target menor al pool) sigue repartiendo resumed/drained correctamente
+
+### 2026-10-07 19:25 - zynerdesk_AGENT - zynerdesk
+
+Tipo: feature
+
+Resumen:
+Agrega retiro reversible de equipos y actualización segura de Zynerdesk 2.0.3
+
+Motivo:
+Ocultar clientes inactivos de la vista principal sin borrar historial y desplegar el módulo sin recrear su base.
+
+Archivos modificados:
+- src/features/zynerdesk/vendor/src/app.js
+- src/features/zynerdesk/vendor/src/features/agents/index.js
+- src/features/zynerdesk/vendor/web/index.html
+- src/features/zynerdesk/vendor/migrations/015_retired_agents.sql
+- src/features/zynerdesk/vendor/tests/agents-retirement.test.js
+- installer/zynerdesk.sh
+- src/features/zynerdesk/CONTRACT.md
+- src/features/zynerdesk/README.md
+- docs/ARCHITECTURE.md
+- docs/STACK.md
+- docs/DEPLOYMENT.md
+- docs/MODULE_MAP.md
+
+Contrato:
+- modificado con ADR-0018
+
+Riesgos:
+La migración añade columnas y FK sin borrar datos; upgrade genera backup y rollback automático del runtime.

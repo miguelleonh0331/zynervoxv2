@@ -202,7 +202,7 @@ CSRF, rechazo sin sesión y persistencia con datos sintéticos.
 
 ## Zynerdesk
 
-Servicio nativo desde ADR-0016 (ver `docs/DECISIONS.md`): sin Docker ni
+Servicio nativo desde ADR-0017 (ver `docs/DECISIONS.md`): sin Docker ni
 Compose, proceso Node administrado por `systemd`, BD en el MySQL del host.
 Requiere `node` (≥18), `npm`, `mysql` y `openssl` instalados en el servidor —
 el instalador falla con un mensaje claro si falta alguno.
@@ -212,6 +212,7 @@ sudo ./installer/zynerdesk.sh init
 sudo ./installer/zynerdesk.sh install-proxy
 sudo ./installer/zynerdesk.sh status
 sudo ./installer/zynerdesk.sh backup /ruta/zynerdesk.sql.gz
+sudo ./installer/zynerdesk.sh upgrade
 ```
 
 `init` vendoriza `src/features/zynerdesk/vendor/` en `/opt/zynervox-zynerdesk`,
@@ -230,6 +231,12 @@ Zynervox por un token HMAC efímero (`ZYNERVOX_SSO_SECRET`, generado en
 `init`); ver `src/features/zynerdesk/README.md` para el detalle. El login
 directo de Zynerdesk sigue existiendo como acceso de recuperación.
 
+Para actualizar una instalación existente se usa `upgrade`, nunca `init`.
+`upgrade` crea primero un respaldo SQL, prepara el runtime nuevo, reinicia solo
+la instancia Zynerdesk y conserva el runtime anterior. Si la comprobación de
+salud falla, restaura automáticamente el runtime anterior. Las migraciones
+incrementales se aplican durante el arranque y no recrean la base.
+
 `down` detiene el servicio y conserva la base y los datos. Usar `remove-proxy`
 para retirar la ruta Apache sin borrar datos.
 
@@ -237,8 +244,8 @@ para retirar la ruta Apache sin borrar datos.
 
 - No borrar la base `syner_remoteo` durante una actualización.
 - Restaurar el commit anterior con `git revert` o una nueva rama basada en el
-  tag estable; no reescribir el historial compartido. Volver a correr `init`
-  para reinstalar `vendor/` desde ese commit.
+  tag estable; no reescribir el historial compartido. Ejecutar `upgrade` desde
+  ese commit para reinstalar `vendor/` sin recrear la base.
 - Si una migración resulta incompatible, restaurar con
   `installer/zynerdesk.sh restore /ruta/zynerdesk.sql.gz` antes de habilitar
   tráfico.

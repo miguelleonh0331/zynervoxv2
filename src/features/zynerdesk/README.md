@@ -12,6 +12,11 @@ desde el mismo repositorio central.
 Origen: imagen `ghcr.io/miguelleonh0331/synervox-remoteo`, extraída de `/app`
 el 2026-10-03.
 
+Desde ADR-0018, este snapshot es código fuente mantenido directamente por
+`zynervoxv2`: la imagen y revisión siguientes conservan la procedencia base,
+pero cada cambio posterior queda trazado por commits de este repositorio. Una
+nueva importación externa debe volver a documentar origen, revisión y alcance.
+
 - Revisión fijada en la imagen origen: `24b8b44d4a3905cb493526090c0f247a81c37be6`
 - Digest de la imagen origen: `sha256:a2a79232e0b8561a553a11fcfdb9fbc38b2cb346ef7dd400e3b65491c5de4a8b`
 - Stack: Node.js 22, `ws` (WebSocket), `mysql2`, `bcrypt` (nativo, prebuild
@@ -147,10 +152,13 @@ aparece en la vista embebida, no en el servicio nativo: comparar siempre contra
 
 - Admin entra a Zynervox, hace clic en `Zynerdesk` y ve el panel dentro del
   shell, con pestañas para Panel, Supervisión múltiple y Usuarios.
+- Admin retira de la vista principal equipos obsoletos sin borrar su historial,
+  consulta los equipos retirados y puede restaurarlos.
 - Desde el panel abre `Remotear` sobre un equipo concreto, sin salir de
   Zynervox.
-- Instalación/actualización vía `installer/zynerdesk.sh init|up|install-proxy`,
-  idempotente, sin perder datos.
+- Instalación inicial vía `installer/zynerdesk.sh init`; actualización segura
+  vía `installer/zynerdesk.sh upgrade`, con respaldo previo, migraciones
+  incrementales y rollback automático del runtime sin recrear la base.
 
 ## Autenticación
 

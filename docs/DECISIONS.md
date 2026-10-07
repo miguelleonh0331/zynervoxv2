@@ -426,3 +426,28 @@ modulo zynerdesk (CONTRACT.md reescrito); ningun otro modulo se modifica; bcrypt
 
 Seguimiento:
 Validado en WSL (zynervoxv1) con 6/6 pruebas de aceptacion (docker vacio, systemd activo, 14 tablas migradas, proxy 200, SSO HMAC real 200, sesion persiste tras restart) antes de fusionar a main el 2026-10-03. Migrar mirmidon requiere autorizacion explicita y separada.
+
+### ADR-0018 - Mantener Zynerdesk en repo y retirar equipos de forma reversible
+
+Fecha: 2026-10-07
+
+Estado: aceptada
+
+Contexto:
+Zynerdesk fue importado desde una imagen sin repositorio upstream propio; la regla de snapshot inmutable impedía corregirlo. Los equipos antiguos saturaban la vista y debían ocultarse sin perder historial.
+
+Decisión:
+El código bajo src/features/zynerdesk/vendor pasa a mantenerse directamente en zynervoxv2 conservando su procedencia histórica. Los equipos se retiran lógicamente mediante campos de auditoría, endpoints admin idempotentes y restauración explícita. Las actualizaciones usan upgrade con backup y nunca init.
+
+Motivo:
+Permite mantenimiento trazable, conserva datos y evita que un cliente que vuelva a reportar reaparezca sin decisión administrativa.
+
+Alternativas evaluadas:
+- Borrado físico de agentes e historial: descartado por pérdida de evidencia.
+- Ocultamiento solo en el navegador: descartado por no ser consistente entre usuarios.
+
+Impacto:
+Modifica contrato, fuente, migraciones, UI e instalador de zynerdesk; no agrega dependencias ni toca datos de otros módulos.
+
+Seguimiento:
+Validar despliegue de upgrade, RBAC, retiro, persistencia del retiro tras reportes y restauración.

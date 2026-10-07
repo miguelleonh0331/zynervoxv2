@@ -2,7 +2,7 @@
 
 Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 
-Última generación: 2026-10-02 11:16
+Última generación: 2026-10-07 19:24
 
 ## Módulos
 
@@ -32,12 +32,13 @@ Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 | stt_providers | PHP 7.4+ con PDO MySQL, cURL, JSON y sesiones | módulo inexistente |
 | stt_providers | MariaDB/MySQL con usuario limitado a su base | módulo inexistente |
 | whatsapp | Contrato de autenticación Zynervox mediante `Includes\Auth` | módulo inexistente |
-| whatsapp | Imagen integrada `miguelleonh0331/zynerwabav2:2.1.0-zynervox`, construida | módulo inexistente |
-| whatsapp | MySQL 8.4 y el esquema saneado versionado | módulo inexistente |
+| whatsapp | Código vendorizado en `src/features/whatsapp/vendor/`, origen documentado en | módulo inexistente |
+| whatsapp | Node.js nativo ≥18 administrado por systemd (mismo patrón que `farm`) | módulo inexistente |
+| whatsapp | MySQL nativo del host, base y usuario propios (mismo patrón que `stt_providers`) | módulo inexistente |
 | whatsapp | Apache como proxy de la ruta pública | módulo inexistente |
 | zynerdesk | la sesión administrativa de Zynervox mediante `Includes\Auth`; | módulo inexistente |
-| zynerdesk | Docker y Docker Compose del host; | módulo inexistente |
-| zynerdesk | MySQL 8.4 propio (volumen `zynerdesk_mysql`, no compartido); | módulo inexistente |
+| zynerdesk | código históricamente vendorizado en `src/features/zynerdesk/vendor/`, cuyo | módulo inexistente |
+| zynerdesk | Node.js nativo ≥18 administrado por systemd (mismo patrón que `farm` y `whatsapp`); | módulo inexistente |
+| zynerdesk | MySQL nativo del host, base y usuario propios (mismo patrón que `whatsapp`); | módulo inexistente |
 | zynerdesk | Apache como proxy de la ruta pública (`mod_proxy`, `mod_proxy_http`, | módulo inexistente |
-| zynerdesk | PHP con `curl`, para traer el upstream server-side; | módulo inexistente |
-| zynerdesk | la imagen publicada `ghcr.io/miguelleonh0331/synervox-remoteo` fijada por digest | módulo inexistente |
+| zynerdesk | PHP con `curl`, para traer el panel server-side | módulo inexistente |

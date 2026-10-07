@@ -12,11 +12,10 @@
 - JavaScript nativo; Node.js solo para el componente legado `vicidial-js`.
 - Farm: Python 3.10+, systemd, baresip, ffmpeg y PHP, sin Docker.
 - Stt Providers: PHP 7.4+, PDO MySQL y cURL sobre MariaDB nativa aislada.
-- Zynerdesk: imagen `ghcr.io/miguelleonh0331/synervox-remoteo` fijada por
-  digest `sha256:a2a79232e0b8561a553a11fcfdb9fbc38b2cb346ef7dd400e3b65491c5de4a8b`,
-  Node.js 22, WebSocket (`ws`) y MySQL 8.4 propio en Docker. Apache proxyea
-  la ruta pública (`mod_proxy_http` + `mod_proxy_wstunnel`).
+- Zynerdesk: Node.js 18+ nativo, WebSocket (`ws`), servicio systemd y esquema
+  MySQL/MariaDB aislado en el host. Apache proxyea la ruta pública
+  (`mod_proxy_http` + `mod_proxy_wstunnel`).
 
-El despliegue es híbrido: web, AGC, PHP y Asterisk viven en el host; Zynerwaba y
-Zynerdesk y sus respectivas MySQL usan proyectos Compose aislados con
-volúmenes propios, cada uno con su propio proxy Apache.
+El despliegue es híbrido: web, AGC, PHP, Asterisk y Zynerdesk viven en el host;
+Zynerwaba conserva su proyecto Compose aislado. Cada servicio web externo usa
+su propio proxy Apache.
