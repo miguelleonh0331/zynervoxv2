@@ -17,9 +17,20 @@ command -v python3 >/dev/null 2>&1 || { echo "FALTA python3 (requerido por macel
 command -v ffmpeg  >/dev/null 2>&1 || { echo "FALTA ffmpeg (requerido por macelioai/gTTS)" >&2; exit 1; }
 command -v sox     >/dev/null 2>&1 || { echo "FALTA sox (requerido por macelioai/gTTS)" >&2; exit 1; }
 
-if [[ ! -x "$VENV_DIR/bin/python" ]]; then
+if [[ ! -d "$VENV_DIR" ]]; then
   python3 -m venv "$VENV_DIR"
 fi
+
+# El WEB_INSTALLED de install.sh aplica un chmod recursivo a todo WEB_ROOT
+# (incluye venvs/, que vive adentro) y lo deja todo en 0640 sin +x. Si el
+# venv ya existia de una instalacion previa, sus binarios (pip, activate,
+# etc.) quedan sin ejecutar. Por eso los permisos se normalizan ANTES de
+# usar pip, no solo al final: el script debe ser idempotente sin importar
+# en que estado haya quedado la carpeta.
+chown -R root:"$WEB_GROUP" "$VENV_DIR"
+find "$VENV_DIR" -type d -exec chmod 0750 {} +
+find "$VENV_DIR" -type f -exec chmod 0640 {} +
+find "$VENV_DIR/bin" -type f -exec chmod 0750 {} +
 
 "$VENV_DIR/bin/pip" install --upgrade pip -q
 "$VENV_DIR/bin/pip" install gTTS -q
@@ -28,10 +39,5 @@ fi
   echo "FALLO: gTTS no quedo importable en $VENV_DIR" >&2
   exit 1
 }
-
-chown -R root:"$WEB_GROUP" "$VENV_DIR"
-find "$VENV_DIR" -type d -exec chmod 0750 {} +
-find "$VENV_DIR" -type f -exec chmod 0640 {} +
-find "$VENV_DIR/bin" -type f -exec chmod 0750 {} +
 
 echo "MACELIOAI_TTS_INSTALLED venv=$VENV_DIR"
