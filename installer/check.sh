@@ -32,6 +32,12 @@ for extension in curl json mbstring mysqli pdo_mysql session xml zip; do
 done
 
 [[ -f "$WEB_ROOT/index.php" ]] || { echo "FALTA archivo: $WEB_ROOT/index.php"; fail=1; }
+if [[ -x "$WEB_ROOT/venvs/gtts_env/bin/python" ]]; then
+  "$WEB_ROOT/venvs/gtts_env/bin/python" -c "import gtts" 2>/dev/null || { echo "FALTA gTTS en el venv de Macelioai TTS"; fail=1; }
+else
+  echo "FALTA venv Macelioai TTS: $WEB_ROOT/venvs/gtts_env"
+  fail=1
+fi
 [[ -f "$WEB_ROOT/modules/admin/farm.php" ]] || { echo "FALTA módulo Farm"; fail=1; }
 [[ -f "$WEB_ROOT/modules/admin/stt_providers.php" ]] || { echo "FALTA módulo Stt Providers"; fail=1; }
 if [[ "$CHECK_FARM" == 1 ]]; then
