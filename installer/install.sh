@@ -55,6 +55,16 @@ find "$WEB_ROOT" -type d -exec chmod 0750 {} +
 find "$WEB_ROOT" -type f -exec chmod 0640 {} +
 echo "WEB_INSTALLED root=$WEB_ROOT"
 
+# runtime/ es la UNICA carpeta bajo el webroot donde los procesos PHP
+# (www-data) necesitan poder escribir en caliente (ej. DevChecklist.php,
+# ServerInfo.php: estado/notas persistidas en disco, no en BD). El resto del
+# webroot queda 0750/0640 (el grupo solo puede leer) a propósito; esta es la
+# excepción explícita y documentada, en vez de un `chmod` manual hecho a
+# mano en cada servidor (eso es justo lo que este bloque reemplaza: antes
+# había que crearla por fuera del instalador, server por server).
+install -d -o root -g "$WEB_GROUP" -m 0770 "$WEB_ROOT/runtime"
+echo "RUNTIME_DIR_READY path=$WEB_ROOT/runtime"
+
 # Login administrativo propio de zynervox (zynervox_core / zynervox_users):
 # no es opcional ni depende de --with-x, siempre se reinstala para que el
 # acceso admin quede garantizado sin tocar vicidial_users ni `asterisk`.
