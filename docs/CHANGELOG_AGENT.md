@@ -1204,3 +1204,30 @@ Riesgos:
 - Tests aislados5correctos; generación real remota79KB, POSTHTTP→redirect→stream
   y navegador reproduciendo4.246s, readyState4 sin error.
 - Health actual reportó190candidatos; ninguna modificación del pool/gateway.
+
+## 2026-10-07 — Actualización acotada de Bot IVR en mirmidon
+
+- Autorización: usuario indicó «procede» para actualizar solo Bot IVR.
+- Fuente local: trabajo/bot_ivr, commit 21030ff; sin cambios en código fuente.
+- Desplegados 12 PHP distintos bajo /srv/www/htdocs/zynervoxv2205/bot_ivr mediante zynertools push con backups .bak.20261007-1736xx.
+- index.php y campaign_edit.php pasan a la administración actual de campañas/listas; endpoints legacy consumen db.php dedicado. Rutas runtime adaptadas a zynervoxv2205.
+- Los 14 PHP restantes, los 7 archivos de zynervox_queries y los 8 workers ya coinciden con la fuente tras normalizar saltos de línea y rutas propias del despliegue. No se modifican otros módulos, workers, credenciales ni bases.
+- Validación: lint PHP local (26) y remoto correcto; render de index.php con sesión de prueba en memoria muestra Crear campaña, Configurar conexión y Prueba de audios; petición HTTP sin sesión devuelve 302.
+- Limitación operativa confirmada: MySQL rechaza al usuario configurado zynervox_bot_ivr con error 1045. No es posible verificar campañas ni esquema con esa conexión; requiere corregir configuración/permisos por separado.
+- Reversión: recuperar copias en .codex-temp/bot-ivr-update/before/bot_ivr y subir mediante zynertools; backups remotos conservados.
+
+## 2026-10-07 — Restablecimiento de acceso MySQL de Bot IVR en mirmidon
+
+- Autorización explícita del usuario: procede para restablecer contraseña de zynervox_bot_ivr.
+- Ejecutado script preparado localmente mediante zynertools script.py; ALTER USER para localhost y 127.0.0.1 sincroniza con la configuración existente, sin guardar credenciales locales.
+- Permisos SELECT/INSERT/UPDATE/DELETE sobre zynervox conservados; sin cambios de esquema, datos ni archivos de configuración.
+- Verificación: coincidencia de contraseña YES en ambas cuentas; conexión a zynervox correcta; repositorio lee 1 campaña; interfaz renderizada sin error de acceso; lint PHP remoto correcto.
+
+## 2026-10-07 — Redespliegue de Bot IVR tras reversión detectada
+
+- Validación previa: los 12 PHP desplegados habían vuelto a coincidir exactamente con las copias anteriores a la actualización.
+- A petición del usuario, redesplegados los mismos 12 PHP actuales del commit local 21030ff, con adaptación de rutas runtime. Nuevos backups .bak.20261007-1828xx y .bak.20261007-1829xx.
+- Propietario y permisos de archivos restaurados desde sus backups tras la transferencia.
+- Verificación: hashes 12/12 correctos, lint remoto y render actual correctos, conexión zynervox y repositorio de campañas correctos. Conteos de solo lectura: 1 campaña, 2 listas, 37330 leads.
+- Sin cambios de contraseñas, cuentas MySQL, configuración, esquema o datos; no se publican commits ni push.
+- La causa de la reversión anterior sigue sin identificar.
