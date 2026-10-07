@@ -43,6 +43,10 @@ if ($action === 'test_db') {
     $user = trim((string) ($data['db_user'] ?? ''));
     $pass = (string) ($data['db_pass'] ?? '');
     if ($host === '' || $name === '' || $user === '') fail('Host, BD y usuario son obligatorios');
+    if ($pass === '••••••••') {
+        $existing = currentRow($core);
+        $pass = $existing['db_pass'];
+    }
     try {
         $pdo = new PDO("mysql:host=$host;dbname=$name;port=$port;charset=utf8mb4", $user, $pass, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
