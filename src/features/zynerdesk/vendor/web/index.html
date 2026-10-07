@@ -207,6 +207,11 @@
     .ic-btn.active { color:var(--accent-dark); border-color:var(--accent); background:var(--accent-dim); }
     .ic-btn:disabled { opacity:.4; cursor:not-allowed; }
     .ic-btn.rem-ic:hover:not(:disabled) { color:#fff; border-color:var(--rem); background:var(--rem); }
+    .retire-btn:hover:not(:disabled) { color:#fff; border-color:var(--danger); background:var(--danger); }
+    .restore-btn:hover:not(:disabled) { color:#fff; border-color:var(--ok); background:var(--ok); }
+    .maintenance-toggle { border:1px solid var(--line); border-radius:7px; background:var(--panel2); color:var(--ink);
+      padding:7px 10px; font-size:11px; font-weight:800; cursor:pointer; }
+    .maintenance-toggle.active { border-color:var(--danger); color:var(--danger); background:#fff3f1; }
 
     .row-detail { width:100%; margin-top:8px; padding-top:8px; border-top:1px dashed var(--line); font-size:11px; color:var(--muted); display:none; }
     .row-detail.open { display:block; }
@@ -298,6 +303,7 @@
         <div class="toolbar">
           <select id="campaign"><option value="">Todas las campañas</option></select>
           <input class="search" id="search" type="search" placeholder="Buscar por tag / host / IP...">
+          <button class="maintenance-toggle" id="retiredToggle" type="button" hidden>Equipos retirados</button>
           <span class="stat" id="stat">--</span>
         </div>
         <div id="wrap"><div class="empty">Cargando...</div></div>
@@ -314,6 +320,8 @@
       radar:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.5v2M21.5 12h-2M12 21.5v-2M2.5 12h2"/></svg>`,
       pin:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.7 7-12.2A7 7 0 1 0 5 8.8C5 14.3 12 21 12 21z"/><circle cx="12" cy="8.8" r="2.3"/></svg>`,
       clock:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3.2 1.9"/></svg>`,
+      archive: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v13H4zM3 3h18v4H3zM9 11h6"/></svg>`,
+      restore: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.6"/><path d="M4 4v4.6h4.6"/></svg>`,
       bars:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 19v-6M10 19V9M15 19V5M20 19v-8"/></svg>`,
       net:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a12 12 0 0 1 16 0M7 13.2a8 8 0 0 1 10 0M10.3 16.4a4 4 0 0 1 3.4 0"/><circle cx="12" cy="19.2" r="1.1" fill="currentColor" stroke="none"/></svg>`,
       ethernet:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="7" rx="1.3"/><path d="M8 10V6.5h2V10M12 10V6.5h2V10M16 10V6.5"/><path d="M9 17v2M15 17v2"/></svg>`,
@@ -405,18 +413,22 @@
     const BASE = location.pathname.replace(/[^/]*$/, "");
     // --- gate de login ---
     async function me(){ const r = await fetch("api/auth/me",{credentials:"include"}); return (await r.json()).user; }
+    let currentUser = null, showRetired = false;
     (async () => {
       if (window.ZYNERDESK_SSO_READY) await window.ZYNERDESK_SSO_READY;
       let u; try { u = await me(); } catch { u = null; }
       if (!u) { location.href = "login.html"; return; }
+      currentUser = u;
       document.getElementById("whoName").textContent = u.username + " (" + u.role + ")";
       document.getElementById("adminUsers").hidden = u.role !== "admin";
       document.getElementById("gearBtn").hidden = u.role !== "admin";
+      document.getElementById("retiredToggle").hidden = u.role !== "admin";
       loadMonitoredApps();
       loadCampaigns(); tick(); setInterval(tick, 3000);
     })();
     const wrap = document.getElementById("wrap"), stat = document.getElementById("stat");
     const campaignSel = document.getElementById("campaign"), search = document.getElementById("search");
+    const retiredToggle = document.getElementById("retiredToggle");
     let agents = [];
     const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     function ageText(iso){ if(!iso) return "--"; const s=Math.floor((Date.now()-new Date(iso).getTime())/1000); if(s<60)return s+"s"; if(s<3600)return Math.floor(s/60)+"m"; if(s<86400)return Math.floor(s/3600)+"h"; return Math.floor(s/86400)+"d"; }
@@ -433,6 +445,12 @@
     campaignSel.addEventListener("change", () => { heroCampSel.value = campaignSel.value; tick(); });
     heroCampSel.addEventListener("change", () => { campaignSel.value = heroCampSel.value; tick(); });
     search.addEventListener("input", render);
+    retiredToggle.addEventListener("click", () => {
+      showRetired = !showRetired;
+      retiredToggle.classList.toggle("active", showRetired);
+      retiredToggle.textContent = showRetired ? "Volver a equipos activos" : "Equipos retirados";
+      tick();
+    });
 
     // --- reloj del hero ---
     function tickClock(){
@@ -538,7 +556,10 @@
     }
 
     async function tick(){
-      try { const q = campaignSel.value ? ("?campaign="+encodeURIComponent(campaignSel.value)) : "";
+      try { const params = new URLSearchParams();
+        if (campaignSel.value) params.set("campaign", campaignSel.value);
+        if (showRetired) params.set("retired", "1");
+        const q = params.toString() ? ("?" + params.toString()) : "";
         const r = await fetch("api/agents"+q,{credentials:"include"}); if (r.status===401){ location.href="login.html"; return; }
         agents = (await r.json()).agents || [];
         // Orden estable: online primero, luego offline; dentro de cada grupo,
@@ -606,6 +627,9 @@
               <button class="ic-btn cmd" data-cmd="network-scan" data-id="${esc(a.agent_id)}" ${off} title="Escanear LAN">${ICON.radar}</button>
               <button class="ic-btn geo-ic" data-geo-id="${esc(a.agent_id)}" ${off} title="Ubicar">${ICON.pin}</button>
               <button class="ic-btn hist-ic" data-hist="${esc(a.agent_id)}" data-label="${esc(a.tag||a.hostname||a.agent_id)}" title="Abrir historial completo">${ICON.clock}</button>
+              ${currentUser&&currentUser.role==="admin" ? (a.retired_at
+                ? `<button class="ic-btn restore-btn" data-restore="${esc(a.agent_id)}" data-label="${esc(a.tag||a.hostname||a.agent_id)}" title="Restaurar equipo">${ICON.restore}</button>`
+                : `<button class="ic-btn retire-btn" data-retire="${esc(a.agent_id)}" data-label="${esc(a.tag||a.hostname||a.agent_id)}" title="Retirar equipo">${ICON.archive}</button>`) : ""}
             </div>
             <div class="line2"><span class="k">LOC</span><span class="v">${esc(a.ip_local||'--')}</span><span class="k" style="margin-left:6px">PUB</span><span class="v">${esc(a.ip_public||'--')}</span></div>
           </div>
@@ -642,7 +666,7 @@
       const standby = total - online - crit; // offline con menos de 30 dias
       const pct = (n) => total ? Math.round(n/total*100) + "%" : "0%";
       $("campViewTitle").textContent = camp;
-      $("campViewSub").textContent = "Vista de actividad · " + new Date().toLocaleDateString("es-PE");
+      $("campViewSub").textContent = (showRetired ? "Equipos retirados" : "Vista de actividad") + " · " + new Date().toLocaleDateString("es-PE");
       $("cvTotal").textContent = total;
       $("cvTotalSub").textContent = online + " online · " + (total - online) + " offline";
       $("cvLive").textContent = online;
@@ -666,8 +690,8 @@
       updateCampView();
       const query = search.value.trim().toLowerCase();
       const list = query ? agents.filter(a => (String(a.tag||"")+a.hostname+(a.ip_local||"")+(a.ip_public||"")).toLowerCase().includes(query)) : agents;
-      stat.textContent = `${agents.length} agentes · ${agents.filter(a=>a.online).length} online`;
-      if(!list.length){ wrap.innerHTML = '<div class="empty">Sin agentes.</div>'; return; }
+      stat.textContent = showRetired ? `${agents.length} equipos retirados` : `${agents.length} agentes · ${agents.filter(a=>a.online).length} online`;
+      if(!list.length){ wrap.innerHTML = `<div class="empty">${showRetired ? "Sin equipos retirados." : "Sin agentes."}</div>`; return; }
       wrap.innerHTML = `<div class="list">${list.map(row).join("")}</div>`;
     }
 
@@ -751,6 +775,32 @@
 
     // --- acciones ---
     wrap.addEventListener("click", async (e) => {
+      const retirementButton = e.target.closest("[data-retire],[data-restore]");
+      if (retirementButton) {
+        const retiring = retirementButton.hasAttribute("data-retire");
+        const id = retiring ? retirementButton.dataset.retire : retirementButton.dataset.restore;
+        const label = retirementButton.dataset.label || id;
+        const prompt = retiring
+          ? `¿Retirar ${label} de la vista principal? Su historial se conservará.`
+          : `¿Restaurar ${label} a la vista principal?`;
+        if (!confirm(prompt)) return;
+        retirementButton.disabled = true;
+        try {
+          const action = retiring ? "retire" : "restore";
+          const response = await fetch("api/admin/agents/"+encodeURIComponent(id)+"/"+action, {
+            method:"POST", credentials:"include"
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(data.error || "No se pudo actualizar el equipo");
+          await tick();
+          await loadCampaigns();
+        } catch (error) {
+          alert(error.message || error);
+          retirementButton.disabled = false;
+        }
+        return;
+      }
+
       const refreshHistory = e.target.closest(".hist-refresh");
       if (refreshHistory) {
         const id = refreshHistory.dataset.agent;

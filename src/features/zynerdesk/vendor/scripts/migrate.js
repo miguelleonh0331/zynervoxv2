@@ -18,7 +18,8 @@ const MIGRATIONS = [
   "011_pause_allowance.sql",
   "012_semaphore_override.sql",
   "013_agents_network.sql",
-  "014_commands.sql"
+  "014_commands.sql",
+  "015_retired_agents.sql"
 ];
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
