@@ -343,9 +343,17 @@ def registration_status(agent, active):
     una ventana amplia y se toma el PRIMER match, que ya es el mas reciente."""
     if not active:
         return {"state": "apagado", "detail": None, "since": None}
+    # -g filtra por CONTENIDO antes de recortar con -n: asi el ruido normal
+    # del anexo (llamadas de prueba, "selected for...", docenas de lineas por
+    # minuto) nunca desplaza el ultimo evento real de registro fuera de la
+    # ventana. Antes se buscaba en "las ultimas 4000 lineas totales" y con
+    # pools activos ese evento podia quedar fuera a las pocas horas, aunque
+    # Asterisk confirmara el registro -- bug detectado 2026-10-07 (anexos
+    # "sin datos" en el panel pese a estar OK en `sip show peers`).
     out = run(
         ["/usr/bin/journalctl", "-u", f"{SERVICE_PREFIX}{agent}.service",
-         "-r", "-n", "4000", "--no-pager", "--output=short-iso"],
+         "-g", r"200 OK|reg:\s+sip:",
+         "-r", "-n", "50", "--no-pager", "--output=short-iso"],
         check=False,
     )
     for line in out.splitlines():  # -r: del mas nuevo al mas viejo
