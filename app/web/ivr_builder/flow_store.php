@@ -9,10 +9,10 @@ function flow_store(PDO $db, array $flow): void {
     $db->beginTransaction();
     try {
         $meta = $db->prepare(
-            'INSERT INTO bot_ivr_flows (flow_code,name,data_json,start_node_id) VALUES (:c,:n,\'\',:s)
-             ON DUPLICATE KEY UPDATE name=VALUES(name), start_node_id=VALUES(start_node_id)'
+            'INSERT INTO bot_ivr_flows (flow_code,name,data_json,start_node_id,list_id) VALUES (:c,:n,\'\',:s,:l)
+             ON DUPLICATE KEY UPDATE name=VALUES(name), start_node_id=VALUES(start_node_id), list_id=VALUES(list_id)'
         );
-        $meta->execute([':c'=>$code, ':n'=>$flow['name'], ':s'=>$flow['start']]);
+        $meta->execute([':c'=>$code, ':n'=>$flow['name'], ':s'=>$flow['start'], ':l'=>$flow['list_id'] ?? null]);
         $db->prepare('DELETE FROM bot_ivr_flow_nodes WHERE flow_code=:c')->execute([':c'=>$code]);
 
         $nodeSql = 'INSERT INTO bot_ivr_flow_nodes
@@ -62,7 +62,7 @@ function flow_store(PDO $db, array $flow): void {
 }
 
 function flow_load(PDO $db, string $code): ?array {
-    $meta = $db->prepare('SELECT flow_code,name,start_node_id,updated_at FROM bot_ivr_flows WHERE flow_code=:c');
+    $meta = $db->prepare('SELECT flow_code,name,start_node_id,list_id,updated_at FROM bot_ivr_flows WHERE flow_code=:c');
     $meta->execute([':c'=>$code]);
     $row = $meta->fetch(PDO::FETCH_ASSOC);
     if (!$row) return null;
@@ -85,7 +85,7 @@ function flow_load(PDO $db, string $code): ?array {
         ];
     }
     flow_load_children($db, $code, $nodes);
-    return ['flow_code'=>$row['flow_code'],'name'=>$row['name'],'start'=>$row['start_node_id'],'nodes'=>$nodes,'updated_at'=>gmdate('c', strtotime((string)$row['updated_at']))];
+    return ['flow_code'=>$row['flow_code'],'name'=>$row['name'],'start'=>$row['start_node_id'],'list_id'=>$row['list_id']!==null?(int)$row['list_id']:null,'nodes'=>$nodes,'updated_at'=>gmdate('c', strtotime((string)$row['updated_at']))];
 }
 
 function flow_load_children(PDO $db, string $code, array &$nodes): void {

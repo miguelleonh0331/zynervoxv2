@@ -18,7 +18,7 @@ $flow = flow_load($db, $code);
 if ($flow === null) {
     // Flujo nuevo/vacio (aun no guardado): devolver plantilla minima en vez
     // de 404, para que el editor pueda arrancar de cero con este codigo.
-    echo json_encode(['flow_code' => $code, 'name' => '', 'start' => '', 'nodes' => new stdClass()], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['flow_code' => $code, 'name' => '', 'start' => '', 'list_id' => null, 'nodes' => new stdClass()], JSON_UNESCAPED_UNICODE);
     exit;
 }
 echo json_encode($flow, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
