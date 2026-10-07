@@ -161,7 +161,7 @@ props = function () {
     "beforebegin",
     `<div class=help style="border:1px solid #3a6ea6;border-radius:7px">
       <b style="color:#8ec4f0">🔀 Doble canal (Snoop/ExternalMedia + Deepgram streaming, sin RECORD FILE)</b>
-      <p class=small>El texto/prompt se reproduce igual que siempre; lo que cambia es que este nodo escucha via el servicio auxiliar dynamic_ivr_4006_ari.py en vez de RECORD FILE. Solo Marcelo IA/Deepgram disponible aqui (Qwen, micrófono y co-work quedan para los nodos clásicos por ahora).</p>
+      <p class=small>El texto/prompt se reproduce igual que siempre; lo que cambia es que este nodo escucha via el servicio auxiliar dynamic_ivr_4006_ari.py en vez de RECORD FILE. Solo Marcelo IA/Deepgram disponible aqui (micrófono y co-work quedan para los nodos clásicos por ahora).</p>
       <label>Texto audio (Marcelo IA)<textarea oninput="flow.nodes[selected].audio_text=this.value">${esc(n.audio_text || "")}</textarea></label>
       <button onclick="generateAudio()">Generar / regenerar</button>
       <p id=audioState>${esc(n.audio_status || "pending")} ${n.audio_hash ? "hash " + esc(n.audio_hash.slice(0, 12)) : ""}</p>
