@@ -12,6 +12,7 @@
 .builder-toolbar #status{min-width:90px;white-space:normal;font-size:12px}
 .builder-toolbar select:disabled{cursor:not-allowed;opacity:.65}
 .config-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:center;justify-content:center}
+.config-overlay[hidden]{display:none}
 .config-panel{width:420px;max-width:92vw;max-height:88vh;overflow:auto;background:var(--bg-card);border-radius:3px;box-shadow:0 12px 40px rgba(0,0,0,.35)}
 .config-panel>header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--dark);color:#fff;height:auto}
 .config-panel .config-close{background:transparent;border:0;color:#fff;font-size:14px;padding:4px 8px}
