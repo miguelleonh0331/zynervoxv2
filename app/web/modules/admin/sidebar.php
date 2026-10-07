@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../../includes/ServerInfo.php';
+
 // Iconos en linea (estilo Feather), heredan color via currentColor -> se ven
 // bien tanto en reposo (gris) como activo/hover (naranja) sin CSS extra.
 function _svgIcon($name) {
@@ -118,6 +120,51 @@ function renderSidebar($activePage = 'home', $rootPrefix = '../../') {
     <a href="<?php echo $rootPrefix; ?>logout.php" class="nav-item logout-link" style="margin-top: auto; color: #ef4444;">
         <?php echo _svgIcon('logout'); ?> Cerrar Sesión
     </a>
+
+    <?php
+    // Identificador de servidor: hostname + IP LAN se calculan solos (no se
+    // piden al usuario) para saber de un vistazo en cual Zynervox esta
+    // parado. La nota de abajo es texto libre, se guarda LOCAL a este
+    // servidor (ver includes/ServerInfo.php) via api_server_info.php.
+    $serverHost = \Includes\ServerInfo::hostname();
+    $serverIp = \Includes\ServerInfo::lanIp();
+    $serverNotes = \Includes\ServerInfo::getNotes();
+    ?>
+    <div class="server-info">
+        <div class="server-info-id" title="Hostname / IP LAN de este servidor (calculado, no editable)">
+            <span class="server-info-host"><?php echo htmlspecialchars($serverHost); ?></span>
+            <span class="server-info-ip"><?php echo htmlspecialchars($serverIp); ?></span>
+        </div>
+        <textarea id="serverInfoNotes" class="server-info-notes" maxlength="2000" placeholder="Notas de este servidor (ej. producción, lab de pruebas...)"><?php echo htmlspecialchars($serverNotes); ?></textarea>
+        <div class="server-info-actions">
+            <button type="button" id="serverInfoSaveBtn" class="server-info-save">Guardar</button>
+            <span id="serverInfoStatus" class="server-info-status"></span>
+        </div>
+    </div>
+    <script>
+    (function () {
+        var btn = document.getElementById('serverInfoSaveBtn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+            var ta = document.getElementById('serverInfoNotes');
+            var status = document.getElementById('serverInfoStatus');
+            status.textContent = 'Guardando...';
+            fetch('<?php echo $rootPrefix; ?>modules/admin/api_server_info.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notes: ta.value })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function () {
+                    status.textContent = 'Guardado ✓';
+                    setTimeout(function () { status.textContent = ''; }, 2000);
+                })
+                .catch(function () {
+                    status.textContent = 'Error al guardar';
+                });
+        });
+    })();
+    </script>
 </aside>
 <?php
 }

@@ -36,6 +36,10 @@ body {
     padding: 1rem 0;
     position: fixed;
     height: 100vh;
+    /* El menu ya es largo (20+ items) y ahora suma el bloque de servidor al
+       final; sin scroll esos ultimos elementos quedaban inalcanzables en
+       pantallas bajas. */
+    overflow-y: auto;
 }
 
 .sidebar-logo {
@@ -92,6 +96,76 @@ body {
 .logout-link {
     margin-top: auto;
     color: #f5a3a3 !important;
+}
+
+/* Bloque "Servidor": hostname/IP autocalculados + nota libre, al final del
+   sidebar, para diferenciar en que instalacion de Zynervox se esta parado. */
+.server-info {
+    margin: 0.75rem 1rem 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--sidebar-border);
+}
+
+.server-info-id {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    margin-bottom: 0.4rem;
+}
+
+.server-info-host {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--sidebar-text-muted);
+}
+
+.server-info-ip {
+    font-size: 0.7rem;
+    color: var(--sidebar-text-muted);
+    opacity: 0.7;
+}
+
+.server-info-notes {
+    width: 100%;
+    min-height: 54px;
+    resize: vertical;
+    background: var(--sidebar-glass);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 4px;
+    color: var(--bg-main);
+    font-family: inherit;
+    font-size: 0.7rem;
+    padding: 0.4rem;
+}
+
+.server-info-notes::placeholder {
+    color: var(--sidebar-text-muted);
+}
+
+.server-info-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+}
+
+.server-info-save {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.7rem;
+    cursor: pointer;
+}
+
+.server-info-save:hover {
+    background: var(--primary-hover);
+}
+
+.server-info-status {
+    font-size: 0.65rem;
+    color: var(--sidebar-text-muted);
 }
 
 /* Submenu nativo (details/summary, sin JS) usado por "Servicios". */
