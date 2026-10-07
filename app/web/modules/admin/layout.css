@@ -42,6 +42,11 @@ body {
     overflow-y: auto;
 }
 
+.sidebar-logo-link {
+    color: inherit;
+    text-decoration: none;
+}
+
 .sidebar-logo {
     font-size: 1.25rem;
     font-weight: 700;
