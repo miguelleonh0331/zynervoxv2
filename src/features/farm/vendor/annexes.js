@@ -228,6 +228,11 @@ document.getElementById('sum-err-card').addEventListener('keydown', event => {
   if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); document.getElementById('sum-err-card').click(); }
 });
 
+// Sin polling automatico: el analisis de estado (journalctl por anexo) solo
+// corre al cargar la pagina o al pulsar "Actualizar" (btnRefresh). Antes
+// habia un setInterval(refresh, 15000) que repetia status_detail_all() cada
+// 15s para todo el pool -- carga innecesaria sobre el host del pool aunque
+// nunca toca Asterisk (2026-10-07, pedido explicito: analizar solo por carga
+// o actualizacion de pagina).
 refresh();
 loadDestino();
-setInterval(refresh, 15000);
