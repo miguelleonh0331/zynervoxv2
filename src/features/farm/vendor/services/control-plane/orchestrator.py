@@ -89,6 +89,28 @@ def proxy_directory_signature(path: Path) -> tuple:
     )
 
 
+def _parse_proxy_line(line: str, file_name: str, line_number: int) -> tuple[str, str, str, str]:
+    """Acepta dos formatos de linea:
+
+    - ``host:puerto:usuario:password`` (formato historico)
+    - ``usuario:password@host:puerto`` (formato ProxyScrape y similares)
+    """
+    if "@" in line:
+        creds, _, hostport = line.partition("@")
+        cred_parts = [part.strip() for part in creds.split(":", 1)]
+        host_parts = [part.strip() for part in hostport.split(":", 1)]
+        if len(cred_parts) != 2 or len(host_parts) != 2 or not all(cred_parts) or not all(host_parts):
+            raise RuntimeError(f"Proxy inválido en {file_name}, línea {line_number}")
+        username, password = cred_parts
+        host, port = host_parts
+    else:
+        parts = [part.strip() for part in line.split(":", 3)]
+        if len(parts) != 4 or not all(parts):
+            raise RuntimeError(f"Proxy inválido en {file_name}, línea {line_number}")
+        host, port, username, password = parts
+    return host, port, username, password
+
+
 def read_proxy_directory(path: Path) -> tuple[list[dict], list[str], int]:
     """Carga todos los TXT, valida sus líneas y deduplica por host/puerto."""
     path.mkdir(parents=True, exist_ok=True)
@@ -104,10 +126,7 @@ def read_proxy_directory(path: Path) -> tuple[list[dict], list[str], int]:
             line = raw.strip()
             if not line or line.startswith("#"):
                 continue
-            parts = [part.strip() for part in line.split(":", 3)]
-            if len(parts) != 4 or not all(parts):
-                raise RuntimeError(f"Proxy inválido en {file_path.name}, línea {line_number}")
-            host, port, username, password = parts
+            host, port, username, password = _parse_proxy_line(line, file_path.name, line_number)
             try:
                 numeric_port = int(port)
             except ValueError as exc:
