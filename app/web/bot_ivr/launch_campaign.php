@@ -6,6 +6,7 @@ ob_end_clean();
 header('Content-Type: application/json; charset=utf-8');
 initial_survey_require_login();
 require __DIR__ . '/db.php';
+\Config\Config::requireLegacyRuntime();
 require __DIR__ . '/campaign_audio_readiness.php';
 require __DIR__ . '/campaign_state_summary.php';
 require __DIR__ . '/campaign_runtime.php';

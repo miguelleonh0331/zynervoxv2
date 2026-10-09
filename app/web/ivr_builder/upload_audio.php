@@ -22,7 +22,7 @@ function fail(string $message, int $code = 400): void {
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['serve'])) {
     $h = (string)$_GET['serve'];
     if (!preg_match('/^[a-f0-9]{64}$/', $h)) { http_response_code(400); exit; }
-    $f = '/var/lib/asterisk/sounds/voicebot/cache/ivr_builder/mic/' . $h . '.wav';
+    $f = \Config\Config::audioRoot() . '/cache/ivr_builder/mic/' . $h . '.wav';
     if (!is_file($f)) { http_response_code(404); exit; }
     header('Content-Type: audio/wav');
     header('Content-Length: ' . filesize($f));
@@ -46,7 +46,7 @@ if ($size < 500)               fail('Grabacion demasiado corta');
 if ($size > 20 * 1024 * 1024) fail('Archivo demasiado grande (max 20 MB)');
 
 // --- Directorio de cache (mismo arbol que TTS builder) ---
-$dir  = '/var/lib/asterisk/sounds/voicebot/cache/ivr_builder/mic';
+$dir = \Config\Config::audioRoot() . '/cache/ivr_builder/mic';
 if (!is_dir($dir) && !mkdir($dir, 0777, true) && !is_dir($dir)) fail('No se pudo crear cache', 500);
 
 // --- Hash del contenido del archivo (equivalente al hash de texto en generate_audio) ---

@@ -24,21 +24,19 @@ foreach (['mysql','mariadb'] as $engine) {
         }
     }
 }
-$before = hash_file('sha256', BOT_IVR_DB_CONFIG);
 foreach (['postgres','sqlserver','', '../mysql'] as $unsupported) {
     try {
-        bot_ivr_db_save(array_replace($config, ['engine'=>$unsupported]));
-        throw new LogicException('Unsupported engine saved');
+        bot_ivr_db_connect(array_replace($config, ['engine'=>$unsupported]));
+        throw new LogicException('Unsupported engine accepted');
     } catch (RuntimeException $e) {}
 }
-query_verify(hash_file('sha256', BOT_IVR_DB_CONFIG) === $before, 'Rejected engine modified secrets');
 $repo = \ZynervoxQueries\botIvrRepository($legacy, $db);
 try {
     $repo->importLeads(0, 0, ['rows'=>[], 'duplicates'=>0, 'rejected'=>0, 'errors'=>[]]);
     throw new LogicException('Missing list accepted');
 } catch (RuntimeException $e) {}
 query_verify(!$db->inTransaction(), 'Failed import left an open transaction');
-foreach ([['port'=>0], ['server'=>'localhost;dbname=other'], ['database'=>'synervox']] as $invalid) {
+foreach ([['port'=>0], ['server'=>'localhost;dbname=other'], ['database'=>'invalid;database']] as $invalid) {
     try {
         bot_ivr_db_connect(array_replace($config, $invalid));
         throw new LogicException('Invalid configuration accepted');

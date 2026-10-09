@@ -2,7 +2,7 @@
 
 Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 
-Última generación: 2026-10-09 10:30
+Última generación: 2026-10-09 13:43
 
 ## Módulos
 

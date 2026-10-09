@@ -6,6 +6,7 @@ ob_end_clean();
 header('Content-Type: application/json; charset=utf-8');
 initial_survey_require_login();
 require __DIR__ . '/db.php';
+\Config\Config::requireLegacyRuntime();
 require __DIR__ . '/campaign_state_summary.php';
 require __DIR__ . '/campaign_runtime.php';
 
@@ -61,4 +62,3 @@ campaign_event($db,$campaignId,'audio_build','info','process_started','Pregenera
 $build=$db->prepare('INSERT INTO synervox_campaign_audio_builds (campaign_id,provider,status,started_at,completed_at,error_message) VALUES (:id,:provider,"building",NOW(),NULL,NULL) ON DUPLICATE KEY UPDATE provider=VALUES(provider),status="building",started_at=NOW(),completed_at=NULL,error_message=NULL');
 $build->execute([':id'=>$campaignId,':provider'=>$provider]);
 echo json_encode(['ok'=>true,'campaign_id'=>$campaignId,'workers'=>$workers,'provider'=>$provider,'pid'=>(int)$pid], JSON_UNESCAPED_SLASHES);
-

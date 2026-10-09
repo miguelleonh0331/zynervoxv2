@@ -11,6 +11,41 @@ require_once __DIR__ . '/Audit.php';
 
 class Carriers {
 
+    private static function database() {
+        if (\Config\Config::deployment('isolated', false)) {
+            if (\Config\Config::get('CORE_DB_database') !== 'zynervox_core') {
+                throw new \RuntimeException('Carriers requiere zynervox_core');
+            }
+            return Database::getCoreInstance();
+        }
+        return Database::getInstance();
+    }
+
+    private static function table() {
+        return \Config\Config::deployment('isolated', false) ? 'v2_carriers' : 'vicidial_server_carriers';
+    }
+
+    private static function audit($action, $carrierId) {
+        if (\Config\Config::deployment('isolated', false)) {
+            return Audit::logAccess($_SESSION['user'] ?? 'system', 'CARRIER_' . $action, $carrierId);
+        }
+        return Audit::logTableChange($_SESSION['user'] ?? 'system', $action, self::table(), 'carrier_id', $carrierId);
+    }
+
+    public static function recentChanges() {
+        if (!\Config\Config::deployment('isolated', false)) return Audit::getRecent('vicidial_server_carriers', 20);
+        return self::database()->query("SELECT created_at AS audit_timestamp, user AS audit_user, action AS audit_action, details AS carrier_id FROM v2_access_log WHERE action IN ('CARRIER_CREATE','CARRIER_UPDATE','CARRIER_DELETE') ORDER BY id DESC LIMIT 20")->fetchAll();
+    }
+
+    private static function validate($data) {
+        if (!\Config\Config::deployment('isolated', false)) return;
+        if (!preg_match('/^[A-Z0-9_-]{1,60}$/D', (string) ($data['carrier_id'] ?? ''))) throw new \InvalidArgumentException('ID de troncal invalido');
+        if (!in_array($data['active'] ?? 'Y', ['Y', 'N'], true)) throw new \InvalidArgumentException('Estado invalido');
+        foreach (['carrier_name', 'server_ip'] as $field) {
+            if (strlen((string) ($data[$field] ?? '')) > 100 || preg_match('/[\r\n]/', (string) ($data[$field] ?? ''))) throw new \InvalidArgumentException('Campo invalido: ' . $field);
+        }
+    }
+
     const CONF_PATH = '/etc/asterisk/synervox/modules/asterisk/pjsip-zynervox.conf';
     const DIALPLAN_PATH = '/etc/asterisk/synervox/modules/asterisk/extensions-zynervox.conf';
     // Wrapper minimo con sudoers dedicado (www-data solo puede correr este
@@ -19,23 +54,27 @@ class Carriers {
     const RELOAD_CMD = 'sudo /usr/local/sbin/zynervox-pjsip-reload.sh 2>&1';
 
     public static function getAll() {
-        $db = Database::getInstance();
-        $stmt = $db->query("SELECT * FROM vicidial_server_carriers ORDER BY carrier_id ASC");
+        $db = self::database();
+        $table = self::table();
+        $stmt = $db->query("SELECT * FROM $table ORDER BY carrier_id ASC");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public static function getById($carrier_id) {
-        $db = Database::getInstance();
-        $stmt = $db->prepare("SELECT * FROM vicidial_server_carriers WHERE carrier_id = :id LIMIT 1");
+        $db = self::database();
+        $table = self::table();
+        $stmt = $db->prepare("SELECT * FROM $table WHERE carrier_id = :id LIMIT 1");
         $stmt->execute(['id' => $carrier_id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     public static function create($data) {
-        $db = Database::getInstance();
+        self::validate($data);
+        $db = self::database();
+        $table = self::table();
         try {
             $stmt = $db->prepare(
-                "INSERT INTO vicidial_server_carriers
+                "INSERT INTO $table
                  (carrier_id, carrier_name, template_id, protocol, account_entry, dialplan_entry, server_ip, active, carrier_description)
                  VALUES (:carrier_id, :carrier_name, 'CUSTOM', 'PJSIP', :account_entry, :dialplan_entry, :server_ip, :active, :carrier_description)"
             );
@@ -48,16 +87,19 @@ class Carriers {
                 'active' => $data['active'] ?? 'Y',
                 'carrier_description' => $data['carrier_description'] ?? '',
             ]);
-            Audit::logTableChange($_SESSION['user'] ?? 'system', 'CREATE', 'vicidial_server_carriers', 'carrier_id', $data['carrier_id']);
+            self::audit('CREATE', $data['carrier_id']);
             return self::regenerateAndReload();
-        } catch (\PDOException $e) { return ['ok' => false, 'error' => $e->getMessage()]; }
+        } catch (\PDOException $e) { return self::databaseError($e); }
     }
 
     public static function update($carrier_id, $data) {
-        $db = Database::getInstance();
+        $data['carrier_id'] = $carrier_id;
+        self::validate($data);
+        $db = self::database();
+        $table = self::table();
         try {
             $stmt = $db->prepare(
-                "UPDATE vicidial_server_carriers SET
+                "UPDATE $table SET
                  carrier_name = :carrier_name, account_entry = :account_entry, dialplan_entry = :dialplan_entry,
                  server_ip = :server_ip, active = :active, carrier_description = :carrier_description
                  WHERE carrier_id = :id"
@@ -71,19 +113,22 @@ class Carriers {
                 'carrier_description' => $data['carrier_description'] ?? '',
                 'id' => $carrier_id,
             ]);
-            Audit::logTableChange($_SESSION['user'] ?? 'system', 'UPDATE', 'vicidial_server_carriers', 'carrier_id', $carrier_id);
+            self::audit('UPDATE', $carrier_id);
             return self::regenerateAndReload();
-        } catch (\PDOException $e) { return ['ok' => false, 'error' => $e->getMessage()]; }
+        } catch (\PDOException $e) { return self::databaseError($e); }
     }
 
     public static function delete($carrier_id) {
-        $db = Database::getInstance();
+        self::validate(['carrier_id' => $carrier_id]);
+        $db = self::database();
+        $table = self::table();
         try {
-            Audit::logTableChange($_SESSION['user'] ?? 'system', 'DELETE', 'vicidial_server_carriers', 'carrier_id', $carrier_id);
-            $stmt = $db->prepare("DELETE FROM vicidial_server_carriers WHERE carrier_id = :id");
+            if (!\Config\Config::deployment('isolated', false)) self::audit('DELETE', $carrier_id);
+            $stmt = $db->prepare("DELETE FROM $table WHERE carrier_id = :id");
             $stmt->execute(['id' => $carrier_id]);
+            if (\Config\Config::deployment('isolated', false) && $stmt->rowCount() > 0) self::audit('DELETE', $carrier_id);
             return self::regenerateAndReload();
-        } catch (\PDOException $e) { return ['ok' => false, 'error' => $e->getMessage()]; }
+        } catch (\PDOException $e) { return self::databaseError($e); }
     }
 
     // Reconstruye modules/asterisk/pjsip-zynervox.conf (account_entry) y
@@ -91,8 +136,9 @@ class Carriers {
     // (dialplan_entry) con las troncales PJSIP activas, y dispara
     // "pjsip reload" + "dialplan reload" via el wrapper sudo restringido.
     public static function regenerateAndReload() {
-        $db = Database::getInstance();
-        $stmt = $db->query("SELECT carrier_id, carrier_name, account_entry, dialplan_entry FROM vicidial_server_carriers WHERE active = 'Y' AND protocol = 'PJSIP' ORDER BY carrier_id ASC");
+        $db = self::database();
+        $table = self::table();
+        $stmt = $db->query("SELECT carrier_id, carrier_name, account_entry, dialplan_entry FROM $table WHERE active = 'Y' AND protocol = 'PJSIP' ORDER BY carrier_id ASC");
         $carriers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $confOut = "; Generado por Zynervox (carriers.php) - " . date('Y-m-d H:i:s') . "\n";
@@ -111,13 +157,36 @@ class Carriers {
             }
         }
 
-        $w1 = @file_put_contents(self::CONF_PATH, $confOut);
-        $w2 = @file_put_contents(self::DIALPLAN_PATH, $dialOut);
-        if ($w1 === false || $w2 === false) {
-            return ['ok' => false, 'error' => 'No se pudo escribir ' . self::CONF_PATH . ' o ' . self::DIALPLAN_PATH . ' (revisar permisos).'];
+        $isolated = \Config\Config::deployment('isolated', false);
+        $runtime = (string) \Config\Config::deployment('runtime', '');
+        if ($isolated && ($runtime === '' || $runtime === '/' || strpos($runtime, '/etc/asterisk') === 0 || strpos($runtime, '/var/lib/asterisk') === 0)) {
+            return ['ok' => false, 'error' => 'Runtime Carriers aislado invalido'];
         }
+        $directory = $runtime . '/modules/asterisk';
+        $confPath = $isolated ? $directory . '/pjsip-zynervoxv2.conf' : self::CONF_PATH;
+        $dialplanPath = $isolated ? $directory . '/extensions-zynervoxv2.conf' : self::DIALPLAN_PATH;
+        $w1 = $isolated ? self::writeConfiguration($confPath, $confOut) : @file_put_contents($confPath, $confOut);
+        $w2 = $isolated ? self::writeConfiguration($dialplanPath, $dialOut) : @file_put_contents($dialplanPath, $dialOut);
+        if ($w1 === false || $w2 === false) {
+            return ['ok' => false, 'error' => 'Datos guardados; no se pudo generar ' . $confPath . ' o ' . $dialplanPath . ' (revisar permisos).'];
+        }
+
+        if ($isolated) return ['ok' => true, 'reload_output' => 'Configuracion v2 generada. No se modifica ni recarga Asterisk; activacion pendiente.'];
 
         $reloadOutput = shell_exec(self::RELOAD_CMD);
         return ['ok' => true, 'reload_output' => trim($reloadOutput ?? '')];
+    }
+
+    private static function writeConfiguration($path, $contents) {
+        if (!is_dir(dirname($path)) || realpath(dirname($path)) !== dirname($path) || is_link($path)) return false;
+        $temporary = tempnam(dirname($path), '.carriers-');
+        if ($temporary === false) return false;
+        $written = file_put_contents($temporary, $contents, LOCK_EX) !== false && chmod($temporary, 0640) && rename($temporary, $path);
+        if (!$written) @unlink($temporary);
+        return $written;
+    }
+
+    private static function databaseError($error) {
+        return ['ok' => false, 'error' => \Config\Config::deployment('isolated', false) ? 'No se pudo guardar la troncal; revise campos, ID y permisos de Core.' : $error->getMessage()];
     }
 }

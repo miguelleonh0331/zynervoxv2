@@ -17,6 +17,13 @@ command -v python3 >/dev/null 2>&1 || { echo "FALTA python3 (requerido por macel
 command -v ffmpeg  >/dev/null 2>&1 || { echo "FALTA ffmpeg (requerido por macelioai/gTTS)" >&2; exit 1; }
 command -v sox     >/dev/null 2>&1 || { echo "FALTA sox (requerido por macelioai/gTTS)" >&2; exit 1; }
 
+# El padre venvs/ lo crea "python3 -m venv" como efecto colateral si no
+# existe, heredando el umask del proceso (0077 bajo unattended.sh) -> queda
+# root:root 0700, sin traversal para www-data, y generate_audio.php reporta
+# "Proveedor macelioai no instalado" aunque los archivos SI existan adentro.
+# Se fija ANTES de crear el venv para que el umask no lo vuelva a restringir.
+install -d -o root -g "$WEB_GROUP" -m 0750 "$WEB_ROOT/venvs"
+
 if [[ ! -d "$VENV_DIR" ]]; then
   python3 -m venv "$VENV_DIR"
 fi
@@ -34,6 +41,17 @@ find "$VENV_DIR/bin" -type f -exec chmod 0750 {} +
 
 "$VENV_DIR/bin/pip" install --upgrade pip -q
 "$VENV_DIR/bin/pip" install gTTS -q
+
+# pip (corriendo como root, DESPUES del chmod de arriba) escribe gtts/ y el
+# resto de site-packages con el umask del proceso (0077 bajo unattended.sh)
+# -> queda root:root 0700, ilegible para www-data. generate_audio.php (PHP/
+# Apache = www-data) fallaba con "ImportError: cannot import name 'gTTS'
+# from 'gtts' (unknown location)" aunque el chequeo de abajo (corrido como
+# root) no lo detectara. Se repite el chown/chmod despues de instalar.
+chown -R root:"$WEB_GROUP" "$VENV_DIR"
+find "$VENV_DIR" -type d -exec chmod 0750 {} +
+find "$VENV_DIR" -type f -exec chmod 0640 {} +
+find "$VENV_DIR/bin" -type f -exec chmod 0750 {} +
 
 "$VENV_DIR/bin/python" -c "import gtts" || {
   echo "FALLO: gTTS no quedo importable en $VENV_DIR" >&2

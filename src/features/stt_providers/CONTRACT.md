@@ -1,5 +1,11 @@
 # CONTRACT.md - stt_providers
 
+## Instalación centralizada (2026-10-09)
+
+Instalaciones nuevas usan la base core con usuario distinto y DML por tabla.
+Configuraciones anteriores mantienen base y credenciales. No se copian ni
+eliminan automáticamente datos legacy.
+
 ## Responsabilidad contractual
 
 Exponer a administradores Zynervox el CRUD, asignación, verificación y prueba de

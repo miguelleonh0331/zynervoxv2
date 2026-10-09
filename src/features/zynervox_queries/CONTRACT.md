@@ -14,7 +14,8 @@ administración nueva Bot IVR. Aprobada por ARCHITECT_AGENT el 2026-10-05.
   La conexión opcional permite transacciones compartidas/pruebas, solo driver mysql.
 
 La conexión común no fija nombre de base ni guarda secretos. Cada consumidor
-impone su política (Bot IVR exige zynervox). No existe fallback a otra configuración.
+impone su política (Bot IVR consume la configuración pública de core).
+Esta capa no selecciona fallback ni almacena configuración.
 PDO solo aparece en la frontera de conexión/infraestructura, no en páginas nuevas.
 
 ## Salidas públicas

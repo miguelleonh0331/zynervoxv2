@@ -8,11 +8,18 @@ use Includes\Carriers;
 use Includes\Audit;
 
 Auth::checkAccess(9);
+$_SESSION['carriers_csrf'] = $_SESSION['carriers_csrf'] ?? bin2hex(random_bytes(32));
+$isolated = \Config\Config::deployment('isolated', false);
 
 $msg = '';
 $editData = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!is_string($_POST['csrf_token'] ?? null) || !hash_equals($_SESSION['carriers_csrf'], $_POST['csrf_token'])) {
+        http_response_code(403);
+        exit('CSRF invalido');
+    }
+    try {
     if (isset($_POST['save_carrier'])) {
         $data = [
             'carrier_id' => strtoupper(trim($_POST['carrier_id'])),
@@ -31,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($result['ok']) {
-            $msg = "<p style='color: #047857;'>Troncal '{$data['carrier_id']}' guardada y PJSIP recargado.</p>";
+            $msg = "<p style='color: #047857;'>Troncal guardada. " . ($isolated ? 'Archivos v2 generados, no activados.' : 'PJSIP recargado.') . "</p>";
             if (!empty($result['reload_output'])) {
                 $msg .= "<pre style='background:var(--glass); padding:0.5rem; font-size:0.7rem; white-space:pre-wrap;'>" . htmlspecialchars($result['reload_output']) . "</pre>";
             }
@@ -43,8 +50,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['delete_carrier'])) {
         $result = Carriers::delete($_POST['carrier_id']);
         $msg = $result['ok']
-            ? "<p style='color: #b91c1c;'>Troncal eliminada y PJSIP recargado.</p>"
+            ? "<p style='color: #b91c1c;'>Troncal eliminada. " . ($isolated ? 'Archivos v2 generados, no activados.' : 'PJSIP recargado.') . "</p>"
             : "<p style='color: #b91c1c;'>Error al eliminar: " . htmlspecialchars($result['error'] ?? '') . "</p>";
+    }
+    } catch (\Throwable $error) {
+        $msg = "<p style='color: #b91c1c;'>No se pudo guardar la troncal; revise ID, campos y permisos.</p>";
     }
 }
 
@@ -111,7 +121,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
         <header class="top-bar" style="margin-bottom: 0.5rem;">
             <div>
                 <h1 style="font-size: 1.1rem; font-weight: 700;">Admin (Troncales SIP)</h1>
-                <p style="color: var(--text-muted); font-size: 0.75rem;">Troncales PJSIP — genera archivos en /etc/asterisk/synervox/modules/asterisk/ y recarga PJSIP/dialplan</p>
+                <p style="color: var(--text-muted); font-size: 0.75rem;"><?php echo $isolated ? 'Troncales v2 en zynervox_core. Genera archivos propios sin activar ni recargar Asterisk.' : 'Troncales PJSIP: genera configuracion y recarga PJSIP/dialplan.'; ?></p>
             </div>
         </header>
 
@@ -139,14 +149,15 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
                     <tbody>
                         <?php foreach ($allCarriers as $c): ?>
                         <tr>
-                            <td><strong><?php echo $c['carrier_id']; ?></strong></td>
-                            <td><?php echo $c['carrier_name']; ?></td>
+                            <td><strong><?php echo htmlspecialchars($c['carrier_id']); ?></strong></td>
+                            <td><?php echo htmlspecialchars($c['carrier_name']); ?></td>
                             <td><span class="badge-proto"><?php echo $c['protocol']; ?></span></td>
-                            <td><?php echo $c['server_ip']; ?></td>
+                            <td><?php echo htmlspecialchars($c['server_ip']); ?></td>
                             <td><?php echo $c['active'] == 'Y' ? 'Si' : 'No'; ?></td>
                             <td style="white-space: nowrap;">
                                 <a href="?edit_id=<?php echo urlencode($c['carrier_id']); ?>">Editar</a>
                                 <form method="POST" class="inline-form" onsubmit="return confirm('¿Eliminar troncal <?php echo $c['carrier_id']; ?>?');">
+                                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['carriers_csrf']); ?>">
                                     <input type="hidden" name="carrier_id" value="<?php echo $c['carrier_id']; ?>">
                                     <button type="submit" name="delete_carrier" class="link-inline danger">Eliminar</button>
                                 </form>
@@ -164,6 +175,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
             <div class="card">
                 <h2><?php echo $editData ? 'Editar Troncal' : 'Nueva Troncal (PJSIP)'; ?></h2>
                 <form method="POST" style="margin-top: 0.5rem;">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['carriers_csrf']); ?>">
                     <?php if ($editData): ?>
                         <input type="hidden" name="is_edit" value="1">
                         <input type="hidden" name="old_carrier_id" value="<?php echo $editData['carrier_id']; ?>">
@@ -206,7 +218,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
 
                     <div style="margin-top: 0.6rem;">
                         <button type="submit" name="save_carrier" class="btn-primary" style="padding: 0.4rem 1rem;">
-                            <?php echo $editData ? 'Guardar y Recargar PJSIP' : 'Crear y Recargar PJSIP'; ?>
+                            <?php echo $isolated ? 'Guardar y generar archivos v2' : ($editData ? 'Guardar y Recargar PJSIP' : 'Crear y Recargar PJSIP'); ?>
                         </button>
                     </div>
                 </form>
@@ -226,13 +238,13 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
                     </thead>
                     <tbody>
                         <?php
-                        $logs = Audit::getRecent('vicidial_server_carriers', 20);
+                        $logs = Carriers::recentChanges();
                         foreach ($logs as $l): ?>
                             <tr>
                                 <td><?php echo date('d/m/Y H:i', strtotime($l['audit_timestamp'])); ?></td>
-                                <td><strong><?php echo $l['audit_user']; ?></strong></td>
-                                <td><?php echo $l['audit_action']; ?></td>
-                                <td><?php echo $l['carrier_id']; ?></td>
+                                <td><strong><?php echo htmlspecialchars($l['audit_user']); ?></strong></td>
+                                <td><?php echo htmlspecialchars($l['audit_action']); ?></td>
+                                <td><?php echo htmlspecialchars($l['carrier_id']); ?></td>
                             </tr>
                         <?php endforeach; ?>
                         <?php if (empty($logs)): ?>

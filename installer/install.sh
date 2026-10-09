@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
+trap 'install_status=$?; printf "ERROR instalacion: linea=%s codigo=%s\n" "$LINENO" "$install_status" >&2; exit "$install_status"' ERR
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WEB_ROOT="${WEB_ROOT:-/var/www/html/zynervox}"
+source "$ROOT/installer/platform.sh"
+platform_defaults zynervox
+if [[ "$WEB_ROOT" == */zynervoxv2 && "${ZYNERVOX_ISOLATED:-0}" != 1 ]]; then source "$ROOT/installer/isolated-env.sh"; fi
 ASTERISK_ROOT="${ASTERISK_ROOT:-/etc/asterisk/synervox}"
 URL_PATH="${URL_PATH:-/zynervox}"
 APPLY_MIGRATIONS=0
@@ -14,11 +17,16 @@ WITH_STT_PROVIDERS=0
 WITH_ZYNERDESK=0
 WITH_ZYPAD=0
 INSTALL_DOCKER=0
+SELECTED_MODULE=''
+expect_module=0
 FARM_INSTANCE="${FARM_INSTANCE:-zynervox-farm}"
 STT_INSTANCE="${STT_INSTANCE:-zynervox-stt}"
 
 for arg in "$@"; do
+  if [[ "$expect_module" == 1 ]]; then [[ -n "$arg" ]] || exit 2; SELECTED_MODULE="$arg"; expect_module=0; continue; fi
   case "$arg" in
+    --module) expect_module=1 ;;
+    --module=*) SELECTED_MODULE="${arg#--module=}"; [[ -n "$SELECTED_MODULE" ]] || exit 2 ;;
     --apply-migrations) APPLY_MIGRATIONS=1 ;;
     --dry-run) DRY_RUN=1 ;;
     --skip-packages) SKIP_PACKAGES=1 ;;
@@ -31,10 +39,15 @@ for arg in "$@"; do
     *) echo "Argumento desconocido: $arg" >&2; exit 2 ;;
   esac
 done
+[[ "$expect_module" == 0 ]] || { echo 'Falta nombre de modulo' >&2; exit 2; }
+if [[ -n "$SELECTED_MODULE" ]]; then
+  [[ "$SELECTED_MODULE" == carriers && "${ZYNERVOX_ISOLATED:-0}" == 1 ]] || { echo 'Modulo selectivo no soportado; disponible: carriers (v2 aislado)' >&2; exit 2; }
+  [[ "$APPLY_MIGRATIONS$WITH_WHATSAPP$WITH_FARM$WITH_STT_PROVIDERS$WITH_ZYNERDESK$WITH_ZYPAD$INSTALL_DOCKER" == 0000000 ]] || { echo 'No mezclar --module con instalacion completa/opcionales' >&2; exit 2; }
+  if [[ "$DRY_RUN" == 1 ]]; then echo "DRY_RUN module=carriers web=$WEB_ROOT database=zynervox_core no_full_install=1"; exit 0; fi
+  exec bash "$ROOT/installer/carriers.sh"
+fi
 
 [[ $EUID -eq 0 ]] || { echo "Ejecutar como root" >&2; exit 1; }
-[[ -f /etc/os-release ]] || { echo "Linux no compatible" >&2; exit 1; }
-source /etc/os-release
 WEB_GROUP="${WEB_GROUP:-www-data}"
 getent group "$WEB_GROUP" >/dev/null || WEB_GROUP=www
 getent group "$WEB_GROUP" >/dev/null || WEB_GROUP=root
@@ -46,14 +59,22 @@ if [[ $DRY_RUN -eq 1 ]]; then
   echo "DRY_RUN web=$WEB_ROOT asterisk=$ASTERISK_ROOT url=$URL_PATH migrations=$APPLY_MIGRATIONS integration=$integration skip_packages=$SKIP_PACKAGES whatsapp=$WITH_WHATSAPP farm=$WITH_FARM stt_providers=$WITH_STT_PROVIDERS zynerdesk=$WITH_ZYNERDESK zypad=$WITH_ZYPAD install_docker=$INSTALL_DOCKER os=${ID:-unknown} web_group=$WEB_GROUP"
   exit 0
 fi
+if [[ "${ZYNERVOX_ISOLATED:-0}" == 1 && ( "$APPLY_MIGRATIONS" == 1 || "$WITH_FARM" == 1 || "$WITH_WHATSAPP" == 1 || "$WITH_ZYNERDESK" == 1 || "$WITH_ZYPAD" == 1 || "$WITH_STT_PROVIDERS" == 1 ) ]]; then
+  echo "Modulos productivos/migraciones deshabilitados en despliegue v2 aislado" >&2
+  exit 2
+fi
 
 # La web siempre se instala antes de comprobar integraciones opcionales.
-install -d -o root -g "$WEB_GROUP" -m 0750 "$WEB_ROOT"
-tar -C "$ROOT/app/web" --exclude='./config/reporting_mirror.json' -cf - . | tar -C "$WEB_ROOT" -xf -
+bash "$ROOT/installer/deploy-web.sh" "$ROOT/app/web" "$WEB_ROOT"
+printf '[%s] Aplicando permisos web\n' "$(date +%T)"
 chown -R root:"$WEB_GROUP" "$WEB_ROOT"
 find "$WEB_ROOT" -type d -exec chmod 0750 {} +
 find "$WEB_ROOT" -type f -exec chmod 0640 {} +
 echo "WEB_INSTALLED root=$WEB_ROOT"
+if [[ "${ZYNERVOX_ISOLATED:-0}" == 1 ]]; then
+  bash "$ROOT/installer/deployment-marker.sh"
+  bash "$ROOT/installer/isolated-apache.sh"
+fi
 
 # runtime/ es la UNICA carpeta bajo el webroot donde los procesos PHP
 # (www-data) necesitan poder escribir en caliente (ej. DevChecklist.php,
@@ -65,10 +86,12 @@ echo "WEB_INSTALLED root=$WEB_ROOT"
 install -d -o root -g "$WEB_GROUP" -m 0770 "$WEB_ROOT/runtime"
 echo "RUNTIME_DIR_READY path=$WEB_ROOT/runtime"
 
-# Login administrativo propio de zynervox (zynervox_core / zynervox_users):
-# no es opcional ni depende de --with-x, siempre se reinstala para que el
-# acceso admin quede garantizado sin tocar vicidial_users ni `asterisk`.
-bash "$ROOT/installer/zynervox-core.sh" || echo "AVISO: zynervox-core.sh no se completó; revisar manualmente" >&2
+# Login administrativo y esquemas propios, sin modificar datos VICIdial.
+printf '[%s] Configurando base Core\n' "$(date +%T)"
+bash "$ROOT/installer/zynervox-core.sh"
+printf '[%s] Configurando base IVR/Bot\n' "$(date +%T)"
+bash "$ROOT/installer/ivr-builder-bot-db.sh"
+if [[ "${ZYNERVOX_ISOLATED:-0}" == 1 ]]; then bash "$ROOT/installer/carriers.sh"; fi
 
 if [[ $SKIP_PACKAGES -eq 0 ]]; then
   case "${ID:-}" in
@@ -142,7 +165,7 @@ PY
   systemctl restart docker
 fi
 
-if [[ -f "$DB_CONFIG" ]] && command -v asterisk >/dev/null 2>&1 && command -v mysql >/dev/null 2>&1; then
+if [[ "${ZYNERVOX_ISOLATED:-0}" != 1 && -f "$DB_CONFIG" ]] && command -v asterisk >/dev/null 2>&1 && command -v mysql >/dev/null 2>&1; then
   install -d -o root -g "$WEB_GROUP" -m 0750 "$ASTERISK_ROOT"
   cp -a "$ROOT/asterisk/synervox/." "$ASTERISK_ROOT/"
   chown -R root:"$WEB_GROUP" "$ASTERISK_ROOT"
@@ -154,7 +177,7 @@ else
 fi
 
 # Bajo DocumentRoot no hace falta crear ni habilitar un Alias.
-if [[ "$WEB_ROOT" != "/var/www/html${URL_PATH}" ]] && command -v a2enconf >/dev/null 2>&1; then
+if [[ "$WEB_ROOT" != "${WEB_DOCUMENT_ROOT:-/var/www/html}${URL_PATH}" ]] && command -v a2enconf >/dev/null 2>&1; then
   apache_conf=/etc/apache2/conf-available/zynervox.conf
   sed -e "s|__URL_PATH__|$URL_PATH|g" -e "s|__WEB_ROOT__|$WEB_ROOT|g" \
     "$ROOT/installer/apache-zynervox.conf.template" > "$apache_conf"
@@ -234,7 +257,7 @@ fi
 # El diagnóstico no debe cortar la ejecución antes del resumen: su resultado se
 # reporta ahí junto con el resto.
 check_status=0
-WEB_ROOT="$WEB_ROOT" CHECK_FARM="$WITH_FARM" CHECK_STT_PROVIDERS="$WITH_STT_PROVIDERS" CHECK_ZYNERDESK="$WITH_ZYNERDESK" \
+WEB_ROOT="$WEB_ROOT" CHECK_FARM="$WITH_FARM" CHECK_STT_PROVIDERS="$WITH_STT_PROVIDERS" CHECK_WHATSAPP="$WITH_WHATSAPP" CHECK_ZYNERDESK="$WITH_ZYNERDESK" \
   CHECK_ZYPAD="$WITH_ZYPAD" \
   FARM_INSTANCE="$FARM_INSTANCE" STT_INSTANCE="$STT_INSTANCE" bash "$ROOT/installer/check.sh" || check_status=$?
 
@@ -257,7 +280,8 @@ fi
 
 echo
 echo "-- Credenciales generadas --"
-echo "  Guárdelas ahora: no vuelven a mostrarse y no quedan en los logs."
+echo "  Salida sensible: no compartir ni redirigir a logs publicos."
+bash "$ROOT/installer/credentials.sh"
 for module in "${MODULES_OK[@]+"${MODULES_OK[@]}"}"; do
   case "$module" in
     WhatsApp)
@@ -282,7 +306,7 @@ if [[ ${#MODULES_FAILED[@]} -gt 0 ]]; then
   echo "  afectado, corrija la causa y vuelva a ejecutar su script:"
   echo "    sudo bash $ROOT/installer/<modulo>.sh init"
   echo "  Requisitos frecuentes: Farm necesita Python 3.10+; WhatsApp y"
-  echo "  Zynerdesk necesitan Docker y Docker Compose; Zypad necesita Docker"
+  echo "  Zynerdesk necesitan Node.js 18+, npm y MySQL; Zypad necesita Docker"
   echo "  (reinstale con --install-docker)."
 fi
 

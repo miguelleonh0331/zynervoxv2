@@ -8,8 +8,8 @@ declare(strict_types=1);
 // es independiente de la BD (este server puede no tener acceso a ella).
 require_once __DIR__ . '/../config/Config.php';
 
-const IVR_PUBLISHED_DIR = '/etc/asterisk/synervox/modules/flows/published';
-const RECEIVER_CONF = '/etc/zynervox/zynervoxv2205-ivr-receiver.conf';
+define('IVR_PUBLISHED_DIR', \Config\Config::deployment('runtime', '/etc/asterisk/synervox') . '/modules/flows/published');
+define('RECEIVER_CONF', \Config\Config::deployment('directory', '/etc/zynervox') . '/zynervoxv2205-ivr-receiver.conf');
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');

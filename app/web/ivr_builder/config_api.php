@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../includes/Database.php';
+require_once __DIR__ . '/../includes/DeploymentConfig.php';
 ivr_builder_require_login(true);
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -12,11 +13,9 @@ function fail(string $message, int $code = 400): void {
     exit;
 }
 
-$core = \Includes\Database::getCoreInstance();
-
 function currentRow(PDO $core): array {
     $row = $core->query(
-        'SELECT db_host,db_port,db_name,db_user,db_pass,db_tested_at,asterisk_api_url,asterisk_api_token,asterisk_tested_at FROM ivr_deploy_config WHERE id=1'
+        'SELECT db_host,db_port,db_name,db_user,db_pass,db_tested_at,asterisk_api_url,asterisk_api_token,asterisk_tested_at FROM ' . \Config\Config::coreTable('deployment') . ' WHERE id=1'
     )->fetch();
     return $row ?: [
         'db_host' => '', 'db_port' => 3306, 'db_name' => '', 'db_user' => '', 'db_pass' => '', 'db_tested_at' => null,
@@ -28,11 +27,19 @@ $method = $_SERVER['REQUEST_METHOD'];
 $data = $method === 'POST' ? (json_decode((string) file_get_contents('php://input'), true) ?: []) : [];
 $action = (string) ($data['action'] ?? ($_GET['action'] ?? 'get'));
 
+if ($action !== 'get') {
+    if ($method !== 'POST') fail('Método inválido', 405);
+    if (!\Includes\DeploymentConfig::csrf((string) ($_SESSION['ivr_config_csrf'] ?? ''), (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''))) fail('Sesión inválida. Recarga la página.', 403);
+}
+
+try { $core = \Includes\Database::getCoreInstance(); }
+catch (Throwable $e) { fail('Configuración central no disponible. Revisa la instalación.', 503); }
+
 if ($action === 'get') {
     $row = currentRow($core);
     $row['db_pass'] = $row['db_pass'] !== '' ? '••••••••' : '';
     $row['asterisk_api_token'] = $row['asterisk_api_token'] !== '' ? '••••••••' : '';
-    echo json_encode(['ok' => true, 'config' => $row], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['ok' => true, 'config' => $row, 'csrf' => $_SESSION['ivr_config_csrf']], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -42,7 +49,9 @@ if ($action === 'test_db') {
     $name = trim((string) ($data['db_name'] ?? ''));
     $user = trim((string) ($data['db_user'] ?? ''));
     $pass = (string) ($data['db_pass'] ?? '');
-    if ($host === '' || $name === '' || $user === '') fail('Host, BD y usuario son obligatorios');
+    try { $validated = \Includes\DeploymentConfig::database($data, currentRow($core)); }
+    catch (InvalidArgumentException $e) { fail($e->getMessage()); }
+    $host = $validated['db_host']; $port = $validated['db_port']; $name = $validated['db_name']; $user = $validated['db_user']; $pass = $validated['db_pass'];
     if ($pass === '••••••••') {
         $existing = currentRow($core);
         $pass = $existing['db_pass'];
@@ -55,7 +64,7 @@ if ($action === 'test_db') {
         $pdo->query('SELECT 1');
         echo json_encode(['ok' => true, 'message' => 'Conexión exitosa a ' . $name . '@' . $host], JSON_UNESCAPED_UNICODE);
     } catch (Throwable $e) {
-        echo json_encode(['ok' => false, 'error' => 'No se pudo conectar: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        echo json_encode(['ok' => false, 'error' => 'No se pudo conectar. Revisa los datos y permisos.'], JSON_UNESCAPED_UNICODE);
     }
     exit;
 }
@@ -66,7 +75,9 @@ if ($action === 'save_db') {
     $name = trim((string) ($data['db_name'] ?? ''));
     $user = trim((string) ($data['db_user'] ?? ''));
     $pass = (string) ($data['db_pass'] ?? '');
-    if ($host === '' || $name === '' || $user === '') fail('Host, BD y usuario son obligatorios');
+    try { $validated = \Includes\DeploymentConfig::database($data, currentRow($core)); }
+    catch (InvalidArgumentException $e) { fail($e->getMessage()); }
+    $host = $validated['db_host']; $port = $validated['db_port']; $name = $validated['db_name']; $user = $validated['db_user']; $pass = $validated['db_pass'];
     // Si el password viene enmascarado, conservar el que ya habia guardado.
     if ($pass === '••••••••') {
         $existing = currentRow($core);
@@ -79,10 +90,10 @@ if ($action === 'save_db') {
         ]);
         $pdo->query('SELECT 1');
     } catch (Throwable $e) {
-        fail('No se guardó: la conexión falló (' . $e->getMessage() . ')');
+        fail('No se guardó: la conexión falló. Revisa los datos y permisos.');
     }
     $stmt = $core->prepare(
-        'INSERT INTO ivr_deploy_config (id,db_host,db_port,db_name,db_user,db_pass,db_tested_at)
+        'INSERT INTO ' . \Config\Config::coreTable('deployment') . ' (id,db_host,db_port,db_name,db_user,db_pass,db_tested_at)
          VALUES (1,:h,:p,:n,:u,:pw,NOW())
          ON DUPLICATE KEY UPDATE db_host=VALUES(db_host),db_port=VALUES(db_port),db_name=VALUES(db_name),
            db_user=VALUES(db_user),db_pass=VALUES(db_pass),db_tested_at=VALUES(db_tested_at)'
@@ -125,7 +136,7 @@ if ($action === 'test_asterisk' || $action === 'save_asterisk') {
     }
 
     $stmt = $core->prepare(
-        'INSERT INTO ivr_deploy_config (id,asterisk_api_url,asterisk_api_token,asterisk_tested_at)
+        'INSERT INTO ' . \Config\Config::coreTable('deployment') . ' (id,asterisk_api_url,asterisk_api_token,asterisk_tested_at)
          VALUES (1,:u,:t,NOW())
          ON DUPLICATE KEY UPDATE asterisk_api_url=VALUES(asterisk_api_url),asterisk_api_token=VALUES(asterisk_api_token),asterisk_tested_at=VALUES(asterisk_tested_at)'
     );

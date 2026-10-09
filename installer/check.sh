@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-WEB_ROOT="${WEB_ROOT:-/var/www/html/zynervox}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT/installer/platform.sh"
+platform_defaults zynervox
 STRICT=0
 [[ "${1:-}" == "--strict" ]] && STRICT=1
 fail=0

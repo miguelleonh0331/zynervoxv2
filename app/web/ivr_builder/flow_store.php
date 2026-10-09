@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../includes/Database.php';
 
-const IVR_PUBLISHED_DIR = '/etc/asterisk/synervox/modules/flows/published';
+define('IVR_PUBLISHED_DIR', \Config\Config::deployment('runtime', '/etc/asterisk/synervox') . '/modules/flows/published');
 
 function flow_store(PDO $db, array $flow): void {
     $code = (string)$flow['flow_code'];
@@ -131,6 +131,7 @@ function flow_publish(PDO $db, array $flow): array {
 }
 
 function publish_flow_via_api(string $apiUrl, string $token, string $code, string $json): array {
+    if (\Config\Config::deployment('isolated', false)) return publish_flow_to_local_disk($code, $json);
     $ch = curl_init(rtrim($apiUrl, '/') . '/asterisk_receive.php');
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,

@@ -1384,3 +1384,205 @@ Contrato:
 
 Riesgos:
 Pruebas de BD aislada y generacion real gTTS pendientes antes de despliegue.
+
+### 2026-10-09 11:02 - root - installer
+
+Tipo: feature
+
+Resumen:
+Integracion selectiva v3: Servicios BD, CSRF, bootstrap compartido, instalador desatendido/idempotente y pruebas aisladas.
+
+Motivo:
+Solicitud de integracion v3 en v2 sin perder mejoras existentes.
+
+Archivos modificados:
+- app/web,installer,src/features/*/CONTRACT.md,docs/V3_INTEGRATION_TEST.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+Prueba manual del usuario pendiente; no migracion automatica de bases legacy ni push.
+
+### 2026-10-09 11:10 - root - installer
+
+Tipo: fix
+
+Resumen:
+Rutas multiplataforma SUSE/Debian en install, unattended y check; prioridad de overrides.
+
+Motivo:
+mirmidon usa /srv/www/htdocs; aprobado ARCHITECT_AGENT.
+
+Archivos modificados:
+- installer/platform.sh,installer/install.sh,installer/unattended.sh,installer/check.sh,src/features/installer
+
+Contrato:
+- sin cambios
+
+Riesgos:
+Sin cambios remotos; paquetes SUSE preinstalados requeridos.
+
+### 2026-10-09 11:21 - root - installer
+
+Tipo: fix
+
+Resumen:
+Progreso por etapa y archivo durante copia SMB; errores con linea/codigo sin imprimir comandos ni secretos.
+
+Motivo:
+Instalador permanecia silencioso durante copia de fuente remota.
+
+Archivos modificados:
+- installer/unattended.sh,installer/install.sh
+
+Contrato:
+- sin cambios
+
+Riesgos:
+Cambios aplican en siguiente ejecucion; no reiniciar instalacion activa.
+
+### 2026-10-09 11:27 - root - installer
+
+Tipo: feature
+
+Resumen:
+Despliegue web incremental rsync tamaño/mtime sin borrado; excluye runtime/secretos/config local; pruebas cero transferencias y un cambio.
+
+Motivo:
+Acelerar despliegues sobre SMB sin recopiar toda la web; aprobado ARCHITECT_AGENT.
+
+Archivos modificados:
+- installer/deploy-web.sh,installer/install.sh,src/features/installer
+
+Contrato:
+- sin cambios
+
+Riesgos:
+Requiere rsync; mismos tamaño/mtime no detectados; retirados permanecen; módulos opcionales no incrementales.
+
+### 2026-10-09 11:37 - root - installer
+
+Tipo: fix
+
+Resumen:
+apply-schema compatible Python3.6: universal_newlines y PIPE en lugar de text/capture_output; regresion argumentos legacy e idempotencia columnas.
+
+Motivo:
+Error reproducido en Python3.6 de ViciBox.
+
+Archivos modificados:
+- installer/apply-schema.py,src/features/installer/tests/apply-schema.py
+
+Contrato:
+- sin cambios
+
+Riesgos:
+No cambios BD durante pruebas mock.
+
+### 2026-10-09 11:47 - root - installer
+
+Tipo: feature
+
+Resumen:
+Resumen final credenciales root-only: admin inicial, BD bootstrap y token local; consulta manual sin reinstalacion ni rotacion.
+
+Motivo:
+Restauracion solicitada expresamente por usuario; ARCHITECT_AGENT aprobado.
+
+Archivos modificados:
+- installer/credentials.sh,installer/install.sh,installer/zynervox-core.sh,src/features/installer
+
+Contrato:
+- sin cambios
+
+Riesgos:
+Salida sensible; credenciales iniciales no garantizan valores vigentes; sin log automatico.
+
+### 2026-10-09 12:14 - root - core
+
+Tipo: feature
+
+Resumen:
+V2 aislado aplicado en mirmidon: configuracion propia, tablas login/config v2, cuenta Bot exclusiva, campañas vacias, guard Apache y llamadas legacy409.
+
+Motivo:
+Solicitud explicita de proteger produccion zynervox.
+
+Archivos modificados:
+- app/web,installer,src/features/core,src/features/bot_ivr,src/features/ivr_builder,src/features/installer,docs/V2_ISOLATION.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+Motor llamadas nuevo pendiente; credenciales/admin v2 propios; no push.
+
+### 2026-10-09 12:17 - root - installer
+
+Tipo: chore
+
+Resumen:
+Clave fija solicitada permanece en archivo privado Bot root0600 fuera de Git; codigo no contiene el valor.
+
+Motivo:
+Evitar publicar secreto al actualizar GitHub.
+
+Archivos modificados:
+- installer/isolated-env.sh,installer/ivr-builder-bot-db.sh,docs/V2_ISOLATION.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+Instalacion nueva necesita secreto privado; no se rotan cuentas existentes.
+
+### 2026-10-09 12:23 - root - installer
+
+Tipo: feature
+
+Resumen:
+Reconciliar contraseña cuenta Bot aislada existente: ALTER USER local + bootstrap atomico + fila v2; preflight y recuperación privada.
+
+Motivo:
+Usuario pide if exists update password; aprobado ARCHITECT_AGENT.
+
+Archivos modificados:
+- installer/ivr-builder-bot-db.sh,src/features/installer/tests/central-database.sh,src/features/installer/CONTRACT.md,docs/V2_ISOLATION.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+Rotacion no transaccional; fallo requiere recuperacion privada. No ejecutado remoto.
+
+### 2026-10-09 13:02 - root - installer
+
+Tipo: fix
+
+Resumen:
+Admin v2 reconcilia secreto privado y login redirige a controlador bot_ivr/index.php, no helper vacio campaigns_page.php.
+
+Motivo:
+Usuario solicita misma contraseña admin y reporta pagina en blanco.
+
+Archivos modificados:
+- installer/isolated-env.sh,installer/zynervox-core.sh,app/web/modules/admin/index.php,app/web/bot_ivr/campaigns_page.php,src/features/installer
+
+Contrato:
+- sin cambios
+
+Riesgos:
+Fuente corregida; requiere reejecucion instalador por usuario; sin cambios remotos en este turno.
+
+## 2026-10-09: Carriers aislado e instalacion selectiva
+
+- Modulos: core, admin, installer; alcance aprobado por ARCHITECT_AGENT.
+- Carriers aislado usa zynervox_core.v2_carriers, auditoria sin secretos,
+  validacion estructurada, CSRF y generacion atomica por archivo sin reload.
+- --module carriers/--module=carriers evita web completa, passwords y login/Bot;
+  preflight requiere destino propio existente, crea tabla/grants y tres archivos.
+- Contratos core/admin/installer y README actualizados; ADR-0022.
+- Pruebas MySQL efimero: CRUD, archivos inactivos, auditoria, CSRF,
+  reejecucion conserva datos/configuracion/archivos fuera allowlist.
+- No se modifican includes ni configuraciones Asterisk de produccion.

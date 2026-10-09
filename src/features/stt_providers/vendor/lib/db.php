@@ -10,8 +10,9 @@ function carsa_db(): PDO {
     $configFile = getenv('ZYNERVOX_STT_CONFIG') ?: (__DIR__ . '/../config/db.php');
     $config = require $configFile;
     $dsn = sprintf(
-        'mysql:host=%s;dbname=%s;charset=%s',
+        'mysql:host=%s;port=%d;dbname=%s;charset=%s',
         $config['host'],
+        (int) ($config['port'] ?? 3306),
         $config['database'],
         $config['charset'] ?? 'utf8mb4'
     );

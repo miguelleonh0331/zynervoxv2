@@ -20,7 +20,7 @@ $base = realpath(__DIR__ . '/..') ?: __DIR__ . '/..';
 $python = $base . '/venvs/gtts_env/bin/python';
 $script = $base . '/services/tts/generate_macelioai_wav.py';
 $hash = hash('sha256', 'macelioai|default|1.3|' . mb_strtolower(preg_replace('/\s+/', ' ', $text), 'UTF-8'));
-$dir = '/var/lib/asterisk/sounds/voicebot/cache/ivr_builder/macelioai';
+$dir = \Config\Config::audioRoot() . '/cache/ivr_builder/macelioai';
 $file = $dir . '/' . $hash . '.wav';
 if (!is_dir($dir) && !mkdir($dir, 0777, true) && !is_dir($dir)) fail('No se pudo crear cache', 500);
 $cached = is_file($file) && filesize($file) > 500;

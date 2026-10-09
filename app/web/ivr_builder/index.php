@@ -14,12 +14,7 @@ ivr_builder_require_login();
 <div class="config-panel">
 <header><strong>Configuración de servidores</strong><button class="config-close" onclick="closeConfigPanel()">✕</button></header>
 <section><h3>Base de datos (flujos IVR)</h3>
-<label>Host<input id="cfgDbHost" placeholder="127.0.0.1"></label>
-<label>Puerto<input id="cfgDbPort" placeholder="3306"></label>
-<label>Base de datos<input id="cfgDbName" placeholder="zynervox"></label>
-<label>Usuario<input id="cfgDbUser" placeholder="zynervox_bot_ivr"></label>
-<label>Password<input id="cfgDbPass" type="password" placeholder="••••••••"></label>
-<div class="config-actions"><button onclick="testDbConfig()">Test</button><button onclick="saveDbConfig()">Guardar</button><span id="cfgDbStatus" class="small"></span></div>
+<p class="small">La conexión a base de datos ahora se gestiona en <a href="../modules/admin/services/database.php">Servicios &gt; Base de datos</a> (config compartida por todo el sistema telefónico, pensada para cluster).</p>
 </section>
 <section><h3>Servidor Asterisk destino</h3>
 <label>URL base del API<input id="cfgAstUrl" placeholder="http://209.17.220.5/zynervoxv2205/ivr_builder"></label>

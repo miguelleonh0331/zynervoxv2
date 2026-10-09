@@ -55,6 +55,9 @@ choose_port() {
 generate_env() {
   [[ -f "$CONFIG_ENV" ]] && return
   local activity_token="${ACTIVITY_INGEST_TOKEN:-}"
+  if [[ -z "$activity_token" ]]; then
+    activity_token="$(openssl rand -hex 32)"
+  fi
   [[ "$activity_token" =~ ^[A-Fa-f0-9]{64}$ ]] || {
     echo "ACTIVITY_INGEST_TOKEN debe contener el token estatico de produccion (64 hex)" >&2
     exit 2

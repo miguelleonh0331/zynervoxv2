@@ -27,6 +27,8 @@ function bot_audio_lab_file(string $id): string {
     return $path;
 }
 function bot_audio_lab_generate(string $text, string $provider): string {
+    require_once __DIR__ . '/../config/Config.php';
+    if (\Config\Config::deployment('isolated', false)) throw new RuntimeException('Laboratorio legacy deshabilitado en v2 aislado');
     $text = bot_audio_lab_validate($text, $provider);
     if (!is_executable(BOT_AUDIO_LAB_PYTHON) || !is_file(BOT_AUDIO_LAB_SCRIPT) || !is_writable(BOT_AUDIO_LAB_DIR)) {
         throw new RuntimeException('El generador de prueba no está instalado o no tiene permisos.');

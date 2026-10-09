@@ -14,6 +14,7 @@ function ivr_builder_require_login(bool $json = false): void {
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
+    if (empty($_SESSION['ivr_config_csrf'])) $_SESSION['ivr_config_csrf'] = bin2hex(random_bytes(32));
     if (initial_survey_is_authenticated()) return;
     if ($json) {
         http_response_code(401);

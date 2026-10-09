@@ -14,6 +14,7 @@ secrets/
 runtime/
 recordings/
 app/web/config/reporting_mirror.json
+app/web/config/deployment.php
 app/web/agc/*_auth_entries.txt
 app/web/agc/vicidial_mysqli_errors.txt
 asterisk/synervox/secrets/

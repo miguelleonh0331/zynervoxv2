@@ -6,6 +6,10 @@ use Includes\Auth;
 use Includes\DashboardStats;
 
 Auth::checkAccess(9);
+if (\Config\Config::deployment('isolated', false)) {
+    header('Location: ../../bot_ivr/index.php');
+    exit;
+}
 
 $summary = DashboardStats::getTenantSummary();
 $live = DashboardStats::getLiveCounts();

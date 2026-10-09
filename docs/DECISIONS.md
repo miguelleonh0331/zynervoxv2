@@ -579,3 +579,61 @@ Sin dependencia de otros módulos ni publicación de trabajos legacy.
   y errores sanitizados; conservar ownership e historial.
 - Cambios limitados a laboratorio/proveedor/configuraciónsecretaprivada.
   Sin cambios Farm, gateway, BD, campañas o workers.
+
+### ADR-0020 - Integracion selectiva v3: Servicios BD y despliegue conservador
+
+Fecha: 2026-10-09
+
+Estado: aceptada
+
+Contexto:
+Usuario solicita v3 dentro de v2; aprobacion ARCHITECT_AGENT cross-modulos.
+
+Decisión:
+Conexion IVR/Bot administrada desde Servicios, esquemas nuevos en core con usuarios separados; conservar legacy y mejoras v2.
+
+Motivo:
+Evitar duplicidad de configuracion y perdida de datos al reinstalar.
+
+Alternativas evaluadas:
+- (ninguna registrada)
+
+Impacto:
+Contratos core, bot_ivr, ivr_builder, stt_providers, installer y zynervox_queries actualizados.
+
+Seguimiento:
+Usuario prueba interfaz/despliegue antes de commit y push; migracion legacy explicita.
+
+### ADR-0021 - Aislar v2 de produccion compartida sin copiar datos
+
+Fecha: 2026-10-09
+
+Estado: aceptada
+
+Contexto:
+zynervox productiva y configuracion core compartida; usuario confirma usuario exclusivo y campañas vacias.
+
+Decisión:
+Config por deployment; tablas core v2_*; usuarios propios DML por tabla; sesiones y gate Apache propios; bloquear motor legacy.
+
+Motivo:
+Cambiar solo BD o contraseña afectaria producción mediante singleton y runtime compartidos.
+
+Alternativas evaluadas:
+- (ninguna registrada)
+
+Impacto:
+core, bot_ivr, ivr_builder, installer y admin index; no datos/cuentas/config prod modificados.
+
+Seguimiento:
+Preparar motor llamadas independiente; no activar workers/SIP productivos.
+
+## ADR-0022: Carriers Core y despliegue selectivo (2026-10-09)
+
+ARCHITECT_AGENT aprueba adaptar Carriers aislado a zynervox_core.v2_carriers,
+auditoria metadata v2_access_log, nivel 9 y CSRF. Genera archivos inactivos
+en runtime propio; sin include, sudoers ni reload del Asterisk compartido.
+Legacy conserva su conexion. --module carriers exige instalacion v2 existente
+y despliega lista explicita de tres archivos, tabla y permisos de su cuenta Core.
+No ejecuta instalacion completa, passwords, login ni Bot. Instalacion full v2
+incluye Carriers. Activar troncales exige revision operativa separada.

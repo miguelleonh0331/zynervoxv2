@@ -15,8 +15,10 @@ class Audit {
             // getInstance() adentro del try: sin astguiclient.conf (hosts sin
             // VICIdial, ej. login via zynervox_users) esto no debe propagar
             // y romper al que llama (Auth::login ya tuvo exito en ese caso).
-            $db = Database::getInstance();
-            $stmt = $db->prepare("INSERT INTO vox_sphere_access_log (user, action, ip_address, details) VALUES (:user, :action, :ip, :details)");
+            $isolated = \Config\Config::deployment('isolated', false);
+            $db = $isolated ? Database::getCoreInstance() : Database::getInstance();
+            $table = $isolated ? 'v2_access_log' : 'vox_sphere_access_log';
+            $stmt = $db->prepare("INSERT INTO $table (user, action, ip_address, details) VALUES (:user, :action, :ip, :details)");
             return $stmt->execute(['user' => $user, 'action' => $action, 'ip' => $ip, 'details' => $details]);
         } catch (\Throwable $e) { return false; }
     }

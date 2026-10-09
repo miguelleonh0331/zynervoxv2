@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/db.php';
+\Config\Config::requireLegacyRuntime();
 
 const TTS_JOBS_TOKEN_FILE = '/etc/asterisk/synervox/secrets/tts_jobs_token';
 const TTS_JOBS_BLOB_DIR = '/var/lib/asterisk/sounds/voicebot/runtime/tts_jobs';

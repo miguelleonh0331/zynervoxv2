@@ -73,6 +73,16 @@ function initial_survey_page_start(string $title, string $subtitle = ''): void {
     .page-header .subtitle { color: var(--text-muted); font-size: 0.75rem; }
 
     #manual-call-fields[hidden] { display: none !important; }
+
+    /* Modales nativos <dialog> (ej. "Crear y asignar lista" en
+       campaign_edit.php): sin esto el navegador los pinta con su caja por
+       defecto, sin padding ni ancho definido -- se ven descuadrados. */
+    /* layout.css resetea "* { margin:0 }", que anula el margin:auto por
+       defecto con el que el navegador centra un <dialog>: sin reponerlo
+       aqui queda pegado en la esquina superior izquierda. */
+    dialog { background: var(--bg-card); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 1rem; width: 100%; max-width: 420px; margin: auto; box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
+    dialog::backdrop { background: rgba(0,0,0,0.45); }
+    dialog h2 { font-size: 0.95rem; font-weight: 700; margin: 0 0 0.75rem; color: var(--text); }
 </style>
 </head>
 <body>

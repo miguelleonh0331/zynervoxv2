@@ -30,7 +30,7 @@ class Auth {
         try {
             $core = Database::getCoreInstance();
             $stmt = $core->prepare("SELECT user, pass, user_level, full_name
-                                     FROM zynervox_users
+                                     FROM " . \Config\Config::coreTable('users') . "
                                      WHERE user = :user AND active = 'Y'
                                      LIMIT 1");
             $stmt->execute(['user' => $username]);
@@ -46,6 +46,7 @@ class Auth {
             // zynervox_core no configurado o sin conexión: se sigue con vicidial_users.
         }
 
+        if (\Config\Config::deployment('isolated', false)) return false;
         // 2. Fallback: vicidial_users en la BD compartida `asterisk`
         //    (astguiclient.conf). Hosts sin VICIdial/Asterisk instalado
         //    (ej. labs de prueba) no tienen ese archivo -- debe fallar como
