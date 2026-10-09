@@ -14,9 +14,10 @@ workers TTS y proxies mediante servicios systemd exclusivos en loopback.
 
 ## Dependencias permitidas
 
-- Sesión administrativa de `Includes\Auth`.
-- Servicios systemd de la instancia Farm.
-- Python 3.10+, baresip, ffmpeg y puertos loopback exclusivos.
+- core
+
+Infraestructura externa permitida: servicios systemd de la instancia Farm,
+Python 3.10+, baresip, ffmpeg y puertos loopback exclusivos.
 
 ## Garantías
 

@@ -48,15 +48,17 @@ módulos.
 
 Este módulo puede depender de:
 
-- la sesión administrativa de Zynervox mediante `Includes\Auth`;
-- código vendorizado en `src/features/zynerdesk/vendor/`, origen documentado
-  en `README.md` (extraído de `ghcr.io/miguelleonh0331/synervox-remoteo`,
-  trazabilidad por commit de Git en vez de digest de imagen);
-- Node.js nativo ≥18 administrado por systemd (mismo patrón que `farm` y `whatsapp`);
-- MySQL nativo del host, base y usuario propios (mismo patrón que `whatsapp`);
-- Apache como proxy de la ruta pública (`mod_proxy`, `mod_proxy_http`,
-  `mod_proxy_wstunnel`);
-- PHP con `curl`, para traer el panel server-side.
+- core
+
+El módulo usa su propio código vendorizado en `src/features/zynerdesk/vendor/`,
+cuyo origen está documentado en `README.md` (extraído de
+`ghcr.io/miguelleonh0331/synervox-remoteo`, con trazabilidad por commit de Git
+en vez de digest de imagen).
+
+Infraestructura externa permitida: Node.js nativo ≥18 administrado por systemd,
+MySQL nativo del host con base y usuario propios, Apache como proxy de la ruta
+pública (`mod_proxy`, `mod_proxy_http`, `mod_proxy_wstunnel`) y PHP con `curl`
+para traer el panel server-side.
 
 ## Dependencias prohibidas
 

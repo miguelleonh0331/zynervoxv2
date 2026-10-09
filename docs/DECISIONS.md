@@ -426,3 +426,27 @@ modulo zynerdesk (CONTRACT.md reescrito); ningun otro modulo se modifica; bcrypt
 
 Seguimiento:
 Validado en WSL (zynervoxv1) con 6/6 pruebas de aceptacion (docker vacio, systemd activo, 14 tablas migradas, proxy 200, SSO HMAC real 200, sesion persiste tras restart) antes de fusionar a main el 2026-10-03. Migrar mirmidon requiere autorizacion explicita y separada.
+
+### ADR-0018 - Consolidar pendientes locales de v2 sin contrasenas compartidas
+
+Fecha: 2026-10-09
+
+Estado: aceptada
+
+Contexto:
+Seis archivos locales sin commit y artefactos de agentes requieren consolidacion; ARCHITECT_AGENT reviso contratos y autenticacion.
+
+Decisión:
+Normalizar core como dependencia modular; separar infraestructura externa; conservar interfaz del agente y cargar WhatsApp con autenticacion existente y ruta relativa; preservar artefactos locales fuera de distribucion.
+
+Motivo:
+Evitar publicar contrasenas y cambios especificos de una instalacion; conservar historial sin alterar produccion.
+
+Alternativas evaluadas:
+- (ninguna registrada)
+
+Impacto:
+agent, contratos farm/stt_providers/whatsapp/zynerdesk, mapa generado, documentacion y exclusiones de artefactos.
+
+Seguimiento:
+(ninguno)

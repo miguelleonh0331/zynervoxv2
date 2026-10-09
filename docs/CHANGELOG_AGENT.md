@@ -1022,3 +1022,29 @@ Contrato:
 
 Riesgos:
 - los fallos de Socket.IO permanecen fail-open y no interrumpen la persistencia
+
+### 2026-10-09 10:26 - ARCHITECT_AGENT - agent y contratos modulares
+
+Tipo: fix
+
+Resumen:
+Consolida marca, CRM demo y WhatsApp integrado; elimina auto-login compartido; normaliza contratos y clasifica pendientes.
+
+Motivo:
+Usuario autoriza commits, merges y push de todo el trabajo pendiente de v2.
+
+Archivos modificados:
+- app/web/agc/zynervox.php
+- docs/LOCAL_WORK_AUDIT.md
+- .gitignore
+- docs/MODULE_MAP.md
+- src/features/farm/CONTRACT.md
+- src/features/stt_providers/CONTRACT.md
+- src/features/whatsapp/CONTRACT.md
+- src/features/zynerdesk/CONTRACT.md
+
+Contrato:
+- modificado con decision de consolidacion 2026-10-09
+
+Riesgos:
+- ninguno conocido

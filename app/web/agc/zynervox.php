@@ -1185,6 +1185,7 @@ echo '<?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="icon" type="image/png" href="images/zynervox.png" />
 <link rel="stylesheet" type="text/css" href="css/style.css" />
 <link rel="stylesheet" type="text/css" href="css/custom.css" />
 <script language="JavaScript" src="calendar_db.js"></script>
@@ -1465,7 +1466,7 @@ if ($link_to_grey_version > 0)
 
 if ($relogin == 'YES')
 	{
-	echo "<title>"._QXZ("Agent web client: Re-Login")."</title>\n";
+	echo "<title>"._QXZ("Zynervox: Re-Login")."</title>\n";
 	echo "</head>\n";
     echo "<body onresize=\"browser_dimensions();\" onload=\"browser_dimensions();\" style=\"background-color:white\">\n";
 	if ($hide_timeclock_link < 1)
@@ -1557,7 +1558,7 @@ if ($user_login_first == 1)
 	{
 	if ( (strlen($VD_login)<1) or (strlen($VD_pass)<1) or (strlen($VD_campaign)<1) )
 		{
-		echo "<title>"._QXZ("Agent web client: Campaign Login")."</title>\n";
+		echo "<title>"._QXZ("Zynervox: Campaign Login")."</title>\n";
 		echo "</head>\n";
 		echo "<body class=\"zv-login-body\" onresize=\"browser_dimensions();\" onload=\"browser_dimensions();\">\n";
 		echo "<!-- INTERNATIONALIZATION-LINKS-PLACEHOLDER-VICIDIAL -->\n";
@@ -1636,7 +1637,7 @@ if ($user_login_first == 1)
 
 			if ( (strlen($phone_login) < 1) or (strlen($phone_pass) < 1) )
 				{
-				echo "<title>"._QXZ("Agent web client:  Login")."</title>\n";
+				echo "<title>"._QXZ("Zynervox:  Login")."</title>\n";
 				echo "</head>\n";
 				echo "<body onresize=\"browser_dimensions();\"  onLoad=\"browser_dimensions();\">\n";
 				if ($hide_timeclock_link < 1)
@@ -1691,7 +1692,7 @@ if ($user_login_first == 1)
 
 if ( (strlen($phone_login)<2) or (strlen($phone_pass)<2) )
 	{
-	echo "<title>"._QXZ("Agent web client:  Phone Login")."</title>\n";
+	echo "<title>"._QXZ("Zynervox:  Phone Login")."</title>\n";
 	echo "</head>\n";
     echo "<body onresize=\"browser_dimensions();\"  onload=\"browser_dimensions();\">\n";
 	if ($hide_timeclock_link < 1)
@@ -2014,7 +2015,7 @@ else
 
 								echo _QXZ("Authorization code accepted, you may now continue")."<br><br>\n";
 
-								echo "<title>"._QXZ("Agent web client: 2FA Auth")."</title>\n";
+								echo "<title>"._QXZ("Zynervox: 2FA Auth")."</title>\n";
 								echo "</head>\n";
 								echo "<body onresize=\"browser_dimensions();\" onload=\"browser_dimensions();\">\n";
 								echo "<table width=\"100%\"><tr><td></td>\n";
@@ -2226,7 +2227,7 @@ else
 						echo "<br><FONT FACE=\"ARIAL,HELVETICA\" COLOR=BLACK SIZE=3>"._QXZ("Your authorization code has been sent by %1s to",0,'',$stage).": $OBSCUREmobile_number<br></FONT>\n";
 						}
 
-					echo "<title>"._QXZ("Agent web client: 2FA Auth")."</title>\n";
+					echo "<title>"._QXZ("Zynervox: 2FA Auth")."</title>\n";
 					echo "</head>\n";
 					echo "<script language=\"JavaScript\">\n";
 					echo "var method_selected=0;\n";
@@ -2295,7 +2296,7 @@ else
 					{
 					if ($show_form > 0)
 						{
-						echo "<title>"._QXZ("Agent web client: 2FA Auth")."</title>\n";
+						echo "<title>"._QXZ("Zynervox: 2FA Auth")."</title>\n";
 						echo "</head>\n";
 						echo "<script language=\"JavaScript\">\n";
 						echo "var method_selected=0;\n";
@@ -2453,7 +2454,7 @@ else
 								if ($mel > 0) {mysql_error_logging($NOW_TIME,$link,$mel,$stmt,'01094',$VD_login,$server_ip,$session_name,$one_mysql_log);}
 						$VUpassword_affected_rows = mysqli_affected_rows($link);
 
-						echo "<title>"._QXZ("Agent web client: Change Password")."</title>\n";
+						echo "<title>"._QXZ("Zynervox: Change Password")."</title>\n";
 						echo "</head>\n";
 						echo "<body onresize=\"browser_dimensions();\" onload=\"browser_dimensions();\">\n";
 						if ($hide_timeclock_link < 1)
@@ -2505,7 +2506,7 @@ else
 					{
 					$set_pass=1;
 					}
-				echo "<title>"._QXZ("Agent web client: Change Password")."</title>\n";
+				echo "<title>"._QXZ("Zynervox: Change Password")."</title>\n";
 				echo "</head>\n";
 				echo "<body onresize=\"browser_dimensions();\" onload=\"browser_dimensions();\">\n";
 				if ($hide_timeclock_link < 1)
@@ -2917,7 +2918,7 @@ else
 
 			if ( (!preg_match("/\s$VD_campaign\s/i",$LOGallowed_campaigns)) and (!preg_match("/ALL-CAMPAIGNS/i",$LOGallowed_campaigns)) )
 				{
-				echo "<title>"._QXZ("Agent web client: Campaign Login")."</title>\n";
+				echo "<title>"._QXZ("Zynervox: Campaign Login")."</title>\n";
 				echo "</head>\n";
 				echo "<body onresize=\"browser_dimensions();\" onload=\"browser_dimensions();\">\n";
 				if ($hide_timeclock_link < 1)
@@ -4203,7 +4204,7 @@ else
 		}
 	if ($VDloginDISPLAY)
 		{
-		echo "<title>"._QXZ("Agent web client: Campaign Login")."</title>\n";
+		echo "<title>"._QXZ("Zynervox: Campaign Login")."</title>\n";
 		echo "</head>\n";
 		echo "<body onresize=\"browser_dimensions();\"  onload=\"browser_dimensions();\">\n";
 		if ($hide_timeclock_link < 1)
@@ -4316,7 +4317,7 @@ else
 	$authphone=$row[0];
 	if (!$authphone)
 		{
-		echo "<title>"._QXZ("Agent web client: Phone Login Error")."</title>\n";
+		echo "<title>"._QXZ("Zynervox: Phone Login Error")."</title>\n";
 		echo "</head>\n";
 		echo "<body onresize=\"browser_dimensions();\"  onload=\"browser_dimensions();\">\n";
 		if ($hide_timeclock_link < 1)
@@ -4554,7 +4555,7 @@ else
 			}
 		##### END phone login load balancing functions #####
 
-		echo "<title>Agent web client</title>\n";
+		echo "<title>Zynervox</title>\n";
 		$stmt="SELECT extension,dialplan_number,voicemail_id,phone_ip,computer_ip,server_ip,login,pass,status,active,phone_type,fullname,company,picture,messages,old_messages,protocol,local_gmt,ASTmgrUSERNAME,ASTmgrSECRET,login_user,login_pass,login_campaign,park_on_extension,conf_on_extension,VICIDIAL_park_on_extension,VICIDIAL_park_on_filename,monitor_prefix,recording_exten,voicemail_exten,voicemail_dump_exten,ext_context,dtmf_send_extension,call_out_number_group,client_browser,install_directory,local_web_callerID_URL,VICIDIAL_web_URL,AGI_call_logging_enabled,user_switching_enabled,conferencing_enabled,admin_hangup_enabled,admin_hijack_enabled,admin_monitor_enabled,call_parking_enabled,updater_check_enabled,AFLogging_enabled,QUEUE_ACTION_enabled,CallerID_popup_enabled,voicemail_button_enabled,enable_fast_refresh,fast_refresh_rate,enable_persistant_mysql,auto_dial_next_number,VDstop_rec_after_each_call,DBX_server,DBX_database,DBX_user,DBX_pass,DBX_port,DBY_server,DBY_database,DBY_user,DBY_pass,DBY_port,outbound_cid,enable_sipsak_messages,email,template_id,conf_override,phone_context,phone_ring_timeout,conf_secret,is_webphone,use_external_server_ip,codecs_list,webphone_dialpad,phone_ring_timeout,on_hook_agent,webphone_auto_answer,webphone_dialbox,webphone_mute,webphone_volume,webphone_debug,webphone_layout,webphone_settings from phones where login='$phone_login' and pass='$phone_pass' and active = 'Y';";
 		if ($DB) {echo "|$stmt|\n";}
 		$rslt=mysql_to_mysqli($stmt, $link);
@@ -5385,7 +5386,7 @@ else
 			}
 		else
 			{
-			echo "<title>"._QXZ("Agent web client: Campaign Login")."</title>\n";
+			echo "<title>"._QXZ("Zynervox: Campaign Login")."</title>\n";
 			echo "</head>\n";
 			echo "<body onresize=\"browser_dimensions();\" onload=\"browser_dimensions();\">\n";
 			if ($hide_timeclock_link < 1)
@@ -5426,7 +5427,7 @@ else
 			}
 		if (strlen($session_id) < 1)
 			{
-			echo "<title>"._QXZ("Agent web client: Campaign Login")."</title>\n";
+			echo "<title>"._QXZ("Zynervox: Campaign Login")."</title>\n";
 			echo "</head>\n";
 			echo "<body onresize=\"browser_dimensions();\" onload=\"browser_dimensions();\">\n";
 			if ($hide_timeclock_link < 1)
@@ -23386,6 +23387,37 @@ $zi=2;
 	   (wrapup, disposicion, pausa, manual dial, alertas) se suben por encima con
 	   z-index aun mas alto para que sigan funcionando con normalidad. */
 	#zv-crm-wrap { position:absolute; left:0; top:0; right:0; bottom:0; z-index:500; background:#ffffff; }
+	/* ZYNERVOX 2026-10-04: CRM "modo demo" -- mockup puramente visual que llena
+	   #zv-crm-wrap cuando la campana NO tiene webform real configurado (hoy en
+	   ese caso queda en blanco, se ve a medio terminar en demos comerciales).
+	   Sin datos reales, sin llamadas a BD/API: solo fichas de ejemplo. Se oculta
+	   solo si zvSyncCrmFrame() detecta un webform real (ver mas abajo). */
+	#zv-crm-demo { position:absolute; left:0; top:0; right:0; bottom:0; overflow:auto;
+		background:#f7f5ef; font-family:Arial, Helvetica, sans-serif; color:#353642; }
+	#zv-crm-demo .zvd-topbar { display:flex; align-items:center; gap:10px; padding:14px 22px;
+		background:#2D2F3B; color:#fff; }
+	#zv-crm-demo .zvd-topbar b { color:#F5821F; letter-spacing:.5px; }
+	#zv-crm-demo .zvd-topbar span { font-size:.72rem; color:#9CA0AC; }
+	#zv-crm-demo .zvd-body { display:grid; grid-template-columns:1.1fr 1.4fr; gap:18px; padding:22px; }
+	#zv-crm-demo .zvd-card { background:#fff; border:1px solid #dce4e1; border-radius:10px; padding:18px; }
+	#zv-crm-demo .zvd-card h3 { margin:0 0 12px; font-size:.95rem; color:#172522; }
+	#zv-crm-demo .zvd-field { display:flex; justify-content:space-between; gap:10px; padding:7px 0;
+		border-bottom:1px solid #eef2f0; font-size:.82rem; }
+	#zv-crm-demo .zvd-field span:first-child { color:#6d7c78; }
+	#zv-crm-demo .zvd-field span:last-child { font-weight:600; }
+	#zv-crm-demo .zvd-tags { display:flex; gap:6px; margin-top:12px; flex-wrap:wrap; }
+	#zv-crm-demo .zvd-tag { font-size:.68rem; font-weight:700; padding:.25rem .55rem; border-radius:20px;
+		background:#e0ebe7; color:#075e54; }
+	#zv-crm-demo .zvd-tag.zvd-warn { background:#fff0df; color:#b9661f; }
+	#zv-crm-demo .zvd-activity { display:flex; gap:10px; padding:10px 0; border-bottom:1px solid #eef2f0; }
+	#zv-crm-demo .zvd-dot { width:8px; height:8px; margin-top:5px; border-radius:50%; background:#F5821F; flex:0 0 auto; }
+	#zv-crm-demo .zvd-activity strong { display:block; font-size:.82rem; }
+	#zv-crm-demo .zvd-activity small { color:#6d7c78; font-size:.7rem; }
+	#zv-crm-demo .zvd-stats { display:flex; gap:14px; margin-top:16px; }
+	#zv-crm-demo .zvd-stat { flex:1; background:#fbfcfb; border:1px solid #eef2f0; border-radius:8px;
+		padding:12px; text-align:center; }
+	#zv-crm-demo .zvd-stat b { display:block; font-size:1.3rem; color:#075e54; }
+	#zv-crm-demo .zvd-stat small { color:#6d7c78; font-size:.68rem; text-transform:uppercase; }
 	#zv-crm-frame { width:100%; height:100%; border:0; background:#ffffff; }
 
 	/* LogouTBox NO se sube: se queda tapado por el iframe CRM a proposito (ver zvLogout,
@@ -23453,22 +23485,32 @@ $zi=2;
 	.zv-divider { border-top:1px solid rgba(255,255,255,.08); margin:12px 1rem; }
 	.zv-manual-dial-label { font-size:.65rem; text-transform:uppercase; letter-spacing:1px; color:#9CA0AC;
 		opacity:.7; margin:10px 0 6px; padding:0 1rem; }
-	.zv-input { display:block; width:calc(100% - 2rem); box-sizing:border-box; margin:0 1rem 10px; padding:.5rem .6rem;
-		border:1px solid rgba(255,255,255,.08); border-radius:2px; background:rgba(255,255,255,.08);
-		color:#ffffff; font-size:.8125rem; }
+	/* ZYNERVOX 2026-10-04: fondo blanco pedido por el usuario, paleta tomada
+	   de zynerwabav2/public/brand.css + styles.css (tema activo real: brand.css
+	   carga ultimo y gana sobre styles.css): borde/ink/foco calcados de ahi.
+	   --line de zynerwabav2 = #dce4e1; --ink = #353642; acento naranja
+	   --teal de brand.css = #f58a1f (casi igual al #F5821F ya usado aqui). */
+	.zv-input { display:block; width:calc(100% - 2rem); box-sizing:border-box; margin:0 1rem 10px; padding:.78rem .6rem;
+		border:1px solid #dce4e1; border-radius:10px; background:#ffffff;
+		color:#353642; font-size:.8125rem; }
+	.zv-input:focus { outline:none; border-color:#f58a1f; box-shadow:0 0 0 2px rgba(245,138,31,.18); }
+	.zv-input::placeholder { color:#6d7c78; }
 </style>
 
 <div id="zv-app-shell">
 <div id="zv-sidebar">
 	<div id="zv-sidebar-header">
 		<div>
-			<div id="zv-sidebar-brand">ZYNERVOX</div>
+			<!-- ZYNERVOX 2026-10-04: ZYNERVOX ahora es clicable: vuelve a la vista
+			     principal (oculta #zv-whatsapp-box, con lo que reaparece el iframe
+			     CRM que queda debajo). No navega ni recarga nada. -->
+			<div id="zv-sidebar-brand" onclick="hideDiv('zv-whatsapp-box');" style="cursor:pointer;" title="Volver a la vista principal">ZYNERVOX</div>
 			<div id="zv-sidebar-sub">Panel de Agente</div>
 		</div>
-		<!-- ZYNERVOX 2026-10-04: pestana externa a Zynerwaba (WhatsApp), abre en
-		     pestana nueva del navegador: no reemplaza el iframe CRM ni afecta la
-		     sesion SIP/webphone de este mismo tab. -->
-		<a id="zv-tab-whatsapp" href="http://wtp.zynervox.site/zynerwabav2/" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+		<!-- ZYNERVOX 2026-10-04: pestana WhatsApp (Zynerwaba): ya NO abre pestana
+		     nueva del navegador, muestra #zv-whatsapp-box encima del iframe CRM
+		     (ver zvShowWhatsapp(), funciones zv*). -->
+		<a id="zv-tab-whatsapp" href="#" onclick="zvShowWhatsapp();return false;">WhatsApp</a>
 	</div>
 
 	<div id="zv-controls" style="margin-top:22px;">
@@ -23509,7 +23551,41 @@ $zi=2;
    pelea por el mismo contacto (aor/max_contacts=1). */
 </script>
 
-<div id="zv-crm-wrap"><iframe id="zv-crm-frame" name="zv-crm-frame"></iframe></div>
+<div id="zv-crm-wrap">
+	<iframe id="zv-crm-frame" name="zv-crm-frame"></iframe>
+	<!-- ZYNERVOX 2026-10-04: mockup "modo demo", ver estilos #zv-crm-demo arriba.
+	     Visible por defecto; zvSyncCrmFrame() lo oculta solo si aparece un
+	     webform real. Todo el contenido de abajo es de ejemplo, sin datos reales. -->
+	<div id="zv-crm-demo">
+		<div class="zvd-topbar"><span>Vista de cliente &middot; modo demostracion</span></div>
+		<div class="zvd-body">
+			<div class="zvd-card">
+				<h3>Ficha del cliente</h3>
+				<div class="zvd-field"><span>Nombre</span><span>Cliente de ejemplo</span></div>
+				<div class="zvd-field"><span>Telefono</span><span>+51 9XX XXX XXX</span></div>
+				<div class="zvd-field"><span>Campana</span><span>Demo comercial</span></div>
+				<div class="zvd-field"><span>Ultimo contacto</span><span>Hoy</span></div>
+				<div class="zvd-field"><span>Asesor</span><span>Agente en linea</span></div>
+				<div class="zvd-tags">
+					<span class="zvd-tag">Interesado</span>
+					<span class="zvd-tag zvd-warn">Seguimiento</span>
+				</div>
+				<div class="zvd-stats">
+					<div class="zvd-stat"><b>3</b><small>Llamadas</small></div>
+					<div class="zvd-stat"><b>2</b><small>Mensajes</small></div>
+					<div class="zvd-stat"><b>1</b><small>Pendiente</small></div>
+				</div>
+			</div>
+			<div class="zvd-card">
+				<h3>Actividad reciente</h3>
+				<div class="zvd-activity"><span class="zvd-dot"></span><div><strong>Llamada saliente</strong><small>Agente contacto al cliente &middot; hace unos minutos</small></div></div>
+				<div class="zvd-activity"><span class="zvd-dot"></span><div><strong>Mensaje de WhatsApp</strong><small>Cliente respondio una consulta &middot; hoy</small></div></div>
+				<div class="zvd-activity"><span class="zvd-dot"></span><div><strong>Nota interna</strong><small>Agente dejo un comentario de seguimiento &middot; hoy</small></div></div>
+				<div class="zvd-activity"><span class="zvd-dot"></span><div><strong>Cita agendada</strong><small>Proxima llamada de seguimiento &middot; esta semana</small></div></div>
+			</div>
+		</div>
+	</div>
+</div>
 
 <script>
 function zvClickReal(id){
@@ -23633,13 +23709,25 @@ function zvManualDial(){
 function zvSyncCrmFrame(){
 	var span = document.getElementById('WebFormSpan');
 	var frame = document.getElementById('zv-crm-frame');
+	var demo = document.getElementById('zv-crm-demo');
 	if(!span || !frame) return;
 	var a = span.querySelector('a');
 	var href = a ? a.getAttribute('href') : '';
 	if(href && href !== '#' && frame.dataset.lastHref !== href){
 		frame.dataset.lastHref = href;
 		frame.src = href;
+		/* ZYNERVOX 2026-10-04: webform real detectado -> se retira el mockup de
+		   demo para que se vea el CRM real de la campana. */
+		if(demo) demo.style.display = 'none';
 	}
+}
+function zvShowWhatsapp(){
+	var frame = document.getElementById('zv-whatsapp-frame');
+	if(frame && !frame.dataset.loaded){
+		frame.dataset.loaded = '1';
+		frame.src = '/zynerwabav2/dialer.html';
+	}
+	showDiv('zv-whatsapp-box');
 }
 window.addEventListener('load', function(){
 	var btnReady = document.getElementById('zv-btn-ready');
@@ -24719,6 +24807,24 @@ if ($agent_display_dialable_leads > 0)
 <span style="position:absolute;left:0px;top:0px;z-index:<?php $zi++; echo $zi ?>;" id="SysteMDisablEBoX">
     <table border="0" bgcolor="#FFFFFF" width="<?php echo $CAwidth ?>px" height="<?php echo $WRheight ?>px"><tr><td align="center"><font class="sh_text"><?php echo _QXZ("There is a time synchronization problem with your system, please tell your system administrator"); ?><br /><br /><br /><a href="#" onclick="hideDiv('SysteMDisablEBoX');return false;"><?php echo _QXZ("Go Back"); ?></a></font>
     </td></tr></table>
+</span>
+
+<!-- ZYNERVOX 2026-10-04: caja propia para WhatsApp (Zynerwaba). Primera version
+     copiaba el ancho/alto de #SysteMDisablEBoX via $CAwidth/$WRheight, pero esas
+     variables son del calculo legacy de VICIdial (### SCREEN WIDTH AND HEIGHT
+     CALCULATIONS ### DO NOT EDIT, ~5649) hecho para la pantalla ORIGINAL sin el
+     sidebar ZYNERVOX de 260px: la caja quedaba mas ancha/alta que el espacio real
+     de #zv-main, dandole a zynerwabav2 un viewport de iframe distinto al que tiene
+     abierto en pestana propia (ahi su CSS responsive se veia mal). Se reemplaza
+     por el mismo patron ya probado de #zv-crm-wrap: stretch real con
+     left/top/right/bottom:0 al tamano exacto de #zv-main, sin tabla ni pixeles
+     fijos. z-index:1000 (mismo grupo que las cajas legacy) para quedar encima del
+     iframe CRM. Oculta por defecto (visibility:hidden); se muestra con
+     zvShowWhatsapp() y se oculta al volver a ZYNERVOX (#zv-sidebar-brand) o con
+     showDiv/hideDiv normal. No toca #SysteMDisablEBoX, que sigue disponible para
+     la alerta real de desincronizacion de reloj. -->
+<span style="position:absolute;left:0;top:0;right:0;bottom:0;z-index:1000;visibility:hidden;background:#ffffff;" id="zv-whatsapp-box">
+    <iframe id="zv-whatsapp-frame" src="" style="display:block;width:100%;height:100%;border:0;" title="WhatsApp"></iframe>
 </span>
 
 <span style="position:absolute;left:0px;top:0px;z-index:<?php $zi++; echo $zi ?>;" id="LogouTBox">
