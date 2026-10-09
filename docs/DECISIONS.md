@@ -451,3 +451,27 @@ Modifica contrato, fuente, migraciones, UI e instalador de zynerdesk; no agrega 
 
 Seguimiento:
 Validar despliegue de upgrade, RBAC, retiro, persistencia del retiro tras reportes y restauración.
+
+### ADR-0019 - Consolidar pendientes locales de v2 sin contrasenas compartidas
+
+Fecha: 2026-10-09
+
+Estado: aceptada
+
+Contexto:
+Seis archivos locales sin commit y artefactos de agentes requieren consolidacion; ARCHITECT_AGENT reviso contratos y autenticacion.
+
+Decisión:
+Normalizar core como dependencia modular; separar infraestructura externa; conservar interfaz del agente y cargar WhatsApp con autenticacion existente y ruta relativa; preservar artefactos locales fuera de distribucion.
+
+Motivo:
+Evitar publicar contrasenas y cambios especificos de una instalacion; conservar historial sin alterar produccion.
+
+Alternativas evaluadas:
+- (ninguna registrada)
+
+Impacto:
+agent, contratos farm/stt_providers/whatsapp/zynerdesk, mapa generado, documentacion y exclusiones de artefactos.
+
+Seguimiento:
+(ninguno)

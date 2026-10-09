@@ -14,9 +14,10 @@ cuentas/API keys STT sobre un esquema MariaDB exclusivo.
 
 ## Dependencias permitidas
 
-- Sesión administrativa de `Includes\Auth`.
-- PHP 7.4+ con PDO MySQL, cURL, JSON y sesiones.
-- MariaDB/MySQL con usuario limitado a su base.
+- core
+
+Infraestructura externa permitida: PHP 7.4+ con PDO MySQL, cURL, JSON y sesiones,
+y MariaDB/MySQL con usuario limitado a su base.
 
 ## Garantías
 

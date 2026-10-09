@@ -2,7 +2,7 @@
 
 Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 
-Última generación: 2026-10-07 19:24
+Última generación: 2026-10-09 10:29
 
 ## Módulos
 
@@ -25,20 +25,7 @@ Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 
 | Módulo | Depende de | Estado |
 |---|---|---|
-| farm | Sesión administrativa de `Includes\Auth` | módulo inexistente |
-| farm | Servicios systemd de la instancia Farm | módulo inexistente |
-| farm | Python 3.10+, baresip, ffmpeg y puertos loopback exclusivos | módulo inexistente |
-| stt_providers | Sesión administrativa de `Includes\Auth` | módulo inexistente |
-| stt_providers | PHP 7.4+ con PDO MySQL, cURL, JSON y sesiones | módulo inexistente |
-| stt_providers | MariaDB/MySQL con usuario limitado a su base | módulo inexistente |
-| whatsapp | Contrato de autenticación Zynervox mediante `Includes\Auth` | módulo inexistente |
-| whatsapp | Código vendorizado en `src/features/whatsapp/vendor/`, origen documentado en | módulo inexistente |
-| whatsapp | Node.js nativo ≥18 administrado por systemd (mismo patrón que `farm`) | módulo inexistente |
-| whatsapp | MySQL nativo del host, base y usuario propios (mismo patrón que `stt_providers`) | módulo inexistente |
-| whatsapp | Apache como proxy de la ruta pública | módulo inexistente |
-| zynerdesk | la sesión administrativa de Zynervox mediante `Includes\Auth`; | módulo inexistente |
-| zynerdesk | código históricamente vendorizado en `src/features/zynerdesk/vendor/`, cuyo | módulo inexistente |
-| zynerdesk | Node.js nativo ≥18 administrado por systemd (mismo patrón que `farm` y `whatsapp`); | módulo inexistente |
-| zynerdesk | MySQL nativo del host, base y usuario propios (mismo patrón que `whatsapp`); | módulo inexistente |
-| zynerdesk | Apache como proxy de la ruta pública (`mod_proxy`, `mod_proxy_http`, | módulo inexistente |
-| zynerdesk | PHP con `curl`, para traer el panel server-side | módulo inexistente |
+| farm | core | ok |
+| stt_providers | core | ok |
+| whatsapp | core | ok |
+| zynerdesk | core | ok |

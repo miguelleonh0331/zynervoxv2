@@ -20,3 +20,9 @@ asterisk/synervox/secrets/
 asterisk/synervox/modules/flows/published/*.json
 asterisk/synervox/modules/asterisk/pjsip-zynervox.conf
 asterisk/synervox/modules/asterisk/extensions-zynervox.conf
+.codex-temp/
+.claude/
+RESPUESTA.md
+RESPUESTA.md.tmp
+claude-permissions.patch
+MANUAL_GATEWAY_TTS_TEMPORAL.md

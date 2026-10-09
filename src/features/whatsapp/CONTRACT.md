@@ -40,13 +40,16 @@ aislado, reproducible y reversible.
 
 ## Dependencias permitidas
 
-- Contrato de autenticación Zynervox mediante `Includes\Auth`.
-- Código vendorizado en `src/features/whatsapp/vendor/`, origen documentado en
-  `README.md` (extraído de `miguelleonh0331/zynerwabav2:2.1.0-zynervox`,
-  trazabilidad por commit de Git en vez de digest de imagen).
-- Node.js nativo ≥18 administrado por systemd (mismo patrón que `farm`).
-- MySQL nativo del host, base y usuario propios (mismo patrón que `stt_providers`).
-- Apache como proxy de la ruta pública.
+- core
+
+El módulo usa su propio código vendorizado en `src/features/whatsapp/vendor/`,
+cuyo origen está documentado en `README.md` (extraído de
+`miguelleonh0331/zynerwabav2:2.1.0-zynervox`, con trazabilidad por commit de Git
+en vez de digest de imagen).
+
+Infraestructura externa permitida: Node.js nativo ≥18 administrado por systemd,
+MySQL nativo del host con base y usuario propios, y Apache como proxy de la ruta
+pública.
 
 ## Dependencias prohibidas
 
