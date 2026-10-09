@@ -5,7 +5,7 @@ require __DIR__ . '/auth.php';
 ob_end_clean();
 header('Content-Type: application/json; charset=utf-8');
 initial_survey_require_login();
-require __DIR__ . '/../lib/db.php';
+require __DIR__ . '/db.php';
 require __DIR__ . '/campaign_state_summary.php';
 require __DIR__ . '/campaign_runtime.php';
 

@@ -475,3 +475,107 @@ agent, contratos farm/stt_providers/whatsapp/zynerdesk, mapa generado, documenta
 
 Seguimiento:
 (ninguno)
+
+### 2026-10-05 - Bot IVR: base zynervox y configuración obligatoria
+
+Aprobación ARCHITECT_AGENT: alcance exclusivo de bot_ivr y despliegue de sus
+copias. Base fija zynervox; configuración guardada por el botón existente;
+sin fallback a Config.php ni astguiclient.conf. Preservar carsa_initial_survey
+y tablas auxiliares locales. No cambiar ivr_builder ni su conexión.
+Contrato existente conservado. DDL propio en models/001-zynervox.sql, sin
+cargar datos de demo. Aislamiento multiempresa y ejecución de llamadas no
+forman parte de esta etapa de creación de campañas.
+
+
+### 2026-10-05 - Bot IVR: campañas, listas y leads con esquema propio
+
+ARCHITECT_AGENT aprueba migración aditiva: zynervox_bot_campaigns(campaign_id),
+zynervox_bot_lists(list_id,campaign_id), zynervox_bot_list(lead_id,list_id).
+FK ON DELETE RESTRICT; conservar tablas y endpoints legacy sin mezclar IDs.
+Listado inicial y creación sin flujo/carga de leads; detalle con listas y horarios.
+Contrato actualizado con aprobación arquitectónica. No modifica otros módulos.
+Motor legacy no consume campañas nuevas; no activar ejecución hasta migración
+posterior. Horarios se guardan como ventana diaria sin despachar llamadas.
+La cuenta propia y contraseña común acordada se integrarán al instalador en
+una etapa posterior; credenciales nunca se incluyen en estos documentos.
+
+
+### 2026-10-05 - Bot IVR: ampliar metadatos con referencia VICIdial
+
+ARCHITECT_AGENT autoriza migración 003 y extensión del contrato dentro de bot_ivr.
+Referencia read-only: columnas reales de asterisk.vicidial_campaigns en mirmidon.
+Añadir 12 campos administrativos mediante ALTER aditivo/idempotente; conservar
+campaña existente y timestamps. max_channels es propio de Bot IVR. Método y
+ grabación restringidos al subconjunto documentado de opciones reales; estados
+normalizados sin delimitadores legacy. Nada de FK ni dependencia de otros módulos.
+Formulario de ancho completo con dos columnas sin duplicar atributos.
+No conectar metadatos al motor ni usar user_group como ACL en esta etapa.
+
+
+### 2026-10-05 - Bot IVR: carga de leads desde el detalle de lista
+
+ARCHITECT_AGENT autoriza nuevo detalle/importador y actualización del contrato.
+Fecha created_at ya existente, sin cambio de esquema. Validar pertenencia de
+list_id/campaign_id y sesión/CSRF. TXT UTF8, 2-10 columnas, numero obligatorio;
+variables raw en extra_json sin TTS. Dedupe por archivo/lista, conservar datos
+existentes y bloquear padre FOR UPDATE para serializar cargas concurrentes.
+Se valida archivo completo antes de INSERT y se reportan filas rechazadas.
+Sin dependencia de otros módulos ni publicación de trabajos legacy.
+
+
+## 2026-10-05 — Capa compartida zynervox_queries en PHP
+
+- Estado: aceptada. Aprobada por ARCHITECT_AGENT /root/php_queries_arch.
+- Contexto: usuario autoriza procede para separar consultas por motor/módulo;
+  workers se posponen. Web PHP/PDO; MultiBase Python es referencia arquitectónica.
+- Decisión: conexión/factory y contrato BotIvrRepository compartidos; mysql/bot_ivr
+  contiene SQL, MariaDB comparte implementación, validaciones quedan en consumidor.
+- Compatibilidad: base zynervox, botón obligatorio, config sin engine equivale mysql;
+  acceso PDO legacy y workers intactos. SQLServer/PostgreSQL se rechazan por ahora.
+- Alcance: capa nueva y admin Bot IVR, pruebas, contratos y documentación.
+  Prohibido cambiar otros módulos, tablas, datos o workers.
+- Motivo: mantener PHP sin servicio extra ni duplicación SQL en dos lenguajes;
+  extensión a motores exige schema/transacciones/bloqueos y pruebas, no solo un DSN.
+
+
+## 2026-10-05 — Carga reemplaza base de lista
+
+- Estado: aceptada; solicitada explícitamente por usuario y aprobada por
+  ARCHITECT_AGENT /root/php_queries_arch.
+- Decisión: validar archivo primero y rechazar cero filas válidas; bloquear padre,
+  verificar campaña, DELETE por list_id e INSERT atómicos. Deduplicación del archivo.
+- Errores: rollback propio o savepoint si hay transacción externa; preservar base anterior.
+- Impacto: contrato Bot IVR/compartido, repositorio leads, UI Reemplazar base y pruebas.
+  Sin cambios de esquema, workers, metadatos u otras listas.
+
+
+## 2026-10-05 — id_flujo en listas Bot IVR
+
+- Aceptada por ARCHITECT_AGENT /root/php_queries_arch ante definición del usuario:
+  cada lista referenciará un flujo de IVR Builder para audios futuros.
+- Columna BIGINT UNSIGNED nullable, migración 004 aditiva, sin FK a otro módulo.
+- Formularios nuevos requieren entero positivo representable por PHP; omitido en
+  formulario anterior conserva valor, listas previas permanecen sin asignar.
+- No certifica publicación/existencia ni implementa generación o modifica builder.
+
+
+## 2026-10-05 — Laboratorio independiente texto a audio
+
+- Aceptada por ARCHITECT_AGENT /root/php_queries_arch; usuario redefine prueba
+  independiente sin listas/flujo, aprueba voz gTTS1.3 y autoriza implementación.
+- PHP página/servicio propios, Python ejecutor y venv propio gTTS2.5.4; no usar
+  dependencias CARSA. Registro explícito extensible a proveedor de otra red futuro.
+- WAV fuera webroot, ownership sesión, CSRF/admin, texto<=1000, argv+JSONstdin,
+  timeout90s, resultados validados, historial cinco y reproductor nativo.
+- No BD, jobs, llamadas, workerslegacy ni conexión compartida nueva.
+
+
+## 2026-10-06 — RGA como proveedor remoto de laboratorio
+
+- Aceptada por ARCHITECT_AGENT /root/php_queries_arch a solicitud del usuario.
+- Cliente síncrono de gateway del manual; credenciales privadas, endpoint fijo
+  server-side, Bearer, JSON y WAV. Selector rga separado de gtts sin fallback.
+- requests sin redirects, descarga acotada, validación formato, timeout PHP180s
+  y errores sanitizados; conservar ownership e historial.
+- Cambios limitados a laboratorio/proveedor/configuraciónsecretaprivada.
+  Sin cambios Farm, gateway, BD, campañas o workers.

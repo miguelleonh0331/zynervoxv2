@@ -1154,3 +1154,211 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+## 2026-10-05 — bot_ivr: conexión configurable
+
+- Botón y formulario de conexión en app/web/bot_ivr/index.php para administradores.
+- Servidor, puerto, base de datos, usuario y contraseña; CSRF y prueba antes de guardar.
+- Persistencia atómica fuera de la raíz web en secrets/bot_ivr_db.json (0640).
+- Adaptador propio app/web/bot_ivr/db.php consumido por los endpoints del módulo;
+  runtime_store.py lee la misma configuración y conserva el fallback previo.
+- No cambia CONTRACT.md ni la configuración compartida de otros módulos.
+- Validación: lint PHP del módulo, sintaxis Python, pruebas de fallback/override
+  del worker y rechazo PHP de puertos/parámetros inv?lidos. Sin BD real disponible
+  en esta copia local; no se verifica conexión productiva ni despliegue.
+
+
+## 2026-10-05 - Despliegue Bot IVR en mirmidon
+
+- Desplegado con zynertools en /srv/www/htdocs/zynervoxv2205/bot_ivr/.
+- Worker: /etc/asterisk/zynervoxv2205/modules/bot_ivr/runtime_store.py.
+- Adaptacion de la ruta de secretos en las copias desplegadas: /etc/asterisk/zynervoxv2205/secrets/bot_ivr_db.json.
+- Directorio de secretos creado wwwrun:www 0750; nuevo db.php root:www 0640.
+- Archivos previos cotejados contra dbc993b y respaldados por push.py como .bak.20261005-*.
+- Verificacion remota: lint PHP completo, sintaxis Python, permisos como wwwrun, SELECT 1 con conexion actual, HTTP 302 al login y render del boton en sesion administrativa CLI.
+- No se cambian credenciales ni se reinician servicios; formulario de guardado pendiente de uso con las credenciales elegidas por el administrador.
+
+
+## 2026-10-05 - Bot IVR: creación de base zynervox en mirmidon
+
+- Creada zynervox con 11 tablas vacías: campañas, cola local, resultados,
+  resumen de estado, procesos, eventos, construcciones/archivos de audio y
+  ejecuciones/variables/eventos de llamada. SQL reproducible bajo bot_ivr/models.
+- Base fija en el botón; PHP y worker bloquean configuración ausente y otras bases.
+- No se guardan credenciales fuera del botón. Configuración aún pendiente del administrador.
+- Desplegados db.php, index.php y runtime_store.py con backups .bak.20261005-1648*.
+- Verificación: PHP lint, Python AST, rechazo de configuración ausente/base incorrecta,
+  inserción/listado de campaña con rollback y render administrativo del botón/campo fijo.
+- Base demo intacta; sin procesos activos de los workers inspeccionados ni reinicios.
+
+## 2026-10-05 - Bot IVR: usuario propio en mirmidon
+
+- Creadas cuentas zynervox_bot_ivr@localhost y @127.0.0.1 con contraseña propia.
+- Permisos SELECT, INSERT, UPDATE, DELETE exclusivamente sobre zynervox.*.
+- Conexión TCP 127.0.0.1 y creación/lectura de campaña verificadas con rollback.
+- Credenciales entregadas al administrador; guardado por botón pendiente.
+- No cambia estructura ni datos de negocio; integración en instalador pendiente.
+
+## 2026-10-05 - Bot IVR: administración nueva de campañas y listas
+
+- Aplicada 002-campaign-lists.sql en mirmidon: tres tablas nuevas, FK e índices,
+  sin borrar tablas anteriores ni importar datos de demo.
+- index.php: listado inicial, botón Crear campaña, ID automático/nombre/activo
+  en formulario separado y redirección al detalle. Sin requisito de flujo ni archivo.
+- campaign_edit.php: editar campaña, activación/bloqueo y alta/edición de listas
+  vinculadas a campaign_id; bloqueo de edición cruzada entre campañas.
+- campaigns_page.php comparte sesión/CSRF/configuración obligatoria; repositorio
+  campaigns_service.php usa exclusivamente el nuevo esquema.
+- Despliegue de cuatro archivos con backups de pantallas previas .bak.20261005-1727*.
+- Pruebas SQL transaccionales: ID/activo, horarios, listas y pertenencia, FK;
+  lint PHP y render CLI: listado, formulario, detalle, CSRF y escape XSS.
+- Datos de prueba revertidos. Carga de leads/ejecución de horarios/motor e
+  integración en instalador quedan fuera de esta etapa.
+
+## 2026-10-05 - Bot IVR: ordenar detalle de campaña
+
+- Formulario compacto por filas: etiquetas izquierda, campos derecha y botón
+  Guardar centrado; estilo alternado azul siguiendo referencia del administrador.
+- Activo y horario diario usan selectores Sí/No; valor 0 se persiste desactivado.
+- Listado debajo del formulario; creación de lista en diálogo desde botón junto al listado.
+- Ajuste CSS local para evitar el fondo oscuro global de th y controles desalineados.
+- Verificado render HTML de campaña 8 en agent-browser, captura escritorio y móvil,
+  apertura del diálogo y prueba SQL con rollback para persistencia de No.
+- Sin cambios de esquema ni datos existentes; despliegue con backups automáticos.
+
+## 2026-10-05 - Bot IVR: ancho completo y metadatos de campaña
+
+- Detalle en dos columnas sobre todo el ancho disponible; datos generales/horarios
+  y parámetros de marcación. Totales de listas/leads y fecha de creación visibles.
+- Migración 003-campaign-details.sql: 12 campos propios con referencia VICIdial;
+  aplicada dos veces verificando preservación de ID/nombre/flags/horarios/fechas.
+- Campos nuevos validan longitud, opciones y rangos; consultas preparadas y HTML
+  escapado. Envíos de formularios anteriores preservan metadatos no enviados.
+- Desplegados campaign_edit.php y campaigns_service.php con backups 20261005-1803*.
+- Pruebas: lint PHP, persistencia de campos, rechazo de valores inválidos sin
+  guardado parcial, compatibilidad de formularios, listas/FK y rollback;
+  render real de campaña 8 en navegador, ancho completo y dos/una columna.
+- Configuración de marcación/grabación/grupo aún no controla motor ni ACL;
+  sin cambios en tablas legacy, otras bases ni datos de campaña existente.
+
+## 2026-10-05 - Bot IVR: distribución y paleta Zynervox
+
+- Reorganizado detalle en cuatro grupos dentro de dos columnas: datos generales,
+  horarios, marcación y leads/grabación; listado de listas debajo a ancho completo.
+- Colores exclusivamente de variables de layout.css: encabezados oscuros,
+  tarjetas blancas, filas blancas/grises y naranja para navegación y acciones.
+- Guardado alineado a la derecha; resumen de listas/leads junto al listado;
+  navegación y diálogos homologados a la paleta del producto.
+- Verificación visual del HTML real de campaña 8 en navegador: cuatro grupos,
+  dos columnas en escritorio, una en pantalla estrecha; colores calculados
+  correctos, creación de lista y configuración de conexión abren correctamente.
+- PHP lint correcto y campos únicos conservados. Despliegue con backups
+  20261005-1814*/1815*. No cambia esquema ni lógica de persistencia.
+
+## 2026-10-05 - Bot IVR: fecha de lista, apertura y carga TXT
+
+- Fecha de creación y botón Abrir lista en listado de campaña.
+- list_edit.php: datos de lista, formulario TXT/plantilla y tabla de leads paginada;
+  tema Zynervox, botón de conexión y vínculo para volver a campaña.
+- list_service.php: parser UTF8/cabeceras flexibles, variables raw, dedupe dentro
+  del archivo y contra lista existente; inserción transaccional por lotes y
+  protección de pertenencia campaign_id/list_id.
+- Pruebas con rollback: BOM/UTF8/cabeceras, contadores, valores guardados,
+  recarga sin duplicar, listas independientes y rechazo de campaña ajena.
+- Lint PHP correcto; render real y selección de archivo verificados en navegador.
+- Desplegados tres archivos con backups del detalle previo; sin modificar esquema.
+- Motor/TTS sigue separado; carga no inicia llamadas ni modifica otras listas.
+
+
+## 2026-10-05 — Carga de listas: resultado sin detalle de leads
+- Por solicitud del usuario se retira la tabla de contactos y su paginación de list_edit.php.
+- Se conserva el formulario, el total de leads y el mensaje de resultado con cargados, duplicados y rechazados.
+- Desplegado en mirmidon; PHP lint correcto.
+
+
+## 2026-10-05 — Consultas compartidas PHP e integración Bot IVR
+
+- Nuevo módulo zynervox_queries: conexión/factory común, contrato de repositorio,
+  consultas mysql/bot_ivr separadas en campañas/listas/leads y reutilizadas por MariaDB.
+- Administración nueva elimina SQL de páginas/services; conserva parser/validación,
+  propiedad transaccional, deduplicación y pertenencia de listas.
+- Botón obligatorio añade selector MySQL/MariaDB; config previa compatible,
+  otros motores rechazados antes de conectar/guardar. Workers sin cambios.
+- Pruebas en staging mirmidon: lint PHP, lectura equivalente, CRUD/horarios/metadatos,
+  carga/duplicados/pertenencia/FK/rollback, secretos sin cambios tras rechazos.
+- Sin cambios de esquema ni migración de datos. MODULE_MAP regenerado por herramienta.
+- Desplegado en mirmidon bajo /srv/www/htdocs/zynervoxv2205/zynervox_queries; verificación posterior correcta de páginas, selector, pertenencia/CSRF, repositorios y rollback de importación fallida.
+
+
+## 2026-10-05 — Reemplazar base de lista al cargar
+
+- Carga ahora reemplaza contactos de lista en transacción, deduplica nuevo archivo
+  y conserva base anterior ante archivo sin filas válidas o fallo de inserción.
+- Savepoint protege reemplazo dentro de transacciones externas.
+- UI informa sustitución y botón Reemplazar base; resultado Base reemplazada.
+- Pruebas staging correctas: reemplazo, archivo vacío, reupload, fallo tras DELETE
+  revertido, pertenencia y aislamiento. Fixtures revertidos con rollback.
+
+
+## 2026-10-05 — Asignación de flujo por lista
+
+- Migración 004 añade id_flujo nullable a zynervox_bot_lists en zynervox.
+- Crear/Modificar lista guarda ID positivo; tabla de campaña y detalle lo muestran.
+- Repositorio compartido extiende métodos con argumento opcional conservando formularios previos.
+- Sin cambios de contactos, workers o IVR Builder. Pruebas creación/edición,
+  IDs inválidos y preservación por omisión con fixtures revertidos.
+
+
+## 2026-10-05 — Trazado y muestra de gTTS
+- Localizado proveedor macelioai de CARSA y generador Python gTTS/ffmpeg/sox.
+- Prueba real aislada con texto ficticio: WAV PCM16 mono 8kHz de 7.51 segundos.
+- MP3 de escucha descargado al espejo local; sin cambios de listas ni llamadas.
+- Documentado trazado en README Bot IVR; integración de generación por lista pendiente.
+
+
+## 2026-10-05 — Prueba de audios desde texto en web
+
+- Creada audio_lab.php con proveedor gTTS, texto, Crear audio, reproductor y descarga.
+- Servicio/sessionownership y script propio gTTS/ffmpeg/sox, venv aislado en mirmidon.
+- Enlace Prueba de audios en navegación; mantiene botón Configurar conexión BD.
+- Pruebas PHP/Python, generación bajo wwwrun, HTTPPOST→redirect→WAV PCM16mono8k,
+  ID404, CSRF y sesión ajena; navegador playback readyState4 sin errores.
+- Sin modificaciones de BD/CARSA/campañas/listas ni llamadas. Desplegado mirmidon.
+
+
+## 2026-10-06 — Proveedor RGA en Prueba de audios
+
+- Selector RGA Remote Generation Audio y adapter Python HTTP del gateway.
+- Token en secrets fuera Git, permisos0640 root:www acordes a Apache de mirmidon.
+- Envía voz1.3; validación WAV monoPCM16 8kHz, streamingacotado/redirectsdeshabilitados.
+- Historial identifica proveedor; mensajes específicos de error sin datos sensibles.
+- Tests aislados5correctos; generación real remota79KB, POSTHTTP→redirect→stream
+  y navegador reproduciendo4.246s, readyState4 sin error.
+- Health actual reportó190candidatos; ninguna modificación del pool/gateway.
+
+## 2026-10-07 — Actualización acotada de Bot IVR en mirmidon
+
+- Autorización: usuario indicó «procede» para actualizar solo Bot IVR.
+- Fuente local: trabajo/bot_ivr, commit 21030ff; sin cambios en código fuente.
+- Desplegados 12 PHP distintos bajo /srv/www/htdocs/zynervoxv2205/bot_ivr mediante zynertools push con backups .bak.20261007-1736xx.
+- index.php y campaign_edit.php pasan a la administración actual de campañas/listas; endpoints legacy consumen db.php dedicado. Rutas runtime adaptadas a zynervoxv2205.
+- Los 14 PHP restantes, los 7 archivos de zynervox_queries y los 8 workers ya coinciden con la fuente tras normalizar saltos de línea y rutas propias del despliegue. No se modifican otros módulos, workers, credenciales ni bases.
+- Validación: lint PHP local (26) y remoto correcto; render de index.php con sesión de prueba en memoria muestra Crear campaña, Configurar conexión y Prueba de audios; petición HTTP sin sesión devuelve 302.
+- Limitación operativa confirmada: MySQL rechaza al usuario configurado zynervox_bot_ivr con error 1045. No es posible verificar campañas ni esquema con esa conexión; requiere corregir configuración/permisos por separado.
+- Reversión: recuperar copias en .codex-temp/bot-ivr-update/before/bot_ivr y subir mediante zynertools; backups remotos conservados.
+
+## 2026-10-07 — Restablecimiento de acceso MySQL de Bot IVR en mirmidon
+
+- Autorización explícita del usuario: procede para restablecer contraseña de zynervox_bot_ivr.
+- Ejecutado script preparado localmente mediante zynertools script.py; ALTER USER para localhost y 127.0.0.1 sincroniza con la configuración existente, sin guardar credenciales locales.
+- Permisos SELECT/INSERT/UPDATE/DELETE sobre zynervox conservados; sin cambios de esquema, datos ni archivos de configuración.
+- Verificación: coincidencia de contraseña YES en ambas cuentas; conexión a zynervox correcta; repositorio lee 1 campaña; interfaz renderizada sin error de acceso; lint PHP remoto correcto.
+
+## 2026-10-07 — Redespliegue de Bot IVR tras reversión detectada
+
+- Validación previa: los 12 PHP desplegados habían vuelto a coincidir exactamente con las copias anteriores a la actualización.
+- A petición del usuario, redesplegados los mismos 12 PHP actuales del commit local 21030ff, con adaptación de rutas runtime. Nuevos backups .bak.20261007-1828xx y .bak.20261007-1829xx.
+- Propietario y permisos de archivos restaurados desde sus backups tras la transferencia.
+- Verificación: hashes 12/12 correctos, lint remoto y render actual correctos, conexión zynervox y repositorio de campañas correctos. Conteos de solo lectura: 1 campaña, 2 listas, 37330 leads.
+- Sin cambios de contraseñas, cuentas MySQL, configuración, esquema o datos; no se publican commits ni push.
+- La causa de la reversión anterior sigue sin identificar.

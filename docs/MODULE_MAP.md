@@ -2,7 +2,7 @@
 
 Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 
-Última generación: 2026-10-09 10:29
+Última generación: 2026-10-09 10:30
 
 ## Módulos
 
@@ -20,6 +20,7 @@ Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 | telephony | src/features/telephony | telephony_AGENT.md | (sin descripción) | src/features/telephony/CONTRACT.md |
 | whatsapp | src/features/whatsapp | whatsapp_AGENT.md | Incorporar la operación WhatsApp a Zynervox reutilizando Zynerwaba v2 como servicio | src/features/whatsapp/CONTRACT.md |
 | zynerdesk | src/features/zynerdesk | zynerdesk_AGENT.md | Incorporar Synervox Remoteo (supervisión remota de agentes: WebRTC, telemetría | src/features/zynerdesk/CONTRACT.md |
+| zynervox_queries | src/features/zynervox_queries | _DEFAULT_MODULE_AGENT.md | Centralizar conexión PHP/PDO y consultas por motor y módulo, con contratos de repositorio. | src/features/zynervox_queries/CONTRACT.md |
 
 ## Dependencias entre módulos
 
@@ -29,3 +30,4 @@ Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 | stt_providers | core | ok |
 | whatsapp | core | ok |
 | zynerdesk | core | ok |
+| zynervox_queries | PHP 7.4+ y PDO MySQL; esquema administrativo nuevo de Bot IVR según su contrato | módulo inexistente |
