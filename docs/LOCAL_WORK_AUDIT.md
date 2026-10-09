@@ -47,3 +47,25 @@ La integracion corresponde a v2. No incorpora v3 ni ejecuta instaladores,
 migraciones de bases de datos o cambios de servicios productivos. La carpeta
 SMB montada en mirmidon es la misma fuente Windows; actualizar Git no equivale
 a desplegar sus archivos en la instalacion productiva.
+
+## Integracion y validacion final
+
+Se integran a main la rama del agente, trabajo/farm y trabajo/bot_ivr.
+trabajo/ivr_builder y trabajo/zynerdesk ya estaban integradas en origin/main.
+Los esquemas SQL de bot_ivr y deteccion quedan versionados sin ejecutarse.
+La colision documental ADR-0018 se resuelve conservando la decision publicada
+de Zynerdesk y asignando ADR-0019 a la nueva consolidacion. Se conservan completas
+las contribuciones append-only de las ramas y se regenera MODULE_MAP.
+
+Validacion: 32 archivos PHP pasan lint; annexes.js pasa node --check;
+audio_lab_generate.py, runtime_store.py y zypad_annex pasan compilacion;
+las cinco pruebas aisladas del adaptador RGA pasan; la funcion WhatsApp pasa
+comprobaciones de ruta relativa, carga unica, ausencia de credenciales y
+ausencia de logout forzado. repo_agent.py validate y git diff --check pasan.
+
+No se ejecutan campaigns-db.php, list-import-db.php, list-flow-db.php ni
+connection-db.php: requieren una base y configuracion de secretos aisladas
+que no estan disponibles en este entorno. No se ejecuta la generacion real
+de audio-lab.php: requiere rutas, venv Linux y generacion gTTS de la instalacion.
+Estas validaciones de integracion siguen pendientes antes de desplegar;
+no se utilizo ninguna base productiva para suplirlas.

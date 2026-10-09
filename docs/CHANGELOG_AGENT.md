@@ -1362,3 +1362,25 @@ Riesgos:
 - Verificación: hashes 12/12 correctos, lint remoto y render actual correctos, conexión zynervox y repositorio de campañas correctos. Conteos de solo lectura: 1 campaña, 2 listas, 37330 leads.
 - Sin cambios de contraseñas, cuentas MySQL, configuración, esquema o datos; no se publican commits ni push.
 - La causa de la reversión anterior sigue sin identificar.
+
+### 2026-10-09 10:31 - ARCHITECT_AGENT - bot_ivr farm zynervox_queries agent
+
+Tipo: chore
+
+Resumen:
+Integra ramas pendientes de v2 y conserva historial; resuelve conflictos documentales append-only y regenera mapa.
+
+Motivo:
+Usuario solicita que fuente y GitHub queden actualizados; sin despliegue ni migraciones productivas.
+
+Archivos modificados:
+- docs/LOCAL_WORK_AUDIT.md
+- docs/DECISIONS.md
+- docs/CHANGELOG_AGENT.md
+- docs/MODULE_MAP.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+Pruebas de BD aislada y generacion real gTTS pendientes antes de despliegue.
