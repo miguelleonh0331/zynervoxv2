@@ -75,7 +75,7 @@ if ($list): ?>
 .list-meta td{border:1px solid var(--border)}.list-guide{padding:12px;background:var(--glass);border:1px solid var(--border);font-size:12px;line-height:1.6}
 .list-guide code{color:var(--text)}.list-form-actions{display:flex;gap:10px;flex-wrap:wrap}
 .list-audio{grid-column:1 / -1}.list-audio-controls{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}.list-audio-provider{flex:1;min-width:240px}.list-audio-speed{width:220px;max-width:100%}.list-audio-controls .carsa-btn{min-height:36px}.list-audio-controls .carsa-btn:disabled{opacity:.55;cursor:not-allowed}.list-audio-note{font-size:12px;color:var(--text-muted);margin:12px 0 0}
-.list-audio-controls [hidden]{display:none!important}
+.list-audio [hidden]{display:none!important}
 .list-back{color:var(--primary-hover);font-size:13px;text-decoration:none}
 .audio-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}.audio-summary .list-audio-note{margin:0}
 .audio-dialog{width:100%;padding-top:20px;color:var(--text);box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
@@ -110,10 +110,10 @@ if ($list): ?>
 <div class="list-form-actions"><button class="carsa-btn">Reemplazar base</button><a class="carsa-btn secondary" href="plantilla_carga.php" download>Descargar plantilla</a></div>
 </form></section>
 <section class="carsa-card list-card list-audio" aria-labelledby="list-audio-title">
-<h2 id="list-audio-title">Creación de audios</h2>
+<h2 id="list-audio-title"<?php echo $audioReady ? ' hidden' : ''; ?>>Creación de audios</h2>
 <form method="post" class="list-audio-controls">
 <input type="hidden" name="action" value="generate_list_audio"><?php bot_campaign_token(); ?>
-<div class="carsa-field list-audio-provider"><label for="list_audio_provider">Proveedor TTS</label>
+<div id="list-audio-provider-control" class="carsa-field list-audio-provider"<?php echo $audioReady ? ' hidden' : ''; ?>><label for="list_audio_provider">Proveedor TTS</label>
 <select id="list_audio_provider" name="audio_provider">
 <?php foreach (bot_list_audio_providers() as $key => $label): ?>
 <option value="<?php echo h($key); ?>"><?php echo h($label); ?></option>
@@ -175,6 +175,8 @@ if ($list): ?>
         const active = job && (job.state === 'starting' || job.state === 'running');
         const stale = job && valid && job.signature !== signature;
         button.hidden = !!ready && !stale;
+        document.getElementById('list-audio-title').hidden = button.hidden;
+        document.getElementById('list-audio-provider-control').hidden = button.hidden;
         document.getElementById('list-audio-speed-control').hidden = button.hidden;
         button.disabled = !valid || active || (ready && !stale);
         play.disabled = !ready || !valid || active || stale;
