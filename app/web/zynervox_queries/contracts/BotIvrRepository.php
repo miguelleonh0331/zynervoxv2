@@ -11,5 +11,6 @@ interface BotIvrRepository {
     public function updateList(int $campaignId, int $listId, string $name, bool $active, ?int $flowId = null): void;
     public function list(int $listId, int $campaignId): array;
     public function leadCount(int $listId): int;
+    public function audioLeads(int $listId, int $campaignId): array;
     public function importLeads(int $listId, int $campaignId, array $parsed): array;
 }

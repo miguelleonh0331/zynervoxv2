@@ -80,3 +80,10 @@ createList guarda id_flujo nullable; updateList con null conserva valor existent
 ID no-null debe ser positivo. list()/lists() incluyen id_flujo. Migración 004 es
 aditiva y deja existentes NULL, sin FK externa. No verifica existencia/publicación
 IVR Builder ni accede al módulo; generación de audio no se implementa en esta extensión.
+
+## Lectura de leads para audio (2026-10-10)
+
+`audioLeads(listId, campaignId): array` comprueba pertenencia de lista/campaña y
+devuelve lead_id, list_id, phone, customer_name y extra_json de esa lista, ordenados
+por lead_id. Consulta preparada con filtro de campaña y lista. No modifica datos,
+no interpreta JSON ni expone consultas genéricas; Bot IVR valida las variables.

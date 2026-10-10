@@ -3,10 +3,14 @@ declare(strict_types=1);
 require __DIR__ . '/campaigns_page.php';
 require __DIR__ . '/list_service.php';
 require_once __DIR__ . '/audio_lab_service.php';
+require_once __DIR__ . '/list_audio_service.php';
+require_once __DIR__ . '/../ivr_builder/published_flow.php';
 $listId = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
 $campaignId = filter_var($_GET['campaign_id'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
 $list = null;
 $count = 0;
+$audioCheck = null;
+$audioCheckError = '';
 try {
     if (!$listId || !$campaignId) throw new RuntimeException('ID de lista o campaña inválido.');
     $db = bot_ivr_repository();
@@ -31,6 +35,11 @@ try {
         } catch (Throwable $e) { $error = $e->getMessage(); }
     }
     $count = $db->leadCount($listId);
+    try {
+        if (empty($list['id_flujo'])) throw new RuntimeException('Asigna un flujo a la lista para validar sus variables.');
+        $flow = ivr_builder_published_flow((int)$list['id_flujo']);
+        $audioCheck = bot_list_audio_preflight($flow, $db->audioLeads($listId, $campaignId), $listId, $campaignId);
+    } catch (Throwable $e) { $audioCheckError = $e->getMessage(); }
 } catch (Throwable $e) {
     http_response_code($listId && $campaignId ? 404 : 400);
     $error = $e->getMessage();
@@ -87,6 +96,12 @@ if ($list): ?>
 <button type="button" class="carsa-btn" disabled aria-describedby="list-audio-availability">Generar</button>
 </div>
 <p id="list-audio-speed-help" class="list-audio-note">La velocidad indica cuántos audios se procesan simultáneamente.</p>
+<?php if ($audioCheckError !== ''): ?>
+<p class="list-audio-note" role="status"><?php echo h($audioCheckError); ?></p>
+<?php elseif ($audioCheck !== null): ?>
+<p class="list-audio-note" role="status">Variables verificadas: <?php echo (int)$audioCheck['ready']; ?> de <?php echo (int)$audioCheck['leads']; ?> leads listos; <?php echo (int)$audioCheck['rejected']; ?> con errores.</p>
+<?php foreach ($audioCheck['errors'] as $audioError): ?><p class="list-audio-note"><?php echo h($audioError); ?></p><?php endforeach; ?>
+<?php endif; ?>
 <p id="list-audio-availability" class="list-audio-note">La generación de audios para esta lista aún no está disponible.</p>
 </section>
 </div>

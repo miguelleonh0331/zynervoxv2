@@ -2,6 +2,12 @@
 declare(strict_types=1);
 namespace ZynervoxQueries\Mysql\BotIvr;
 trait LeadQueries {
+    public function audioLeads(int $listId, int $campaignId): array {
+        $this->list($listId, $campaignId);
+        $stmt = $this->db->prepare('SELECT l.lead_id,l.list_id,l.phone,l.customer_name,l.extra_json FROM zynervox_bot_list l JOIN zynervox_bot_lists p ON p.list_id=l.list_id WHERE l.list_id=:list AND p.campaign_id=:campaign ORDER BY l.lead_id');
+        $stmt->execute([':list'=>$listId, ':campaign'=>$campaignId]);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
     public function leadCount(int $listId): int {
         $stmt = $this->db->prepare('SELECT COUNT(*) FROM zynervox_bot_list WHERE list_id=:id');
         $stmt->execute([':id'=>$listId]);

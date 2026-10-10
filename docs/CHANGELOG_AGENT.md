@@ -1603,3 +1603,15 @@ de importaci?n/reemplazo/rollback aprobada. Instalador incluye migraci?n 005.
 list_edit.php a?ade tarjeta inferior a todo el ancho con proveedor TTS,
 concurrencia y bot?n Generar deshabilitado; reutiliza cat?logo del laboratorio.
 No ejecuta generaci?n ni altera carga de leads. README documenta alcance visual.
+# 2026-10-10 — bot_ivr: lectura y validación de variables de leads
+
+list_audio_service.php resuelve variables por lead y valida todos los textos
+alcanzables del flujo. list_edit.php presenta conteos y errores. ivr_builder
+expone lectura pública del JSON publicado; zynervox_queries ofrece audioLeads
+con pertenencia de campaña/lista. Pruebas cubren sustitución, valores vacíos,
+JSON inválido, ciclos, ramas y aislamiento. Sin generación TTS ni cambios SQL.
+
+Verificado y desplegado en mirmidon: cinco archivos PHP idénticos a fuente y
+sintaxis válida. Pruebas list-audio.php y list-import-db.php aprobadas. Lectura
+real lista 1/flujo 11: un lead listo, un texto validado, cero errores. No se
+enviaron solicitudes TTS; respaldo previo de los tres archivos existentes.

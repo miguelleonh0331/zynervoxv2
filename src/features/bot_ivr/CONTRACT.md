@@ -13,6 +13,22 @@ Gestiona campañas IVR, ejecución SQL, preconstrucción TTS y auditoría por no
 web publica trabajos; los workers Python consumen tablas y archivos publicados. Los
 tokens viven en `/etc/asterisk/synervox/secrets`, nunca en Git.
 
+## Validación de variables por lista (2026-10-10)
+
+list_edit.php consume audioLeads del contrato zynervox_queries y la lectura
+pública ivr_builder_published_flow del flujo publicado indicado por id_flujo.
+Bot IVR recorre nodos alcanzables, incluyendo ramas/reintentos/segmentos, y
+resuelve cada texto con customer_name y las variables originales de extra_json.
+nombre admite fallback a customer_name; numero, lead_id, list_id y campaign_id
+son valores del sistema y no admiten sobrescritura por columnas importadas.
+Variables ausentes/vacías, JSON inválido, textos mayores de 1000 caracteres y
+marcadores sin resolver impiden preparar el lead; cero es un valor válido.
+La pantalla muestra conteos y hasta cinco errores con lead/nodo/variable, sin
+mostrar valores personales. No modifica status de marcación ni BD.
+Variables obtenidas durante una llamada aún no se pregeneran: se reportan como
+ausentes. Esta etapa valida y resuelve textos, pero no inicia jobs ni envía TTS;
+Generar permanece deshabilitado hasta implementar ejecución propia por lista.
+
 
 ## Administración de campañas y listas (2026-10-05)
 

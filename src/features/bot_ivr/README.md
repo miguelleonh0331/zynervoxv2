@@ -221,3 +221,14 @@ Proveedor TTS reutiliza catálogo del laboratorio (gtts/rga), predeterminado RGA
 Velocidad 1/3/10/25/60/100x indica concurrencia, predeterminado 25x. Generar
 permanece deshabilitado con mensaje visible hasta conectar un generador por lista.
 No guarda ajustes, publica jobs, genera archivos ni llama endpoints legacy.
+
+## Validación previa de variables (2026-10-10)
+
+Al abrir list_edit.php se lee el flujo publicado mediante el contrato público
+de IVR Builder y los leads por audioLeads del repositorio. La sección inferior
+muestra leads listos y errores (máximo cinco ejemplos). La sustitución estricta
+en list_audio_service.php mantiene variables del TXT, detecta ausentes/vacías y
+no envía al proveedor textos incompletos. En flujo 11, {nombre} proviene del lead.
+Prueba pura: php src/features/bot_ivr/tests/list-audio.php /ruta/web/bot_ivr.
+Prueba de lectura SQL/aislamiento: list-import-db.php (rollback de datos de prueba).
+Generación, progreso y caché por lista siguen pendientes; no se usa CARSA.

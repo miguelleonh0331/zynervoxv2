@@ -653,3 +653,12 @@ ARCHITECT_AGENT autoriza adem?s installer/ivr-builder-bot-db.sh y README de
 installer para incluir migraci?n 005 en despliegues futuros. Contrato del
 instalador sin cambios; se separa ALTER del ?ndice para compatibilidad con el
 helper apply-schema.py y reaplicaci?n cuando las columnas ya existen.
+# 2026-10-10 — Validación de variables para audios por lista
+
+Intervención ARCHITECT_AGENT: aprobadas extensiones públicas de bot_ivr,
+zynervox_queries e ivr_builder para leer leads y publicación sin acoplarse
+a internos de CARSA. Alcance permitido: servicios de validación/página de
+Bot IVR, método audioLeads en repositorio y lectura pública published_flow.
+Contratos y pruebas documentan las fronteras. Prohibido modificar CARSA,
+credenciales, marcación o el generador legacy. No añade dependencias externas.
+Responsable de continuación: bot_ivr; generación real por lista pendiente.

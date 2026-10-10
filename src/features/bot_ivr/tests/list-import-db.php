@@ -38,6 +38,11 @@ try {
     $stmt->execute([$list,'51999000001']);
     $row = $stmt->fetch();
     list_verify($row['customer_name'] === 'María' && json_decode($row['extra_json'], true)['monto'] === '125.50', 'Saved raw values');
+    $audioLeads = $repository->audioLeads($list, $campaign);
+    list_verify(count($audioLeads) === 2 && (int)$audioLeads[0]['list_id'] === $list
+        && json_decode($audioLeads[0]['extra_json'], true)['monto'] === '125.50', 'Audio read must return uploaded variables for this list');
+    try { $repository->audioLeads($list, $other); throw new LogicException('Cross-campaign audio read accepted'); }
+    catch (RuntimeException $e) {}
     try { bot_list_import($repository, $list, $other, $parsed); throw new LogicException('Cross-campaign upload accepted'); }
     catch (RuntimeException $e) {}
     try { bot_list_get($repository, $list, $other); throw new LogicException('Cross-campaign list opened'); }
