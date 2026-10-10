@@ -4,7 +4,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/installer/db-common.sh"
 [[ $EUID -eq 0 ]] || { echo "Ejecutar como root" >&2; exit 1; }
 command -v mysql >/dev/null 2>&1 || { echo "AVISO: mysql no disponible; se omite Bot IVR DB" >&2; exit 0; }
-if [[ "${ZYNERVOX_ISOLATED:-0}" == 1 ]]; then install -d -o root -g "${ZYNERVOX_WEB_GROUP:-www}" -m 2770 "$CONFIG_DIR/pbx"; fi
+if [[ "${ZYNERVOX_ISOLATED:-0}" == 1 ]]; then install -d -o root -g "$WEB_GROUP" -m 2770 "$CONFIG_DIR/pbx"; fi
 CORE_CONF="$CONFIG_DIR/zynervox-core.conf"
 [[ -f "$CORE_CONF" ]] || { echo "Instalar zynervox-core primero" >&2; exit 1; }
 CONFIG_FILE="$CONFIG_DIR/zynervoxv2205-bot_ivr.conf"

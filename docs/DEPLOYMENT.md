@@ -15,6 +15,21 @@
 
 ## Requisitos
 
+### Laboratorio soundhound autorizado (2026-10-11)
+
+Para esta instalacion el usuario eligio expresamente la fuente Windows compartida
+por SMB, autorizo preparar el servidor nuevo y completar el despliegue. Se uso
+una copia comprimida de esa fuente por SSH para evitar la latencia SMB. Esta
+excepcion corresponde exclusivamente a soundhound; la politica de publicacion
+anterior sigue aplicando a los despliegues publicados. Ver
+[DEPLOYMENT_SOUNDHOUND.md](DEPLOYMENT_SOUNDHOUND.md) para rutas y validacion.
+
+Rocky 9 v2 aislado usa PHP-FPM exclusivo, MariaDB 10.11 y Asterisk 20/PJSIP.
+No necesita las tablas VICIdial ni su configuracion legacy; el diagnostico
+comprueba bootstraps v2. La operacion telefonica requiere configurar carriers,
+anexos, rutas y acceso de red. Los siguientes requisitos legacy se conservan
+para instalaciones no aisladas.
+
 Servidor Ubuntu. Para operación completa requiere Asterisk/VICIdial funcional,
 tablas base `vicidial_*`, `phones` y `/etc/astguiclient.conf`. Asterisk/MySQL solos
 no satisfacen este requisito. Respaldar MariaDB y `/etc/asterisk` antes de activar.

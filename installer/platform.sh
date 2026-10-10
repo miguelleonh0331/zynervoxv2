@@ -8,6 +8,7 @@ platform_defaults() {
   case "${ID:-} ${ID_LIKE:-}" in
     *suse*) WEB_DOCUMENT_ROOT="${WEB_DOCUMENT_ROOT:-/srv/www/htdocs}"; default_group=www ;;
     *ubuntu*|*debian*) WEB_DOCUMENT_ROOT="${WEB_DOCUMENT_ROOT:-/var/www/html}"; default_group=www-data ;;
+    *rhel*) WEB_DOCUMENT_ROOT="${WEB_DOCUMENT_ROOT:-/var/www/html}"; default_group=apache ;;
     *)
       [[ -n "${WEB_ROOT:-}" || -n "${WEB_DOCUMENT_ROOT:-}" ]] || { echo "Sistema ${ID:-desconocido}: especificar WEB_ROOT o WEB_DOCUMENT_ROOT" >&2; return 1; }
       default_group=www-data

@@ -247,9 +247,16 @@ if [[ $WITH_STT_PROVIDERS -eq 1 ]]; then run_module "Stt Providers" install_stt_
 if [[ $WITH_ZYNERDESK -eq 1 ]]; then run_module "Zynerdesk" install_zynerdesk; fi
 if [[ $WITH_ZYPAD -eq 1 ]]; then run_module "Zypad" install_zypad; fi
 
-if command -v apache2ctl >/dev/null 2>&1; then
-  if apache2ctl configtest; then
-    systemctl reload apache2
+if [[ "${ID_LIKE:-}" == *rhel* && "${ZYNERVOX_ISOLATED:-0}" == 1 ]]; then
+  CONFIG_DIR="${ZYNERVOX_CONFIG_DIR:-/etc/zynervox/zynervoxv2}" bash "$ROOT/installer/rocky-selinux.sh"
+fi
+
+apache_control=apache2ctl
+apache_service=apache2
+if [[ "${ID_LIKE:-}" == *rhel* ]]; then apache_control=httpd; apache_service=httpd; fi
+if command -v "$apache_control" >/dev/null 2>&1; then
+  if "$apache_control" -t; then
+    systemctl reload "$apache_service"
   else
     echo "AVISO: Apache tiene errores previos; archivos web conservados sin recargar" >&2
   fi

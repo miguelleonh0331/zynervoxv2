@@ -20,7 +20,9 @@ for command in php python3; do
     fail=1
   fi
 done
-for command in apache2ctl mysql asterisk; do
+apache_control=apache2ctl
+[[ "${ID_LIKE:-}" != *rhel* ]] || apache_control=httpd
+for command in "$apache_control" mysql asterisk; do
   if ! command -v "$command" >/dev/null 2>&1; then
     echo "AVISO comando opcional: $command"
     warn=1
@@ -46,7 +48,7 @@ fi
 # runtime/ la crea install.sh (0770 root:WEB_GROUP); DevChecklist.php y
 # ServerInfo.php dependen de que www-data pueda escribir ahí.
 if [[ -d "$WEB_ROOT/runtime" ]]; then
-  sudo -u www-data test -w "$WEB_ROOT/runtime" 2>/dev/null || { echo "FALTA permiso de escritura www-data en $WEB_ROOT/runtime"; fail=1; }
+  sudo -u "$WEB_GROUP" test -w "$WEB_ROOT/runtime" 2>/dev/null || { echo "FALTA permiso de escritura $WEB_GROUP en $WEB_ROOT/runtime"; fail=1; }
 else
   echo "FALTA directorio: $WEB_ROOT/runtime"
   fail=1
@@ -99,12 +101,16 @@ if [[ "$CHECK_ZYPAD" == 1 ]]; then
     warn=1
   fi
 fi
-if [[ ! -f /etc/astguiclient.conf && ! -f /etc/zynervox/astguiclient.conf ]]; then
+if [[ "${ZYNERVOX_ISOLATED:-0}" == 1 ]]; then
+  for config in zynervox-core.conf zynervoxv2205-bot_ivr.conf; do
+    [[ -f "${ZYNERVOX_CONFIG_DIR:-/etc/zynervox/zynervoxv2}/$config" ]] || { echo "FALTA configuración aislada: $config"; fail=1; }
+  done
+elif [[ ! -f /etc/astguiclient.conf && ! -f /etc/zynervox/astguiclient.conf ]]; then
   echo "AVISO: falta configuración de base"
   warn=1
 fi
 python3 -c 'import pymysql, num2words' 2>/dev/null || { echo "AVISO: faltan módulos Python opcionales"; warn=1; }
-if command -v apache2ctl >/dev/null 2>&1 && ! apache2ctl configtest; then
+if command -v "$apache_control" >/dev/null 2>&1 && ! "$apache_control" -t; then
   echo "AVISO: configuración Apache inválida"
   warn=1
 fi

@@ -1,6 +1,8 @@
 # Stack soportado
 
 - ViciBox/openSUSE Leap 15.5 o Ubuntu 24.04 LTS, arquitectura amd64.
+- Rocky Linux 9 amd64, validado para v2 aislado con paquetes preparados,
+  Apache httpd y un pool PHP-FPM exclusivo; politica SELinux versionada.
 - Apache 2.4 y PHP 8.3 con curl, mbstring, mysqli/PDO MySQL, XML y ZIP.
 - MariaDB 10.11 y esquema VICIdial/Asterisk.
 - Docker Compose opcional para aislar MariaDB en un puerto local desde `3307`.

@@ -61,6 +61,10 @@ for file in pjsip-zynervoxv2.conf extensions-zynervoxv2.conf sip-zynervoxv2-anne
   fi
 done
 php "$ROOT/installer/migrate-dialplans.php" "$WEB_ROOT"
+for file in pjsip-zynervoxv2.conf extensions-zynervoxv2.conf sip-zynervoxv2-annexos.conf pjsip-zynervoxv2-annexos.conf; do
+  chown root:"$WEB_GROUP" "$runtime/modules/asterisk/$file"
+  chmod 0640 "$runtime/modules/asterisk/$file"
+done
 echo "MODULE_INSTALLED module=carriers database=$DB_NAME table=v2_carriers"
 echo "CARRIERS_CONFIG_DIR=$runtime/modules/asterisk"
 echo 'ACTIVACION_PENDIENTE: no se agregan includes, sudoers ni se recarga Asterisk'

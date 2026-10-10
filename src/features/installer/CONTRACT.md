@@ -36,7 +36,9 @@ La clave Bot fija se usa solo para crear su nueva cuenta por solicitud explícit
 no rota cuentas existentes ni afecta usuario productivo. Se excluye deployment.php
 del rsync. Por defecto no activa módulos opcionales; migraciones, Farm, WhatsApp,
 Zynerdesk, STT y Zypad compartidos se rechazan en modo aislado. No copia/chown runtime
-Asterisk productivo. Apache mod_php instala gate Directory exclusivo de v2.
+Asterisk productivo. Apache mod_php instala gate Directory exclusivo de v2;
+Rocky 9 usa un pool PHP-FPM exclusivo con auto_prepend_file administrativo,
+socket local y handler restringido al directorio de v2. No admite omitir el gate.
 isolate-v2.sh prepara solo web y BD aisladas, sin lanzar llamadas o instalar módulos.
 
 ## Reporte de credenciales solicitado
@@ -61,6 +63,8 @@ distribuido. Alcance app/web; otros módulos mantienen sus propios instaladores.
 platform.sh usa ID/ID_LIKE: SUSE predetermina /srv/www/htdocs y www;
 Debian/Ubuntu /var/www/html y www-data. No inspecciona Apache personalizado.
 WEB_ROOT, WEB_DOCUMENT_ROOT, URL_PATH y WEB_GROUP explícitos tienen prioridad.
+Rocky/RHEL predetermina /var/www/html y apache. Rocky 9 se valida con paquetes
+preparados y --skip-packages; no se promete provision automatica de paquetes.
 install/check usan zynervox; unattended usa zynervoxv2. Sistemas desconocidos
 requieren WEB_ROOT o WEB_DOCUMENT_ROOT. --skip-packages permite usar dependencias
 preinstaladas sin instalar paquetes ni cambiar repositorios del sistema.
@@ -107,3 +111,16 @@ list-call-worker.sh installs migration 012, isolated bot account DML grants, pri
 ## 2026-10-10 - Status eligibility and AGI permission
 
 deploy-web.sh restores 0750 on call_tracking_agi.php and ivr_engine_agi.php after copying web source. Both CLI entrypoints are tracked executable in Git.
+
+## 2026-10-11 - Rocky 9 aislado
+
+El instalador conserva mod_php en Debian/SUSE y añade PHP-FPM exclusivo en
+Rocky. HTTP bloquea config/includes/venvs/runtime/secrets, endpoints legacy y
+peticiones cuando el gate no se puede leer. Cron de auditoria usa WEB_ROOT;
+workers y configuracion PBX usan WEB_GROUP. La primera instalacion prepara el
+directorio del launcher. Archivos PBX generados conservan grupo web y modo 0640.
+El diagnostico aislado comprueba sus bootstraps propios, sin exigir VICIdial.
+rocky-selinux.sh instala una politica versionada con tipos propios para runtime,
+configuracion y exactamente dos AGI; mantiene SELinux activo. Asterisk recibe
+ACL de rutas v2 si existe, sin pertenecer al grupo Apache global. No inicia
+llamadas, crea carriers ni modifica configuracion general de Asterisk.

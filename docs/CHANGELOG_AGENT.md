@@ -1868,3 +1868,18 @@ Removed isolated dashboard redirect by rendering read-only IVR campaign monitor 
 ## 2026-10-10 - Active campaign status summary
 
 Filtered inactive campaigns from graphic monitor snapshot and added per-campaign lead.status distribution. Deployed source to production. Validated PHP/JS and monitor fixtures including inactive exclusion, empty active campaigns and AGENDADO_VALIDAR preserved independently of dial_status.
+
+## 2026-10-11 - Instalacion soundhound y adaptacion Rocky 9
+
+Preparado soundhound con Apache/PHP-FPM 8.3, MariaDB 10.11, FFmpeg/SoX, gTTS,
+Python/PyMySQL/num2words y Asterisk 20.21/PJSIP. Instalador reconoce rutas/grupo
+Rocky, configura pool PHP-FPM aislado y usa usuario web real en el diagnostico.
+Cron de auditoria parametrizado; primera instalacion crea carpeta del launcher;
+PBX y archivos generados conservan grupo/permisos adecuados. Politica SELinux
+versionada, contextos persistentes y ACL v2 limitadas. Contrato ampliado por
+aprobacion de ARCHITECT_AGENT. Pruebas: plataforma Debian/SUSE/Rocky, sintaxis
+shell, login/sesion HTTP, rutas legacy/privadas 403, gate ilegible 500 con
+recuperacion, aislamiento BD, PBX AMI, TTS/preview WAV y paginas autenticadas.
+Reinstalacion completa final INSTALACION_OK y CHECK_RESULT=OK. Fuente Windows
+conservada; instalacion por snapshot local, sin modificar el cambio preexistente
+del usuario en ivr_engine_agi.php. Sin datos productivos ni llamadas reales.

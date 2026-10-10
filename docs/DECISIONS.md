@@ -776,3 +776,16 @@ Scope admin entrypoints, core isolated gate, bot_ivr monitor view and public rep
 ## 2026-10-10 - Active campaign status summary (ARCHITECT_AGENT)
 
 Monitor snapshot filters active campaigns and adds current lead.status grouped per campaign. Scope existing repository/view/tests/contracts. No schema, dialing or historical changes.
+
+## 2026-10-11 - Rocky Linux 9 aislado en soundhound (ARCHITECT_AGENT)
+
+El escalamiento arquitectonico aprobo cambios limitados a installer, sus pruebas,
+contrato y documentacion de stack/despliegue. Mantener mod_php en Debian/SUSE;
+Rocky usa PHP-FPM exclusivo con prepend administrativo obligatorio y handler
+limitado a v2. SELinux conserva Enforcing y usa tipos propios de runtime,
+configuracion y dos AGI, con ACL de rutas v2 para Asterisk en vez de pertenencia
+al grupo Apache. El diagnostico aislado no exige VICIdial ni configura datos
+legacy ficticios. Fuente Windows/SMB elegida expresamente por el usuario;
+despliegue con snapshot comprimido para evitar latencia por archivo. No publica
+automaticamente esta excepcion como politica general de produccion. Sin cambios
+internos a modulos funcionales, sin llamadas reales ni carriers prellenados.

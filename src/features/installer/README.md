@@ -1,5 +1,18 @@
 # installer
 
+## Rocky Linux 9 (soundhound)
+
+Instalacion v2 aislada validada con Apache/PHP-FPM 8.3, MariaDB 10.11 y Asterisk
+20/PJSIP. Preparar paquetes antes de usar unattended.sh: httpd, php-fpm y las
+extensiones documentadas, rsync, Python/PyMySQL/num2words, FFmpeg, SoX, ACL,
+checkpolicy y herramientas SELinux. WEB_GROUP=apache; destino /var/www/html/zynervoxv2.
+El instalador configura un pool exclusivo, bloquea rutas internas y aplica su
+politica SELinux. Asterisk y sus credenciales AMI se preparan aparte en el host.
+No requiere VICIdial para la operacion aislada. Ver docs/DEPLOYMENT_SOUNDHOUND.md.
+Pruebas HTTP en el servidor de laboratorio: bash src/features/installer/tests/rocky-http.sh.
+La prueba retira brevemente el permiso del gate y lo restaura para verificar
+fallo cerrado; ejecutarla sin usuarios activos.
+
 ## Instalar solo Carriers (v2 ya instalado)
 
 ```bash
