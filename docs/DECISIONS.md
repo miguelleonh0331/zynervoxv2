@@ -726,3 +726,8 @@ ARCHITECT_AGENT review: approved core (Dialplans service/schema/parser/Carriers/
 ## 2026-10-10 - Carrier protocol metadata correction
 
 ARCHITECT_AGENT scope: core Carriers, admin carrier display and tests. Existing v2 carrier file is included by sip.conf despite its historical pjsip filename; do not move it or change shared PBX includes for a metadata/display fix. Determine protocol from account block, persist correct metadata, preserve configuration path and legacy behavior. Contract extension approved.
+
+
+## 2026-10-10 - Common contexts template
+
+ARCHITECT_AGENT approved core parser/template, admin template view, installer normalization and example/tests. Shared contexts now belong to Core template and exist even with no active routes. Route editing cannot override the fixed definitions. Legacy helper copies must match exactly before migration strips them; preserve custom routes and fail closed for divergent helpers. User will author the next route; do not create 7305 automatically. Contract extension approved.

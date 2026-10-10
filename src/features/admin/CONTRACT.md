@@ -17,3 +17,8 @@ Carriers ofrece prefijos detectados en el dialplan guardado, nombre y boton Extr
 ## 2026-10-10 - Dialplan page
 
 modules/admin/dialplan.php offers independent list/new/edit/delete after Troncales SIP in sidebar. Level 9 and dedicated CSRF required for POST; SQL via Core public Dialplans API. Name, active state and code are editable; fixed zynervoxv2 header excluded from code. Prefix detected automatically, validated server-side and stored on save. Isolated carriers page manages troncales only; existing carrier dialplans migrated before use. No automatic PBX reload or outgoing calls.
+
+
+## 2026-10-10 - Readonly call template
+
+Dialplan page shows system contexts outside the editable field. User authors only route code; no route created automatically. Common context definitions remain fixed and are generated once.

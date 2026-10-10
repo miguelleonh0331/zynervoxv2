@@ -52,3 +52,8 @@ Carriers::protocol(array) derives SIP from type=peer/friend/user, PJSIP from end
 ## 2026-10-10 - Explicit protocol choice
 
 Isolated Carriers CRUD accepts protocol SIP/PJSIP explicitly; selection is authoritative and validated against recognized account type. Contradictory/mixed blocks fail before SQL. Omitted protocol retains detection compatibility. File routing unchanged. Architecture approval: local contract amendment within existing core/admin scope.
+
+
+## 2026-10-10 - Common system contexts
+
+DialplanOrigins::template publishes immutable zynervoxv2-amd/call-finish/outbound then the existing main HEADER. render emits that template once before every authored route. body removes identical historical copies of protected contexts and rejects differing definitions. Other helper contexts retain existing merge validation. Template currently preserves deployed AGI path and AMD/audit behavior.

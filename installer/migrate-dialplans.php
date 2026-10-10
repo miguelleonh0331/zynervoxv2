@@ -28,6 +28,11 @@ try {
         $db->prepare("UPDATE v2_carriers SET dialplan_entry='' WHERE carrier_id=?")->execute([$carrier['carrier_id']]);
         $moved++;
     }
+    $stored=$db->query('SELECT dialplan_id,dialplan_entry FROM v2_dialplans FOR UPDATE')->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($stored as $plan) {
+        $body=DialplanOrigins::body($plan['dialplan_entry']);
+        if ($body!==$plan['dialplan_entry']) $db->prepare('UPDATE v2_dialplans SET dialplan_entry=? WHERE dialplan_id=?')->execute([$body,$plan['dialplan_id']]);
+    }
     $plans=$db->query("SELECT CONCAT('DIALPLAN-',dialplan_id) carrier_id,dialplan_entry FROM v2_dialplans WHERE active='Y'")->fetchAll(PDO::FETCH_ASSOC);
     DialplanOrigins::render($plans);
     $db->commit();

@@ -1779,3 +1779,8 @@ Carrier editor displays detected protocol and listing stops assuming PJSIP. Core
 ## 2026-10-10 - Selectable carrier protocol
 
 Carrier form uses SIP/PJSIP dropdown instead of readonly detection. Isolated CRUD persists explicit selection and rejects unknown protocols or account blocks incompatible with the choice before writing SQL. Existing callers without protocol retain detection fallback. No change to runtime file paths or PBX includes.
+
+
+## 2026-10-10 - Fixed shared call contexts
+
+DialplanOrigins owns the shared AMD, hangup and outbound definitions once at the start of the generated document, before zynervoxv2 routes. Dialplan page displays the template as readonly code; editable field contains only authored route code. Identical historical copies are removed from stored dialplans by migration; conflicting custom copies rejected instead of silently replaced. Existing route/name/state preserved; no new route or bot worker created.

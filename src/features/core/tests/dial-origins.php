@@ -10,9 +10,16 @@ $rendered = DialplanOrigins::render([
     ['carrier_id'=>'A','dialplan_entry'=>DialplanOrigins::HEADER.$body],
     ['carrier_id'=>'B','dialplan_entry'=>"exten => _888X.,1,Hangup()\n[other]\nexten => s,1,Return()"],
 ]);
-checkOrigin(strpos($rendered,DialplanOrigins::HEADER) === 0 && substr_count($rendered,'[zynervoxv2]') === 1, 'one fixed header');
+checkOrigin(strpos($rendered,DialplanOrigins::template()) === 0 && substr_count($rendered,'[zynervoxv2]') === 1, 'common template followed by one route header');
 checkOrigin(strpos($rendered,'_888X.') < strpos($rendered,'[helper]'), 'all carrier routes precede helper contexts');
 checkOrigin(DialplanOrigins::body(DialplanOrigins::HEADER.$body) === $body, 'editable body without header');
+checkOrigin(trim(DialplanOrigins::body($body."\n".DialplanOrigins::COMMON)) === trim($body), 'old common contexts removed from editable route');
+foreach (['zynervoxv2-amd','zynervoxv2-call-finish','zynervoxv2-outbound'] as $context) checkOrigin(substr_count($rendered,'['.$context.']')===1,'common context present exactly once');
+checkOrigin(strpos($rendered,'[zynervoxv2-outbound]')<strpos($rendered,'[zynervoxv2]'),'system contexts precede routes');
+try {
+    DialplanOrigins::body($body."\n".str_replace(' same => n,AMD()',' same => n,Hangup()',DialplanOrigins::COMMON));
+    throw new RuntimeException('common context override accepted');
+} catch (InvalidArgumentException $expected) {}
 $sameHelpers = DialplanOrigins::render([
     ['carrier_id'=>'A','dialplan_entry'=>$body],
     ['carrier_id'=>'B','dialplan_entry'=>str_replace('_07306X.','_888X.',$body)],

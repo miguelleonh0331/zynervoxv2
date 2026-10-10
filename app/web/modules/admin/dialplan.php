@@ -32,6 +32,8 @@ try {
 catch (Throwable $e) { $error='No se pudo guardar o cargar el dialplan. Revisa la conexión y permisos.'; }
 try { $rows=Dialplans::getAll(); } catch (Throwable $e) { $error='No se pudieron cargar los dialplans.'; }
 $d=$edit ?? ['dialplan_id'=>'','name'=>'','dialplan_entry'=>'','active'=>'Y'];
+try { $editableCode=DialplanOrigins::body($d['dialplan_entry']); }
+catch (InvalidArgumentException $e) { $editableCode=$d['dialplan_entry']; }
 ?>
 <!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8"><title>Dialplan - Zynervox</title><link rel="stylesheet" href="layout.css">
@@ -55,8 +57,9 @@ body,.main-content{font-family:Arial,Helvetica,sans-serif}.main-content{min-widt
 <div class="card"><h2><?php echo $d['dialplan_id']?'Editar dialplan':'Nuevo dialplan'; ?></h2>
 <form method="post"><input type="hidden" name="csrf_token" value="<?php echo dialplan_h($_SESSION['dialplan_csrf']); ?>"><input type="hidden" name="dialplan_id" value="<?php echo dialplan_h($d['dialplan_id']); ?>">
 <div class="dialplan-fields"><div class="field"><label for="dialplan_name">Nombre</label><input id="dialplan_name" name="name" maxlength="100" required value="<?php echo dialplan_h($d['name']); ?>"></div><div class="field"><label for="dialplan_active">Activo</label><select id="dialplan_active" name="active"><option value="Y"<?php echo $d['active']==='Y'?' selected':''; ?>>Sí</option><option value="N"<?php echo $d['active']==='N'?' selected':''; ?>>No</option></select></div></div>
-<pre class="dialplan-header"><?php echo dialplan_h(DialplanOrigins::HEADER); ?></pre>
-<div class="field"><label for="dialplan_code">Código del dialplan</label><textarea class="dialplan-code" id="dialplan_code" name="dialplan_entry" required><?php echo dialplan_h(DialplanOrigins::body($d['dialplan_entry'])); ?></textarea></div>
+<h3>Plantilla común del sistema</h3>
+<pre class="dialplan-header"><?php echo dialplan_h(DialplanOrigins::template()); ?></pre>
+<div class="field"><label for="dialplan_code">Ruta del dialplan</label><textarea class="dialplan-code" id="dialplan_code" name="dialplan_entry" required><?php echo dialplan_h($editableCode); ?></textarea></div>
 <p>Prefijo detectado: <strong id="detected-prefix"><?php echo dialplan_h($d['dial_prefix'] ?? ''); ?></strong></p>
 <button class="btn-primary" name="save_dialplan">Guardar dialplan</button>
 </form></div>
