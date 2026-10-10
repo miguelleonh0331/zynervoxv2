@@ -1682,3 +1682,8 @@ Retain server-side rejection; show it again when readiness is invalidated.
 
 Hide the generation speed label and selector alongside Generar for ready lists.
 Restore both when generation is needed again.
+
+## 2026-10-10 - bot_ivr: channels selector
+
+Add Canales dropdown immediately before Origen, with 3 selected by default
+and options 1/3/5/10/20/25/50/100. UI only, pending call engine integration.

@@ -126,6 +126,12 @@ if ($list): ?>
 <?php endforeach; ?>
 </select></div>
 <button type="submit" id="list-audio-generate" class="carsa-btn"<?php echo $audioReady ? ' hidden' : ''; ?><?php echo $audioPayload === null || $audioActive || $audioReady ? ' disabled' : ''; ?> aria-describedby="list-audio-availability">Generar</button>
+<div class="carsa-field list-audio-speed"><label for="list_call_channels">Canales</label>
+<select id="list_call_channels" name="call_channels">
+<?php foreach ([1, 3, 5, 10, 20, 25, 50, 100] as $channels): ?>
+<option value="<?php echo $channels; ?>"<?php echo $channels === 3 ? ' selected' : ''; ?>><?php echo $channels; ?></option>
+<?php endforeach; ?>
+</select></div>
 <div class="carsa-field list-audio-speed"><label for="list_call_origin">Origen</label>
 <select id="list_call_origin" name="call_origin"><option value="3006">Extensión 3006</option></select></div>
 <button type="button" id="list-call-play" class="carsa-btn"<?php echo $audioReady ? '' : ' disabled'; ?>>▶ Play</button>
