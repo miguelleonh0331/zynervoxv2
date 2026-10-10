@@ -112,7 +112,7 @@ if ($list): ?>
 <div><strong id="call-stat-calling">0</strong><span>Llamando</span></div>
 <div><strong id="call-stat-finished">0</strong><span>Terminados</span></div>
 </div>
-<h3 style="font-size:13px;margin-top:18px">Resumen por estado</h3>
+<h3 style="font-size:13px;margin-top:18px">Resumen por estado del lead</h3>
 <div id="call-state-summary"></div>
 <div class="call-errors"><h3>Ultimos 30 intentos con error</h3>
 <table class="carsa-table"><thead><tr><th>Numero / llamada</th><th>Estado</th><th>Causa</th></tr></thead><tbody id="call-error-rows"></tbody></table>
