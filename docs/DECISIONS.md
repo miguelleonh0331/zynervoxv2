@@ -698,3 +698,7 @@ not a single transaction; generation errors require retry/regeneration.
 ## 2026-10-10 - per-list dialing prefix
 
 Architect approval: extend zynervox_queries public repository with scoped updateListDialPrefix. Persist independent list prefix, not campaign routing or audio identity. No dialing activation.
+
+## 2026-10-10 - call tracking
+
+Architect approves public repository startCall/finishCall and isolated attempts table. Parent list lock serializes missing-lead creation with uploads; unique call_id ensures idempotence. Late finishes cannot overwrite newer lead status. Manual route explicitly targets list 1; prefix alone does not select a list. No automatic retries or STT.

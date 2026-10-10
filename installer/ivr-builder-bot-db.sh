@@ -46,7 +46,7 @@ CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$password_sql';
 CREATE USER IF NOT EXISTS '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$password_sql';
 SQL
 schemas=("$ROOT/database/init/002-bot_ivr_flows_zynervox.sql" "$ROOT/database/init/004-bot_ivr_flows-list_id.sql")
-for schema in 001-zynervox.sql 002-campaign-lists.sql 003-campaign-details.sql 004-list-flow.sql 005-lead-dialer-fields.sql 006-list-dial-prefix.sql; do
+for schema in 001-zynervox.sql 002-campaign-lists.sql 003-campaign-details.sql 004-list-flow.sql 005-lead-dialer-fields.sql 006-list-dial-prefix.sql 007-call-attempts.sql; do
   schemas+=("$ROOT/src/features/bot_ivr/models/$schema")
 done
 for schema in "${schemas[@]}"; do apply_schema "$schema"; done
@@ -93,3 +93,9 @@ if [[ "$reset_password" == 1 ]]; then
   echo "BOT_IVR_PASSWORD_RECONCILED user=$DB_USER (MySQL/bootstrap/configuracion central)"
 fi
 echo "IVR_BUILDER_DB_READY database=$DB_NAME user=$DB_USER"
+
+# CLI AGI must be executable when deployed from source.
+if [[ -f "$WEB_ROOT/bot_ivr/call_tracking_agi.php" ]]; then
+  chown root:"$WEB_GROUP" "$WEB_ROOT/bot_ivr/call_tracking_agi.php"
+  chmod 0750 "$WEB_ROOT/bot_ivr/call_tracking_agi.php"
+fi

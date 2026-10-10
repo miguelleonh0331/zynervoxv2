@@ -193,3 +193,7 @@ php src/features/bot_ivr/tests/list-import-db.php /ruta/web/bot_ivr
 ## 2026-10-10 - per-list dialing prefix
 
 List dial_prefix VARCHAR(20) defaults empty, updated through public scoped repository operation. list_edit saves prefix separately with admin CSRF; no calls, audio invalidation or campaign prefix changes.
+
+## 2026-10-10 - call tracking
+
+call_tracking_agi.php is CLI-only; start args list,phone,callId; finish args callId,DIALSTATUS,AMDSTATUS,AMDCAUSE,HANGUPCAUSE,answered. Manual route 7306 selects list 1. CALL in progress, AA machine, ANSWER answered, B busy, NA noanswer, UNAV unavailable, CONG congestion, CANCEL cancelled, FAIL other. Hangup handler required. New manual leads invalidate existing audio snapshot.

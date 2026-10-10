@@ -1746,3 +1746,7 @@ Generate SIP and PJSIP annexes with context=zynervoxv2.
 ## 2026-10-10 - per-list dialing prefix
 
 Replace fixed Origen selector with editable list prefix and separate CSRF-protected save action. Add migration 006 and installer registration; existing lists default empty. Allow 0-20 digits (leading zeros retained), no campaign inheritance.
+
+## 2026-10-10 - call tracking
+
+Add CLI-only AGI, scoped lead creation and UTC attempt history. Hangup handler closes calls including AMD cuts. Prefix 7306 manual template stored in source; target carrier TEST dialplan will be updated and generated without Asterisk restart.

@@ -2,6 +2,8 @@
 declare(strict_types=1);
 namespace ZynervoxQueries;
 interface BotIvrRepository {
+    public function startCall(int $listId, string $phone, string $callId): int;
+    public function finishCall(string $callId, string $dialStatus, string $amdStatus, string $amdCause, int $hangupCause, bool $answered): void;
     public function campaigns(): array;
     public function campaign(int $id): array;
     public function createCampaign(string $name, bool $active): int;

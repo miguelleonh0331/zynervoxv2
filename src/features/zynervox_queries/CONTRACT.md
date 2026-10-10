@@ -91,3 +91,7 @@ no interpreta JSON ni expone consultas genéricas; Bot IVR valida las variables.
 ## 2026-10-10 - per-list dialing prefix
 
 updateListDialPrefix(listId,campaignId,prefix) updates the scoped list after ownership validation. Prefix allows empty or 1-20 decimal digits; preserves leading zeros. list()/lists() expose dial_prefix.
+
+## 2026-10-10 - call tracking
+
+startCall(listId,phone,callId) atomically finds/creates a list lead and records/counts one attempt. finishCall closes idempotently, storing dial/AMD/hangup details and latest lead status. Existing outer transactions use a savepoint.

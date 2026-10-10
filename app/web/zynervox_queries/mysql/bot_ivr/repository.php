@@ -5,8 +5,9 @@ require_once __DIR__.'/../../contracts/BotIvrRepository.php';
 require_once __DIR__.'/campaigns.php';
 require_once __DIR__.'/lists.php';
 require_once __DIR__.'/leads.php';
+require_once __DIR__.'/calls.php';
 final class Repository implements \ZynervoxQueries\BotIvrRepository {
-    use CampaignQueries, ListQueries, LeadQueries;
+    use CampaignQueries, ListQueries, LeadQueries, CallQueries;
     private $db;
     public function __construct(\PDO $db) { $this->db = $db; }
 }
