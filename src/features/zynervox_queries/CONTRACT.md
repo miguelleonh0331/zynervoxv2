@@ -87,3 +87,7 @@ IVR Builder ni accede al módulo; generación de audio no se implementa en esta 
 devuelve lead_id, list_id, phone, customer_name y extra_json de esa lista, ordenados
 por lead_id. Consulta preparada con filtro de campaña y lista. No modifica datos,
 no interpreta JSON ni expone consultas genéricas; Bot IVR valida las variables.
+
+## 2026-10-10 - per-list dialing prefix
+
+updateListDialPrefix(listId,campaignId,prefix) updates the scoped list after ownership validation. Prefix allows empty or 1-20 decimal digits; preserves leading zeros. list()/lists() expose dial_prefix.

@@ -694,3 +694,7 @@ with context zynervoxv2-test, atomic per-file rename and mode 0640.
 No includes or reloads. Reject config-breaking login/password characters.
 Installer deploys Phones and initializes both files. DB and two files are
 not a single transaction; generation errors require retry/regeneration.
+
+## 2026-10-10 - per-list dialing prefix
+
+Architect approval: extend zynervox_queries public repository with scoped updateListDialPrefix. Persist independent list prefix, not campaign routing or audio identity. No dialing activation.

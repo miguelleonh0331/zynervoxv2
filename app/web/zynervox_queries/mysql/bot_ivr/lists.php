@@ -2,6 +2,11 @@
 declare(strict_types=1);
 namespace ZynervoxQueries\Mysql\BotIvr;
 trait ListQueries {
+    public function updateListDialPrefix(int $listId, int $campaignId, string $prefix): void {
+        if (!preg_match('/^[0-9]{0,20}$/D', $prefix)) throw new \RuntimeException('Prefijo invalido.');
+        $this->list($listId, $campaignId);
+        $this->db->prepare('UPDATE zynervox_bot_lists SET dial_prefix=:prefix WHERE list_id=:list AND campaign_id=:campaign')->execute([':prefix'=>$prefix, ':list'=>$listId, ':campaign'=>$campaignId]);
+    }
     public function lists(int $campaignId): array {
         $stmt = $this->db->prepare('SELECT l.*, (SELECT COUNT(*) FROM zynervox_bot_list d WHERE d.list_id=l.list_id) leads_count FROM zynervox_bot_lists l WHERE l.campaign_id=:id ORDER BY l.list_id');
         $stmt->execute([':id'=>$campaignId]);

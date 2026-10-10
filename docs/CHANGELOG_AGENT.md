@@ -1742,3 +1742,7 @@ not a single transaction; generation errors require retry/regeneration.
 ## 2026-10-10 - core: annex context zynervoxv2
 
 Generate SIP and PJSIP annexes with context=zynervoxv2.
+
+## 2026-10-10 - per-list dialing prefix
+
+Replace fixed Origen selector with editable list prefix and separate CSRF-protected save action. Add migration 006 and installer registration; existing lists default empty. Allow 0-20 digits (leading zeros retained), no campaign inheritance.

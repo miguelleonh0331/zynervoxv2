@@ -23,6 +23,11 @@ try {
         try {
             if (empty($_POST) && empty($_FILES)) throw new RuntimeException('La carga supera el límite de esta instalación. Usa un archivo más pequeño.');
             bot_campaign_csrf();
+            if (($_POST['action'] ?? '') === 'save_list_prefix') {
+                if (!is_string($_POST['dial_prefix'] ?? null)) throw new RuntimeException('Prefijo inválido.');
+                $db->updateListDialPrefix($listId, $campaignId, trim($_POST['dial_prefix']));
+                bot_campaign_redirect('list_edit.php?id='.$listId.'&campaign_id='.$campaignId, 'Prefijo de la lista guardado.');
+            }
             if (($_POST['action'] ?? '') === 'generate_list_audio') {
                 if (($_POST['audio_provider'] ?? '') !== 'gtts') throw new RuntimeException('Proveedor no disponible.');
                 if (empty($list['id_flujo'])) throw new RuntimeException('Asigna un flujo a la lista.');
@@ -111,6 +116,7 @@ if ($list): ?>
 </form></section>
 <section class="carsa-card list-card list-audio" aria-labelledby="list-audio-title">
 <h2 id="list-audio-title"<?php echo $audioReady ? ' hidden' : ''; ?>>Creación de audios</h2>
+<form method="post" id="list-prefix-form"><input type="hidden" name="action" value="save_list_prefix"><?php bot_campaign_token(); ?></form>
 <form method="post" class="list-audio-controls">
 <input type="hidden" name="action" value="generate_list_audio"><?php bot_campaign_token(); ?>
 <div id="list-audio-provider-control" class="carsa-field list-audio-provider"<?php echo $audioReady ? ' hidden' : ''; ?>><label for="list_audio_provider">Proveedor TTS</label>
@@ -132,8 +138,9 @@ if ($list): ?>
 <option value="<?php echo $channels; ?>"<?php echo $channels === 3 ? ' selected' : ''; ?>><?php echo $channels; ?></option>
 <?php endforeach; ?>
 </select></div>
-<div class="carsa-field list-audio-speed"><label for="list_call_origin">Origen</label>
-<select id="list_call_origin" name="call_origin"><option value="3006">Extensión 3006</option></select></div>
+<div class="carsa-field list-audio-speed"><label for="list_call_prefix">Prefijo de marcación</label>
+<input id="list_call_prefix" name="dial_prefix" form="list-prefix-form" type="text" inputmode="numeric" pattern="[0-9]{0,20}" maxlength="20" value="<?php echo h($list['dial_prefix'] ?? ''); ?>" placeholder="Ej. 7306"></div>
+<button type="submit" form="list-prefix-form" class="carsa-btn secondary">Guardar prefijo</button>
 <button type="button" id="list-call-play" class="carsa-btn"<?php echo !$audioReady ? ' hidden' : ''; ?><?php echo $audioReady ? '' : ' disabled'; ?>>▶ Play</button>
 <button type="button" id="list-call-stop" class="carsa-btn secondary"<?php echo !$audioReady ? ' hidden' : ''; ?> disabled>■ Stop</button>
 </form>

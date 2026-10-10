@@ -189,3 +189,7 @@ concurrente de leads quedan pendientes de implementar con el motor.
 DDL realiza commit impl?cito; no se revierte mediante ROLLBACK. Ejecutar por
 administraci?n, nunca desde list_edit.php. Verificar con la prueba existente:
 php src/features/bot_ivr/tests/list-import-db.php /ruta/web/bot_ivr
+
+## 2026-10-10 - per-list dialing prefix
+
+List dial_prefix VARCHAR(20) defaults empty, updated through public scoped repository operation. list_edit saves prefix separately with admin CSRF; no calls, audio invalidation or campaign prefix changes.
