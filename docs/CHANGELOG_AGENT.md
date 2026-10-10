@@ -1661,3 +1661,8 @@ summary paragraphs. Preserve validation errors, progress cards and Play gating.
 ## 2026-10-10 - bot_ivr: publication registry
 
 Worker validates new WAV once, atomically publishes it, then records its hash in a local SQLite WAL index. Reuse and Play query the index without opening WAV. Hash deletion removes the index entry first under the hash lock. Tests cover reuse without validation and regeneration after deletion.
+
+## 2026-10-10 - bot_ivr: call origin selector
+
+Add Origen selector before Play with extension 3006 as the initial option.
+UI preparation only; no extension discovery, persistence or call launch yet.

@@ -124,6 +124,8 @@ if ($list): ?>
 <?php endforeach; ?>
 </select></div>
 <button type="submit" id="list-audio-generate" class="carsa-btn"<?php echo $audioPayload === null || $audioActive ? ' disabled' : ''; ?> aria-describedby="list-audio-availability">Generar</button>
+<div class="carsa-field list-audio-speed"><label for="list_call_origin">Origen</label>
+<select id="list_call_origin" name="call_origin"><option value="3006">Extensión 3006</option></select></div>
 <button type="button" id="list-call-play" class="carsa-btn"<?php echo $audioReady ? '' : ' disabled'; ?>>▶ Play</button>
 <button type="button" class="carsa-btn secondary" disabled>■ Stop</button>
 </form>
