@@ -57,4 +57,50 @@ final class PbxAmi {
             throw new \RuntimeException('AMI no confirmo la autenticacion dentro del tiempo esperado.');
         } finally {fclose($socket);}
     }
+    public static function command(array $config,string $command): string {
+        $config=self::validate($config);$host=$config['host'];if(strpos($host,':')!==false)$host='['.$host.']';
+        $socket=@stream_socket_client('tcp://'.$host.':'.$config['port'],$errno,$error,3,STREAM_CLIENT_CONNECT);
+        if(!$socket)throw new \RuntimeException('No se pudo conectar al servidor AMI. Revisa host, puerto y acceso.');
+        try {
+            stream_set_timeout($socket,4);$banner=fgets($socket,256);
+            if($banner===false || strpos($banner,'Asterisk Call Manager/')!==0)throw new \RuntimeException('El puerto no responde como AMI de Asterisk.');
+            $loginId=bin2hex(random_bytes(8));
+            $login="Action: Login\r\nActionID: ".$loginId."\r\nUsername: ".$config['username']."\r\nSecret: ".$config['secret']."\r\nEvents: off\r\n\r\n";
+            if(fwrite($socket,$login)!==strlen($login))throw new \RuntimeException('No se pudo enviar la prueba AMI.');
+            $loginFrame=self::readPacket($socket,$loginId);
+            if($loginFrame===null || !preg_match('/^Response: Success\r?$/m',$loginFrame))throw new \RuntimeException('AMI rechazo el login. Revisa usuario, password y permisos de acceso.');
+            $cmdId=bin2hex(random_bytes(8));
+            $request="Action: Command\r\nActionID: ".$cmdId."\r\nCommand: ".$command."\r\n\r\n";
+            if(fwrite($socket,$request)!==strlen($request))throw new \RuntimeException('No se pudo enviar el comando AMI.');
+            $frame=self::readPacket($socket,$cmdId);
+            fwrite($socket,"Action: Logoff\r\n\r\n");
+            if($frame===null)throw new \RuntimeException('AMI no confirmo el comando dentro del tiempo esperado.');
+            if(preg_match('/^Response: Error\r?$/m',$frame)) {
+                preg_match('/^Message: (.*)$/m',$frame,$m);
+                throw new \RuntimeException('AMI rechazo el comando'.(isset($m[1])?': '.trim($m[1]):'.'));
+            }
+            $lines=preg_split('/\r?\n/',$frame);
+            $output=[];$capture=false;
+            foreach ($lines as $line) {
+                if(preg_match('/^(Response|ActionID|Privilege):/',$line)) {$capture=true;continue;}
+                if(strpos($line,'--END COMMAND--')!==false)break;
+                if($capture && $line!=='')$output[]=$line;
+            }
+            return trim(implode("\n",$output));
+        } finally {fclose($socket);}
+    }
+    private static function readPacket($socket,string $actionId): ?string {
+        $frame='';$markerSeen=false;$deadline=microtime(true)+8;
+        while(microtime(true)<$deadline) {
+            $line=fgets($socket,4096);
+            if($line===false)return null;
+            $frame.=$line;
+            if(strpos($line,'--END COMMAND--')!==false)$markerSeen=true;
+            if(trim($line)==='') {
+                if(strpos($frame,'ActionID: '.$actionId)===false) {$frame='';$markerSeen=false;continue;}
+                if($markerSeen || strpos($frame,'Response: Follows')===false)return $frame;
+            }
+        }
+        return null;
+    }
 }
