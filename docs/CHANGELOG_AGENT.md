@@ -1630,3 +1630,11 @@ WAV de 1.40 s, PCM16 mono8000, almacenado bajo runtime v2 con su hash. Adaptado
 a gTTS 2.2.4/Python 3.6 del venv instalado; timeout de 100 s por conversión y
 terminación del grupo de procesos para evitar procesos huérfanos. No se ejecutó
 el instalador ni se reiniciaron servicios.
+
+## 2026-10-10 — bot_ivr: ventana visual de progreso
+
+list_edit.php muestra diálogo accesible con tarjetas de generados, reutilizados,
+fallidos y pendientes, barra porcentual y detalle de errores. Ver progreso abre
+la ventana; se abre automáticamente al entrar con generación activa. Conserva
+actualización de estado existente; oculta conteos antiguos si cambia el snapshot.
+Sin cambios en generación, caché o BD.
