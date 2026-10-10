@@ -119,7 +119,7 @@ if ($list): ?>
 <option value="<?php echo h($key); ?>"><?php echo h($label); ?></option>
 <?php endforeach; ?>
 </select></div>
-<div class="carsa-field list-audio-speed"><label for="list_audio_workers">Velocidad de generación</label>
+<div id="list-audio-speed-control" class="carsa-field list-audio-speed"<?php echo $audioReady ? ' hidden' : ''; ?>><label for="list_audio_workers">Velocidad de generación</label>
 <select id="list_audio_workers" name="audio_workers">
 <?php foreach ([1, 3, 10, 25, 60, 100] as $workers): ?>
 <option value="<?php echo $workers; ?>"<?php echo $workers === 25 ? ' selected' : ''; ?>><?php echo $workers; ?>x</option>
@@ -169,6 +169,7 @@ if ($list): ?>
         const active = job && (job.state === 'starting' || job.state === 'running');
         const stale = job && valid && job.signature !== signature;
         button.hidden = !!ready && !stale;
+        document.getElementById('list-audio-speed-control').hidden = button.hidden;
         button.disabled = !valid || active || (ready && !stale);
         play.disabled = !ready || !valid || active || stale;
         const total = stale ? 0 : Number(job && job.total || 0);

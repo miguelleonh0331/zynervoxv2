@@ -1677,3 +1677,8 @@ Changed inputs or removed publication records allow generation again.
 
 Hide the generation button for ready lists on initial render and polling.
 Retain server-side rejection; show it again when readiness is invalidated.
+
+## 2026-10-10 - bot_ivr: hide generation speed when ready
+
+Hide the generation speed label and selector alongside Generar for ready lists.
+Restore both when generation is needed again.
