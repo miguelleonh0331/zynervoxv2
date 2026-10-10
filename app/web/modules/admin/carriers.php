@@ -24,6 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data = [
             'carrier_id' => strtoupper(trim($_POST['carrier_id'])),
             'carrier_name' => $_POST['carrier_name'],
+            'protocol' => $_POST['protocol'] ?? null,
             'server_ip' => $_POST['server_ip'],
             'account_entry' => $_POST['account_entry'],
             'dialplan_entry' => $isolated ? '' : ($_POST['dialplan_entry'] ?? ''),
@@ -54,6 +55,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ? "<p style='color: #b91c1c;'>Troncal eliminada. " . ($isolated ? 'Archivos v2 generados, no activados.' : 'PJSIP recargado.') . "</p>"
             : "<p style='color: #b91c1c;'>Error al eliminar: " . htmlspecialchars($result['error'] ?? '') . "</p>";
     }
+    } catch (\InvalidArgumentException $error) {
+        $msg = "<p style='color:#b91c1c;'>" . htmlspecialchars($error->getMessage()) . "</p>";
     } catch (\Throwable $error) {
         $msg = "<p style='color: #b91c1c;'>No se pudo guardar la troncal; revise ID, campos y permisos.</p>";
     }
@@ -194,7 +197,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
                             renderField('ID Troncal (sin espacios)', 'carrier_id', $d['carrier_id']);
                             if ($editData) { echo '<input type="hidden" name="carrier_id" value="' . htmlspecialchars($d['carrier_id']) . '">'; }
                             renderField('Nombre', 'carrier_name', $d['carrier_name']);
-                            echo '<div class="field"><label for="carrier_protocol">Protocolo detectado</label><input id="carrier_protocol" type="text" readonly value="'.htmlspecialchars(Carriers::protocol($d)).'"></div>';
+                            renderField('Protocolo', 'protocol', $d['protocol'] ?? 'PJSIP', 'select', ['SIP' => 'SIP', 'PJSIP' => 'PJSIP']);
                             renderField('Server IP (local)', 'server_ip', $d['server_ip']);
                             renderField('Activo', 'active', $d['active'], 'select', ['Y' => 'Si (Y)', 'N' => 'No (N)']);
                             renderField('Descripción', 'carrier_description', $d['carrier_description']);

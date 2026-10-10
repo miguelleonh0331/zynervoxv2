@@ -1774,3 +1774,8 @@ Carrier form appears only on new=1, an existing edit_id or a save POST. Default 
 ## 2026-10-10 - Actual carrier protocol
 
 Carrier editor displays detected protocol and listing stops assuming PJSIP. Core derives SIP from peer/friend/user and PJSIP from endpoint/aor/auth, rejects mixed blocks, persists protocol on create/update. Isolated generation keeps both protocols in the existing carrier configuration path to preserve the deployed sip.conf include. Historical TEST metadata corrected without changing account code or reloading PBX.
+
+
+## 2026-10-10 - Selectable carrier protocol
+
+Carrier form uses SIP/PJSIP dropdown instead of readonly detection. Isolated CRUD persists explicit selection and rejects unknown protocols or account blocks incompatible with the choice before writing SQL. Existing callers without protocol retain detection fallback. No change to runtime file paths or PBX includes.

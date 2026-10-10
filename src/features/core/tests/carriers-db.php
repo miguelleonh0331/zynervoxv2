@@ -7,7 +7,7 @@ function verifyCarriers($condition, $message) {
     if (!$condition) throw new RuntimeException($message);
 }
 $_SESSION['user'] = 'admin';
-$data = ['carrier_id' => 'TEST_V2', 'carrier_name' => 'Test', 'server_ip' => '127.0.0.1', 'active' => 'Y', 'account_entry' => "[test-v2]\ntype=auth\npassword=private-fixture", 'dialplan_entry' => "[v2-test]\nexten => 1,1,Hangup()"];
+$data = ['carrier_id' => 'TEST_V2', 'carrier_name' => 'Test', 'protocol'=>'PJSIP', 'server_ip' => '127.0.0.1', 'active' => 'Y', 'account_entry' => "[test-v2]\ntype=auth\npassword=private-fixture", 'dialplan_entry' => "[v2-test]\nexten => 1,1,Hangup()"];
 verifyCarriers(Carriers::create($data)['ok'], 'create');
 $duplicate = Carriers::create($data);
 verifyCarriers(!$duplicate['ok'] && strpos($duplicate['error'], 'private-fixture') === false && strpos($duplicate['error'], 'SQLSTATE') === false, 'private errors');
@@ -19,6 +19,9 @@ $data['active'] = 'N';
 verifyCarriers(Carriers::update('TEST_V2', $data)['ok'], 'update');
 verifyCarriers(Carriers::getById('TEST_V2')['protocol'] === 'PJSIP', 'PJSIP stored');
 $data['account_entry'] = "[test-v2]\ntype=peer\nhost=127.0.0.1";
+try { Carriers::update('TEST_V2',$data); throw new RuntimeException('protocol mismatch accepted'); } catch (InvalidArgumentException $expected) {}
+verifyCarriers(Carriers::getById('TEST_V2')['protocol'] === 'PJSIP', 'mismatch leaves stored protocol unchanged');
+$data['protocol'] = 'SIP';
 verifyCarriers(Carriers::update('TEST_V2', $data)['ok'], 'SIP update');
 verifyCarriers(Carriers::getById('TEST_V2')['protocol'] === 'SIP', 'SIP stored');
 verifyCarriers(strpos(file_get_contents($runtime . '/pjsip-zynervoxv2.conf'), 'private-fixture') === false, 'inactive omitted');

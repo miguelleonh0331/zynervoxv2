@@ -47,3 +47,8 @@ Dialplans::getAll/getById/save/delete/origins use isolated zynervox_core.v2_dial
 ## 2026-10-10 - Carrier protocol detection
 
 Carriers::protocol(array) derives SIP from type=peer/friend/user, PJSIP from endpoint/aor/auth, ignores comments and rejects mixed blocks. Isolated CRUD persists detected metadata; generation includes active SIP/PJSIP records at the existing compatible path. No changes to PBX includes or automatic reload.
+
+
+## 2026-10-10 - Explicit protocol choice
+
+Isolated Carriers CRUD accepts protocol SIP/PJSIP explicitly; selection is authoritative and validated against recognized account type. Contradictory/mixed blocks fail before SQL. Omitted protocol retains detection compatibility. File routing unchanged. Architecture approval: local contract amendment within existing core/admin scope.

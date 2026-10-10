@@ -23,6 +23,13 @@ class Carriers {
         return $sip ? 'SIP' : ($pjsip ? 'PJSIP' : (string)($carrier['protocol'] ?? 'PJSIP'));
     }
 
+    private static function selectedProtocol(array $data): string {
+        $selected = $data['protocol'] ?? self::protocol($data);
+        if (!is_string($selected) || !in_array($selected, ['SIP','PJSIP'], true)) throw new \InvalidArgumentException('Selecciona SIP o PJSIP.');
+        if (self::protocol($data) !== $selected) throw new \InvalidArgumentException('El bloque de configuración no corresponde al protocolo seleccionado.');
+        return $selected;
+    }
+
     public static function dialOrigins(): array {
         if (!\Config\Config::deployment('isolated', false)) return [];
         require_once __DIR__.'/Dialplans.php';
@@ -109,7 +116,7 @@ class Carriers {
     }
 
     public static function create($data) {
-        $data['protocol'] = \Config\Config::deployment('isolated', false) ? self::protocol($data) : 'PJSIP';
+        $data['protocol'] = \Config\Config::deployment('isolated', false) ? self::selectedProtocol($data) : 'PJSIP';
         self::validate($data);
         if (\Config\Config::deployment('isolated', false)) $data['dialplan_entry'] = DialplanOrigins::body((string)($data['dialplan_entry'] ?? ''));
         $db = self::database();
@@ -137,8 +144,8 @@ class Carriers {
 
     public static function update($carrier_id, $data) {
         $data['carrier_id'] = $carrier_id;
-        $data['protocol'] = self::getById($carrier_id)['protocol'] ?? 'PJSIP';
-        if (\Config\Config::deployment('isolated', false)) $data['protocol'] = self::protocol($data);
+        if (\Config\Config::deployment('isolated', false)) $data['protocol'] = self::selectedProtocol($data);
+        else $data['protocol'] = self::getById($carrier_id)['protocol'] ?? 'PJSIP';
         self::validate($data);
         if (\Config\Config::deployment('isolated', false)) $data['dialplan_entry'] = DialplanOrigins::body((string)($data['dialplan_entry'] ?? ''));
         $db = self::database();
