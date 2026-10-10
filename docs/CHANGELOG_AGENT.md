@@ -1853,3 +1853,8 @@ Confirmed dial candidate SQL already filters lead.status. Made NEW explicit in b
 ## 2026-10-10 - Lead status summary label
 
 Verified listStatistics groups zynervox_bot_list.status, independent of attempt dial_status. Clarified UI heading as Resumen por estado del lead. No data changes. Copied source to production and validated PHP.
+
+
+## 2026-10-10 - Direct AGI execution regression
+
+Latest list26 attempt zv2-a9be45841c511a9d2fbde794 failed exec with ENOENT because deployed ivr_engine_agi.php shebang contained CRLF. Normalized source and deployed CLI AGIs to LF, retaining 0750. Existing gitattributes already enforces LF. Changed AGI integration fixture to invoke executable directly instead of bypassing shebang via /usr/bin/php. Direct playback/audit/scope/interactive receive/result fixtures pass. No real call originated or historical state rewritten.

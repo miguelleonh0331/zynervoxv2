@@ -8,7 +8,7 @@ $sample=$repo->audioLeads(1,1)[0];
 $code=null;$path=null;$campaign=null;$list=null;$ids=[];
 function testIvrAgi(array $args,string $reply): array {
     global $argv;
-    $p=proc_open(array_merge(['/usr/bin/php',$argv[1].'/ivr_engine_agi.php'],$args),[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
+    $p=proc_open(array_merge([$argv[1].'/ivr_engine_agi.php'],$args),[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
     fwrite($pipes[0],"agi_channel: SIP/ivr-fixture\nagi_uniqueid: fixture-leg\n\n".$reply);fclose($pipes[0]);
     $out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
     return [proc_close($p),$out,$err];
