@@ -1809,3 +1809,7 @@ Added CLI-only ivr_engine_agi.php with published-flow loading, lead variable ren
 - Imported sanitized 02/carsa3 reference into relational bot_ivr flow tables and published JSON (27 nodes). Verified all node fields and connections; intent order normalized for comparison. Flow 11 unchanged.
 - Added guarded CLI importer installer/clone-carsa3-flow.php; requires isolated deployed v2 database, refuses differing existing flow and keeps private SMS key parameterized.
 - Validation: remote PHP lint, full relational round-trip, graph validation, publication checksum e7b1fac90f6f8e14aac7b644ab177c94221af2b8bff20f9e073f05c752f0cf1e.
+
+### 2026-10-10 - IVR flow dropdown for campaign lists
+- campaign_edit.php creates/edits lists with the public IVR Builder api_flows.php catalog. Labels preserve two-digit codes and names; integer values remain compatible with id_flujo validation (02 submits 2). Empty/loading/error states prevent an invalid assignment.
+- Deployed source file directly to production. PHP lint and source/production comparison passed.

@@ -121,7 +121,7 @@ if ($campaign): ?>
 <details><summary>Modificar</summary><form method="post" class="carsa-form">
 <input type="hidden" name="action" value="update_list"><input type="hidden" name="list_id" value="<?php echo (int)$list['list_id']; ?>"><?php bot_campaign_token(); ?>
 <input aria-label="Nombre de lista <?php echo (int)$list['list_id']; ?>" name="list_name" maxlength="120" value="<?php echo h($list['name']); ?>" required>
-<label>ID de flujo (IVR Builder)<input name="id_flujo" type="number" min="1" max="<?php echo PHP_INT_MAX; ?>" step="1" value="<?php echo h($list['id_flujo'] ?? ''); ?>" required></label>
+<label>Flujo (IVR Builder)<select name="id_flujo" class="ivr-flow-select" data-selected="<?php echo h($list['id_flujo'] ?? ''); ?>" required><option value="">Cargando flujos...</option></select></label>
 <label><input type="checkbox" name="active" value="1" <?php echo $list['active'] ? 'checked' : ''; ?>> Activo</label>
 <button class="carsa-btn secondary compact-submit">Guardar lista</button></form></details></td></tr>
 <?php endforeach; ?>
@@ -133,10 +133,34 @@ if ($campaign): ?>
 <h2 id="createListTitle">Crear y asignar lista</h2>
 <form method="post" class="carsa-form"><input type="hidden" name="action" value="create_list"><?php bot_campaign_token(); ?>
 <div class="carsa-field"><label for="list_name">Nombre de lista</label><input id="list_name" name="list_name" maxlength="120" required></div>
-<div class="carsa-field"><label for="list_flow">ID de flujo (IVR Builder)</label><input id="list_flow" name="id_flujo" type="number" min="1" max="<?php echo PHP_INT_MAX; ?>" step="1" required></div>
+<div class="carsa-field"><label for="list_flow">Flujo (IVR Builder)</label><select id="list_flow" name="id_flujo" class="ivr-flow-select" required><option value="">Cargando flujos...</option></select></div>
 <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" name="active" value="1" checked style="width:auto;margin:0"> Activo</label>
 <div class="carsa-actions"><button class="carsa-btn">Crear lista</button><button type="button" class="carsa-btn secondary" onclick="document.getElementById('createListModal').close()">Cancelar</button></div>
 </form>
 </dialog>
+
+<script>
+(async function () {
+    const selects = document.querySelectorAll('.ivr-flow-select');
+    selects.forEach(select => { select.disabled = true; });
+    try {
+        const response = await fetch('../ivr_builder/api_flows.php', {credentials: 'same-origin', cache: 'no-store'});
+        const data = await response.json();
+        if (!response.ok || !data.ok || !Array.isArray(data.flows)) throw new Error('Catalog unavailable');
+        const flows = data.flows.filter(flow => /^\d{2}$/.test(flow.code) && Number(flow.code) > 0);
+        selects.forEach(select => {
+            select.replaceChildren(new Option(flows.length ? 'Selecciona un flujo...' : 'No hay flujos creados', ''));
+            flows.forEach(flow => {
+                // IDs are integers in list storage; keep the two-digit code in the label.
+                const value = String(Number(flow.code));
+                select.add(new Option(flow.code + ' — ' + flow.name, value, false, value === select.dataset.selected));
+            });
+            select.disabled = false;
+        });
+    } catch (error) {
+        selects.forEach(select => { select.replaceChildren(new Option('No se pudieron cargar los flujos. Recarga la página.', '')); select.disabled = false; });
+    }
+})();
+</script>
 <?php endif;
 bot_campaign_footer();
