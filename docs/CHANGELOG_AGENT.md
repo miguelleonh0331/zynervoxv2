@@ -1843,3 +1843,8 @@ Added list statistics cards (total leads, calling, finished), status bars and la
 ## 2026-10-10 - Collapsed list panels
 
 Converted list data and client upload panels to native details/summary accordions without open attributes: closed on every page load. Forms unchanged. Source copied to production; verified two collapsed panels and PHP syntax.
+
+
+## 2026-10-10 - Status eligibility and AGI permission
+
+Confirmed dial candidate SQL already filters lead.status. Made NEW explicit in bulk insert. Worker fixture now selects RESPONDE_F1 with telephony dial_status ANSWER, verifying business eligibility. Latest list26 call had Permission denied executing ivr_engine_agi.php; restored deployed CLI execute permission and persist it in Git/web deploy script. Import/status/worker fixtures and PHP/bash lint passed. No real call originated and no historical disposition rewritten.

@@ -761,3 +761,8 @@ Approved bot_ivr/core/zynervox_queries scope. Persist dial runs and correlate pr
 ## 2026-10-10 - List statistics (ARCHITECT_AGENT)
 
 Scope: bot_ivr UI/API and public zynervox_queries repository. Add read-only listStatistics contract, no schema changes. Cards count current contacts using their latest attempt; historical errors remain visible separately. Allow lists.php, repository contract, list_edit.php, list_call_api.php and scoped test/docs. No dial worker, credentials or other modules change.
+
+
+## 2026-10-10 - Lead status eligibility and AGI execution (ARCHITECT_AGENT)
+
+Scope bot_ivr/zynervox_queries/installer. Existing eligibility remains lead.status, never dial_status. Import explicitly initializes NEW. Restore execute permission for CLI AGIs after web deployment; latest list26 AMI attempt did not execute IVR (Permission denied), so no business status exists to recover for that attempt. Do not invent historical dispositions.

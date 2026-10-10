@@ -36,11 +36,11 @@ trait LeadQueries {
                 foreach ($batch as $row) {
                     if (isset($existing[$row['phone']])) { $duplicates++; continue; }
                     $existing[$row['phone']] = true;
-                    $values[] = '(?,?,?,?)';
+                    $values[] = "(?,?,?,?,'NEW')";
                     array_push($bindings, $listId, $row['phone'], $row['customer_name'], json_encode($row['extra'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
                 }
                 if ($values) {
-                    $this->db->prepare('INSERT INTO zynervox_bot_list (list_id,phone,customer_name,extra_json) VALUES '.implode(',', $values))->execute($bindings);
+                    $this->db->prepare('INSERT INTO zynervox_bot_list (list_id,phone,customer_name,extra_json,status) VALUES '.implode(',', $values))->execute($bindings);
                     $saved += count($values);
                 }
             }

@@ -102,3 +102,8 @@ carriers.sh also installs standalone Dialplans, sidebar and exact gate entry, cr
 ## 2026-10-10 - List Play/Stop AMI worker
 
 list-call-worker.sh installs migration 012, isolated bot account DML grants, private call_jobs directory and Python launcher. ivr-builder-bot-db.sh invokes it for isolated deployments.
+
+
+## 2026-10-10 - Status eligibility and AGI permission
+
+deploy-web.sh restores 0750 on call_tracking_agi.php and ivr_engine_agi.php after copying web source. Both CLI entrypoints are tracked executable in Git.

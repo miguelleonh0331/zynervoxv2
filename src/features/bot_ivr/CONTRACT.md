@@ -242,3 +242,8 @@ Play/Stop use administrator session and CSRF. Play requires a saved active dial 
 ## 2026-10-10 - List statistics
 
 List statistics expose only total current leads, calling and finished contacts, current status distribution and latest 30 historical error attempts (phone/call ID, status, cause). Counters use the newest attempt per current lead, independently of dial run. Existing Play/Stop API includes statistics; refresh every 2 seconds while active and 10 seconds idle. No schema or calling changes.
+
+
+## 2026-10-10 - Status eligibility and AGI permission
+
+Campaign Estados a marcar selects current lead.status, including attained IVR business states; dial_status remains the independent telephony result. New imports explicitly insert NEW. No historical business state is inferred when IVR was not executed.
