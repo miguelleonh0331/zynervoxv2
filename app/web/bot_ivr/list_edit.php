@@ -135,7 +135,7 @@ if ($list): ?>
 <div class="carsa-field list-audio-speed"><label for="list_call_origin">Origen</label>
 <select id="list_call_origin" name="call_origin"><option value="3006">Extensión 3006</option></select></div>
 <button type="button" id="list-call-play" class="carsa-btn"<?php echo !$audioReady ? ' hidden' : ''; ?><?php echo $audioReady ? '' : ' disabled'; ?>>▶ Play</button>
-<button type="button" class="carsa-btn secondary" disabled>■ Stop</button>
+<button type="button" id="list-call-stop" class="carsa-btn secondary"<?php echo !$audioReady ? ' hidden' : ''; ?> disabled>■ Stop</button>
 </form>
 <?php if ($audioCheckError !== ''): ?>
 <p class="list-audio-note" role="status"><?php echo h($audioCheckError); ?></p>
