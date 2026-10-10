@@ -12,6 +12,17 @@ require_once __DIR__ . '/DialplanOrigins.php';
 
 class Carriers {
 
+    public static function protocol(array $carrier): string {
+        preg_match_all('/^\s*type\s*=\s*(peer|friend|user|endpoint|aor|auth)\s*(?:;[^\r\n]*)?$/mi', (string)($carrier['account_entry'] ?? ''), $matches);
+        $sip=$pjsip=false;
+        foreach ($matches[1] as $type) {
+            if (in_array(strtolower($type),['peer','friend','user'],true)) $sip=true;
+            else $pjsip=true;
+        }
+        if ($sip && $pjsip) throw new \InvalidArgumentException('No mezcles bloques SIP y PJSIP en la misma troncal.');
+        return $sip ? 'SIP' : ($pjsip ? 'PJSIP' : (string)($carrier['protocol'] ?? 'PJSIP'));
+    }
+
     public static function dialOrigins(): array {
         if (!\Config\Config::deployment('isolated', false)) return [];
         require_once __DIR__.'/Dialplans.php';
@@ -98,6 +109,7 @@ class Carriers {
     }
 
     public static function create($data) {
+        $data['protocol'] = \Config\Config::deployment('isolated', false) ? self::protocol($data) : 'PJSIP';
         self::validate($data);
         if (\Config\Config::deployment('isolated', false)) $data['dialplan_entry'] = DialplanOrigins::body((string)($data['dialplan_entry'] ?? ''));
         $db = self::database();
@@ -106,11 +118,12 @@ class Carriers {
             $stmt = $db->prepare(
                 "INSERT INTO $table
                  (carrier_id, carrier_name, template_id, protocol, account_entry, dialplan_entry, server_ip, active, carrier_description)
-                 VALUES (:carrier_id, :carrier_name, 'CUSTOM', 'PJSIP', :account_entry, :dialplan_entry, :server_ip, :active, :carrier_description)"
+                 VALUES (:carrier_id, :carrier_name, 'CUSTOM', :protocol, :account_entry, :dialplan_entry, :server_ip, :active, :carrier_description)"
             );
             $stmt->execute([
                 'carrier_id' => $data['carrier_id'],
                 'carrier_name' => $data['carrier_name'],
+                'protocol' => $data['protocol'],
                 'account_entry' => $data['account_entry'] ?? '',
                 'dialplan_entry' => $data['dialplan_entry'] ?? '',
                 'server_ip' => $data['server_ip'],
@@ -124,6 +137,8 @@ class Carriers {
 
     public static function update($carrier_id, $data) {
         $data['carrier_id'] = $carrier_id;
+        $data['protocol'] = self::getById($carrier_id)['protocol'] ?? 'PJSIP';
+        if (\Config\Config::deployment('isolated', false)) $data['protocol'] = self::protocol($data);
         self::validate($data);
         if (\Config\Config::deployment('isolated', false)) $data['dialplan_entry'] = DialplanOrigins::body((string)($data['dialplan_entry'] ?? ''));
         $db = self::database();
@@ -131,12 +146,13 @@ class Carriers {
         try {
             $stmt = $db->prepare(
                 "UPDATE $table SET
-                 carrier_name = :carrier_name, account_entry = :account_entry, dialplan_entry = :dialplan_entry,
+                 carrier_name = :carrier_name, protocol = :protocol, account_entry = :account_entry, dialplan_entry = :dialplan_entry,
                  server_ip = :server_ip, active = :active, carrier_description = :carrier_description
                  WHERE carrier_id = :id"
             );
             $stmt->execute([
                 'carrier_name' => $data['carrier_name'],
+                'protocol' => $data['protocol'],
                 'account_entry' => $data['account_entry'] ?? '',
                 'dialplan_entry' => $data['dialplan_entry'] ?? '',
                 'server_ip' => $data['server_ip'],
@@ -169,7 +185,8 @@ class Carriers {
     public static function regenerateAndReload() {
         $db = self::database();
         $table = self::table();
-        $stmt = $db->query("SELECT carrier_id, carrier_name, account_entry, dialplan_entry FROM $table WHERE active = 'Y' AND protocol = 'PJSIP' ORDER BY carrier_id ASC");
+        $protocolFilter = \Config\Config::deployment('isolated', false) ? "protocol IN ('SIP','PJSIP')" : "protocol = 'PJSIP'";
+        $stmt = $db->query("SELECT carrier_id, carrier_name, account_entry, dialplan_entry FROM $table WHERE active = 'Y' AND $protocolFilter ORDER BY carrier_id ASC");
         $carriers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $confOut = "; Generado por Zynervox (carriers.php) - " . date('Y-m-d H:i:s') . "\n";

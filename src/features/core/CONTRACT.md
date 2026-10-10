@@ -42,3 +42,8 @@ Carriers::extractDialOrigin(carrierId,prefix,name) registra/renombra en v2_dial_
 ## 2026-10-10 - Standalone dialplans (supersedes carrier-origin UI)
 
 Dialplans::getAll/getById/save/delete/origins use isolated zynervox_core.v2_dialplans. Save validates name, state, one main numeric prefix and shared helper contexts, then generates runtime files without PBX reload. Prefix unique, preserves leading zeros. origins exposes id/name/prefix for active records; Carriers::dialOrigins delegates to it. Historical extractDialOrigin and v2_dial_origins remain compatibility artifacts, no longer used by admin UI. Dialplans survive carrier deletion/inactivation; SIP carrier availability remains a separate call-time concern. Identical helper definitions emitted once; differing definitions under one context rejected.
+
+
+## 2026-10-10 - Carrier protocol detection
+
+Carriers::protocol(array) derives SIP from type=peer/friend/user, PJSIP from endpoint/aor/auth, ignores comments and rejects mixed blocks. Isolated CRUD persists detected metadata; generation includes active SIP/PJSIP records at the existing compatible path. No changes to PBX includes or automatic reload.

@@ -1769,3 +1769,8 @@ Added modules/admin/dialplan.php with listing, create/edit/delete, name, active 
 ## 2026-10-10 - Carrier form visibility
 
 Carrier form appears only on new=1, an existing edit_id or a save POST. Default page keeps listing and audit. New link explicitly opens creation.
+
+
+## 2026-10-10 - Actual carrier protocol
+
+Carrier editor displays detected protocol and listing stops assuming PJSIP. Core derives SIP from peer/friend/user and PJSIP from endpoint/aor/auth, rejects mixed blocks, persists protocol on create/update. Isolated generation keeps both protocols in the existing carrier configuration path to preserve the deployed sip.conf include. Historical TEST metadata corrected without changing account code or reloading PBX.

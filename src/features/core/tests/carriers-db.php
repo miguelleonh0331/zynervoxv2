@@ -17,6 +17,10 @@ verifyCarriers(strpos(file_get_contents($runtime . '/pjsip-zynervoxv2.conf'), 'p
 $data['carrier_name'] = 'Updated';
 $data['active'] = 'N';
 verifyCarriers(Carriers::update('TEST_V2', $data)['ok'], 'update');
+verifyCarriers(Carriers::getById('TEST_V2')['protocol'] === 'PJSIP', 'PJSIP stored');
+$data['account_entry'] = "[test-v2]\ntype=peer\nhost=127.0.0.1";
+verifyCarriers(Carriers::update('TEST_V2', $data)['ok'], 'SIP update');
+verifyCarriers(Carriers::getById('TEST_V2')['protocol'] === 'SIP', 'SIP stored');
 verifyCarriers(strpos(file_get_contents($runtime . '/pjsip-zynervoxv2.conf'), 'private-fixture') === false, 'inactive omitted');
 $logs = Carriers::recentChanges();
 verifyCarriers(count($logs) >= 2 && strpos(json_encode($logs), 'private-fixture') === false, 'audit no secrets');

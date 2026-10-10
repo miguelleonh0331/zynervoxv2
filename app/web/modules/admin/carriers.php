@@ -156,7 +156,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
                         <tr>
                             <td><strong><?php echo htmlspecialchars($c['carrier_id']); ?></strong></td>
                             <td><?php echo htmlspecialchars($c['carrier_name']); ?></td>
-                            <td><span class="badge-proto"><?php echo $c['protocol']; ?></span></td>
+                            <td><span class="badge-proto"><?php echo htmlspecialchars($isolated ? Carriers::protocol($c) : $c['protocol']); ?></span></td>
                             <td><?php echo htmlspecialchars($c['server_ip']); ?></td>
                             <td><?php echo $c['active'] == 'Y' ? 'Si' : 'No'; ?></td>
                             <td style="white-space: nowrap;">
@@ -179,7 +179,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
             <!-- Formulario -->
             <?php if ($showCarrierForm): ?>
             <div class="card">
-                <h2><?php echo $editData ? 'Editar Troncal' : 'Nueva Troncal (PJSIP)'; ?></h2>
+                <h2><?php echo $editData ? 'Editar Troncal' : 'Nueva Troncal'; ?></h2>
                 <form method="POST" style="margin-top: 0.5rem;">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['carriers_csrf']); ?>">
                     <?php if ($editData): ?>
@@ -194,6 +194,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
                             renderField('ID Troncal (sin espacios)', 'carrier_id', $d['carrier_id']);
                             if ($editData) { echo '<input type="hidden" name="carrier_id" value="' . htmlspecialchars($d['carrier_id']) . '">'; }
                             renderField('Nombre', 'carrier_name', $d['carrier_name']);
+                            echo '<div class="field"><label for="carrier_protocol">Protocolo detectado</label><input id="carrier_protocol" type="text" readonly value="'.htmlspecialchars(Carriers::protocol($d)).'"></div>';
                             renderField('Server IP (local)', 'server_ip', $d['server_ip']);
                             renderField('Activo', 'active', $d['active'], 'select', ['Y' => 'Si (Y)', 'N' => 'No (N)']);
                             renderField('Descripción', 'carrier_description', $d['carrier_description']);
@@ -203,7 +204,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
 
                     <div class="carrier-config-grid">
                     <div class="form-section">
-                        <h3>Bloque PJSIP (endpoint / aor / auth)</h3>
+                        <h3>Bloque SIP / PJSIP</h3>
                         <?php renderField('', 'account_entry', $d['account_entry'], 'textarea'); ?>
 
                     </div>

@@ -721,3 +721,8 @@ Revision ARCHITECT_AGENT: alcance aprobado core (Carriers/DialplanOrigins, tabla
 ## 2026-10-10 - Architecture review: standalone dialplan administration
 
 ARCHITECT_AGENT review: approved core (Dialplans service/schema/parser/Carriers/gate/tests), admin (dialplan.php/sidebar/carriers.php) and installer migration. Dialplan is an independent Core record, not a carrier or a new feature module. Public API Dialplans getAll/getById/save/delete/origins. Existing Carriers::dialOrigins delegates for compatibility with Bot IVR. One numeric prefix per record, automatically derived from the main route; unique globally. Repeated identical helper contexts are emitted once; conflicting definitions are rejected. Migration copies existing carrier code, state, prefix and name transactionally before clearing carrier dialplan_entry. Legacy origin table retained; no destructive DROP. New sidebar item immediately after Troncales SIP. Generated file uses existing fixed context, no automatic PBX reload. No workers or live calls introduced. Contract extensions approved.
+
+
+## 2026-10-10 - Carrier protocol metadata correction
+
+ARCHITECT_AGENT scope: core Carriers, admin carrier display and tests. Existing v2 carrier file is included by sip.conf despite its historical pjsip filename; do not move it or change shared PBX includes for a metadata/display fix. Determine protocol from account block, persist correct metadata, preserve configuration path and legacy behavior. Contract extension approved.
