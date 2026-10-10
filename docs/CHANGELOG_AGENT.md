@@ -1784,3 +1784,8 @@ Carrier form uses SIP/PJSIP dropdown instead of readonly detection. Isolated CRU
 ## 2026-10-10 - Fixed shared call contexts
 
 DialplanOrigins owns the shared AMD, hangup and outbound definitions once at the start of the generated document, before zynervoxv2 routes. Dialplan page displays the template as readonly code; editable field contains only authored route code. Identical historical copies are removed from stored dialplans by migration; conflicting custom copies rejected instead of silently replaced. Existing route/name/state preserved; no new route or bot worker created.
+
+
+## 2026-10-10 - Hide common template from web
+
+Removed common template heading and code from Dialplan page. Generated Asterisk template unchanged; web shows only authored route field.

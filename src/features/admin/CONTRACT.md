@@ -22,3 +22,8 @@ modules/admin/dialplan.php offers independent list/new/edit/delete after Troncal
 ## 2026-10-10 - Readonly call template
 
 Dialplan page shows system contexts outside the editable field. User authors only route code; no route created automatically. Common context definitions remain fixed and are generated once.
+
+
+## 2026-10-10 - Template visibility correction
+
+User clarification supersedes readonly template display: shared system contexts are generated server-side and never displayed in the web form. Route editing unchanged. Architecture review: display-only contract correction approved.
