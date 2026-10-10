@@ -198,12 +198,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
                     <div class="form-section">
                         <h3>Bloque PJSIP (endpoint / aor / auth)</h3>
                         <?php renderField('', 'account_entry', $d['account_entry'], 'textarea'); ?>
-                        <p style="color: var(--text-muted); font-size: 0.7rem; margin-top: 0.3rem;">
-                            Ejemplo:<br>
-                            [MI_TRUNK]<br>type=endpoint<br>transport=transport-udp<br>context=from-carrier<br>disallow=all<br>allow=ulaw<br>outbound_auth=MI_TRUNK-auth<br>aors=MI_TRUNK<br><br>
-                            [MI_TRUNK]<br>type=aor<br>contact=sip:1.2.3.4:5060<br><br>
-                            [MI_TRUNK-auth]<br>type=auth<br>auth_type=userpass<br>username=usuario<br>password=clave
-                        </p>
+
                     </div>
 
                     <div class="form-section" style="border-bottom: none;">

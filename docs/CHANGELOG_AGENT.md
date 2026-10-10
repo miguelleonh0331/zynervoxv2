@@ -1702,3 +1702,8 @@ Restore them if readiness changes; call controls remain visible.
 
 Hide Play and Stop on load and status updates until current audio publication
 is complete. Restore both when ready; Stop remains disabled pending call engine.
+
+## 2026-10-10 - core: remove PJSIP sample from carriers
+
+Remove the example endpoint/aor/auth paragraph from the carrier form.
+Configuration fields and generation behavior are unchanged.
