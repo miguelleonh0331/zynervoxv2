@@ -142,8 +142,8 @@ if ($list): ?>
 <?php elseif ($audioCheck !== null): ?>
 <?php foreach ($audioCheck['errors'] as $audioError): ?><p class="list-audio-note"><?php echo h($audioError); ?></p><?php endforeach; ?>
 <?php endif; ?>
-<div class="audio-summary"><p id="list-audio-availability" class="list-audio-note" role="status">Listo para generar con gTTS local.</p></div>
-<section id="list-audio-dialog" class="audio-dialog" aria-labelledby="audio-dialog-title">
+<div id="list-audio-summary" class="audio-summary"<?php echo $audioReady ? ' hidden' : ''; ?>><p id="list-audio-availability" class="list-audio-note" role="status">Listo para generar con gTTS local.</p></div>
+<section id="list-audio-dialog" class="audio-dialog" aria-labelledby="audio-dialog-title"<?php echo $audioReady ? ' hidden' : ''; ?>>
 <div class="audio-dialog-head"><div><h2 id="audio-dialog-title">Generación de audios</h2><p class="audio-dialog-context">Lista #<?php echo (int)$listId; ?> · Flujo <?php echo h($list['id_flujo'] ?? 'Sin asignar'); ?> · gTTS local</p></div></div>
 <span id="audio-dialog-state" class="audio-state" role="status">Sin generación</span>
 <div class="audio-stats">
@@ -175,6 +175,8 @@ if ($list): ?>
         const active = job && (job.state === 'starting' || job.state === 'running');
         const stale = job && valid && job.signature !== signature;
         button.hidden = !!ready && !stale;
+        document.getElementById('list-audio-summary').hidden = button.hidden;
+        document.getElementById('list-audio-dialog').hidden = button.hidden;
         document.getElementById('list-audio-title').hidden = button.hidden;
         document.getElementById('list-audio-provider-control').hidden = button.hidden;
         document.getElementById('list-audio-speed-control').hidden = button.hidden;

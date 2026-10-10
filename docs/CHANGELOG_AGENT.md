@@ -1692,3 +1692,8 @@ and options 1/3/5/10/20/25/50/100. UI only, pending call engine integration.
 
 Hide the creation heading and TTS provider when ready, alongside generation
 controls. Keep call controls visible; restore preparation if readiness changes.
+
+## 2026-10-10 - bot_ivr: hide completed audio progress
+
+Hide audio summary and complete progress section when ready, on load and polling.
+Restore them if readiness changes; call controls remain visible.
