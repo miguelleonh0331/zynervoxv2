@@ -30,6 +30,7 @@ try {
                 if ($workers === false) throw new RuntimeException('Velocidad de generación inválida.');
                 $flow = ivr_builder_published_flow((int)$list['id_flujo']);
                 $payload = bot_list_audio_payload($flow, $db->audioLeads($listId, $campaignId), $listId, $campaignId, $workers);
+                if (bot_list_audio_ready(bot_list_audio_job_status($listId), $payload)) throw new RuntimeException('Los audios de esta lista ya están listos.');
                 bot_list_audio_start($payload);
                 bot_campaign_redirect('list_edit.php?id='.$listId.'&campaign_id='.$campaignId, 'Generación iniciada. El progreso se actualizará automáticamente.');
             }
@@ -123,7 +124,7 @@ if ($list): ?>
 <option value="<?php echo $workers; ?>"<?php echo $workers === 25 ? ' selected' : ''; ?>><?php echo $workers; ?>x</option>
 <?php endforeach; ?>
 </select></div>
-<button type="submit" id="list-audio-generate" class="carsa-btn"<?php echo $audioPayload === null || $audioActive ? ' disabled' : ''; ?> aria-describedby="list-audio-availability">Generar</button>
+<button type="submit" id="list-audio-generate" class="carsa-btn"<?php echo $audioPayload === null || $audioActive || $audioReady ? ' disabled' : ''; ?> aria-describedby="list-audio-availability">Generar</button>
 <div class="carsa-field list-audio-speed"><label for="list_call_origin">Origen</label>
 <select id="list_call_origin" name="call_origin"><option value="3006">Extensión 3006</option></select></div>
 <button type="button" id="list-call-play" class="carsa-btn"<?php echo $audioReady ? '' : ' disabled'; ?>>▶ Play</button>
@@ -166,7 +167,7 @@ if ($list): ?>
     function render(job, ready) {
         const active = job && (job.state === 'starting' || job.state === 'running');
         const stale = job && valid && job.signature !== signature;
-        button.disabled = !valid || active;
+        button.disabled = !valid || active || (ready && !stale);
         play.disabled = !ready || !valid || active || stale;
         const total = stale ? 0 : Number(job && job.total || 0);
         const completed = stale ? 0 : Number(job && job.completed || 0);

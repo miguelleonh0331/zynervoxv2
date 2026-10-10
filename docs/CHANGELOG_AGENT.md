@@ -1666,3 +1666,9 @@ Worker validates new WAV once, atomically publishes it, then records its hash in
 
 Add Origen selector before Play with extension 3006 as the initial option.
 UI preparation only; no extension discovery, persistence or call launch yet.
+
+## 2026-10-10 - bot_ivr: disable generation for ready lists
+
+Disable Generar on initial render and progress updates when current audio
+publication is complete. POST also rejects regeneration of a ready snapshot.
+Changed inputs or removed publication records allow generation again.
