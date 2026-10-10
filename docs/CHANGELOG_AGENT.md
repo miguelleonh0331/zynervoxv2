@@ -1644,3 +1644,11 @@ Sin cambios en generación, caché o BD.
 Las tarjetas y barra de progreso aparecen directamente debajo de los controles
 de Creaci?n de audios. Se elimina el di?logo y sus botones; se conserva la
 actualizaci?n autom?tica del estado.
+
+
+## 2026-10-10 - bot_ivr: persistent audio readiness and Play gate
+
+Play is enabled only for a completed manifest matching the current flow/leads,
+zero failures, and available WAV files. Reload and polling verify readiness.
+Missing files, changed inputs or active jobs block Play. Stop remains disabled;
+the isolated call engine is pending. No DB migration or legacy launch.

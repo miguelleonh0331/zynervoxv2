@@ -38,6 +38,10 @@ audio_verify($check['ready'] === 1 && $check['rejected'] === 2 && $check['texts'
 audio_verify(strpos($check['errors'][0], 'local') !== false && strpos($check['errors'][1], 'Lead #9') !== false, 'Errors identify lead and missing variable');
 $simple = ['start'=>'a','nodes'=>['a'=>['type'=>'create_audio','audio_text'=>'Hola {nombre}, monto {monto}']]];
 $payload = bot_list_audio_payload($simple, [$lead], 3, 1, 25);
+audio_verify(!bot_list_audio_ready(null, $payload), 'No generation must block Play');
+audio_verify(!bot_list_audio_ready(['state'=>'running'], $payload), 'Active generation must block Play');
+audio_verify(!bot_list_audio_ready(['state'=>'ready','signature'=>'old'], $payload), 'Changed snapshot must block Play');
+audio_verify(!bot_list_audio_ready(['state'=>'ready','signature'=>$payload['signature'],'failed'=>1], $payload), 'Failed audios must block Play');
 audio_verify($payload['prompts'][0]['text'] === 'Hola Ana, monto 0', 'Worker must receive resolved text');
 audio_verify($payload['signature'] === bot_list_audio_payload($simple, [$lead], 3, 1, 1)['signature'], 'Concurrency must not change audio identity');
 $changed = $lead; $changed['customer_name'] = 'Pedro';

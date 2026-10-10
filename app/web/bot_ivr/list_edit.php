@@ -14,6 +14,7 @@ $audioCheckError = '';
 $audioPayload = null;
 $audioJob = null;
 $audioActive = false;
+$audioReady = false;
 try {
     if (!$listId || !$campaignId) throw new RuntimeException('ID de lista o campaña inválido.');
     $db = bot_ivr_repository();
@@ -59,6 +60,7 @@ try {
     try {
         $audioJob = bot_list_audio_job_status($listId);
         $audioActive = bot_list_audio_active($listId);
+        $audioReady = bot_list_audio_ready($audioJob, $audioPayload);
     } catch (Throwable $e) { $audioCheckError = 'No se pudo leer el estado de generación.'; }
 } catch (Throwable $e) {
     http_response_code($listId && $campaignId ? 404 : 400);
@@ -122,7 +124,11 @@ if ($list): ?>
 <?php endforeach; ?>
 </select></div>
 <button type="submit" id="list-audio-generate" class="carsa-btn"<?php echo $audioPayload === null || $audioActive ? ' disabled' : ''; ?> aria-describedby="list-audio-availability">Generar</button>
+<button type="button" id="list-call-play" class="carsa-btn"<?php echo $audioReady ? '' : ' disabled'; ?> aria-describedby="list-call-readiness">▶ Play</button>
+<button type="button" class="carsa-btn secondary" disabled>■ Stop</button>
 </form>
+<p id="list-call-readiness" class="list-audio-note" role="status"><?php echo $audioReady ? 'Lista para llamar. Audios verificados.' : 'Play bloqueado: genera todos los audios de la lista.'; ?></p>
+<p class="list-audio-note">La conexión de Play y Stop al motor de llamadas está pendiente.</p>
 <p id="list-audio-speed-help" class="list-audio-note">La velocidad indica cuántos audios se procesan simultáneamente.</p>
 <?php if ($audioCheckError !== ''): ?>
 <p class="list-audio-note" role="status"><?php echo h($audioCheckError); ?></p>
@@ -152,16 +158,20 @@ if ($list): ?>
 (() => {
     const output = document.getElementById('list-audio-availability');
     const button = document.getElementById('list-audio-generate');
+    const play = document.getElementById('list-call-play');
+    const readiness = document.getElementById('list-call-readiness');
     const state = document.getElementById('audio-dialog-state');
     const errors = document.getElementById('audio-dialog-errors');
     const valid = <?php echo $audioPayload !== null ? 'true' : 'false'; ?>;
     const signature = <?php echo json_encode($audioPayload['signature'] ?? ''); ?>;
     const url = <?php echo json_encode('list_audio_status.php?id='.(int)$listId.'&campaign_id='.(int)$campaignId); ?>;
     let timer;
-    function render(job) {
+    function render(job, ready) {
         const active = job && (job.state === 'starting' || job.state === 'running');
         const stale = job && valid && job.signature !== signature;
         button.disabled = !valid || active;
+        play.disabled = !ready || !valid || active || stale;
+        readiness.textContent = play.disabled ? 'Play bloqueado: genera todos los audios de la lista.' : 'Lista para llamar. Audios verificados.';
         const total = stale ? 0 : Number(job && job.total || 0);
         const completed = stale ? 0 : Number(job && job.completed || 0);
         const percent = total > 0 ? Math.min(100, Math.round(completed * 100 / total)) : 0;
@@ -190,7 +200,7 @@ if ($list): ?>
             const response = await fetch(url, {cache:'no-store'});
             const data = await response.json();
             if (!response.ok || !data.ok) throw new Error();
-            render(data.job);
+            render(data.job, data.ready === true);
         } catch (error) {
             output.textContent = 'No se pudo actualizar el progreso. Reintentando…';
             timer = setTimeout(poll, 5000);
@@ -198,7 +208,7 @@ if ($list): ?>
     }
     document.addEventListener('visibilitychange', () => { if (document.hidden) clearTimeout(timer); else poll(); });
     const initial = <?php echo json_encode($audioJob, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
-    render(initial);
+    render(initial, <?php echo $audioReady ? 'true' : 'false'; ?>);
 })();
 </script>
 <?php endif;

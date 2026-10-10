@@ -34,6 +34,30 @@ function bot_list_audio_job_status(int $listId): ?array {
     return array_intersect_key($status, array_flip(['state','signature','generated','reused','failed','completed','total','errors']));
 }
 
+function bot_list_audio_ready(?array $job, ?array $payload): bool {
+    if (!$job || !$payload || ($job['state'] ?? '') !== 'ready'
+        || ($job['signature'] ?? '') !== $payload['signature']
+        || (int)($job['failed'] ?? 1) !== 0 || !empty($job['errors'])
+        || (int)($job['total'] ?? 0) < 1
+        || (int)($job['completed'] ?? 0) !== (int)$job['total']) return false;
+    $path = bot_list_audio_root().'/bot_ivr/audio_jobs/list_'.$payload['list_id'].'.json';
+    $manifest = json_decode((string)@file_get_contents($path), true);
+    if (!is_array($manifest) || ($manifest['signature'] ?? '') !== $payload['signature']
+        || ($manifest['state'] ?? '') !== 'ready'
+        || (int)($manifest['campaign_id'] ?? 0) !== $payload['campaign_id']
+        || count($manifest['audio'] ?? []) !== count($payload['prompts'])) return false;
+    foreach ($manifest['audio'] as $audio) {
+        $hash = $audio['hash'] ?? '';
+        if (empty($audio['ready']) || !preg_match('/^[a-f0-9]{64}$/D', $hash)) return false;
+        $file = bot_list_audio_root().'/sounds/cache/ivr_builder/gtts/'.$hash.'.wav';
+        clearstatcache(true, $file);
+        if (!is_readable($file) || filesize($file) < 100) return false;
+        $header = @file_get_contents($file, false, null, 0, 12);
+        if ($header === false || substr($header, 0, 4) !== 'RIFF' || substr($header, 8, 4) !== 'WAVE') return false;
+    }
+    return !bot_list_audio_active((int)$payload['list_id']);
+}
+
 function bot_list_audio_payload(array $flow, array $leads, int $listId, int $campaignId, int $workers): array {
     if (!in_array($workers, [1,3,10,25,60,100], true)) throw new RuntimeException('Velocidad de generación inválida.');
     $check = bot_list_audio_preflight($flow, $leads, $listId, $campaignId);
