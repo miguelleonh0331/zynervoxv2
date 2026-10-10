@@ -637,3 +637,19 @@ Legacy conserva su conexion. --module carriers exige instalacion v2 existente
 y despliega lista explicita de tres archivos, tabla y permisos de su cuenta Core.
 No ejecuta instalacion completa, passwords, login ni Bot. Instalacion full v2
 incluye Carriers. Activar troncales exige revision operativa separada.
+
+## 2026-10-10 ? Preparaci?n del discador Bot IVR
+
+Intervenci?n ARCHITECT_AGENT: aprobada extensi?n aditiva del contrato bot_ivr,
+limitada a su esquema, documentaci?n y prueba de importaci?n. Se adaptan status
+y called_count de vicidial_list; last_call_at usa UTC y next_call_at programa
+reintentos. No se copian campos personales redundantes ni se modifica VICIdial,
+core, zynervox_queries o el motor. Base seleccionada al ejecutar SQL; importaci?n
+conserva contrato y usa defaults. Responsable de continuaci?n: bot_ivr.
+
+### Extensi?n de alcance: integraci?n de instalaci?n
+
+ARCHITECT_AGENT autoriza adem?s installer/ivr-builder-bot-db.sh y README de
+installer para incluir migraci?n 005 en despliegues futuros. Contrato del
+instalador sin cambios; se separa ALTER del ?ndice para compatibilidad con el
+helper apply-schema.py y reaplicaci?n cuando las columnas ya existen.

@@ -121,3 +121,26 @@ durante lectura y validación WAV PCM16 mono8000Hz con frames no vacíos.
 Errores400/401/502/503/red/formato se traducen a mensajes fijos sin respuesta
 remota, token, proxy o trace. Ownership/historial/reproductor permanecen iguales.
 Solo clienteRGA: no modifica gateway, Farm, BD, campañas o workers.
+
+
+## Campos de preparaci?n del discador (2026-10-10)
+
+Aplicar models/005-lead-dialer-fields.sql a la base configurada de Bot IVR
+(mirmidon: zynervox_core); la migraci?n no fija USE ni modifica VICIdial.
+A?ade status VARCHAR(6) NOT NULL DEFAULT 'NEW', called_count INT UNSIGNED
+NOT NULL DEFAULT 0, last_call_at DATETIME NULL y next_call_at DATETIME NULL.
+NEW identifica un contacto sin intento; called_count cuenta intentos de marcaci?n.
+Las fechas deben escribirse en UTC. El futuro motor define las transiciones de
+estado y la pol?tica de reintentos; ning?n campo dispara llamadas por s? mismo.
+?ndice idx_bot_list_dial_queue: list_id, status, next_call_at, lead_id.
+
+Migraci?n aditiva e idempotente para MariaDB 10.6, sin borrar leads. Los contactos
+existentes y nuevas importaciones reciben NEW/0/NULL/NULL. Reemplazar base conserva
+su sem?ntica: elimina leads de esa lista y crea contactos nuevos con valores
+iniciales; no conserva su historial ni sus estados anteriores. No reemplazar una
+lista mientras el futuro motor la procesa. Historial por intento y reserva
+concurrente de leads quedan pendientes de implementar con el motor.
+
+DDL realiza commit impl?cito; no se revierte mediante ROLLBACK. Ejecutar por
+administraci?n, nunca desde list_edit.php. Verificar con la prueba existente:
+php src/features/bot_ivr/tests/list-import-db.php /ruta/web/bot_ivr

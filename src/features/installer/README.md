@@ -51,3 +51,9 @@ estado parcial; `check.sh --strict` exige la plataforma completa.
 
 `database/compose.yml` y `installer/database.sh` administran la base MariaDB aislada,
 su esquema inicial, credenciales, configuración, backup y restauración.
+
+## Campos de discador Bot IVR (2026-10-10)
+
+ivr-builder-bot-db.sh incluye models/005-lead-dialer-fields.sql en su secuencia
+de esquemas sobre DB_NAME configurada. A?ade cuatro campos y un ?ndice; no
+lanza llamadas. Migraci?n aditiva e idempotente para MariaDB 10.6+.

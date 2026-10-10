@@ -22,8 +22,18 @@ try {
     $other = bot_campaign_create($repository, '__other_import_test__', false);
     $result = bot_list_import($repository, $list, $campaign, $parsed);
     list_verify($result['saved'] === 2 && $result['duplicates'] === 1 && $result['rejected'] === 1, 'Import counters');
+    $dial = $db->prepare('SELECT status,called_count,last_call_at,next_call_at FROM zynervox_bot_list WHERE list_id=?');
+    $dial->execute([$list]);
+    foreach ($dial->fetchAll() as $lead) {
+        list_verify($lead['status'] === 'NEW' && (int)$lead['called_count'] === 0 && $lead['last_call_at'] === null && $lead['next_call_at'] === null, 'New import must initialize dialer fields');
+    }
+    $db->prepare("UPDATE zynervox_bot_list SET status='NA',called_count=2,last_call_at='2026-10-10 08:00:00',next_call_at='2026-10-11 08:00:00' WHERE list_id=?")->execute([$list]);
     $again = bot_list_import($repository, $list, $campaign, $parsed);
     list_verify($again['saved'] === 2 && $again['duplicates'] === 1 && $repository->leadCount($list) === 2, 'Reupload replaces without accumulating leads');
+    $dial->execute([$list]);
+    foreach ($dial->fetchAll() as $lead) {
+        list_verify($lead['status'] === 'NEW' && (int)$lead['called_count'] === 0 && $lead['last_call_at'] === null && $lead['next_call_at'] === null, 'Replacement must reset dialer fields for new leads');
+    }
     $stmt = $db->prepare('SELECT customer_name,extra_json FROM zynervox_bot_list WHERE list_id=? AND phone=?');
     $stmt->execute([$list,'51999000001']);
     $row = $stmt->fetch();

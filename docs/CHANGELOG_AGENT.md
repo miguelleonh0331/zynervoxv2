@@ -1586,3 +1586,14 @@ Fuente corregida; requiere reejecucion instalador por usuario; sin cambios remot
 - Pruebas MySQL efimero: CRUD, archivos inactivos, auditoria, CSRF,
   reejecucion conserva datos/configuracion/archivos fuera allowlist.
 - No se modifican includes ni configuraciones Asterisk de produccion.
+
+## 2026-10-10 ? bot_ivr: campos de discador
+
+Migraci?n 005 a?ade status, called_count, last_call_at, next_call_at e ?ndice
+por lista/estado/reintento. README y CONTRACT documentan UTC, defaults,
+reemplazo de base y l?mites; prueba list-import-db verifica defaults y aislamiento
+al reemplazar. No a?ade ejecuci?n de llamadas ni altera otras tablas.
+
+Validaci?n mirmidon: migraci?n aplicada dos veces, defaults NEW/0/NULL/NULL
+verificados, siete campos originales del lead existente intactos; prueba PHP
+de importaci?n/reemplazo/rollback aprobada. Instalador incluye migraci?n 005.

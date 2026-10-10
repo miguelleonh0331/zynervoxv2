@@ -46,7 +46,7 @@ CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$password_sql';
 CREATE USER IF NOT EXISTS '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$password_sql';
 SQL
 schemas=("$ROOT/database/init/002-bot_ivr_flows_zynervox.sql" "$ROOT/database/init/004-bot_ivr_flows-list_id.sql")
-for schema in 001-zynervox.sql 002-campaign-lists.sql 003-campaign-details.sql 004-list-flow.sql; do
+for schema in 001-zynervox.sql 002-campaign-lists.sql 003-campaign-details.sql 004-list-flow.sql 005-lead-dialer-fields.sql; do
   schemas+=("$ROOT/src/features/bot_ivr/models/$schema")
 done
 for schema in "${schemas[@]}"; do apply_schema "$schema"; done
