@@ -39,7 +39,9 @@ CREATE TABLE IF NOT EXISTS v2_carriers (
   carrier_description TEXT NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 SQL
+mysql "$DB_NAME" < "$ROOT/src/features/core/models/phones-v2.sql"
 for host in localhost 127.0.0.1; do
+  mysql -e "GRANT SELECT,INSERT,UPDATE,DELETE ON zynervox_core.v2_phones TO '$DB_USER'@'$host';"
   mysql -e "GRANT SELECT,INSERT,UPDATE,DELETE ON zynervox_core.v2_carriers TO '$DB_USER'@'$host';"
 done
 install -d -o root -g "$WEB_GROUP" -m 0770 "$runtime/modules/asterisk"

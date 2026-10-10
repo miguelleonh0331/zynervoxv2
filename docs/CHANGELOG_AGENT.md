@@ -1716,3 +1716,12 @@ screens. Remove dialplan explanation/example and widen both textareas.
 ## 2026-10-10 - core: carrier editors 30/70
 
 Set PJSIP/Dialplan columns to 30/70; retain mobile stacking.
+
+## 2026-10-10 - core: isolated phones administration
+
+Enable phones.php in v2 gate. Phones use zynervox_core.v2_phones with dedicated
+DML grants and access audit. Keep legacy adapter unchanged outside isolation.
+Add CSRF and basic validation; blank edit password preserves stored secret.
+Account storage only; no Asterisk configuration generation or activation.
+Schema included in isolated installation via carriers.sh. Architect scope:
+Core and installer integration approved for isolated account persistence.

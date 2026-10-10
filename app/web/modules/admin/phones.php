@@ -8,11 +8,14 @@ use Includes\Phones;
 use Includes\Audit;
 
 Auth::checkAccess(9);
+$_SESSION['phones_csrf'] = $_SESSION['phones_csrf'] ?? bin2hex(random_bytes(32));
 
 $msg = '';
 $editData = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!is_string($_POST['csrf_token'] ?? null) || !hash_equals($_SESSION['phones_csrf'], $_POST['csrf_token'])) { http_response_code(403); exit('CSRF invalido'); }
+    try {
     if (isset($_POST['save_phone'])) {
         $data = [
             'extension' => trim($_POST['extension']),
@@ -44,6 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $msg = "<p style='color: #b91c1c;'>Anexo eliminado.</p>";
         }
     }
+    } catch (\Throwable $e) { $msg = "<p style='color:#b91c1c;'>No se pudo guardar; revise extension, protocolo y campos.</p>"; }
 }
 
 if (isset($_GET['edit_id'])) {
@@ -106,7 +110,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
         <header class="top-bar" style="margin-bottom: 0.5rem;">
             <div>
                 <h1 style="font-size: 1.1rem; font-weight: 700;">Anexos / Teléfonos</h1>
-                <p style="color: var(--text-muted); font-size: 0.75rem;">Extensiones SIP registradas en la tabla "phones"</p>
+                <p style="color: var(--text-muted); font-size: 0.75rem;">Cuentas de anexos administradas por Zynervox</p>
             </div>
         </header>
 
@@ -121,7 +125,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
                 </div>
 
                 <form method="GET" class="toolbar">
-                    <input type="text" name="search" placeholder="Buscar por extensión, login o nombre..." value="<?php echo htmlspecialchars($search); ?>">
+                    <input type="text" name="search" placeholder="Buscar por extensión, login o nombre..." value="<?php echo htmlspecialchars($search ?? ''); ?>">
                     <button type="submit" class="btn-action">Buscar</button>
                     <?php if ($search): ?>
                         <a href="phones.php" class="btn-action" title="Limpiar">&times;</a>
@@ -143,16 +147,17 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
                     <tbody>
                         <?php foreach ($allPhones as $p): ?>
                         <tr>
-                            <td><strong><?php echo $p['extension']; ?></strong></td>
-                            <td><?php echo $p['login']; ?></td>
-                            <td><?php echo $p['fullname']; ?></td>
-                            <td><?php echo $p['protocol']; ?></td>
-                            <td><?php echo $p['outbound_cid']; ?></td>
+                            <td><strong><?php echo htmlspecialchars($p['extension']); ?></strong></td>
+                            <td><?php echo htmlspecialchars($p['login']); ?></td>
+                            <td><?php echo htmlspecialchars($p['fullname']); ?></td>
+                            <td><?php echo htmlspecialchars($p['protocol']); ?></td>
+                            <td><?php echo htmlspecialchars($p['outbound_cid']); ?></td>
                             <td><?php echo $p['active'] == 'Y' ? 'Si' : 'No'; ?></td>
                             <td style="white-space: nowrap;">
                                 <a href="?edit_id=<?php echo urlencode($p['extension']); ?>">Editar</a>
-                                <form method="POST" class="inline-form" onsubmit="return confirm('¿Eliminar anexo <?php echo $p['extension']; ?>?');">
-                                    <input type="hidden" name="extension" value="<?php echo $p['extension']; ?>">
+                                <form method="POST" class="inline-form" onsubmit="return confirm('¿Eliminar anexo <?php echo htmlspecialchars($p['extension']); ?>?');">
+                                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['phones_csrf']); ?>">
+                                    <input type="hidden" name="extension" value="<?php echo htmlspecialchars($p['extension']); ?>">
                                     <button type="submit" name="delete_phone" class="link-inline danger">Eliminar</button>
                                 </form>
                             </td>
@@ -168,6 +173,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
             <div class="card">
                 <h2><?php echo $editData ? 'Editar Anexo' : 'Nuevo Anexo'; ?></h2>
                 <form method="POST" style="margin-top: 0.5rem;">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['phones_csrf']); ?>">
                     <?php if ($editData): ?>
                         <input type="hidden" name="is_edit" value="1">
                         <input type="hidden" name="old_extension" value="<?php echo $editData['extension']; ?>">
@@ -180,7 +186,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
                             renderField('Extensión (número de anexo)', 'extension', $d['extension']);
                             if ($editData) { echo '<input type="hidden" name="extension" value="' . htmlspecialchars($d['extension']) . '">'; }
                             renderField('Login', 'login', $d['login']);
-                            renderField('Password', 'pass', $d['pass'], 'password');
+                            renderField('Password (vacio conserva el actual)', 'pass', $editData ? '' : $d['pass'], 'password');
                             renderField('Nombre', 'fullname', $d['fullname']);
                             renderField('CID Saliente', 'outbound_cid', $d['outbound_cid']);
                             renderField('Protocolo', 'protocol', $d['protocol'], 'select', ['PJSIP' => 'PJSIP', 'SIP' => 'SIP (legacy, deshabilitado)']);
@@ -211,7 +217,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
                     </thead>
                     <tbody>
                         <?php
-                        $logs = Audit::getRecent('phones', 20);
+                        $logs = Phones::recentChanges();
                         foreach ($logs as $l): ?>
                             <tr>
                                 <td><?php echo date('d/m/Y H:i', strtotime($l['audit_timestamp'])); ?></td>

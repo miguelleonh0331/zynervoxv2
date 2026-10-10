@@ -676,3 +676,12 @@ concatenación. Alcance: Bot IVR, instalador y sus contratos/pruebas.
 ## 2026-10-10 - bot_ivr: publication registry
 
 Use cache-local audio_registry.sqlite (published_audio hash primary key, timestamp) for publication metadata; no new Redis service or DB permissions. WAV must be immutable after publication. Deletions must use delete_audio to unpublish first. SQLite reads metadata, so this removes WAV reads, not all filesystem I/O. Existing successful manifests can seed the index without reading WAV content.
+
+## 2026-10-10 - core: isolated phones administration
+
+Enable phones.php in v2 gate. Phones use zynervox_core.v2_phones with dedicated
+DML grants and access audit. Keep legacy adapter unchanged outside isolation.
+Add CSRF and basic validation; blank edit password preserves stored secret.
+Account storage only; no Asterisk configuration generation or activation.
+Schema included in isolated installation via carriers.sh. Architect scope:
+Core and installer integration approved for isolated account persistence.
