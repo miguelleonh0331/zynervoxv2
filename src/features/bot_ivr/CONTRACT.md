@@ -211,3 +211,8 @@ finish can supply authoritative result. No recovery while journals are pending.
 ## 2026-10-10 - Selector de origen
 
 list_edit consume Carriers::dialOrigins del contrato publico core. Dropdown Origen guarda el prefijo seleccionado mediante updateListDialPrefix existente, con CSRF y pertenencia lista/campana. Sin origen permite vacio; opcion no registrada/inactiva/retirada se rechaza y prefijo anterior no se borra automaticamente. Plantilla 7306 respeta ZV2_LIST_ID proporcionado; solo llamadas manuales sin variable usan lista 1. No implementa Play ni worker.
+
+
+## 2026-10-10 - Initial CLI IVR engine
+
+ivr_engine_agi.php accepts listId,leadId,callId on CLI only. Requires isolated deployment and scoped open call context from public repository, published flow and hashes in read-only SQLite. No WAV validation or TTS generation at call time. Supports linear noop/goto/create_audio/create_audio_dynamic/playback/hangup, max 100 steps, rejects cycles/unsupported nodes before playback. No STT, menus, composites, bridging, external URLs or SQL actions in this first test stage. Asterisk STREAM FILE reads audio, engine logs IVR_START/NODE/END through durable audit journals; completed/interrupted/error result distinct from CDR answer/disposition. Per-call lock and terminal IVR event reject reruns. Does not implement campaign originator/Play/Stop; Local channel originator remains next stage.

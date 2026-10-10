@@ -104,3 +104,8 @@ Recovery checks open attempts older than five minutes against native PBX
 channels. Two-minute absence grace avoids hangup callback races; mark LOST
 with RECOVERY event, preserving unknown actual end/duration. A later real
 finish can supply authoritative result. No recovery while journals are pending.
+
+
+## 2026-10-10 - IVR execution context
+
+ivrCallContext(listId,leadId,callId) returns one lead with campaign_id/id_flujo only when list/lead match the open tracked attempt and no IVR_END exists. recordCallEvent also accepts IVR_START, IVR_NODE and IVR_END; existing CDR semantics unchanged.

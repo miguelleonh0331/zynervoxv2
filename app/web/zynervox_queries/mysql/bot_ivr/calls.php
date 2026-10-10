@@ -2,6 +2,13 @@
 declare(strict_types=1);
 namespace ZynervoxQueries\Mysql\BotIvr;
 trait CallQueries {
+    public function ivrCallContext(int $listId, int $leadId, string $callId): array {
+        $s=$this->db->prepare('SELECT l.lead_id,l.list_id,l.phone,l.customer_name,l.extra_json,p.campaign_id,p.id_flujo FROM zynervox_bot_call_attempts a JOIN zynervox_bot_list l ON l.lead_id=a.lead_id AND l.list_id=a.list_id JOIN zynervox_bot_lists p ON p.list_id=a.list_id WHERE a.call_id=? AND a.list_id=? AND a.lead_id=? AND a.finished_at IS NULL AND NOT EXISTS (SELECT 1 FROM zynervox_bot_call_events e WHERE e.call_id=a.call_id AND e.event_type=\'IVR_END\')');
+        $s->execute([$callId,$listId,$leadId]);
+        $row=$s->fetch(\PDO::FETCH_ASSOC);
+        if (!$row || !$row['id_flujo']) throw new \RuntimeException('Invalid IVR call context');
+        return $row;
+    }
     private function callAtomic(callable $operation) {
         $outer=$this->db->inTransaction();
         if ($outer) $this->db->exec('SAVEPOINT call_tracking'); else $this->db->beginTransaction();
@@ -15,7 +22,7 @@ trait CallQueries {
         }
     }
     public function recordCallEvent(string $callId, string $type, string $eventId, int $epoch, array $data): void {
-        if (!in_array($type,['START','OUTBOUND','ANSWER','AMD','FINISH','RECOVERY'],true) || !preg_match('/^[a-f0-9]{64}$/D',$eventId) || $epoch<1) throw new \RuntimeException('Invalid event');
+        if (!in_array($type,['START','OUTBOUND','ANSWER','AMD','FINISH','RECOVERY','IVR_START','IVR_NODE','IVR_END'],true) || !preg_match('/^[a-f0-9]{64}$/D',$eventId) || $epoch<1) throw new \RuntimeException('Invalid event');
         $this->callAtomic(function() use($callId,$type,$eventId,$epoch,$data) {
             $s=$this->db->prepare('SELECT call_id FROM zynervox_bot_call_attempts WHERE call_id=? FOR UPDATE'); $s->execute([$callId]);
             if (!$s->fetchColumn()) throw new \RuntimeException('Attempt not found');

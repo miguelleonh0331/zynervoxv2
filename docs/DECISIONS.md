@@ -731,3 +731,8 @@ ARCHITECT_AGENT scope: core Carriers, admin carrier display and tests. Existing 
 ## 2026-10-10 - Common contexts template
 
 ARCHITECT_AGENT approved core parser/template, admin template view, installer normalization and example/tests. Shared contexts now belong to Core template and exist even with no active routes. Route editing cannot override the fixed definitions. Legacy helper copies must match exactly before migration strips them; preserve custom routes and fail closed for divergent helpers. User will author the next route; do not create 7305 automatically. Contract extension approved.
+
+
+## 2026-10-10 - Initial IVR playback engine
+
+ARCHITECT_AGENT approval: bot_ivr engine/service/tests/examples, core fixed contexts, zynervox_queries public call context/event allowlist, installer executable and runtime setup. Initial test scope is published flow 11 (noop, prepared personalized audio, hangup); supports linear noop/goto/create_audio/create_audio_dynamic/playback/hangup. Unsupported interactive/STT/composite/external-action nodes rejected before playback, never silently skipped. No campaign worker or Play integration in this stage; user authors two routes. Contexts distinguish AMD versus no AMD. Runtime resolves current lead variables and canonical Python-compatible hash, consults SQLite published registry, delegates actual WAV read to Asterisk playback without WAV revalidation. Public repository resolves one scoped attempt/lead/list rather than loading an entire lead list. Audit uses durable existing journals and records IVR_START/NODE/END, preserving call closure independently. No outgoing call automatically launched. Contract changes approved.

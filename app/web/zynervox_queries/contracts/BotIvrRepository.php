@@ -2,6 +2,7 @@
 declare(strict_types=1);
 namespace ZynervoxQueries;
 interface BotIvrRepository {
+    public function ivrCallContext(int $listId, int $leadId, string $callId): array;
     public function recordCallEvent(string $callId, string $type, string $eventId, int $epoch, array $data): void;
     public function openCallsForRecovery(): array;
     public function observeCallPresence(string $callId, bool $active, int $epoch): bool;

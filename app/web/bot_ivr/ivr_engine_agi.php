@@ -1,0 +1,57 @@
+#!/usr/bin/php
+<?php
+declare(strict_types=1);
+if (PHP_SAPI!=='cli') { http_response_code(404); exit; }
+ini_set('display_errors','0');
+if (function_exists('pcntl_signal')) { pcntl_async_signals(true); pcntl_signal(SIGHUP,SIG_IGN); }
+require __DIR__.'/db.php';
+require __DIR__.'/ivr_engine_service.php';
+require __DIR__.'/call_audit_service.php';
+require_once __DIR__.'/../ivr_builder/published_flow.php';
+$env=[];
+while (($line=fgets(STDIN))!==false && trim($line)!=='') {
+    $parts=explode(':',trim($line),2); if (count($parts)===2) $env[$parts[0]]=trim($parts[1]);
+}
+$sequence=0; $context=null; $lease=null; $hungup=false;
+$call=(string)($argv[3] ?? '');
+$audit=function(string $type,array $data) use (&$sequence,$call,$env): void {
+    $data+=['channel'=>$env['agi_channel'] ?? '','unique_id'=>$env['agi_uniqueid'] ?? ''];
+    $entry=['call_id'=>$call,'type'=>$type,'epoch'=>time(),'data'=>$data,'event_id'=>hash('sha256',$call.'|'.$type.'|ivr|'.($sequence++))];
+    $journal=call_audit_write($entry); call_audit_apply($entry); unlink($journal);
+};
+$command=function(string $text) use (&$hungup): ?string {
+    if ($hungup) return null;
+    echo $text."\n"; fflush(STDOUT);
+    $reply=fgets(STDIN);
+    if ($reply===false || trim($reply)==='HANGUP') { $hungup=true; return null; }
+    if (strpos($reply,'result=-1')!==false) $hungup=true;
+    return trim($reply);
+};
+try {
+    $list=filter_var($argv[1] ?? null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+    $lead=filter_var($argv[2] ?? null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+    if (!$list || !$lead || !preg_match('/^[A-Za-z0-9_.-]{1,80}$/D',$call)) throw new RuntimeException('Invalid IVR identity');
+    if (!\Config\Config::deployment('isolated',false)) throw new RuntimeException('Isolated IVR required');
+    $runtime=rtrim((string)\Config\Config::deployment('runtime'),'/');
+    $dir=$runtime.'/bot_ivr/ivr_calls';
+    if (realpath($dir)!==$dir) throw new RuntimeException('IVR runtime unavailable');
+    $lease=fopen($dir.'/'.$call.'.lock','c');
+    if (!$lease || !flock($lease,LOCK_EX|LOCK_NB)) throw new RuntimeException('IVR already running');
+    $context=bot_ivr_repository()->ivrCallContext($list,$lead,$call);
+    $audit('IVR_START',['list_id'=>$list,'lead_id'=>$lead,'flow_id'=>(int)$context['id_flujo']]);
+    $flow=ivr_builder_published_flow((int)$context['id_flujo']);
+    $index=$runtime.'/sounds/cache/ivr_builder/gtts/audio_registry.sqlite';
+    if (!is_file($index)) throw new RuntimeException('Audio registry unavailable');
+    $registry=new PDO('sqlite:'.$index,null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+    $registry->exec('PRAGMA query_only=ON');
+    $lookup=$registry->prepare('SELECT 1 FROM published_audio WHERE hash=?');
+    $steps=bot_ivr_steps($flow,$context,$runtime,function($hash) use($lookup) { $lookup->execute([$hash]); return (bool)$lookup->fetchColumn(); });
+    $result=bot_ivr_execute($steps,$command,$audit);
+    $audit('IVR_END',['result'=>$result]);
+    $command('SET VARIABLE ZV2_IVR_RESULT "'.$result.'"');
+} catch (Throwable $e) {
+    if ($context!==null) { try { $audit('IVR_END',['result'=>'ERROR','error_class'=>get_class($e)]); } catch (Throwable $ignored) {} }
+    $command('SET VARIABLE ZV2_IVR_RESULT "ERROR"');
+    fwrite(STDERR,'ZV2 IVR failed: '.get_class($e)."\n");
+    exit(1);
+} finally { if (is_resource($lease)) fclose($lease); }

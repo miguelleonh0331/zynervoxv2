@@ -57,3 +57,8 @@ Isolated Carriers CRUD accepts protocol SIP/PJSIP explicitly; selection is autho
 ## 2026-10-10 - Common system contexts
 
 DialplanOrigins::template publishes immutable zynervoxv2-amd/call-finish/outbound then the existing main HEADER. render emits that template once before every authored route. body removes identical historical copies of protected contexts and rejects differing definitions. Other helper contexts retain existing merge validation. Template currently preserves deployed AGI path and AMD/audit behavior.
+
+
+## 2026-10-10 - IVR answer entrypoints
+
+Common template includes zynervoxv2-bot-ivr (AMD then engine unless MACHINE) and zynervoxv2-bot-ivr-sin-amd (ANSWER event then engine). Both run on the called leg and return GOSUB_RESULT=CONTINUE after engine exit. Caller routes must inherit ZV2_LIST_ID/ZV2_LEAD_ID/ZV2_CALL_ID. Template remains hidden in web; route authoring unchanged.

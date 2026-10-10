@@ -95,9 +95,11 @@ fi
 echo "IVR_BUILDER_DB_READY database=$DB_NAME user=$DB_USER"
 
 # CLI AGI must be executable when deployed from source.
-if [[ -f "$WEB_ROOT/bot_ivr/call_tracking_agi.php" ]]; then
-  chown root:"$WEB_GROUP" "$WEB_ROOT/bot_ivr/call_tracking_agi.php"
-  chmod 0750 "$WEB_ROOT/bot_ivr/call_tracking_agi.php"
-fi
+for agi in call_tracking_agi.php ivr_engine_agi.php; do
+  if [[ -f "$WEB_ROOT/bot_ivr/$agi" ]]; then
+    chown root:"$WEB_GROUP" "$WEB_ROOT/bot_ivr/$agi"
+    chmod 0750 "$WEB_ROOT/bot_ivr/$agi"
+  fi
+done
 
 if [[ "${ZYNERVOX_ISOLATED:-0}" == 1 ]]; then bash "$ROOT/installer/call-audit.sh"; fi
