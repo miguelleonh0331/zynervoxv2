@@ -1725,3 +1725,7 @@ Add CSRF and basic validation; blank edit password preserves stored secret.
 Account storage only; no Asterisk configuration generation or activation.
 Schema included in isolated installation via carriers.sh. Architect scope:
 Core and installer integration approved for isolated account persistence.
+
+## 2026-10-10 - core: accept SIP and PJSIP phones
+
+Allow both protocols when saving v2 phones; default new form to SIP. Account storage remains in zynervox_core.v2_phones.

@@ -178,7 +178,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
                         <input type="hidden" name="is_edit" value="1">
                         <input type="hidden" name="old_extension" value="<?php echo $editData['extension']; ?>">
                     <?php endif; ?>
-                    <?php $d = $editData ?: ['extension' => '', 'login' => '', 'pass' => '', 'fullname' => '', 'outbound_cid' => '', 'active' => 'Y', 'protocol' => 'PJSIP']; ?>
+                    <?php $d = $editData ?: ['extension' => '', 'login' => '', 'pass' => '', 'fullname' => '', 'outbound_cid' => '', 'active' => 'Y', 'protocol' => 'SIP']; ?>
 
                     <div class="form-section" style="border-bottom: none;">
                         <div class="grid-3">
@@ -189,7 +189,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
                             renderField('Password (vacio conserva el actual)', 'pass', $editData ? '' : $d['pass'], 'password');
                             renderField('Nombre', 'fullname', $d['fullname']);
                             renderField('CID Saliente', 'outbound_cid', $d['outbound_cid']);
-                            renderField('Protocolo', 'protocol', $d['protocol'], 'select', ['PJSIP' => 'PJSIP', 'SIP' => 'SIP (legacy, deshabilitado)']);
+                            renderField('Protocolo', 'protocol', $d['protocol'], 'select', ['SIP' => 'SIP', 'PJSIP' => 'PJSIP']);
                             renderField('Activo', 'active', $d['active'], 'select', ['Y' => 'Si (Y)', 'N' => 'No (N)']);
                             ?>
                         </div>

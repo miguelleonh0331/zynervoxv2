@@ -29,7 +29,7 @@ class Phones {
     private static function validate($data) {
         if (!\Config\Config::deployment('isolated', false)) return;
         if (!preg_match('/^[0-9]{1,20}$/D', (string)($data['extension'] ?? ''))) throw new \InvalidArgumentException('Extension invalida');
-        if (isset($data['protocol']) && $data['protocol'] !== 'PJSIP') throw new \InvalidArgumentException('Solo PJSIP en v2');
+        if (isset($data['protocol']) && !in_array($data['protocol'], ['SIP', 'PJSIP'], true)) throw new \InvalidArgumentException('Protocolo invalido');
         if (isset($data['active']) && !in_array($data['active'],['Y','N'],true)) throw new \InvalidArgumentException('Estado invalido');
         foreach ($data as $key=>$value) {
             if (!in_array($key,['extension','login','pass','fullname','outbound_cid','active','protocol'],true) || !is_string($value) || strlen($value)>160 || preg_match('/[\r\n]/',$value)) throw new \InvalidArgumentException('Campo invalido');
