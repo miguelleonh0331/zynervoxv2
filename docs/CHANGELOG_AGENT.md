@@ -1672,3 +1672,8 @@ UI preparation only; no extension discovery, persistence or call launch yet.
 Disable Generar on initial render and progress updates when current audio
 publication is complete. POST also rejects regeneration of a ready snapshot.
 Changed inputs or removed publication records allow generation again.
+
+## 2026-10-10 - bot_ivr: hide Generar when ready
+
+Hide the generation button for ready lists on initial render and polling.
+Retain server-side rejection; show it again when readiness is invalidated.

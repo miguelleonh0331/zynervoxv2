@@ -75,6 +75,7 @@ if ($list): ?>
 .list-meta td{border:1px solid var(--border)}.list-guide{padding:12px;background:var(--glass);border:1px solid var(--border);font-size:12px;line-height:1.6}
 .list-guide code{color:var(--text)}.list-form-actions{display:flex;gap:10px;flex-wrap:wrap}
 .list-audio{grid-column:1 / -1}.list-audio-controls{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}.list-audio-provider{flex:1;min-width:240px}.list-audio-speed{width:220px;max-width:100%}.list-audio-controls .carsa-btn{min-height:36px}.list-audio-controls .carsa-btn:disabled{opacity:.55;cursor:not-allowed}.list-audio-note{font-size:12px;color:var(--text-muted);margin:12px 0 0}
+.list-audio-controls [hidden]{display:none!important}
 .list-back{color:var(--primary-hover);font-size:13px;text-decoration:none}
 .audio-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}.audio-summary .list-audio-note{margin:0}
 .audio-dialog{width:100%;padding-top:20px;color:var(--text);box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
@@ -124,7 +125,7 @@ if ($list): ?>
 <option value="<?php echo $workers; ?>"<?php echo $workers === 25 ? ' selected' : ''; ?>><?php echo $workers; ?>x</option>
 <?php endforeach; ?>
 </select></div>
-<button type="submit" id="list-audio-generate" class="carsa-btn"<?php echo $audioPayload === null || $audioActive || $audioReady ? ' disabled' : ''; ?> aria-describedby="list-audio-availability">Generar</button>
+<button type="submit" id="list-audio-generate" class="carsa-btn"<?php echo $audioReady ? ' hidden' : ''; ?><?php echo $audioPayload === null || $audioActive || $audioReady ? ' disabled' : ''; ?> aria-describedby="list-audio-availability">Generar</button>
 <div class="carsa-field list-audio-speed"><label for="list_call_origin">Origen</label>
 <select id="list_call_origin" name="call_origin"><option value="3006">Extensión 3006</option></select></div>
 <button type="button" id="list-call-play" class="carsa-btn"<?php echo $audioReady ? '' : ' disabled'; ?>>▶ Play</button>
@@ -167,6 +168,7 @@ if ($list): ?>
     function render(job, ready) {
         const active = job && (job.state === 'starting' || job.state === 'running');
         const stale = job && valid && job.signature !== signature;
+        button.hidden = !!ready && !stale;
         button.disabled = !valid || active || (ready && !stale);
         play.disabled = !ready || !valid || active || stale;
         const total = stale ? 0 : Number(job && job.total || 0);
