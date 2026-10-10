@@ -1750,3 +1750,7 @@ Replace fixed Origen selector with editable list prefix and separate CSRF-protec
 ## 2026-10-10 - call tracking
 
 Add CLI-only AGI, scoped lead creation and UTC attempt history. Hangup handler closes calls including AMD cuts. Prefix 7306 manual template stored in source; target carrier TEST dialplan will be updated and generated without Asterisk restart.
+
+## 2026-10-10 - CDR and event audit
+
+Add CDR timings/channels/linkedid/carrier/origin and append-only call events. AGI journals events before SQL; cron replays pending records idempotently. Manual route records outbound channel, answer and AMD before finish.

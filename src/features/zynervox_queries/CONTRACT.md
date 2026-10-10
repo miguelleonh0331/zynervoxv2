@@ -95,3 +95,12 @@ updateListDialPrefix(listId,campaignId,prefix) updates the scoped list after own
 ## 2026-10-10 - call tracking
 
 startCall(listId,phone,callId) atomically finds/creates a list lead and records/counts one attempt. finishCall closes idempotently, storing dial/AMD/hangup details and latest lead status. Existing outer transactions use a savepoint.
+
+## 2026-10-10 - CDR and event audit
+
+recordCallEvent(callId,type,eventId,epoch,data) inserts append-only event once and enriches attempt CDR. Caller uniqueid is call_id; outbound uniqueid stored separately, linked_id correlates legs. Event source timestamps UTC, received_at distinguishes replay. Duration from START to FINISH; billsec ANSWER to FINISH (includes AMD).
+
+Recovery checks open attempts older than five minutes against native PBX
+channels. Two-minute absence grace avoids hangup callback races; mark LOST
+with RECOVERY event, preserving unknown actual end/duration. A later real
+finish can supply authoritative result. No recovery while journals are pending.

@@ -197,3 +197,12 @@ List dial_prefix VARCHAR(20) defaults empty, updated through public scoped repos
 ## 2026-10-10 - call tracking
 
 call_tracking_agi.php is CLI-only; start args list,phone,callId; finish args callId,DIALSTATUS,AMDSTATUS,AMDCAUSE,HANGUPCAUSE,answered. Manual route 7306 selects list 1. CALL in progress, AA machine, ANSWER answered, B busy, NA noanswer, UNAV unavailable, CONG congestion, CANCEL cancelled, FAIL other. Hangup handler required. New manual leads invalidate existing audio snapshot.
+
+## 2026-10-10 - CDR and event audit
+
+AGI supports event OUTBOUND/ANSWER/AMD and --replay. Private call_audit_pending journals are atomic, replayed every minute and deleted only after committed SQL. START remains fail-closed if audit/DB unavailable. No claim of lossless native CEL coverage or automatic recovery of never-captured hangups.
+
+Recovery checks open attempts older than five minutes against native PBX
+channels. Two-minute absence grace avoids hangup callback races; mark LOST
+with RECOVERY event, preserving unknown actual end/duration. A later real
+finish can supply authoritative result. No recovery while journals are pending.

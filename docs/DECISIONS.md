@@ -702,3 +702,12 @@ Architect approval: extend zynervox_queries public repository with scoped update
 ## 2026-10-10 - call tracking
 
 Architect approves public repository startCall/finishCall and isolated attempts table. Parent list lock serializes missing-lead creation with uploads; unique call_id ensures idempotence. Late finishes cannot overwrite newer lead status. Manual route explicitly targets list 1; prefix alone does not select a list. No automatic retries or STT.
+
+## 2026-10-10 - CDR and event audit
+
+Architect approves bot_ivr/query/installer audit extension. Native CDR has no backend and CEL is disabled; leave shared PBX configuration unchanged. Build v2 CDR from explicit AGI events and carry native uniqueid/linkedid. Spool protects captured events against DB failure; process/server crash before an event is captured cannot be reconstructed by this mechanism. billsec includes AMD, not just bridge speech.
+
+Recovery checks open attempts older than five minutes against native PBX
+channels. Two-minute absence grace avoids hangup callback races; mark LOST
+with RECOVERY event, preserving unknown actual end/duration. A later real
+finish can supply authoritative result. No recovery while journals are pending.

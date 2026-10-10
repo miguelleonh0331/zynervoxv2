@@ -14,6 +14,49 @@ trait CallQueries {
             throw $e;
         }
     }
+    public function recordCallEvent(string $callId, string $type, string $eventId, int $epoch, array $data): void {
+        if (!in_array($type,['START','OUTBOUND','ANSWER','AMD','FINISH','RECOVERY'],true) || !preg_match('/^[a-f0-9]{64}$/D',$eventId) || $epoch<1) throw new \RuntimeException('Invalid event');
+        $this->callAtomic(function() use($callId,$type,$eventId,$epoch,$data) {
+            $s=$this->db->prepare('SELECT call_id FROM zynervox_bot_call_attempts WHERE call_id=? FOR UPDATE'); $s->execute([$callId]);
+            if (!$s->fetchColumn()) throw new \RuntimeException('Attempt not found');
+            $s=$this->db->prepare('SELECT event_id FROM zynervox_bot_call_events WHERE event_id=?'); $s->execute([$eventId]);
+            if ($s->fetchColumn()) return;
+            $at=gmdate('Y-m-d H:i:s',$epoch);
+            $this->db->prepare('INSERT INTO zynervox_bot_call_events(event_id,call_id,event_type,occurred_at,payload_json) VALUES (?,?,?,?,?)')->execute([$eventId,$callId,$type,$at,json_encode($data,JSON_THROW_ON_ERROR)]);
+            if ($type==='START') {
+                $this->db->prepare('UPDATE zynervox_bot_call_attempts SET linked_id=?,caller_channel=?,origin_prefix=?,carrier=?,started_at=? WHERE call_id=?')->execute([substr($data['linked_id']??'',0,80),substr($data['channel']??'',0,160),substr($data['prefix']??'',0,20),substr($data['carrier']??'',0,60),$at,$callId]);
+            } elseif ($type==='OUTBOUND') {
+                $this->db->prepare('UPDATE zynervox_bot_call_attempts SET callee_channel=?,callee_unique_id=? WHERE call_id=?')->execute([substr($data['channel']??'',0,160),substr($data['unique_id']??'',0,80),$callId]);
+            } elseif ($type==='ANSWER') {
+                $this->db->prepare('UPDATE zynervox_bot_call_attempts SET answered_at=COALESCE(answered_at,?) WHERE call_id=?')->execute([$at,$callId]);
+            } elseif ($type==='AMD') {
+                $this->db->prepare('UPDATE zynervox_bot_call_attempts SET amd_status=?,amd_cause=? WHERE call_id=?')->execute([substr($data['amd_status']??'',0,20),substr($data['amd_cause']??'',0,160),$callId]);
+            } elseif ($type==='FINISH') {
+                $this->db->prepare("UPDATE zynervox_bot_call_attempts SET finished_at=?,end_source='HANGUP_HANDLER' WHERE call_id=?")->execute([$at,$callId]);
+            }
+            $this->db->prepare('UPDATE zynervox_bot_call_attempts SET duration_seconds=IF(finished_at IS NULL,NULL,GREATEST(0,TIMESTAMPDIFF(SECOND,started_at,finished_at))),billsec=IF(finished_at IS NULL,NULL,IF(answered_at IS NULL,0,GREATEST(0,TIMESTAMPDIFF(SECOND,answered_at,finished_at)))) WHERE call_id=?')->execute([$callId]);
+        });
+    }
+    public function openCallsForRecovery(): array {
+        return $this->db->query("SELECT call_id,caller_channel,callee_channel,callee_unique_id,linked_id FROM zynervox_bot_call_attempts WHERE finished_at IS NULL AND status<>'LOST' AND started_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL 5 MINUTE) ORDER BY attempt_id LIMIT 1000")->fetchAll();
+    }
+    public function observeCallPresence(string $callId, bool $active, int $epoch): bool {
+        return $this->callAtomic(function() use($callId,$active,$epoch) {
+            $s=$this->db->prepare('SELECT * FROM zynervox_bot_call_attempts WHERE call_id=? FOR UPDATE'); $s->execute([$callId]);$call=$s->fetch();
+            if (!$call || $call['finished_at']!==null || $call['status']==='LOST') return false;
+            if ($active) {
+                $this->db->prepare('UPDATE zynervox_bot_call_attempts SET missing_since=NULL WHERE call_id=?')->execute([$callId]);return false;
+            }
+            if ($call['missing_since']===null) {
+                $this->db->prepare('UPDATE zynervox_bot_call_attempts SET missing_since=? WHERE call_id=?')->execute([gmdate('Y-m-d H:i:s',$epoch),$callId]);return false;
+            }
+            if ($epoch-strtotime($call['missing_since'].' UTC')<120) return false;
+            $this->db->prepare("UPDATE zynervox_bot_call_attempts SET status='LOST',end_source='RECOVERY' WHERE call_id=?")->execute([$callId]);
+            $this->db->prepare("UPDATE zynervox_bot_list l SET status='LOST' WHERE lead_id=? AND NOT EXISTS (SELECT 1 FROM zynervox_bot_call_attempts a WHERE a.lead_id=l.lead_id AND a.attempt_id>?)")->execute([$call['lead_id'],$call['attempt_id']]);
+            $this->db->prepare('INSERT INTO zynervox_bot_call_events(event_id,call_id,event_type,occurred_at,payload_json) VALUES (?,?,?,?,?)')->execute([hash('sha256',$callId.'|RECOVERY'),$callId,'RECOVERY',gmdate('Y-m-d H:i:s',$epoch),json_encode(['reason'=>'channel_absent_without_finish','actual_end_time'=>'unknown'],JSON_THROW_ON_ERROR)]);
+            return true;
+        });
+    }
     public function startCall(int $listId, string $phone, string $callId): int {
         if ($listId<1 || !preg_match('/^[0-9]{1,20}$/D',$phone) || !preg_match('/^[A-Za-z0-9_.-]{1,80}$/D',$callId)) throw new \RuntimeException('Invalid call identity');
         return $this->callAtomic(function() use($listId,$phone,$callId) {
@@ -39,6 +82,8 @@ trait CallQueries {
             $s=$this->db->prepare('SELECT * FROM zynervox_bot_call_attempts WHERE call_id=? FOR UPDATE'); $s->execute([$callId]); $call=$s->fetch();
             if (!$call) throw new \RuntimeException('Attempt not found');
             if ($call['finished_at']!==null) return;
+            if ($amdStatus==='') { $amdStatus=$call['amd_status']; $amdCause=$call['amd_cause']; }
+            $answered=$answered || $call['answered_at']!==null;
             $status=$amdStatus==='MACHINE' ? 'AA' : (($answered || $dialStatus==='ANSWER') ? 'ANSWER' : (['BUSY'=>'B','NOANSWER'=>'NA','CHANUNAVAIL'=>'UNAV','CONGESTION'=>'CONG','CANCEL'=>'CANCEL'][ $dialStatus ] ?? 'FAIL'));
             $this->db->prepare('UPDATE zynervox_bot_call_attempts SET status=?,dial_status=?,amd_status=?,amd_cause=?,hangup_cause=?,finished_at=UTC_TIMESTAMP() WHERE call_id=?')->execute([$status,substr($dialStatus,0,20),substr($amdStatus,0,20),substr($amdCause,0,160),$hangupCause,$callId]);
             // A late callback cannot overwrite a newer attempt for this lead.
