@@ -1794,3 +1794,5 @@ Removed common template heading and code from Dialplan page. Generated Asterisk 
 ## 2026-10-10 - IVR engine and AMD/no-AMD test entrypoints
 
 Added CLI-only ivr_engine_agi.php with published-flow loading, lead variable rendering, prepared hash lookup, bounded node execution and durable IVR events. Common template adds zynervoxv2-bot-ivr and zynervoxv2-bot-ivr-sin-amd. Repository exposes scoped ivrCallContext and accepts IVR audit events. Installer prepares private execution locks and executable AGI. Example route inherits list/lead identifiers; second prefix can use no-AMD entry. Tests exercise canonical hash, playback/hangup, unsupported nodes, scoped identity, audit and duplicate execution. Existing user routes preserved for user editing.
+
+- 2026-10-10: Actualizadas rutas carsa_bot_amd (7306) y carsa_bot (7307) desde configs versionadas: IVR con/sin AMD, identidad de lista/lead heredada y auditoria. Publicadas en zynervox_core, regenerado extensions-zynervoxv2.conf y verificado dialplan cargado. Sin llamadas salientes de prueba.
