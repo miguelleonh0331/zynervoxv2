@@ -771,3 +771,8 @@ Scope bot_ivr/zynervox_queries/installer. Existing eligibility remains lead.stat
 ## 2026-10-10 - Isolated campaign dashboard (ARCHITECT_AGENT)
 
 Scope admin entrypoints, core isolated gate, bot_ivr monitor view and public repository. Replace isolated admin redirect with read-only graphic campaign monitor at dashboard and campaign_monitor.php. Preserve legacy dashboard/monitor behavior outside isolated deployment. New repository aggregate snapshot avoids VICIdial and per-list detail queries. Authorized roles 7/8/9; no controls, credentials, or dial changes.
+
+
+## 2026-10-10 - Active campaign status summary (ARCHITECT_AGENT)
+
+Monitor snapshot filters active campaigns and adds current lead.status grouped per campaign. Scope existing repository/view/tests/contracts. No schema, dialing or historical changes.

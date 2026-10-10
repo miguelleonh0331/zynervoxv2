@@ -134,3 +134,8 @@ listStatistics(listId,campaignId): array validates list/campaign ownership and r
 ## 2026-10-10 - Isolated campaign dashboard
 
 campaignMonitor(): array aggregates existing campaign/list rows, latest dial run per list and latest attempt per current contact. Returns campaign state and contact counters with scoped list progress/channels/error. No schema, AMI or status mutation. No credential/config_json/phone/recording disclosure.
+
+
+## 2026-10-10 - Active campaign status summary
+
+campaignMonitor now returns active campaigns only (campaign.active=1), including states grouped from current zynervox_bot_list.status across campaign lists. State summaries never use attempt dial_status. No leads/empty active campaigns yield empty state arrays.

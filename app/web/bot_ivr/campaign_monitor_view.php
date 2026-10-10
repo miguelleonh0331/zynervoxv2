@@ -22,12 +22,15 @@ $monitorTitle=$monitorTitle??'Monitor de campanas';
  const labels={idle:'Sin marcacion',starting:'Iniciando',running:'Discando',stopping:'Deteniendo',stopped:'Detenida',completed:'Finalizada',failed:'Error'};
  function element(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e;}
  function render(rows){grid.replaceChildren();
-  if(!rows.length){grid.append(element('p','No hay campanas creadas.'));return;}
+  if(!rows.length){grid.append(element('p','No hay campanas activas.'));return;}
   for(const c of rows){
    const card=element('section',undefined,'campaign-card');card.dataset.state=c.state;
    const head=element('div',undefined,'campaign-head');const link=element('a','#'+c.campaign_id+' - '+c.name);link.href='../../bot_ivr/campaign_edit.php?id='+c.campaign_id;
-   head.append(link,element('span',labels[c.state]+(c.active?'':' | Inactiva'),'campaign-state'));card.append(head);
+   head.append(link,element('span',labels[c.state],'campaign-state'));card.append(head);
    const counts=element('div',undefined,'campaign-counts');for(const [key,label] of [['total','Total leads'],['calling','Llamando'],['finished','Terminados']]){const box=element('div');box.append(element('strong',c[key]),element('span',label));counts.append(box);}card.append(counts);
+   card.append(element('h3','Resumen por estado del lead','campaign-list'));
+   for(const status of c.states){const row=element('div',undefined,'campaign-list');const label=element('div',undefined,'campaign-list-head');label.append(element('span',status.status),element('strong',status.count));const bar=element('progress');bar.max=Math.max(1,c.total);bar.value=status.count;bar.setAttribute('aria-label',status.status+': '+status.count);row.append(label,bar);card.append(row);}
+   if(!c.states.length)card.append(element('p','Sin leads cargados.','campaign-list'));
    for(const l of c.lists){const row=element('div',undefined,'campaign-list'),head=element('div',undefined,'campaign-list-head');const a=element('a','#'+l.list_id+' - '+l.name);a.href='../../bot_ivr/list_edit.php?id='+l.list_id+'&campaign_id='+c.campaign_id;
     head.append(a,element('span',labels[l.state]+' | '+l.calling+' llamando'+(['running','starting','stopping'].includes(l.state)?' / '+l.channels+' canales':'')));const bar=element('progress');bar.max=Math.max(1,l.total);bar.value=l.finished;bar.setAttribute('aria-label','Terminados '+l.finished+' de '+l.total);row.append(head,bar);if(l.error)row.append(element('p',l.error,'monitor-error'));card.append(row);
    }grid.append(card);

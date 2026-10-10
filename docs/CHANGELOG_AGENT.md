@@ -1863,3 +1863,8 @@ Latest list26 attempt zv2-a9be45841c511a9d2fbde794 failed exec with ENOENT becau
 ## 2026-10-10 - Isolated campaign dashboard
 
 Removed isolated dashboard redirect by rendering read-only IVR campaign monitor in dashboard and existing campaign_monitor.php. Added authenticated polling API and isolated route allowance. Graphic cards show dialing state, current total/calling/finished and list progress. Uses zynervox_core repository rather than VICIdial; no schema or outgoing calls. Production copied from source. PHP/source equality, JS syntax, aggregate rollback fixtures and authenticated/anonymous isolated route tests pass.
+
+
+## 2026-10-10 - Active campaign status summary
+
+Filtered inactive campaigns from graphic monitor snapshot and added per-campaign lead.status distribution. Deployed source to production. Validated PHP/JS and monitor fixtures including inactive exclusion, empty active campaigns and AGENDADO_VALIDAR preserved independently of dial_status.

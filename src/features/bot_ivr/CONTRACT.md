@@ -252,3 +252,8 @@ Campaign Estados a marcar selects current lead.status, including attained IVR bu
 ## 2026-10-10 - Isolated campaign dashboard
 
 campaign_monitor_view.php presents campaign state, current contact total/calling/finished and list progress, with read-only links. Authenticated snapshot refreshes every five seconds, pauses when hidden, displays query failures. Latest worker state determines campaign state; SQL attempt closure determines lead progress.
+
+
+## 2026-10-10 - Active campaign status summary
+
+Dashboard and campaign monitor omit inactive campaigns and show per-campaign lead state count bars. Automatic refresh applies both changes.
