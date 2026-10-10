@@ -66,6 +66,7 @@ try {
         } catch (Throwable $e) { $error = $e->getMessage(); }
     }
     $count = $db->leadCount($listId);
+    $statistics = $db->listStatistics($listId,$campaignId);
     try {
         if (empty($list['id_flujo'])) throw new RuntimeException('Asigna un flujo a la lista para validar sus variables.');
         $flow = ivr_builder_published_flow((int)$list['id_flujo']);
@@ -100,8 +101,22 @@ if ($list): ?>
 .audio-progress-label{display:flex;justify-content:space-between;gap:12px;margin:22px 0 8px;font-size:13px}.audio-progress{display:block;width:100%;height:14px;accent-color:#f58220}.audio-dialog-note{color:var(--text-muted);margin:10px 0}.audio-dialog-errors{white-space:pre-line;color:#a12532;font-size:13px}.audio-dialog-errors:empty{display:none}
 @media(max-width:650px){.audio-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.audio-stat strong{font-size:26px}}
 @media(max-width:1000px){.list-layout{grid-template-columns:minmax(0,1fr)}}
+.call-stats{margin-top:16px}.call-stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.call-stats-grid div{padding:16px;border:1px solid var(--border);border-radius:8px;background:var(--glass);text-align:center}.call-stats-grid strong{display:block;font-size:28px}.call-stats-grid span{font-size:12px;color:var(--text-muted)}.call-state{margin-top:12px}.call-state-label{display:flex;justify-content:space-between;gap:12px;font-size:12px}.call-state progress{display:block;width:100%;height:10px;accent-color:#347cc5}.call-errors{overflow-x:auto;margin-top:18px}.call-errors h3{font-size:13px}.call-errors code{display:block;font-size:10px;overflow-wrap:anywhere}.call-stats-error{color:#c74451}
 </style>
 <a class="list-back" href="campaign_edit.php?id=<?php echo (int)$campaignId; ?>">← Volver a campaña #<?php echo (int)$campaignId; ?></a>
+<section class="carsa-card list-card call-stats" aria-label="Estadisticas de llamadas">
+<h2>Estadisticas de la lista</h2>
+<div class="call-stats-grid">
+<div><strong id="call-stat-total">0</strong><span>Total leads</span></div>
+<div><strong id="call-stat-calling">0</strong><span>Llamando</span></div>
+<div><strong id="call-stat-finished">0</strong><span>Terminados</span></div>
+</div>
+<h3 style="font-size:13px;margin-top:18px">Resumen por estado</h3>
+<div id="call-state-summary"></div>
+<div class="call-errors"><h3>Ultimos 30 intentos con error</h3>
+<table class="carsa-table"><thead><tr><th>Numero / llamada</th><th>Estado</th><th>Causa</th></tr></thead><tbody id="call-error-rows"></tbody></table>
+</div><p id="call-stats-error" class="call-stats-error" role="status"></p>
+</section>
 <div class="list-layout">
 <section class="carsa-card list-card"><h2>Datos de la lista</h2>
 <table class="carsa-table list-meta"><tbody>
@@ -201,6 +216,32 @@ if ($list): ?>
     const callsUrl = <?php echo json_encode('list_call_api.php?id='.(int)$listId.'&campaign_id='.(int)$campaignId); ?>;
     const callsCsrf = <?php echo json_encode($_SESSION['bot_campaign_csrf']); ?>;
     const savedPrefix = <?php echo json_encode((string)($list['dial_prefix'] ?? '')); ?>;
+    function renderStatistics(stats) {
+        for (const key of ['total','calling','finished']) document.getElementById('call-stat-' + key).textContent = stats[key];
+        const summary = document.getElementById('call-state-summary'); summary.replaceChildren();
+        for (const row of stats.states) {
+            const item = document.createElement('div'); item.className = 'call-state';
+            const label = document.createElement('div'); label.className = 'call-state-label';
+            const name = document.createElement('span'); name.textContent = row.status;
+            const count = document.createElement('strong'); count.textContent = row.count;
+            label.append(name,count);
+            const bar = document.createElement('progress'); bar.max = Math.max(1,stats.total); bar.value = row.count; bar.setAttribute('aria-label',row.status);
+            item.append(label,bar); summary.append(item);
+        }
+        const errors = document.getElementById('call-error-rows'); errors.replaceChildren();
+        for (const row of stats.errors) {
+            const tr = document.createElement('tr');
+            const phone = document.createElement('td'); phone.textContent = row.phone;
+            const id = document.createElement('code'); id.textContent = row.call_id; phone.append(id);
+            const state = document.createElement('td'); state.textContent = row.status; state.className = 'call-stats-error';
+            const cause = document.createElement('td');
+            cause.textContent = [row.ivr_result === 'ERROR' ? 'Error IVR' : '',row.dial_status,row.end_source === 'RECOVERY' ? 'Cierre recuperado' : row.end_source === 'AMI_REJECTED' ? 'Rechazado por AMI' : '',Number(row.hangup_cause) ? 'Causa Asterisk: ' + row.hangup_cause : ''].filter(Boolean).join(' | ') || row.status;
+            tr.append(phone,state,cause); errors.append(tr);
+        }
+        if (!stats.errors.length) { const tr = document.createElement('tr'); const cell = document.createElement('td'); cell.colSpan = 3; cell.textContent = 'Sin errores registrados.'; tr.append(cell); errors.append(tr); }
+        document.getElementById('call-stats-error').textContent = '';
+    }
+    renderStatistics(<?php echo json_encode($statistics, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>);
     function renderCalls(run) {
         callRun = run;
         const active = run && ['starting','running','stopping'].includes(run.state);
@@ -216,17 +257,19 @@ if ($list): ?>
             callsOutput.textContent = (labels[run.state] || run.state) + ' | Activas: ' + run.active + '/' + run.channels + ' | Procesadas: ' + run.completed + '/' + run.launched + ' | Pendientes: ' + run.pending + (run.error ? ' ? ' + run.error : '');
         }
         clearTimeout(callTimer);
-        if (active) callTimer = setTimeout(pollCalls, 2000);
+        if (!document.hidden) callTimer = setTimeout(pollCalls, active ? 2000 : 10000);
     }
     async function pollCalls() {
         try {
             const response = await fetch(callsUrl, {cache:'no-store', credentials:'same-origin'});
             const data = await response.json();
             if (!response.ok || !data.ok) throw new Error(data.error || 'No se pudo consultar la marcacion.');
+            renderStatistics(data.statistics);
             renderCalls(data.run);
         } catch (error) {
             play.disabled = true;
             callsOutput.textContent = error.message;
+            document.getElementById('call-stats-error').textContent = 'No se pudieron actualizar las estadisticas.';
             callTimer = setTimeout(pollCalls, 5000);
         }
     }
@@ -240,6 +283,7 @@ if ($list): ?>
             const data = await response.json();
             if (!response.ok || !data.ok) throw new Error(data.error || 'No se pudo completar la operacion.');
             callBusy = false;
+            renderStatistics(data.statistics);
             renderCalls(data.run);
         } catch (error) {
             callBusy = false;

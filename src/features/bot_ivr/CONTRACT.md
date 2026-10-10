@@ -237,3 +237,8 @@ Lead and attempt status are VARCHAR(80). IVR_NODE action=status updates the atta
 ## 2026-10-10 - List Play/Stop AMI worker
 
 Play/Stop use administrator session and CSRF. Play requires a saved active dial origin and ready published audio signature. One detached worker per list reserves eligible campaign statuses once per run and enforces selected channels, including unresolved prior calls. Stop prevents new reservations and drains active calls. Attempts preserve existing IVR status and recording tracking. Ambiguous AMI acknowledgements retain the reservation until audit recovery.
+
+
+## 2026-10-10 - List statistics
+
+List statistics expose only total current leads, calling and finished contacts, current status distribution and latest 30 historical error attempts (phone/call ID, status, cause). Counters use the newest attempt per current lead, independently of dial run. Existing Play/Stop API includes statistics; refresh every 2 seconds while active and 10 seconds idle. No schema or calling changes.

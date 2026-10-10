@@ -756,3 +756,8 @@ Approved admin/core scope: level-9 PBX form, CSRF POSTs, reusable PbxAmi config/
 
 ### 2026-10-10 - List Play/Stop AMI worker (ARCHITECT_AGENT)
 Approved bot_ivr/core/zynervox_queries scope. Persist dial runs and correlate preclaimed attempts via AMI OtherChannelId. One active run per list and an exclusive worker lease; database claim locks enforce selected simultaneous slots including existing calls. Campaign dial_statuses select eligible leads, once per run; no automatic repeat of finalized leads. Selected list channels govern this worker. Stop drains claims already launched. New AMI requests use isolated Local prefix routes and inherited list ID; credentials only from PbxAmi private storage. Audit callbacks remain authoritative for completion. No auto-launch on deployment.
+
+
+## 2026-10-10 - List statistics (ARCHITECT_AGENT)
+
+Scope: bot_ivr UI/API and public zynervox_queries repository. Add read-only listStatistics contract, no schema changes. Cards count current contacts using their latest attempt; historical errors remain visible separately. Allow lists.php, repository contract, list_edit.php, list_call_api.php and scoped test/docs. No dial worker, credentials or other modules change.

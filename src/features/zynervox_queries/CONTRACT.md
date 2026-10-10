@@ -124,3 +124,8 @@ Lead and attempt status are VARCHAR(80). IVR_NODE action=status updates the atta
 ## 2026-10-10 - List Play/Stop AMI worker
 
 BotIvrRepository exposes createDialRun, dialRun, transitionDialRun, claimDialLead and rejectDialClaim. Migration 012 persists executions and links attempts via dial_run_id. Claims lock run/list/lead, count open list attempts and exclude contacts already attempted in this execution. Unique active_list_id prevents concurrent executions. CALL cannot be a selectable status.
+
+
+## 2026-10-10 - List statistics
+
+listStatistics(listId,campaignId): array validates list/campaign ownership and returns total/calling/finished/states/errors. Latest attempt determines contact progress; current lead.status supplies distribution. Historical errors include FAIL/UNAV/CONG/LOST, unavailable/congested dial statuses, IVR ERROR and recovery/AMI rejection, ordered newest first, capped at 30. No mutation.

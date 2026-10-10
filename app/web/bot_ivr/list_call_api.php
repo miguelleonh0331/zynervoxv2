@@ -17,5 +17,5 @@ try {
         elseif(($data['action']??'')==='stop'){if(!is_string($data['run_id']??null) || !preg_match('/^[a-f0-9]{32}$/D',$data['run_id']))throw new RuntimeException('Marcacion invalida.');$run=bot_list_call_stop($list,$campaign,$data['run_id']);}
         else throw new RuntimeException('Accion invalida.');
     }else{http_response_code(405);throw new RuntimeException('Metodo invalido.');}
-    echo json_encode(['ok'=>true,'run'=>bot_list_call_public($run)],JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE);
+    echo json_encode(['ok'=>true,'run'=>bot_list_call_public($run),'statistics'=>bot_ivr_repository()->listStatistics($list,$campaign)],JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE);
 }catch(Throwable $e){if(http_response_code()<400)http_response_code(400);echo json_encode(['ok'=>false,'error'=>get_class($e)==='RuntimeException' || $e instanceof InvalidArgumentException?$e->getMessage():'No se pudo completar la operacion de llamadas.']);}

@@ -2,6 +2,15 @@
 declare(strict_types=1);
 namespace ZynervoxQueries\Mysql\BotIvr;
 trait ListQueries {
+    public function listStatistics(int $listId,int $campaignId): array {
+        $this->list($listId,$campaignId);
+        // Latest attempt per current contact: retries never inflate lead counters.
+        $s=$this->db->prepare("SELECT l.status,COUNT(*) total,COALESCE(SUM(a.attempt_id IS NOT NULL AND a.finished_at IS NULL AND a.end_source<>'RECOVERY' AND a.status<>'LOST'),0) calling,COALESCE(SUM(a.finished_at IS NOT NULL OR a.end_source='RECOVERY' OR a.status='LOST'),0) finished FROM zynervox_bot_list l LEFT JOIN zynervox_bot_call_attempts a ON a.attempt_id=(SELECT MAX(x.attempt_id) FROM zynervox_bot_call_attempts x WHERE x.lead_id=l.lead_id AND x.list_id=l.list_id) WHERE l.list_id=? GROUP BY l.status ORDER BY total DESC,l.status");
+        $s->execute([$listId]);$stats=['total'=>0,'calling'=>0,'finished'=>0,'states'=>[],'errors'=>[]];
+        foreach($s->fetchAll(\PDO::FETCH_ASSOC) as $row){foreach(['total','calling','finished'] as $key)$stats[$key]+=(int)$row[$key];$stats['states'][]=['status'=>$row['status'],'count'=>(int)$row['total']];}
+        $s=$this->db->prepare("SELECT call_id,phone,status,dial_status,hangup_cause,ivr_result,end_source FROM zynervox_bot_call_attempts WHERE list_id=? AND (status IN ('FAIL','UNAV','CONG','LOST') OR dial_status IN ('CHANUNAVAIL','CONGESTION') OR ivr_result='ERROR' OR end_source IN ('RECOVERY','AMI_REJECTED')) ORDER BY started_at DESC,attempt_id DESC LIMIT 30");
+        $s->execute([$listId]);$stats['errors']=$s->fetchAll(\PDO::FETCH_ASSOC);return $stats;
+    }
     public function updateListDialPrefix(int $listId, int $campaignId, string $prefix): void {
         if (!preg_match('/^[0-9]{0,20}$/D', $prefix)) throw new \RuntimeException('Prefijo invalido.');
         $this->list($listId, $campaignId);

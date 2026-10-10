@@ -1833,3 +1833,8 @@ Added CLI-only ivr_engine_agi.php with published-flow loading, lead variable ren
 ## 2026-10-10 - List Play/Stop AMI worker
 
 Implemented and deployed list Play/Stop AMI worker, async Local originate, durable per-lead claims, channel replenishment, exclusive list lease, CSRF API and progress polling. Campaign state tokens support 80 characters. Applied schema 012 and isolated DML grants. Verified simulated AMI protocol, worker concurrency/refill/duplicates/Stop/rejection/ambiguous ACK, inherited launcher lease, live AMI Login/Ping (no Originate), PHP lint and call tracking/status/recording/flow regressions. No real contacts called during validation. List 26 contact is ANSWER while campaign 20 selects NEW.
+
+
+## 2026-10-10 - List statistics
+
+Added list statistics cards (total leads, calling, finished), status bars and latest 30 call errors with phone/call ID, state and existing cause. Reuses authenticated Play/Stop polling; refresh also when idle. No DB columns added. Deployed source files to production. Verified PHP lint/source equality, JS syntax and rollback DB fixtures for retry counting, retained errors, IVR failures, business states and campaign/list isolation.
