@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../includes/Audit.php';
 use Includes\Auth;
 use Includes\Carriers;
 use Includes\Audit;
+use Includes\DialplanOrigins;
 
 Auth::checkAccess(9);
 $_SESSION['carriers_csrf'] = $_SESSION['carriers_csrf'] ?? bin2hex(random_bytes(32));
@@ -13,6 +14,7 @@ $isolated = \Config\Config::deployment('isolated', false);
 
 $msg = '';
 $editData = null;
+$originError = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!is_string($_POST['csrf_token'] ?? null) || !hash_equals($_SESSION['carriers_csrf'], $_POST['csrf_token'])) {
@@ -20,6 +22,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit('CSRF invalido');
     }
     try {
+    if (isset($_POST['extract_origin']) && $isolated) {
+        try {
+            Carriers::extractDialOrigin((string)($_POST['carrier_id'] ?? ''), (string)($_POST['dial_prefix'] ?? ''), (string)($_POST['origin_name'] ?? ''));
+            $msg = "<p style='color:#047857;'>Origen guardado y disponible en las listas.</p>";
+        } catch (\InvalidArgumentException $error) { $originError = $error->getMessage(); }
+        $editData = Carriers::getById((string)($_POST['carrier_id'] ?? ''));
+    }
     if (isset($_POST['save_carrier'])) {
         $data = [
             'carrier_id' => strtoupper(trim($_POST['carrier_id'])),
@@ -38,6 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($result['ok']) {
+            $editData = Carriers::getById($data['carrier_id']);
             $msg = "<p style='color: #047857;'>Troncal guardada. " . ($isolated ? 'Archivos v2 generados, no activados.' : 'PJSIP recargado.') . "</p>";
             if (!empty($result['reload_output'])) {
                 $msg .= "<pre style='background:var(--glass); padding:0.5rem; font-size:0.7rem; white-space:pre-wrap;'>" . htmlspecialchars($result['reload_output']) . "</pre>";
@@ -207,7 +217,8 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
 
                     <div class="form-section" style="border-bottom: none;">
                         <h3>Dialplan (opcional) — se escribe en modules/asterisk/extensions-zynervox.conf</h3>
-                        <?php renderField('', 'dialplan_entry', $d['dialplan_entry'], 'textarea'); ?>
+                        <?php if ($isolated): ?><pre><?php echo htmlspecialchars(DialplanOrigins::HEADER); ?></pre><?php endif; ?>
+                        <?php renderField('', 'dialplan_entry', $isolated ? DialplanOrigins::body($d['dialplan_entry']) : $d['dialplan_entry'], 'textarea'); ?>
 
                     </div>
 
@@ -219,6 +230,19 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
                         </button>
                     </div>
                 </form>
+                <?php if ($isolated && $editData): $prefixes = DialplanOrigins::prefixes($editData['dialplan_entry']); ?>
+                <h3>Origen de llamada</h3>
+                <?php if ($originError !== ''): ?><p style="color:#b91c1c;"><?php echo htmlspecialchars($originError); ?></p><?php endif; ?>
+                <?php if ($prefixes): ?>
+                <form method="POST" class="grid-3" style="align-items:end;">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['carriers_csrf']); ?>">
+                    <input type="hidden" name="carrier_id" value="<?php echo htmlspecialchars($editData['carrier_id']); ?>">
+                    <div class="field"><label for="origin_prefix">Prefijo detectado</label><select id="origin_prefix" name="dial_prefix"><?php foreach ($prefixes as $prefix): ?><option value="<?php echo htmlspecialchars($prefix); ?>"><?php echo htmlspecialchars($prefix); ?></option><?php endforeach; ?></select></div>
+                    <div class="field"><label for="origin_name">Nombre del origen</label><input id="origin_name" name="origin_name" maxlength="100" required value="<?php echo htmlspecialchars((string)($_POST['origin_name'] ?? $editData['carrier_name'])); ?>"></div>
+                    <button type="submit" name="extract_origin" class="btn-primary">Extraer prefijo</button>
+                </form>
+                <?php else: ?><p>Guarda un dialplan con una ruta como <code>exten =&gt; _7306X.,1,...</code> para extraer su prefijo.</p><?php endif; ?>
+                <?php endif; ?>
             </div>
 
             <!-- Auditoria -->

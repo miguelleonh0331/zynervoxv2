@@ -206,3 +206,8 @@ Recovery checks open attempts older than five minutes against native PBX
 channels. Two-minute absence grace avoids hangup callback races; mark LOST
 with RECOVERY event, preserving unknown actual end/duration. A later real
 finish can supply authoritative result. No recovery while journals are pending.
+
+
+## 2026-10-10 - Selector de origen
+
+list_edit consume Carriers::dialOrigins del contrato publico core. Dropdown Origen guarda el prefijo seleccionado mediante updateListDialPrefix existente, con CSRF y pertenencia lista/campana. Sin origen permite vacio; opcion no registrada/inactiva/retirada se rechaza y prefijo anterior no se borra automaticamente. Plantilla 7306 respeta ZV2_LIST_ID proporcionado; solo llamadas manuales sin variable usan lista 1. No implementa Play ni worker.

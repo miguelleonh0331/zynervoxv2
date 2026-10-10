@@ -21,7 +21,7 @@ runtime="$(realpath -m "$ASTERISK_ROOT")"
 [[ "$(realpath -m "$runtime/modules/asterisk")" == "$runtime/modules/asterisk" ]] || { echo 'Runtime con enlace no permitido' >&2; exit 2; }
 for file in pjsip-zynervoxv2.conf extensions-zynervoxv2.conf sip-zynervoxv2-annexos.conf pjsip-zynervoxv2-annexos.conf; do [[ ! -L "$runtime/modules/asterisk/$file" ]] || exit 2; done
 [[ "$(mysql -N -e "SELECT COUNT(*) FROM mysql.user WHERE User='$DB_USER' AND Host IN ('localhost','127.0.0.1')")" == 2 ]] || { echo 'Falta cuenta Core aislada existente' >&2; exit 1; }
-for file in includes/Carriers.php includes/Phones.php includes/IsolatedGate.php modules/admin/carriers.php modules/admin/phones.php; do
+for file in includes/Carriers.php includes/DialplanOrigins.php includes/Phones.php includes/IsolatedGate.php modules/admin/carriers.php modules/admin/phones.php; do
   [[ -f "$ROOT/app/web/$file" ]] || exit 1
   [[ "$(realpath -m "$WEB_ROOT/$file")" == "$(realpath "$WEB_ROOT")/$file" ]] || { echo 'Destino web con enlace no permitido' >&2; exit 2; }
 done
@@ -40,12 +40,14 @@ CREATE TABLE IF NOT EXISTS v2_carriers (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 SQL
 mysql "$DB_NAME" < "$ROOT/src/features/core/models/phones-v2.sql"
+mysql "$DB_NAME" < "$ROOT/src/features/core/models/dial-origins-v2.sql"
 for host in localhost 127.0.0.1; do
   mysql -e "GRANT SELECT,INSERT,UPDATE,DELETE ON zynervox_core.v2_phones TO '$DB_USER'@'$host';"
   mysql -e "GRANT SELECT,INSERT,UPDATE,DELETE ON zynervox_core.v2_carriers TO '$DB_USER'@'$host';"
+  mysql -e "GRANT SELECT,INSERT,UPDATE,DELETE ON zynervox_core.v2_dial_origins TO '$DB_USER'@'$host';"
 done
 install -d -o root -g "$WEB_GROUP" -m 0770 "$runtime/modules/asterisk"
-for file in includes/Carriers.php includes/Phones.php includes/IsolatedGate.php modules/admin/carriers.php modules/admin/phones.php; do
+for file in includes/Carriers.php includes/DialplanOrigins.php includes/Phones.php includes/IsolatedGate.php modules/admin/carriers.php modules/admin/phones.php; do
   rsync -rt --itemize-changes "$ROOT/app/web/$file" "$WEB_ROOT/$file"
   chown root:"$WEB_GROUP" "$WEB_ROOT/$file"
   chmod 0640 "$WEB_ROOT/$file"

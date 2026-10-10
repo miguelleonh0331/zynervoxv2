@@ -32,3 +32,8 @@ Autenticación, sesión, conexión MariaDB, auditoría y configuración común. 
 conexión desde `ZYNERVOX_CONFIG_FILE`, `/etc/zynervox/astguiclient.conf` o, como
 compatibilidad, `/etc/astguiclient.conf`. No almacena credenciales en el repositorio.
 Los demás módulos consumen clases públicas de `app/web/includes`.
+
+
+## 2026-10-10 - Origenes de marcacion
+
+Carriers::extractDialOrigin(carrierId,prefix,name) registra/renombra en v2_dial_origins solo prefijos del dialplan persistido. Prefijo unico global; FK carrier con borrado en cascada. Carriers::dialOrigins() publica exclusivamente dial_prefix,name,carrier_id de carriers activos cuya ruta aun exista; no expone configuracion ni secretos. DialplanOrigins analiza rutas principales _<1..20 digitos>X., prioridad 1 y conserva ceros iniciales. Generacion aislada usa cabecera fija unica zynervoxv2 y coloca rutas de todos los carriers antes de contextos auxiliares; sin recarga automatica.

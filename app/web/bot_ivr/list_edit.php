@@ -5,6 +5,11 @@ require __DIR__ . '/list_service.php';
 require_once __DIR__ . '/list_audio_jobs.php';
 require_once __DIR__ . '/list_audio_service.php';
 require_once __DIR__ . '/../ivr_builder/published_flow.php';
+require_once __DIR__ . '/../includes/Carriers.php';
+$dialOrigins = [];
+$originLoadError = '';
+try { $dialOrigins = \Includes\Carriers::dialOrigins(); }
+catch (Throwable $e) { $originLoadError = 'No se pudieron cargar los orígenes de llamada.'; }
 $listId = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
 $campaignId = filter_var($_GET['campaign_id'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
 $list = null;
@@ -25,6 +30,8 @@ try {
             bot_campaign_csrf();
             if (($_POST['action'] ?? '') === 'save_list_prefix') {
                 if (!is_string($_POST['dial_prefix'] ?? null)) throw new RuntimeException('Prefijo inválido.');
+                if ($originLoadError !== '') throw new RuntimeException($originLoadError);
+                if ($_POST['dial_prefix'] !== '' && !in_array($_POST['dial_prefix'], array_column($dialOrigins, 'dial_prefix'), true)) throw new RuntimeException('Selecciona un origen disponible.');
                 $db->updateListDialPrefix($listId, $campaignId, trim($_POST['dial_prefix']));
                 bot_campaign_redirect('list_edit.php?id='.$listId.'&campaign_id='.$campaignId, 'Prefijo de la lista guardado.');
             }
@@ -138,12 +145,17 @@ if ($list): ?>
 <option value="<?php echo $channels; ?>"<?php echo $channels === 3 ? ' selected' : ''; ?>><?php echo $channels; ?></option>
 <?php endforeach; ?>
 </select></div>
-<div class="carsa-field list-audio-speed"><label for="list_call_prefix">Prefijo de marcación</label>
-<input id="list_call_prefix" name="dial_prefix" form="list-prefix-form" type="text" inputmode="numeric" pattern="[0-9]{0,20}" maxlength="20" value="<?php echo h($list['dial_prefix'] ?? ''); ?>" placeholder="Ej. 7306"></div>
-<button type="submit" form="list-prefix-form" class="carsa-btn secondary">Guardar prefijo</button>
+<div class="carsa-field list-audio-speed"><label for="list_call_prefix">Origen</label>
+<select id="list_call_prefix" name="dial_prefix" form="list-prefix-form">
+<option value="">Selecciona...</option>
+<?php foreach ($dialOrigins as $origin): ?><option value="<?php echo h($origin['dial_prefix']); ?>"<?php echo ($list['dial_prefix'] ?? '') === $origin['dial_prefix'] ? ' selected' : ''; ?>><?php echo h($origin['name'].' · '.$origin['dial_prefix']); ?></option><?php endforeach; ?>
+<?php if (($list['dial_prefix'] ?? '') !== '' && !in_array($list['dial_prefix'], array_column($dialOrigins, 'dial_prefix'), true)): ?><option selected disabled>Origen no disponible: <?php echo h($list['dial_prefix']); ?></option><?php endif; ?>
+</select></div>
+<button type="submit" form="list-prefix-form" class="carsa-btn secondary"<?php echo $originLoadError !== '' ? ' disabled' : ''; ?>>Guardar origen</button>
 <button type="button" id="list-call-play" class="carsa-btn"<?php echo !$audioReady ? ' hidden' : ''; ?><?php echo $audioReady ? '' : ' disabled'; ?>>▶ Play</button>
 <button type="button" id="list-call-stop" class="carsa-btn secondary"<?php echo !$audioReady ? ' hidden' : ''; ?> disabled>■ Stop</button>
 </form>
+<?php if ($originLoadError !== ''): ?><p class="list-audio-note" role="status"><?php echo h($originLoadError); ?></p><?php endif; ?>
 <?php if ($audioCheckError !== ''): ?>
 <p class="list-audio-note" role="status"><?php echo h($audioCheckError); ?></p>
 <?php elseif ($audioCheck !== null): ?>

@@ -8,8 +8,43 @@ use PDO;
 
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/Audit.php';
+require_once __DIR__ . '/DialplanOrigins.php';
 
 class Carriers {
+
+    public static function dialOrigins(): array {
+        if (!\Config\Config::deployment('isolated', false)) return [];
+        $rows = self::database()->query("SELECT o.dial_prefix,o.name,o.carrier_id,c.dialplan_entry FROM v2_dial_origins o JOIN v2_carriers c ON c.carrier_id=o.carrier_id WHERE c.active='Y' ORDER BY o.name,o.dial_prefix")->fetchAll(PDO::FETCH_ASSOC);
+        $origins = [];
+        foreach ($rows as $row) {
+            if (!in_array($row['dial_prefix'], DialplanOrigins::prefixes($row['dialplan_entry']), true)) continue;
+            unset($row['dialplan_entry']);
+            $origins[] = $row;
+        }
+        return $origins;
+    }
+
+    public static function extractDialOrigin(string $carrierId, string $prefix, string $name): void {
+        if (!\Config\Config::deployment('isolated', false)) throw new \InvalidArgumentException('Requiere despliegue v2 aislado.');
+        $name = trim($name);
+        if ($name === '' || mb_strlen($name, 'UTF-8') > 100 || preg_match('/[\x00-\x1f]/', $name)) throw new \InvalidArgumentException('Ingresa un nombre de hasta 100 caracteres.');
+        $db = self::database();
+        $db->beginTransaction();
+        try {
+            $stmt = $db->prepare('SELECT dialplan_entry FROM v2_carriers WHERE carrier_id=? FOR UPDATE');
+            $stmt->execute([$carrierId]);
+            $plan = $stmt->fetchColumn();
+            if ($plan === false || !in_array($prefix, DialplanOrigins::prefixes($plan), true)) throw new \InvalidArgumentException('El prefijo no existe en el dialplan guardado de esta troncal.');
+            $stmt = $db->prepare('SELECT carrier_id FROM v2_dial_origins WHERE dial_prefix=? FOR UPDATE');
+            $stmt->execute([$prefix]);
+            $owner = $stmt->fetchColumn();
+            if ($owner !== false && $owner !== $carrierId) throw new \InvalidArgumentException('Este prefijo ya pertenece a otra troncal.');
+            if ($owner === false) $db->prepare('INSERT INTO v2_dial_origins (dial_prefix,name,carrier_id) VALUES (?,?,?)')->execute([$prefix,$name,$carrierId]);
+            else $db->prepare('UPDATE v2_dial_origins SET name=? WHERE dial_prefix=?')->execute([$name,$prefix]);
+            self::audit('ORIGIN', $carrierId);
+            $db->commit();
+        } catch (\Throwable $error) { if ($db->inTransaction()) $db->rollBack(); throw $error; }
+    }
 
     private static function database() {
         if (\Config\Config::deployment('isolated', false)) {
@@ -70,6 +105,7 @@ class Carriers {
 
     public static function create($data) {
         self::validate($data);
+        if (\Config\Config::deployment('isolated', false)) $data['dialplan_entry'] = DialplanOrigins::body((string)($data['dialplan_entry'] ?? ''));
         $db = self::database();
         $table = self::table();
         try {
@@ -95,6 +131,7 @@ class Carriers {
     public static function update($carrier_id, $data) {
         $data['carrier_id'] = $carrier_id;
         self::validate($data);
+        if (\Config\Config::deployment('isolated', false)) $data['dialplan_entry'] = DialplanOrigins::body((string)($data['dialplan_entry'] ?? ''));
         $db = self::database();
         $table = self::table();
         try {
@@ -158,6 +195,7 @@ class Carriers {
         }
 
         $isolated = \Config\Config::deployment('isolated', false);
+        if ($isolated) $dialOut = DialplanOrigins::render($carriers);
         $runtime = (string) \Config\Config::deployment('runtime', '');
         if ($isolated && ($runtime === '' || $runtime === '/' || strpos($runtime, '/etc/asterisk') === 0 || strpos($runtime, '/var/lib/asterisk') === 0)) {
             return ['ok' => false, 'error' => 'Runtime Carriers aislado invalido'];

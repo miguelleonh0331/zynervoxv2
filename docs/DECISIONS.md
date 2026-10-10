@@ -711,3 +711,8 @@ Recovery checks open attempts older than five minutes against native PBX
 channels. Two-minute absence grace avoids hangup callback races; mark LOST
 with RECOVERY event, preserving unknown actual end/duration. A later real
 finish can supply authoritative result. No recovery while journals are pending.
+
+
+## 2026-10-10 - Arquitectura: origenes reutilizables por prefijo
+
+Revision ARCHITECT_AGENT: alcance aprobado core (Carriers/DialplanOrigins, tabla y tests), admin (formulario), bot_ivr (selector y plantilla) e installer/carriers.sh. Sin cambios a otros modulos ni a sus internos. Core publica dialOrigins/extractDialOrigin; Bot IVR consume ese contrato y conserva dial_prefix existente por lista. Prefijo global unico evita elegir dos carriers para la misma ruta en zynervoxv2. La extraccion usa solamente el dialplan guardado y las rutas iniciales _<digitos>X., prioridad 1; no los contextos auxiliares. Origen eliminado/inactivo o ruta retirada no se ofrece. No activa motor de llamadas. Plantilla manual conserva fallback lista 1 pero respeta ZV2_LIST_ID recibido por el futuro worker. Cabecera fija unica; se agrupan todas las rutas principales antes de los contextos auxiliares. Aprobada extension de contratos core/admin/bot_ivr.
