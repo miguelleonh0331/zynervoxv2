@@ -2,6 +2,11 @@
 declare(strict_types=1);
 namespace ZynervoxQueries\Mysql\BotIvr;
 trait CallQueries {
+    private function ivrLeadStatus(string $callId, string $status): void {
+        if (!preg_match('/^[A-Z][A-Z0-9_]{0,79}$/D',$status)) throw new \RuntimeException('Invalid IVR status');
+        $this->db->prepare('UPDATE zynervox_bot_call_attempts SET status=? WHERE call_id=?')->execute([$status,$callId]);
+        $this->db->prepare('UPDATE zynervox_bot_list l JOIN zynervox_bot_call_attempts a ON a.lead_id=l.lead_id SET l.status=? WHERE a.call_id=? AND NOT EXISTS (SELECT 1 FROM zynervox_bot_call_attempts newer WHERE newer.lead_id=l.lead_id AND newer.attempt_id>a.attempt_id)')->execute([$status,$callId]);
+    }
     public function saveIvrResult(string $callId, string $nodeId, array $fields): void {
         if (!preg_match('/^[A-Za-z0-9_.-]{1,80}$/D',$callId) || !preg_match('/^[A-Za-z0-9_-]{1,64}$/D',$nodeId) || !$fields) throw new \RuntimeException('Invalid IVR result');
         $json=json_encode($fields,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE);
@@ -12,6 +17,7 @@ trait CallQueries {
             $s=$this->db->prepare('SELECT fields_json FROM zynervox_bot_ivr_results WHERE call_id=? AND node_id=?');$s->execute([$callId,$nodeId]);$old=$s->fetchColumn();
             if ($old!==false) {if (json_decode($old,true)!==$fields) throw new \RuntimeException('IVR result already differs');return;}
             $this->db->prepare('INSERT INTO zynervox_bot_ivr_results(call_id,node_id,list_id,lead_id,result,fields_json,created_at) VALUES (?,?,?,?,?,?,UTC_TIMESTAMP())')->execute([$callId,$nodeId,$call['list_id'],$call['lead_id'],substr((string)($fields['RESULTADO'] ?? ''),0,80),$json]);
+            if (!empty($fields['RESULTADO'])) $this->ivrLeadStatus($callId,strtoupper(trim((string)$fields['RESULTADO'])));
         });
     }
     public function ivrCallContext(int $listId, int $leadId, string $callId): array {
@@ -42,7 +48,9 @@ trait CallQueries {
             if ($s->fetchColumn()) return;
             $at=gmdate('Y-m-d H:i:s',$epoch);
             $this->db->prepare('INSERT INTO zynervox_bot_call_events(event_id,call_id,event_type,occurred_at,payload_json) VALUES (?,?,?,?,?)')->execute([$eventId,$callId,$type,$at,json_encode($data,JSON_THROW_ON_ERROR)]);
-            if ($type==='IVR_START') {
+            if ($type==='IVR_NODE' && ($data['action'] ?? '')==='status') {
+                $this->ivrLeadStatus($callId,(string)$data['status']);
+            } elseif ($type==='IVR_START') {
                 $this->db->prepare('UPDATE zynervox_bot_call_attempts SET campaign_id=?,flow_id=?,flow_code=?,flow_name=?,flow_sha256=? WHERE call_id=?')->execute([$data['campaign_id']??null,$data['flow_id']??null,$data['flow_code']??null,$data['flow_name']??null,$data['flow_sha256']??null,$callId]);
             } elseif ($type==='IVR_END') {
                 $this->db->prepare('UPDATE zynervox_bot_call_attempts SET ivr_result=? WHERE call_id=?')->execute([substr($data['result']??'',0,20),$callId]);
@@ -62,12 +70,12 @@ trait CallQueries {
         });
     }
     public function openCallsForRecovery(): array {
-        return $this->db->query("SELECT call_id,caller_channel,callee_channel,callee_unique_id,linked_id FROM zynervox_bot_call_attempts WHERE finished_at IS NULL AND status<>'LOST' AND started_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL 5 MINUTE) ORDER BY attempt_id LIMIT 1000")->fetchAll();
+        return $this->db->query("SELECT call_id,caller_channel,callee_channel,callee_unique_id,linked_id FROM zynervox_bot_call_attempts WHERE finished_at IS NULL AND status<>'LOST' AND end_source<>'RECOVERY' AND started_at<DATE_SUB(UTC_TIMESTAMP(),INTERVAL 5 MINUTE) ORDER BY attempt_id LIMIT 1000")->fetchAll();
     }
     public function observeCallPresence(string $callId, bool $active, int $epoch): bool {
         return $this->callAtomic(function() use($callId,$active,$epoch) {
             $s=$this->db->prepare('SELECT * FROM zynervox_bot_call_attempts WHERE call_id=? FOR UPDATE'); $s->execute([$callId]);$call=$s->fetch();
-            if (!$call || $call['finished_at']!==null || $call['status']==='LOST') return false;
+            if (!$call || $call['finished_at']!==null || $call['status']==='LOST' || $call['end_source']==='RECOVERY') return false;
             if ($active) {
                 $this->db->prepare('UPDATE zynervox_bot_call_attempts SET missing_since=NULL WHERE call_id=?')->execute([$callId]);return false;
             }
@@ -75,8 +83,8 @@ trait CallQueries {
                 $this->db->prepare('UPDATE zynervox_bot_call_attempts SET missing_since=? WHERE call_id=?')->execute([gmdate('Y-m-d H:i:s',$epoch),$callId]);return false;
             }
             if ($epoch-strtotime($call['missing_since'].' UTC')<120) return false;
-            $this->db->prepare("UPDATE zynervox_bot_call_attempts SET status='LOST',end_source='RECOVERY' WHERE call_id=?")->execute([$callId]);
-            $this->db->prepare("UPDATE zynervox_bot_list l SET status='LOST' WHERE lead_id=? AND NOT EXISTS (SELECT 1 FROM zynervox_bot_call_attempts a WHERE a.lead_id=l.lead_id AND a.attempt_id>?)")->execute([$call['lead_id'],$call['attempt_id']]);
+            $this->db->prepare("UPDATE zynervox_bot_call_attempts SET status=IF(status='CALL','LOST',status),end_source='RECOVERY' WHERE call_id=?")->execute([$callId]);
+            $this->db->prepare("UPDATE zynervox_bot_list l SET status=IF(status='CALL','LOST',status) WHERE lead_id=? AND NOT EXISTS (SELECT 1 FROM zynervox_bot_call_attempts a WHERE a.lead_id=l.lead_id AND a.attempt_id>?)")->execute([$call['lead_id'],$call['attempt_id']]);
             $this->db->prepare('INSERT INTO zynervox_bot_call_events(event_id,call_id,event_type,occurred_at,payload_json) VALUES (?,?,?,?,?)')->execute([hash('sha256',$callId.'|RECOVERY'),$callId,'RECOVERY',gmdate('Y-m-d H:i:s',$epoch),json_encode(['reason'=>'channel_absent_without_finish','actual_end_time'=>'unknown'],JSON_THROW_ON_ERROR)]);
             return true;
         });
@@ -110,6 +118,7 @@ trait CallQueries {
             if ($amdStatus==='') { $amdStatus=$call['amd_status']; $amdCause=$call['amd_cause']; }
             $answered=$answered || $call['answered_at']!==null;
             $status=$amdStatus==='MACHINE' ? 'AA' : (($answered || $dialStatus==='ANSWER') ? 'ANSWER' : (['BUSY'=>'B','NOANSWER'=>'NA','CHANUNAVAIL'=>'UNAV','CONGESTION'=>'CONG','CANCEL'=>'CANCEL'][ $dialStatus ] ?? 'FAIL'));
+            if (!in_array($call['status'],['CALL','LOST'],true)) $status=$call['status'];
             $this->db->prepare('UPDATE zynervox_bot_call_attempts SET status=?,dial_status=?,amd_status=?,amd_cause=?,hangup_cause=?,finished_at=UTC_TIMESTAMP() WHERE call_id=?')->execute([$status,substr($dialStatus,0,20),substr($amdStatus,0,20),substr($amdCause,0,160),$hangupCause,$callId]);
             // A late callback cannot overwrite a newer attempt for this lead.
             $this->db->prepare('UPDATE zynervox_bot_list l SET status=? WHERE lead_id=? AND NOT EXISTS (SELECT 1 FROM zynervox_bot_call_attempts a WHERE a.lead_id=l.lead_id AND a.attempt_id>?)')->execute([$status,$call['lead_id'],$call['attempt_id']]);

@@ -116,3 +116,6 @@ saveIvrResult(callId,nodeId,fields): void verifies an open attempt, derives list
 
 ## Call export metadata (2026-10-10)
 Attempt rows snapshot campaign_id and flow_id at start. IVR_START persists actual flow_code/name and SHA256 of serialized executed flow. IVR_END stores ivr_result. FINISH journal persists recording_path/status/bytes/finalized_at after MixMonitor closes. Status ready means finalized nonempty file at that time, not continuous disk verification. Files remain on disk; historical names/hashes are left null when absent from original events.
+
+## Latest attained IVR status (2026-10-10)
+Lead and attempt status are VARCHAR(80). IVR_NODE action=status updates the attained business stage; saveIvrResult applies RESULTADO. CARSA interesado/interesado_nivel2 map to RESPONDE_F1/F2; named terminal nodes provide final disposition. Generic hangup/fin/final nodes do not create a business state. Finish and recovery preserve an attained state, while dial_status keeps telephony outcome. Updates to lead status only apply when this is its newest attempt.

@@ -44,3 +44,10 @@ graphCheck(bot_ivr_url('http://example.test/send?x={value}',['value'=>'a&key=evi
 graphCheck(bot_ivr_url('http://example.test/send?n={numero}',['numero'=>'511999000111'],['http://example.test/send'])==='http://example.test/send?n=999000111','SMS number convention');
 $templates=bot_list_audio_templates($fixture,true);graphCheck(!isset($templates['Mensajefinal.audio']) && isset($templates['PRIMERSTT.retry']) && isset($templates['bridge_1.bridge']),'static prebuild excludes captured variables');
 echo "PASS: CARSA 27 nodes, AMD, both menus, retries, date capture, bridges, SQL/URL fallbacks, dynamic audio, hangup and validation\n";
+
+$out=runGraphCase($fixture,['','si','si','mañana']);
+$states=array_values(array_map(fn($e)=>$e['status'],array_filter($out['events'],fn($e)=>($e['action'] ?? '')==='status')));
+graphCheck($states===['RESPONDE_F1','RESPONDE_F2','AGENDADO'],'attained business stages');
+$out=runGraphCase($fixture,['','si','si','','']);
+$states=array_values(array_map(fn($e)=>$e['status'],array_filter($out['events'],fn($e)=>($e['action'] ?? '')==='status')));
+graphCheck(end($states)==='AGENDADO_VALIDAR','validation terminal status');

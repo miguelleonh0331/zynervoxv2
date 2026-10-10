@@ -267,3 +267,8 @@ Checks: tests/ivr-graph.php (all reference branches with injected IO), tests/ivr
 - Migration 010 adds campaign/flow snapshots, flow code/name/version SHA256, IVR completion result and recording path/status/bytes/finalization date to zynervox_bot_call_attempts. Existing call_id, phone, list/lead IDs, channels, prefix/carrier, timestamps, duration/billsec and hangup data remain available.
 - WAV files stay under recordings/bot_ivr; FINISH journals include their metadata. Historical backfill reads original IVR events and completed files; missing historical flow names/hashes remain null. Campaign lineage is retained through list ownership.
 - Deployed migration and 3 PHP source files; source/production cmp, PHP lint, call-recordings DB tests, call tracking and durable AGI audit regression passed. Both list 26 recordings registered ready (319404 and 532844 bytes). No new live call initiated.
+
+### 2026-10-10 - Persist latest IVR disposition in status
+- Migration 011 widens lead/attempt status to VARCHAR(80). Graph emits RESPONDE_F1/F2 at CARSA response stages and final disposition at named hangup nodes; generic hangup nodes retain the preceding state. SQL RESULTADO also writes status atomically.
+- Call finish and channel recovery preserve attained IVR status. Older attempts cannot overwrite the newest lead state; recovery remains idempotent. Telephony result remains in dial_status.
+- Deployed migration and source PHP files directly. PHP lint, source/production comparison, IVR status transaction tests (stage progression, AGENDADO_VALIDAR, interrupted calls, late events, repeated recovery), graph branches, SQL results, call tracking and recording regression passed. Existing historical statuses were not rewritten; no live call launched.

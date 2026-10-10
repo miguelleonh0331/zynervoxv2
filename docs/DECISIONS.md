@@ -747,3 +747,6 @@ ARCHITECT_AGENT approval: bot_ivr engine/service/tests/examples, core fixed cont
 
 ### 2026-10-10 - Call export metadata (ARCHITECT_AGENT)
 Scope approved: bot_ivr audit/migration and zynervox_queries event persistence. Extend existing attempt rows and event payloads; no new public methods. Snapshot actual IVR identity at IVR_START. Record final file metadata once before durable FINISH journaling; keep WAV on disk, never revalidate published audio cache. Historical flow identity comes from IVR_START events, never inferred from current list configuration.
+
+### 2026-10-10 - Lead segmentation by latest IVR status (ARCHITECT_AGENT)
+Approved scope: bot_ivr graph/audit schema and zynervox_queries status persistence. Lead and attempt status share latest business outcome; dial_status remains telephone evidence. Intermediate CARSA stages, terminal nodes and SQL RESULTADO update status, guarded against older attempts. Finish/recovery preserve attained IVR status.
