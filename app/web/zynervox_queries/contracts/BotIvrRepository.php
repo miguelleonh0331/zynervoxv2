@@ -2,6 +2,11 @@
 declare(strict_types=1);
 namespace ZynervoxQueries;
 interface BotIvrRepository {
+    public function createDialRun(int $listId,int $campaignId,string $runId,int $channels,array $config,string $actor): void;
+    public function dialRun(int $listId,int $campaignId,?string $runId=null): ?array;
+    public function transitionDialRun(string $runId,string $state,string $error=''): void;
+    public function claimDialLead(string $runId,string $callId): ?array;
+    public function rejectDialClaim(string $runId,string $callId): void;
     public function saveIvrResult(string $callId, string $nodeId, array $fields): void;
     public function ivrCallContext(int $listId, int $leadId, string $callId): array;
     public function recordCallEvent(string $callId, string $type, string $eventId, int $epoch, array $data): void;

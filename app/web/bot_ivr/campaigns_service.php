@@ -37,7 +37,7 @@ function bot_campaign_field_value(string $key, $value) {
         if (!empty($field['digits'])) $valid = $valid && (bool)preg_match('/^[+0-9*#]*$/', $value);
         if ($key === 'dial_statuses') {
             $value = strtoupper($value);
-            $valid = $valid && (bool)preg_match('/^[A-Z0-9_]{1,6}(?:\s+[A-Z0-9_]{1,6})*$/', $value);
+            $valid = $valid && (bool)preg_match('/^[A-Z0-9_]{1,80}(?:\s+[A-Z0-9_]{1,80})*$/', $value);
             if ($valid) $value = implode(' ', array_unique(preg_split('/\s+/', $value)));
         }
     }

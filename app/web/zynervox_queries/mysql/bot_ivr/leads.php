@@ -24,6 +24,8 @@ trait LeadQueries {
             $lock = $this->db->prepare('SELECT list_id FROM zynervox_bot_lists WHERE list_id=:list AND campaign_id=:campaign FOR UPDATE');
             $lock->execute([':list'=>$listId, ':campaign'=>$campaignId]);
             if (!$lock->fetch()) throw new \RuntimeException('La lista no pertenece a esta campaña.');
+            $this->dialMutationGuard($listId);
+            $active=$this->db->prepare("SELECT call_id FROM zynervox_bot_call_attempts WHERE list_id=? AND finished_at IS NULL AND end_source<>'RECOVERY' AND status<>'LOST' LIMIT 1");$active->execute([$listId]);if($active->fetchColumn())throw new \RuntimeException('Espera a que terminen las llamadas antes de reemplazar la base.');
             $this->db->prepare('DELETE FROM zynervox_bot_list WHERE list_id=:list')->execute([':list'=>$listId]);
             $existing = [];
             $saved = 0;

@@ -29,18 +29,19 @@ trait CallQueries {
     }
     private function callAtomic(callable $operation) {
         $outer=$this->db->inTransaction();
-        if ($outer) $this->db->exec('SAVEPOINT call_tracking'); else $this->db->beginTransaction();
+        $savepoint='call_tracking_'.bin2hex(random_bytes(6));
+        if ($outer) $this->db->exec('SAVEPOINT '.$savepoint); else $this->db->beginTransaction();
         try {
             $result=$operation();
-            if ($outer) $this->db->exec('RELEASE SAVEPOINT call_tracking'); else $this->db->commit();
+            if ($outer) $this->db->exec('RELEASE SAVEPOINT '.$savepoint); else $this->db->commit();
             return $result;
         } catch (\Throwable $e) {
-            if ($outer) $this->db->exec('ROLLBACK TO SAVEPOINT call_tracking'); elseif ($this->db->inTransaction()) $this->db->rollBack();
+            if ($outer) $this->db->exec('ROLLBACK TO SAVEPOINT '.$savepoint); elseif ($this->db->inTransaction()) $this->db->rollBack();
             throw $e;
         }
     }
     public function recordCallEvent(string $callId, string $type, string $eventId, int $epoch, array $data): void {
-        if (!in_array($type,['START','OUTBOUND','ANSWER','AMD','FINISH','RECOVERY','IVR_START','IVR_NODE','IVR_END'],true) || !preg_match('/^[a-f0-9]{64}$/D',$eventId) || $epoch<1) throw new \RuntimeException('Invalid event');
+        if (!in_array($type,['START','OUTBOUND','ANSWER','AMD','FINISH','RECOVERY','IVR_START','IVR_NODE','IVR_END','DIAL_REJECTED'],true) || !preg_match('/^[a-f0-9]{64}$/D',$eventId) || $epoch<1) throw new \RuntimeException('Invalid event');
         $this->callAtomic(function() use($callId,$type,$eventId,$epoch,$data) {
             $s=$this->db->prepare('SELECT call_id FROM zynervox_bot_call_attempts WHERE call_id=? FOR UPDATE'); $s->execute([$callId]);
             if (!$s->fetchColumn()) throw new \RuntimeException('Attempt not found');

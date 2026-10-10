@@ -1828,3 +1828,8 @@ Added CLI-only ivr_engine_agi.php with published-flow loading, lead variable ren
 - Added modules/admin/services/pbx.php and PBX sidebar item under Services, following database page styling. Level-9 authorization and CSRF protect test/save. Fields: host, port (5038 default), username, password; blank password preserves stored secret.
 - PbxAmi helper validates AMI fields, authenticates with Events off, logs off, and saves only after a successful test. Atomic private config: deployment.directory/pbx/ami.json, 0640. Installer prepares isolated private directory 2770. No production manager.conf changes or calls.
 - Deployed source files directly and prepared /etc/zynervox/zynervoxv2/pbx. PHP lint, source/production comparison, fake AMI success/rejection/Logoff, field injection rejection, password preservation, private persistence/permissions, shell syntax, unauthenticated HTTP redirect and wwwrun write access passed. Real credentials remain unset for administrator configuration.
+
+
+## 2026-10-10 - List Play/Stop AMI worker
+
+Implemented and deployed list Play/Stop AMI worker, async Local originate, durable per-lead claims, channel replenishment, exclusive list lease, CSRF API and progress polling. Campaign state tokens support 80 characters. Applied schema 012 and isolated DML grants. Verified simulated AMI protocol, worker concurrency/refill/duplicates/Stop/rejection/ambiguous ACK, inherited launcher lease, live AMI Login/Ping (no Originate), PHP lint and call tracking/status/recording/flow regressions. No real contacts called during validation. List 26 contact is ANSWER while campaign 20 selects NEW.

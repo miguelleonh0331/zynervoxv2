@@ -65,3 +65,8 @@ Common template includes zynervoxv2-bot-ivr (AMD then engine unless MACHINE) and
 
 ## 2026-10-10 - PBX AMI service
 Services/pbx.php requires administrator level 9 and CSRF for test/save. PbxAmi::load/validate/test/save exposes configuration to authorized server callers only. Test authenticates and logs off, never originates a call. Save requires successful login and atomically writes deployment.directory/pbx/ami.json (0640, private directory 2770). Form never renders the secret; blank password preserves it. Credentials are not imported from legacy nor stored in Git.
+
+
+## 2026-10-10 - List Play/Stop AMI worker
+
+AmiClient uses private PbxAmi credentials, bounded requests and ActionID correlation. Async Originate targets Local/<prefix><phone>@zynervoxv2/n, inherits list/lead IDs and assigns OtherChannelId to the reserved attempt ID. Credentials are never stored in dial runs or passed on the command line.

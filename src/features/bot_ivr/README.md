@@ -272,3 +272,8 @@ Checks: tests/ivr-graph.php (all reference branches with injected IO), tests/ivr
 - Migration 011 widens lead/attempt status to VARCHAR(80). Graph emits RESPONDE_F1/F2 at CARSA response stages and final disposition at named hangup nodes; generic hangup nodes retain the preceding state. SQL RESULTADO also writes status atomically.
 - Call finish and channel recovery preserve attained IVR status. Older attempts cannot overwrite the newest lead state; recovery remains idempotent. Telephony result remains in dial_status.
 - Deployed migration and source PHP files directly. PHP lint, source/production comparison, IVR status transaction tests (stage progression, AGENDADO_VALIDAR, interrupted calls, late events, repeated recovery), graph branches, SQL results, call tracking and recording regression passed. Existing historical statuses were not rewritten; no live call launched.
+
+
+## 2026-10-10 - List Play/Stop AMI worker
+
+Play starts an AMI worker using the selected channels and saved origin. Campaign dial_statuses determine eligibility; Stop drains active calls without starting new contacts. Runtime leases/logs: /var/lib/zynervoxv2/asterisk/bot_ivr/call_jobs. SQL history: zynervox_bot_dial_runs and call_attempts.dial_run_id. Requires installer/list-call-worker.sh.

@@ -5,6 +5,7 @@ trait ListQueries {
     public function updateListDialPrefix(int $listId, int $campaignId, string $prefix): void {
         if (!preg_match('/^[0-9]{0,20}$/D', $prefix)) throw new \RuntimeException('Prefijo invalido.');
         $this->list($listId, $campaignId);
+        $this->dialMutationGuard($listId);
         $this->db->prepare('UPDATE zynervox_bot_lists SET dial_prefix=:prefix WHERE list_id=:list AND campaign_id=:campaign')->execute([':prefix'=>$prefix, ':list'=>$listId, ':campaign'=>$campaignId]);
     }
     public function lists(int $campaignId): array {
@@ -27,6 +28,7 @@ trait ListQueries {
     }
     public function updateList(int $campaignId, int $listId, string $name, bool $active, ?int $flowId = null): void {
         $this->list($listId, $campaignId);
+        $this->dialMutationGuard($listId);
         if ($flowId !== null && $flowId < 1) throw new \RuntimeException('ID de flujo inválido.');
         $this->db->prepare('UPDATE zynervox_bot_lists SET name=:name,active=:active,id_flujo=COALESCE(:flow,id_flujo) WHERE list_id=:list AND campaign_id=:campaign')->execute([':name'=>$name, ':active'=>(int)$active, ':list'=>$listId, ':campaign'=>$campaignId, ':flow'=>$flowId]);
     }

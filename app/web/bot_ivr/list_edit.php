@@ -3,6 +3,7 @@ declare(strict_types=1);
 require __DIR__ . '/campaigns_page.php';
 require __DIR__ . '/list_service.php';
 require_once __DIR__ . '/list_audio_jobs.php';
+require_once __DIR__ . '/list_call_service.php';
 require_once __DIR__ . '/list_audio_service.php';
 require_once __DIR__ . '/../ivr_builder/published_flow.php';
 require_once __DIR__ . '/../includes/Carriers.php';
@@ -28,6 +29,8 @@ try {
         try {
             if (empty($_POST) && empty($_FILES)) throw new RuntimeException('La carga supera el límite de esta instalación. Usa un archivo más pequeño.');
             bot_campaign_csrf();
+            $running=bot_list_call_status($listId,$campaignId);
+            if($running && in_array($running['state'],['starting','running','stopping'],true))throw new RuntimeException('Deten la marcacion antes de modificar la lista.');
             if (($_POST['action'] ?? '') === 'save_list_prefix') {
                 if (!is_string($_POST['dial_prefix'] ?? null)) throw new RuntimeException('Prefijo inválido.');
                 if ($originLoadError !== '') throw new RuntimeException($originLoadError);
@@ -151,9 +154,10 @@ if ($list): ?>
 <?php foreach ($dialOrigins as $origin): ?><option value="<?php echo h($origin['dial_prefix']); ?>"<?php echo ($list['dial_prefix'] ?? '') === $origin['dial_prefix'] ? ' selected' : ''; ?>><?php echo h($origin['name'].' · '.$origin['dial_prefix']); ?></option><?php endforeach; ?>
 <?php if (($list['dial_prefix'] ?? '') !== '' && !in_array($list['dial_prefix'], array_column($dialOrigins, 'dial_prefix'), true)): ?><option selected disabled>Origen no disponible: <?php echo h($list['dial_prefix']); ?></option><?php endif; ?>
 </select></div>
-<button type="submit" form="list-prefix-form" class="carsa-btn secondary"<?php echo $originLoadError !== '' ? ' disabled' : ''; ?>>Guardar origen</button>
+<button type="submit" id="list-save-prefix" form="list-prefix-form" class="carsa-btn secondary"<?php echo $originLoadError !== '' ? ' disabled' : ''; ?>>Guardar origen</button>
 <button type="button" id="list-call-play" class="carsa-btn"<?php echo !$audioReady ? ' hidden' : ''; ?><?php echo $audioReady ? '' : ' disabled'; ?>>▶ Play</button>
 <button type="button" id="list-call-stop" class="carsa-btn secondary"<?php echo !$audioReady ? ' hidden' : ''; ?> disabled>■ Stop</button>
+<p id="list-call-status" class="list-audio-note" role="status" style="width:100%"></p>
 </form>
 <?php if ($originLoadError !== ''): ?><p class="list-audio-note" role="status"><?php echo h($originLoadError); ?></p><?php endif; ?>
 <?php if ($audioCheckError !== ''): ?>
@@ -189,7 +193,65 @@ if ($list): ?>
     const valid = <?php echo $audioPayload !== null ? 'true' : 'false'; ?>;
     const signature = <?php echo json_encode($audioPayload['signature'] ?? ''); ?>;
     const url = <?php echo json_encode('list_audio_status.php?id='.(int)$listId.'&campaign_id='.(int)$campaignId); ?>;
-    let timer;
+    let timer, callTimer, callRun = null, callBusy = false, lastAudioReady = false;
+    const stop = document.getElementById('list-call-stop');
+    const channels = document.getElementById('list_call_channels');
+    const prefix = document.getElementById('list_call_prefix');
+    const callsOutput = document.getElementById('list-call-status');
+    const callsUrl = <?php echo json_encode('list_call_api.php?id='.(int)$listId.'&campaign_id='.(int)$campaignId); ?>;
+    const callsCsrf = <?php echo json_encode($_SESSION['bot_campaign_csrf']); ?>;
+    const savedPrefix = <?php echo json_encode((string)($list['dial_prefix'] ?? '')); ?>;
+    function renderCalls(run) {
+        callRun = run;
+        const active = run && ['starting','running','stopping'].includes(run.state);
+        play.hidden = !lastAudioReady;
+        play.disabled = !lastAudioReady || callBusy || !!active || !savedPrefix || prefix.value !== savedPrefix;
+        stop.hidden = !lastAudioReady && !active;
+        stop.disabled = callBusy || !active || run.state === 'stopping';
+        channels.disabled = !!active || callBusy;
+        prefix.disabled = !!active || callBusy;
+        document.getElementById('list-save-prefix').disabled = !!active || callBusy;
+        if (run) {
+            const labels = {starting:'Iniciando llamadas',running:'Llamadas en marcha',stopping:'Deteniendo: esperando llamadas activas',stopped:'Detenido',completed:'Marcacion finalizada',failed:'Marcacion detenida con error'};
+            callsOutput.textContent = (labels[run.state] || run.state) + ' | Activas: ' + run.active + '/' + run.channels + ' | Procesadas: ' + run.completed + '/' + run.launched + ' | Pendientes: ' + run.pending + (run.error ? ' ? ' + run.error : '');
+        }
+        clearTimeout(callTimer);
+        if (active) callTimer = setTimeout(pollCalls, 2000);
+    }
+    async function pollCalls() {
+        try {
+            const response = await fetch(callsUrl, {cache:'no-store', credentials:'same-origin'});
+            const data = await response.json();
+            if (!response.ok || !data.ok) throw new Error(data.error || 'No se pudo consultar la marcacion.');
+            renderCalls(data.run);
+        } catch (error) {
+            play.disabled = true;
+            callsOutput.textContent = error.message;
+            callTimer = setTimeout(pollCalls, 5000);
+        }
+    }
+    async function callAction(action) {
+        if (callBusy) return;
+        callBusy = true;
+        renderCalls(callRun);
+        callsOutput.textContent = action === 'play' ? 'Iniciando llamadas...' : 'Solicitando detener...';
+        try {
+            const response = await fetch(callsUrl, {method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,csrf:callsCsrf,channels:Number(channels.value),run_id:callRun && callRun.run_id})});
+            const data = await response.json();
+            if (!response.ok || !data.ok) throw new Error(data.error || 'No se pudo completar la operacion.');
+            callBusy = false;
+            renderCalls(data.run);
+        } catch (error) {
+            callBusy = false;
+            renderCalls(callRun);
+            callsOutput.textContent = error.message;
+            callTimer = setTimeout(pollCalls, 5000);
+        }
+    }
+    play.addEventListener('click', () => callAction('play'));
+    stop.addEventListener('click', () => callAction('stop'));
+    prefix.addEventListener('change', () => renderCalls(callRun));
+
     function render(job, ready) {
         const active = job && (job.state === 'starting' || job.state === 'running');
         const stale = job && valid && job.signature !== signature;
@@ -200,9 +262,8 @@ if ($list): ?>
         document.getElementById('list-audio-provider-control').hidden = button.hidden;
         document.getElementById('list-audio-speed-control').hidden = button.hidden;
         button.disabled = !valid || active || (ready && !stale);
-        play.disabled = !ready || !valid || active || stale;
-        play.hidden = play.disabled;
-        document.getElementById('list-call-stop').hidden = play.hidden;
+        lastAudioReady = !!ready && valid && !active && !stale;
+        renderCalls(callRun);
         const total = stale ? 0 : Number(job && job.total || 0);
         const completed = stale ? 0 : Number(job && job.completed || 0);
         const percent = total > 0 ? Math.min(100, Math.round(completed * 100 / total)) : 0;
@@ -237,9 +298,10 @@ if ($list): ?>
             timer = setTimeout(poll, 5000);
         }
     }
-    document.addEventListener('visibilitychange', () => { if (document.hidden) clearTimeout(timer); else poll(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { clearTimeout(timer); clearTimeout(callTimer); } else { poll(); pollCalls(); } });
     const initial = <?php echo json_encode($audioJob, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
     render(initial, <?php echo $audioReady ? 'true' : 'false'; ?>);
+    pollCalls();
 })();
 </script>
 <?php endif;

@@ -232,3 +232,8 @@ Attempt rows snapshot campaign_id and flow_id at start. IVR_START persists actua
 
 ## Latest attained IVR status (2026-10-10)
 Lead and attempt status are VARCHAR(80). IVR_NODE action=status updates the attained business stage; saveIvrResult applies RESULTADO. CARSA interesado/interesado_nivel2 map to RESPONDE_F1/F2; named terminal nodes provide final disposition. Generic hangup/fin/final nodes do not create a business state. Finish and recovery preserve an attained state, while dial_status keeps telephony outcome. Updates to lead status only apply when this is its newest attempt.
+
+
+## 2026-10-10 - List Play/Stop AMI worker
+
+Play/Stop use administrator session and CSRF. Play requires a saved active dial origin and ready published audio signature. One detached worker per list reserves eligible campaign statuses once per run and enforces selected channels, including unresolved prior calls. Stop prevents new reservations and drains active calls. Attempts preserve existing IVR status and recording tracking. Ambiguous AMI acknowledgements retain the reservation until audit recovery.

@@ -753,3 +753,6 @@ Approved scope: bot_ivr graph/audit schema and zynervox_queries status persisten
 
 ### 2026-10-10 - Services PBX AMI configuration (ARCHITECT_AGENT)
 Approved admin/core scope: level-9 PBX form, CSRF POSTs, reusable PbxAmi config/test helper and exact IsolatedGate route. Private atomic JSON under deployment directory/pbx with mode 0640; never show/log secrets. Connection test authenticates only, no calls or Asterisk configuration changes. Credentials supplied by administrator; no legacy secret import.
+
+### 2026-10-10 - List Play/Stop AMI worker (ARCHITECT_AGENT)
+Approved bot_ivr/core/zynervox_queries scope. Persist dial runs and correlate preclaimed attempts via AMI OtherChannelId. One active run per list and an exclusive worker lease; database claim locks enforce selected simultaneous slots including existing calls. Campaign dial_statuses select eligible leads, once per run; no automatic repeat of finalized leads. Selected list channels govern this worker. Stop drains claims already launched. New AMI requests use isolated Local prefix routes and inherited list ID; credentials only from PbxAmi private storage. Audit callbacks remain authoritative for completion. No auto-launch on deployment.

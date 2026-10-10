@@ -119,3 +119,8 @@ Attempt rows snapshot campaign_id and flow_id at start. IVR_START persists actua
 
 ## Latest attained IVR status (2026-10-10)
 Lead and attempt status are VARCHAR(80). IVR_NODE action=status updates the attained business stage; saveIvrResult applies RESULTADO. CARSA interesado/interesado_nivel2 map to RESPONDE_F1/F2; named terminal nodes provide final disposition. Generic hangup/fin/final nodes do not create a business state. Finish and recovery preserve an attained state, while dial_status keeps telephony outcome. Updates to lead status only apply when this is its newest attempt.
+
+
+## 2026-10-10 - List Play/Stop AMI worker
+
+BotIvrRepository exposes createDialRun, dialRun, transitionDialRun, claimDialLead and rejectDialClaim. Migration 012 persists executions and links attempts via dial_run_id. Claims lock run/list/lead, count open list attempts and exclude contacts already attempted in this execution. Unique active_list_id prevents concurrent executions. CALL cannot be a selectable status.
