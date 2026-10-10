@@ -42,7 +42,11 @@ trait CallQueries {
             if ($s->fetchColumn()) return;
             $at=gmdate('Y-m-d H:i:s',$epoch);
             $this->db->prepare('INSERT INTO zynervox_bot_call_events(event_id,call_id,event_type,occurred_at,payload_json) VALUES (?,?,?,?,?)')->execute([$eventId,$callId,$type,$at,json_encode($data,JSON_THROW_ON_ERROR)]);
-            if ($type==='START') {
+            if ($type==='IVR_START') {
+                $this->db->prepare('UPDATE zynervox_bot_call_attempts SET campaign_id=?,flow_id=?,flow_code=?,flow_name=?,flow_sha256=? WHERE call_id=?')->execute([$data['campaign_id']??null,$data['flow_id']??null,$data['flow_code']??null,$data['flow_name']??null,$data['flow_sha256']??null,$callId]);
+            } elseif ($type==='IVR_END') {
+                $this->db->prepare('UPDATE zynervox_bot_call_attempts SET ivr_result=? WHERE call_id=?')->execute([substr($data['result']??'',0,20),$callId]);
+            } elseif ($type==='START') {
                 $this->db->prepare('UPDATE zynervox_bot_call_attempts SET linked_id=?,caller_channel=?,origin_prefix=?,carrier=?,started_at=? WHERE call_id=?')->execute([substr($data['linked_id']??'',0,80),substr($data['channel']??'',0,160),substr($data['prefix']??'',0,20),substr($data['carrier']??'',0,60),$at,$callId]);
             } elseif ($type==='OUTBOUND') {
                 $this->db->prepare('UPDATE zynervox_bot_call_attempts SET callee_channel=?,callee_unique_id=? WHERE call_id=?')->execute([substr($data['channel']??'',0,160),substr($data['unique_id']??'',0,80),$callId]);
@@ -51,6 +55,7 @@ trait CallQueries {
             } elseif ($type==='AMD') {
                 $this->db->prepare('UPDATE zynervox_bot_call_attempts SET amd_status=?,amd_cause=? WHERE call_id=?')->execute([substr($data['amd_status']??'',0,20),substr($data['amd_cause']??'',0,160),$callId]);
             } elseif ($type==='FINISH') {
+                if (array_key_exists('recording_status',$data)) $this->db->prepare('UPDATE zynervox_bot_call_attempts SET recording_path=?,recording_status=?,recording_bytes=?,recording_finalized_at=? WHERE call_id=?')->execute([$data['recording_path'],$data['recording_status'],$data['recording_bytes'],$at,$callId]);
                 $this->db->prepare("UPDATE zynervox_bot_call_attempts SET finished_at=?,end_source='HANGUP_HANDLER' WHERE call_id=?")->execute([$at,$callId]);
             }
             $this->db->prepare('UPDATE zynervox_bot_call_attempts SET duration_seconds=IF(finished_at IS NULL,NULL,GREATEST(0,TIMESTAMPDIFF(SECOND,started_at,finished_at))),billsec=IF(finished_at IS NULL,NULL,IF(answered_at IS NULL,0,GREATEST(0,TIMESTAMPDIFF(SECOND,answered_at,finished_at)))) WHERE call_id=?')->execute([$callId]);
@@ -79,8 +84,9 @@ trait CallQueries {
     public function startCall(int $listId, string $phone, string $callId): int {
         if ($listId<1 || !preg_match('/^[0-9]{1,20}$/D',$phone) || !preg_match('/^[A-Za-z0-9_.-]{1,80}$/D',$callId)) throw new \RuntimeException('Invalid call identity');
         return $this->callAtomic(function() use($listId,$phone,$callId) {
-            $s=$this->db->prepare('SELECT list_id FROM zynervox_bot_lists WHERE list_id=? FOR UPDATE'); $s->execute([$listId]);
-            if (!$s->fetchColumn()) throw new \RuntimeException('List not found');
+            $s=$this->db->prepare('SELECT list_id,campaign_id,id_flujo FROM zynervox_bot_lists WHERE list_id=? FOR UPDATE'); $s->execute([$listId]);
+            $listSnapshot=$s->fetch(\PDO::FETCH_ASSOC);
+            if (!$listSnapshot) throw new \RuntimeException('List not found');
             $s=$this->db->prepare('SELECT lead_id,list_id,phone FROM zynervox_bot_call_attempts WHERE call_id=? FOR UPDATE'); $s->execute([$callId]); $old=$s->fetch();
             if ($old) {
                 if ((int)$old['list_id']!==$listId || $old['phone']!==$phone) throw new \RuntimeException('Call ID mismatch');
@@ -91,7 +97,7 @@ trait CallQueries {
                 $this->db->prepare('INSERT INTO zynervox_bot_list(list_id,phone) VALUES (?,?)')->execute([$listId,$phone]);
                 $lead=$this->db->lastInsertId();
             }
-            $this->db->prepare('INSERT INTO zynervox_bot_call_attempts(call_id,list_id,lead_id,phone,started_at) VALUES (?,?,?,?,UTC_TIMESTAMP())')->execute([$callId,$listId,$lead,$phone]);
+            $this->db->prepare('INSERT INTO zynervox_bot_call_attempts(call_id,list_id,lead_id,phone,campaign_id,flow_id,started_at) VALUES (?,?,?,?,?,?,UTC_TIMESTAMP())')->execute([$callId,$listId,$lead,$phone,$listSnapshot['campaign_id'],$listSnapshot['id_flujo']]);
             $this->db->prepare("UPDATE zynervox_bot_list SET called_count=called_count+1,last_call_at=UTC_TIMESTAMP(),status='CALL' WHERE lead_id=?")->execute([$lead]);
             return (int)$lead;
         });

@@ -113,3 +113,6 @@ ivrCallContext(listId,leadId,callId) returns one lead with campaign_id/id_flujo 
 ## 2026-10-10 - IVR business results (architect approved)
 
 saveIvrResult(callId,nodeId,fields): void verifies an open attempt, derives list/lead scope from that attempt, and inserts immutable fields_json/result in zynervox_bot_ivr_results. Same call/node/payload is idempotent; different payload or closed/nonexistent attempt is rejected. Public result mapping receives prepared data only, never arbitrary SQL. No CDR or lead disposition changes. Migration 009 and account DML grants required.
+
+## Call export metadata (2026-10-10)
+Attempt rows snapshot campaign_id and flow_id at start. IVR_START persists actual flow_code/name and SHA256 of serialized executed flow. IVR_END stores ivr_result. FINISH journal persists recording_path/status/bytes/finalized_at after MixMonitor closes. Status ready means finalized nonempty file at that time, not continuous disk verification. Files remain on disk; historical names/hashes are left null when absent from original events.

@@ -40,8 +40,8 @@ try {
     $lease=fopen($dir.'/'.$call.'.lock','c');
     if (!$lease || !flock($lease,LOCK_EX|LOCK_NB)) throw new RuntimeException('IVR already running');
     $context=bot_ivr_repository()->ivrCallContext($list,$lead,$call);
-    $audit('IVR_START',['list_id'=>$list,'lead_id'=>$lead,'flow_id'=>(int)$context['id_flujo']]);
     $flow=ivr_builder_published_flow((int)$context['id_flujo']);
+    $audit('IVR_START',['list_id'=>$list,'lead_id'=>$lead,'campaign_id'=>(int)$context['campaign_id'],'flow_id'=>(int)$context['id_flujo'],'flow_code'=>(string)$flow['flow_code'],'flow_name'=>(string)$flow['name'],'flow_sha256'=>hash('sha256',json_encode($flow,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES))]);
     $index=$runtime.'/sounds/cache/ivr_builder/gtts/audio_registry.sqlite';
     if (!is_file($index)) throw new RuntimeException('Audio registry unavailable');
     $registry=new PDO('sqlite:'.$index,null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);

@@ -7,8 +7,17 @@ function call_audit_directory(): string {
     if (realpath($dir)!==$dir || !is_writable($dir)) throw new RuntimeException('Audit spool unavailable');
     return $dir;
 }
-function call_audit_write(array $entry): string {
+function call_recording_metadata(string $callId): array {
+    if (!preg_match('/^[A-Za-z0-9_.-]{1,80}$/D',$callId)) throw new RuntimeException('Invalid call ID');
+    $root=rtrim((string)\Config\Config::deployment('runtime'),'/');
+    $path=$root.'/recordings/bot_ivr/'.$callId.'.wav';
+    clearstatcache(true,$path);
+    $bytes=!is_link($path) && is_file($path) ? filesize($path) : false;
+    return ['recording_path'=>$bytes!==false?$path:null,'recording_status'=>$bytes===false?'none':($bytes>44?'ready':'empty'),'recording_bytes'=>$bytes===false?null:$bytes];
+}
+function call_audit_write(array &$entry): string {
     if (!preg_match('/^[A-Za-z0-9_.-]{1,80}$/D',$entry['call_id'])) throw new RuntimeException('Invalid call ID');
+    if ($entry['type']==='FINISH') $entry['data']=array_merge($entry['data'],call_recording_metadata($entry['call_id']));
     $dir=call_audit_directory();
     $tmp=tempnam($dir,'.audit-');
     if ($tmp===false) throw new RuntimeException('Audit spool unavailable');
@@ -34,6 +43,7 @@ function call_audit_apply(array $entry): ?int {
     $db->beginTransaction();
     try {
         $data=$entry['data']; $id=$entry['call_id'];
+        if ($entry['type']==='FINISH' && !array_key_exists('recording_status',$data)) $data=array_merge($data,call_recording_metadata($id));
         if ($entry['type']==='START') $lead=$repo->startCall((int)$data['list_id'],$data['phone'],$id);
         elseif ($entry['type']==='FINISH') $repo->finishCall($id,$data['dial_status'],$data['amd_status'],$data['amd_cause'],(int)$data['hangup_cause'],(bool)$data['answered']);
         $repo->recordCallEvent($id,$entry['type'],$entry['event_id'],(int)$entry['epoch'],$data);

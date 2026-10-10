@@ -226,3 +226,6 @@ Private ivr_engine.json in deployment directory configures Vosk, gateway or dire
 Known contact audio remains prepublished. Captured-response audio (e.g. fecha_spoken farewell) is generated on demand with the same immutable hash registry and per-hash lease. Published WAVs are not revalidated. Receive recordings use private per-call directories under bot_ivr/ivr_calls; mixed call recording remains separate. No automatic recording retention purge in this change.
 
 Inject SQL maps allowlisted fields into a scoped idempotent result in zynervox_core.zynervox_bot_ivr_results, independently of CDR. Explicit private result_destination=sqlserver can also export with parameterized inserts; external failures follow configured fallback and are not automatically retried. External SQL delivery is not guaranteed exactly once after an ambiguous network failure. No legacy CRM writes by default.
+
+## Call export metadata (2026-10-10)
+Attempt rows snapshot campaign_id and flow_id at start. IVR_START persists actual flow_code/name and SHA256 of serialized executed flow. IVR_END stores ivr_result. FINISH journal persists recording_path/status/bytes/finalized_at after MixMonitor closes. Status ready means finalized nonempty file at that time, not continuous disk verification. Files remain on disk; historical names/hashes are left null when absent from original events.

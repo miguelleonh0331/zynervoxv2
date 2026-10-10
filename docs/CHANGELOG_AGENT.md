@@ -1813,3 +1813,8 @@ Added CLI-only ivr_engine_agi.php with published-flow loading, lead variable ren
 ### 2026-10-10 - IVR flow dropdown for campaign lists
 - campaign_edit.php creates/edits lists with the public IVR Builder api_flows.php catalog. Labels preserve two-digit codes and names; integer values remain compatible with id_flujo validation (02 submits 2). Empty/loading/error states prevent an invalid assignment.
 - Deployed source file directly to production. PHP lint and source/production comparison passed.
+
+### 2026-10-10 - Call recordings for future export
+- Migration 010 adds campaign/flow snapshots, flow code/name/version SHA256, IVR completion result and recording path/status/bytes/finalization date to zynervox_bot_call_attempts. Existing call_id, phone, list/lead IDs, channels, prefix/carrier, timestamps, duration/billsec and hangup data remain available.
+- WAV files stay under recordings/bot_ivr; FINISH journals include their metadata. Historical backfill reads original IVR events and completed files; missing historical flow names/hashes remain null. Campaign lineage is retained through list ownership.
+- Deployed migration and 3 PHP source files; source/production cmp, PHP lint, call-recordings DB tests, call tracking and durable AGI audit regression passed. Both list 26 recordings registered ready (319404 and 532844 bytes). No new live call initiated.
