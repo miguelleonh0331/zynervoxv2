@@ -118,22 +118,18 @@ if ($list): ?>
 <?php endforeach; ?>
 </select></div>
 <div class="carsa-field list-audio-speed"><label for="list_audio_workers">Velocidad de generación</label>
-<select id="list_audio_workers" name="audio_workers" aria-describedby="list-audio-speed-help">
+<select id="list_audio_workers" name="audio_workers">
 <?php foreach ([1, 3, 10, 25, 60, 100] as $workers): ?>
 <option value="<?php echo $workers; ?>"<?php echo $workers === 25 ? ' selected' : ''; ?>><?php echo $workers; ?>x</option>
 <?php endforeach; ?>
 </select></div>
 <button type="submit" id="list-audio-generate" class="carsa-btn"<?php echo $audioPayload === null || $audioActive ? ' disabled' : ''; ?> aria-describedby="list-audio-availability">Generar</button>
-<button type="button" id="list-call-play" class="carsa-btn"<?php echo $audioReady ? '' : ' disabled'; ?> aria-describedby="list-call-readiness">▶ Play</button>
+<button type="button" id="list-call-play" class="carsa-btn"<?php echo $audioReady ? '' : ' disabled'; ?>>▶ Play</button>
 <button type="button" class="carsa-btn secondary" disabled>■ Stop</button>
 </form>
-<p id="list-call-readiness" class="list-audio-note" role="status"><?php echo $audioReady ? 'Lista para llamar. Audios verificados.' : 'Play bloqueado: genera todos los audios de la lista.'; ?></p>
-<p class="list-audio-note">La conexión de Play y Stop al motor de llamadas está pendiente.</p>
-<p id="list-audio-speed-help" class="list-audio-note">La velocidad indica cuántos audios se procesan simultáneamente.</p>
 <?php if ($audioCheckError !== ''): ?>
 <p class="list-audio-note" role="status"><?php echo h($audioCheckError); ?></p>
 <?php elseif ($audioCheck !== null): ?>
-<p class="list-audio-note" role="status">Variables verificadas: <?php echo (int)$audioCheck['ready']; ?> de <?php echo (int)$audioCheck['leads']; ?> leads listos; <?php echo (int)$audioCheck['rejected']; ?> con errores.</p>
 <?php foreach ($audioCheck['errors'] as $audioError): ?><p class="list-audio-note"><?php echo h($audioError); ?></p><?php endforeach; ?>
 <?php endif; ?>
 <div class="audio-summary"><p id="list-audio-availability" class="list-audio-note" role="status">Listo para generar con gTTS local.</p></div>
@@ -159,7 +155,6 @@ if ($list): ?>
     const output = document.getElementById('list-audio-availability');
     const button = document.getElementById('list-audio-generate');
     const play = document.getElementById('list-call-play');
-    const readiness = document.getElementById('list-call-readiness');
     const state = document.getElementById('audio-dialog-state');
     const errors = document.getElementById('audio-dialog-errors');
     const valid = <?php echo $audioPayload !== null ? 'true' : 'false'; ?>;
@@ -171,7 +166,6 @@ if ($list): ?>
         const stale = job && valid && job.signature !== signature;
         button.disabled = !valid || active;
         play.disabled = !ready || !valid || active || stale;
-        readiness.textContent = play.disabled ? 'Play bloqueado: genera todos los audios de la lista.' : 'Lista para llamar. Audios verificados.';
         const total = stale ? 0 : Number(job && job.total || 0);
         const completed = stale ? 0 : Number(job && job.completed || 0);
         const percent = total > 0 ? Math.min(100, Math.round(completed * 100 / total)) : 0;

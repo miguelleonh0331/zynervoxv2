@@ -1652,3 +1652,8 @@ Play is enabled only for a completed manifest matching the current flow/leads,
 zero failures, and available WAV files. Reload and polling verify readiness.
 Missing files, changed inputs or active jobs block Play. Stop remains disabled;
 the isolated call engine is pending. No DB migration or legacy launch.
+
+## 2026-10-10 - bot_ivr: simplify audio console messages
+
+Remove readiness, pending engine, concurrency explanation and successful variable
+summary paragraphs. Preserve validation errors, progress cards and Play gating.
