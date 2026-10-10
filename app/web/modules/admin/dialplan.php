@@ -31,6 +31,7 @@ try {
 } catch (InvalidArgumentException $e) { $error=$e->getMessage(); }
 catch (Throwable $e) { $error='No se pudo guardar o cargar el dialplan. Revisa la conexión y permisos.'; }
 try { $rows=Dialplans::getAll(); } catch (Throwable $e) { $error='No se pudieron cargar los dialplans.'; }
+$showForm=$edit!==null || ($_GET['new'] ?? '')==='1' || isset($_POST['save_dialplan']);
 $d=$edit ?? ['dialplan_id'=>'','name'=>'','dialplan_entry'=>'','active'=>'Y'];
 try { $editableCode=DialplanOrigins::body($d['dialplan_entry']); }
 catch (InvalidArgumentException $e) { $editableCode=$d['dialplan_entry']; }
@@ -46,7 +47,7 @@ body,.main-content{font-family:Arial,Helvetica,sans-serif}.main-content{min-widt
 <?php if ($message!==''): ?><p class="dialplan-success" role="status"><?php echo dialplan_h($message); ?></p><?php endif; ?>
 <?php if ($error!==''): ?><p class="dialplan-error" role="alert"><?php echo dialplan_h($error); ?></p><?php endif; ?>
 <div class="card">
-<div class="dialplan-actions" style="justify-content:space-between;"><h2>Dialplans</h2><a href="dialplan.php">+ Nuevo dialplan</a></div>
+<div class="dialplan-actions" style="justify-content:space-between;"><h2>Dialplans</h2><a href="dialplan.php?new=1">+ Nuevo dialplan</a></div>
 <table class="dialplan-table"><thead><tr><th>ID</th><th>Nombre</th><th>Prefijo</th><th>Activo</th><th>Acciones</th></tr></thead><tbody>
 <?php foreach ($rows as $row): ?><tr>
 <td><?php echo (int)$row['dialplan_id']; ?></td><td><?php echo dialplan_h($row['name']); ?></td><td><?php echo dialplan_h($row['dial_prefix']); ?></td><td><?php echo $row['active']==='Y'?'Sí':'No'; ?></td>
@@ -54,6 +55,7 @@ body,.main-content{font-family:Arial,Helvetica,sans-serif}.main-content{min-widt
 </tr><?php endforeach; ?>
 <?php if (!$rows): ?><tr><td colspan="5">Sin dialplans.</td></tr><?php endif; ?>
 </tbody></table></div>
+<?php if ($showForm): ?>
 <div class="card"><h2><?php echo $d['dialplan_id']?'Editar dialplan':'Nuevo dialplan'; ?></h2>
 <form method="post"><input type="hidden" name="csrf_token" value="<?php echo dialplan_h($_SESSION['dialplan_csrf']); ?>"><input type="hidden" name="dialplan_id" value="<?php echo dialplan_h($d['dialplan_id']); ?>">
 <div class="dialplan-fields"><div class="field"><label for="dialplan_name">Nombre</label><input id="dialplan_name" name="name" maxlength="100" required value="<?php echo dialplan_h($d['name']); ?>"></div><div class="field"><label for="dialplan_active">Activo</label><select id="dialplan_active" name="active"><option value="Y"<?php echo $d['active']==='Y'?' selected':''; ?>>Sí</option><option value="N"<?php echo $d['active']==='N'?' selected':''; ?>>No</option></select></div></div>
@@ -61,7 +63,8 @@ body,.main-content{font-family:Arial,Helvetica,sans-serif}.main-content{min-widt
 <p>Prefijo detectado: <strong id="detected-prefix"><?php echo dialplan_h($d['dial_prefix'] ?? ''); ?></strong></p>
 <button class="btn-primary" name="save_dialplan">Guardar dialplan</button>
 </form></div>
+<?php endif; ?>
 </main>
 <script>
-(() => { const code=document.getElementById('dialplan_code'), output=document.getElementById('detected-prefix'); function detect(){const body=code.value.split(/^\s*\[.*$/m)[0];const values=[...new Set([...body.matchAll(/^\s*exten\s*=>\s*_([0-9]{1,20})X\.\s*,\s*1\s*,/gmi)].map(m=>m[1]))];output.textContent=values.length===1?values[0]:'Ingresa un único prefijo, por ejemplo _7306X.';} code.addEventListener('input',detect);detect(); })();
+(() => { const code=document.getElementById('dialplan_code'), output=document.getElementById('detected-prefix'); if (!code || !output) return; function detect(){const body=code.value.split(/^\s*\[.*$/m)[0];const values=[...new Set([...body.matchAll(/^\s*exten\s*=>\s*_([0-9]{1,20})X\.\s*,\s*1\s*,/gmi)].map(m=>m[1]))];output.textContent=values.length===1?values[0]:'Ingresa un único prefijo, por ejemplo _7306X.';} code.addEventListener('input',detect);detect(); })();
 </script></body></html>
