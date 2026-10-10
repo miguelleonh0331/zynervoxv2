@@ -80,7 +80,7 @@ function bot_list_audio_render(string $template, array $variables): string {
         throw new RuntimeException('El texto resultante debe tener de 1 a 1000 caracteres válidos.');
     }
     // Substitutions must not leave another unresolved template in the payload.
-    if (preg_match('/\{[^{}]*\}/', $text)) throw new RuntimeException('El texto resultante contiene variables sin resolver.');
+    if (strpos($text, '{') !== false || strpos($text, '}') !== false) throw new RuntimeException('El texto resultante contiene variables sin resolver.');
     return $text;
 }
 

@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require $argv[1].'/list_audio_service.php';
+require $argv[1].'/list_audio_jobs.php';
 function audio_verify(bool $condition, string $message): void {
     if (!$condition) throw new RuntimeException($message);
 }
@@ -35,6 +36,14 @@ $other = $lead; $other['lead_id'] = 9; $other['list_id'] = 4;
 $check = bot_list_audio_preflight($flow, [$lead, $bad, $other], 3, 1);
 audio_verify($check['ready'] === 1 && $check['rejected'] === 2 && $check['texts'] === 3, 'Per-lead validation and list isolation');
 audio_verify(strpos($check['errors'][0], 'local') !== false && strpos($check['errors'][1], 'Lead #9') !== false, 'Errors identify lead and missing variable');
+$simple = ['start'=>'a','nodes'=>['a'=>['type'=>'create_audio','audio_text'=>'Hola {nombre}, monto {monto}']]];
+$payload = bot_list_audio_payload($simple, [$lead], 3, 1, 25);
+audio_verify($payload['prompts'][0]['text'] === 'Hola Ana, monto 0', 'Worker must receive resolved text');
+audio_verify($payload['signature'] === bot_list_audio_payload($simple, [$lead], 3, 1, 1)['signature'], 'Concurrency must not change audio identity');
+$changed = $lead; $changed['customer_name'] = 'Pedro';
+audio_verify($payload['signature'] !== bot_list_audio_payload($simple, [$changed], 3, 1, 25)['signature'], 'Changed lead must invalidate list manifest');
+audio_reject(static function () use ($simple, $lead) { bot_list_audio_payload($simple, [$lead], 3, 1, 2); }, 'Invalid concurrency accepted');
+audio_reject(static function () use ($flow, $lead) { bot_list_audio_payload($flow, [$lead], 3, 1, 25); }, 'Composite flow falsely marked fully generated');
 audio_reject(static function () use ($flow) { bot_list_audio_preflight($flow, [], 3, 1); }, 'Empty list accepted');
 $flow['nodes']['a']['next'] = 'missing';
 audio_reject(static function () use ($flow) { bot_list_audio_templates($flow); }, 'Broken transition accepted');

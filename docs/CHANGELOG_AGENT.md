@@ -1615,3 +1615,18 @@ Verificado y desplegado en mirmidon: cinco archivos PHP idénticos a fuente y
 sintaxis válida. Pruebas list-audio.php y list-import-db.php aprobadas. Lectura
 real lista 1/flujo 11: un lead listo, un texto validado, cero errores. No se
 enviaron solicitudes TTS; respaldo previo de los tres archivos existentes.
+
+## 2026-10-10 — bot_ivr: generación gTTS local y caché v2
+
+Botón Generar inicia worker aislado con textos resueltos, hash determinista,
+flock por audio/lista, WAV validado y publicación atómica. Progreso autenticado
+con conteos y manifiesto lead/nodo/hash; conserva BD y estado de marcación.
+macelioai-tts.sh prepara worker/directorios en futuras instalaciones. Pruebas
+de payload, caché, corrupción y concurrencia; no utiliza código/runtime CARSA.
+
+Validación real mirmidon como usuario wwwrun: lista 1/flujo 11, primera ejecución
+un WAV generado y cero fallos; segunda ejecución cero generados y un reutilizado.
+WAV de 1.40 s, PCM16 mono8000, almacenado bajo runtime v2 con su hash. Adaptado
+a gTTS 2.2.4/Python 3.6 del venv instalado; timeout de 100 s por conversión y
+terminación del grupo de procesos para evitar procesos huérfanos. No se ejecutó
+el instalador ni se reiniciaron servicios.

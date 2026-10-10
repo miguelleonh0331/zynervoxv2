@@ -232,3 +232,23 @@ no envía al proveedor textos incompletos. En flujo 11, {nombre} proviene del le
 Prueba pura: php src/features/bot_ivr/tests/list-audio.php /ruta/web/bot_ivr.
 Prueba de lectura SQL/aislamiento: list-import-db.php (rollback de datos de prueba).
 Generación, progreso y caché por lista siguen pendientes; no se usa CARSA.
+
+## Generación local de listas con gTTS (2026-10-10)
+
+Generar ahora inicia list_audio_worker.py en segundo plano para los textos
+validados. gTTS -> MP3 -> ffmpeg PCM16/8000Hz/mono -> sox tempo1.3. Caché aislada
+en <runtime>/sounds/cache/ivr_builder/gtts, WAV por SHA256 de texto/perfil.
+Se reutilizan archivos válidos; archivos corruptos se regeneran. Lock por hash
+y publicación atómica evitan duplicados/archivos parciales. Progreso refresca
+sin recargar la página: generados, reutilizados, fallidos y procesados.
+
+Requisitos: venv web venvs/gtts_env con gTTS, /usr/bin/ffmpeg y /usr/bin/sox;
+worker instalado en <runtime>/modules/bot_ivr/list_audio_worker.py. Caché y
+<runtime>/bot_ivr/audio_jobs necesitan escritura del usuario PHP y permisos de
+grupo para Asterisk. macelioai-tts.sh prepara esos destinos en instalaciones
+futuras. Despliegues de cambios copian archivos y preparan directorios; no
+requieren reinstalar el servicio ni reiniciar Asterisk.
+
+Pruebas: list-audio.php (variables/payload) y list-audio-cache.py (hash, reutilización,
+corrupción, concurrencia y limpieza de parciales). Sin llamadas ni SQL en worker.
+Generación compuesta/pausas, RGA y motor de reproducción quedan pendientes.

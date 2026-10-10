@@ -29,6 +29,35 @@ Variables obtenidas durante una llamada aún no se pregeneran: se reportan como
 ausentes. Esta etapa valida y resuelve textos, pero no inicia jobs ni envía TTS;
 Generar permanece deshabilitado hasta implementar ejecución propia por lista.
 
+## Proveedor local gTTS y caché v2 (2026-10-10)
+
+Esta extensión habilita Generar para proveedor gtts cuando todos los leads/textos
+validan. POST en list_edit.php exige sesión admin, CSRF, pertenencia campaña/lista,
+flujo publicado y workers 1/3/10/25/60/100. Worker recibe textos resueltos en un
+archivo de entrada privado fuera del webroot; no recibe SQL ni credenciales.
+Genera en segundo plano sin llamar a CARSA ni iniciar llamadas.
+
+Runtime según Config::deployment('runtime'); en v2 mirmidon:
+/var/lib/zynervoxv2/asterisk. Caché: sounds/cache/ivr_builder/gtts/<sha256>.wav.
+SHA256 de JSON canónico con texto normalizado y perfil fijo proveedor gtts,
+voz google-es-com, idioma es, velocidad 1.3, PCM16 mono8000 y versión pipeline v1.
+Concurrencia no cambia hash. WAV existente debe pasar validación completa;
+archivo corrupto se regenera. flock por hash evita generación duplicada entre
+workers; publicación mediante rename atómico y permisos 0640.
+
+bot_ivr/audio_jobs/list_<id>.json conserva progreso y mapa lead/nodo/hash, sin
+texto ni datos de contacto. Archivo de entrada privado se elimina al terminar.
+Firma del snapshot incluye flujo/leads/textos y detecta resultados desactualizados.
+GET list_audio_status.php valida sesión/pertenencia y devuelve solo progreso.
+Lock por lista rechaza generaciones simultáneas; la carga se bloquea mientras
+esté activo. Estado de marcación y tablas SQL permanecen intactos.
+
+Primera etapa: prompts individuales, reintentos y textos estáticos/dinámicos con
+variables de BD. Flujos con segmentos compuestos se rechazan antes de lanzar;
+concatenación/pausas y variables capturadas durante llamadas quedan pendientes.
+Esta etapa no configura un motor para reproducir audios ni un Asterisk remoto;
+web y runtime Asterisk residen en el mismo servidor.
+
 
 ## Administración de campañas y listas (2026-10-05)
 

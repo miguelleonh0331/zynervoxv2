@@ -662,3 +662,13 @@ Bot IVR, método audioLeads en repositorio y lectura pública published_flow.
 Contratos y pruebas documentan las fronteras. Prohibido modificar CARSA,
 credenciales, marcación o el generador legacy. No añade dependencias externas.
 Responsable de continuación: bot_ivr; generación real por lista pendiente.
+
+## 2026-10-10 — Proveedor gTTS aislado de listas y caché determinista
+
+ARCHITECT_AGENT aprueba implementación bot_ivr y extensión de preparación
+en installer/macelioai-tts.sh. Reutiliza venv gTTS propio de la web v2 (Python
+3.6+), sin dependencias a CARSA. Worker recibe snapshot validado, sin conexión
+SQL; caché WAV/estado bajo runtime aislado. Hash incluye texto y perfil completo;
+flock por hash/lista y rename atómico controlan concurrencia. No se modifica
+discador, configuración Asterisk ni tablas. No se habilitan compuestos sin
+concatenación. Alcance: Bot IVR, instalador y sus contratos/pruebas.

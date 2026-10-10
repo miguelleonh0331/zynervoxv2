@@ -59,3 +59,11 @@ find "$VENV_DIR/bin" -type f -exec chmod 0750 {} +
 }
 
 echo "MACELIOAI_TTS_INSTALLED venv=$VENV_DIR"
+
+# List prebuild uses its own runtime/cache and never accesses the CARSA pipeline.
+SOURCE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LIST_RUNTIME="${ASTERISK_ROOT:-/etc/asterisk/synervox}"
+install -d -o root -g "$WEB_GROUP" -m 0750 "$LIST_RUNTIME/modules/bot_ivr"
+install -d -o root -g "$WEB_GROUP" -m 2770 "$LIST_RUNTIME/bot_ivr/audio_jobs" "$LIST_RUNTIME/sounds/cache/ivr_builder/gtts"
+install -o root -g "$WEB_GROUP" -m 0640 "$SOURCE_ROOT/asterisk/synervox/modules/bot_ivr/list_audio_worker.py" "$LIST_RUNTIME/modules/bot_ivr/list_audio_worker.py"
+echo "BOT_IVR_LIST_AUDIO_READY runtime=$LIST_RUNTIME"

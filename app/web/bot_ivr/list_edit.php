@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require __DIR__ . '/campaigns_page.php';
 require __DIR__ . '/list_service.php';
-require_once __DIR__ . '/audio_lab_service.php';
+require_once __DIR__ . '/list_audio_jobs.php';
 require_once __DIR__ . '/list_audio_service.php';
 require_once __DIR__ . '/../ivr_builder/published_flow.php';
 $listId = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
@@ -11,6 +11,9 @@ $list = null;
 $count = 0;
 $audioCheck = null;
 $audioCheckError = '';
+$audioPayload = null;
+$audioJob = null;
+$audioActive = false;
 try {
     if (!$listId || !$campaignId) throw new RuntimeException('ID de lista o campaña inválido.');
     $db = bot_ivr_repository();
@@ -19,7 +22,18 @@ try {
         try {
             if (empty($_POST) && empty($_FILES)) throw new RuntimeException('La carga supera el límite de esta instalación. Usa un archivo más pequeño.');
             bot_campaign_csrf();
+            if (($_POST['action'] ?? '') === 'generate_list_audio') {
+                if (($_POST['audio_provider'] ?? '') !== 'gtts') throw new RuntimeException('Proveedor no disponible.');
+                if (empty($list['id_flujo'])) throw new RuntimeException('Asigna un flujo a la lista.');
+                $workers = filter_var($_POST['audio_workers'] ?? null, FILTER_VALIDATE_INT);
+                if ($workers === false) throw new RuntimeException('Velocidad de generación inválida.');
+                $flow = ivr_builder_published_flow((int)$list['id_flujo']);
+                $payload = bot_list_audio_payload($flow, $db->audioLeads($listId, $campaignId), $listId, $campaignId, $workers);
+                bot_list_audio_start($payload);
+                bot_campaign_redirect('list_edit.php?id='.$listId.'&campaign_id='.$campaignId, 'Generación iniciada. El progreso se actualizará automáticamente.');
+            }
             if (($_POST['action'] ?? '') !== 'upload_list') throw new RuntimeException('Acción inválida o archivo mayor del límite de esta instalación.');
+            if (bot_list_audio_active($listId)) throw new RuntimeException('Espera a que termine la generación antes de reemplazar la base.');
             $upload = $_FILES['clients_txt'] ?? [];
             if (($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) throw new RuntimeException('Selecciona un archivo TXT dentro del límite de subida de esta instalación.');
             if (strtolower(pathinfo((string)$upload['name'], PATHINFO_EXTENSION)) !== 'txt') throw new RuntimeException('El archivo debe tener extensión .txt.');
@@ -38,8 +52,14 @@ try {
     try {
         if (empty($list['id_flujo'])) throw new RuntimeException('Asigna un flujo a la lista para validar sus variables.');
         $flow = ivr_builder_published_flow((int)$list['id_flujo']);
-        $audioCheck = bot_list_audio_preflight($flow, $db->audioLeads($listId, $campaignId), $listId, $campaignId);
+        $audioLeads = $db->audioLeads($listId, $campaignId);
+        $audioCheck = bot_list_audio_preflight($flow, $audioLeads, $listId, $campaignId);
+        $audioPayload = bot_list_audio_payload($flow, $audioLeads, $listId, $campaignId, 25);
     } catch (Throwable $e) { $audioCheckError = $e->getMessage(); }
+    try {
+        $audioJob = bot_list_audio_job_status($listId);
+        $audioActive = bot_list_audio_active($listId);
+    } catch (Throwable $e) { $audioCheckError = 'No se pudo leer el estado de generación.'; }
 } catch (Throwable $e) {
     http_response_code($listId && $campaignId ? 404 : 400);
     $error = $e->getMessage();
@@ -80,11 +100,12 @@ if ($list): ?>
 </form></section>
 <section class="carsa-card list-card list-audio" aria-labelledby="list-audio-title">
 <h2 id="list-audio-title">Creación de audios</h2>
-<div class="list-audio-controls">
+<form method="post" class="list-audio-controls">
+<input type="hidden" name="action" value="generate_list_audio"><?php bot_campaign_token(); ?>
 <div class="carsa-field list-audio-provider"><label for="list_audio_provider">Proveedor TTS</label>
 <select id="list_audio_provider" name="audio_provider">
-<?php foreach (bot_audio_lab_providers() as $key => $label): ?>
-<option value="<?php echo h($key); ?>"<?php echo $key === 'rga' ? ' selected' : ''; ?>><?php echo h($label); ?></option>
+<?php foreach (bot_list_audio_providers() as $key => $label): ?>
+<option value="<?php echo h($key); ?>"><?php echo h($label); ?></option>
 <?php endforeach; ?>
 </select></div>
 <div class="carsa-field list-audio-speed"><label for="list_audio_workers">Velocidad de generación</label>
@@ -93,8 +114,8 @@ if ($list): ?>
 <option value="<?php echo $workers; ?>"<?php echo $workers === 25 ? ' selected' : ''; ?>><?php echo $workers; ?>x</option>
 <?php endforeach; ?>
 </select></div>
-<button type="button" class="carsa-btn" disabled aria-describedby="list-audio-availability">Generar</button>
-</div>
+<button type="submit" id="list-audio-generate" class="carsa-btn"<?php echo $audioPayload === null || $audioActive ? ' disabled' : ''; ?> aria-describedby="list-audio-availability">Generar</button>
+</form>
 <p id="list-audio-speed-help" class="list-audio-note">La velocidad indica cuántos audios se procesan simultáneamente.</p>
 <?php if ($audioCheckError !== ''): ?>
 <p class="list-audio-note" role="status"><?php echo h($audioCheckError); ?></p>
@@ -102,8 +123,44 @@ if ($list): ?>
 <p class="list-audio-note" role="status">Variables verificadas: <?php echo (int)$audioCheck['ready']; ?> de <?php echo (int)$audioCheck['leads']; ?> leads listos; <?php echo (int)$audioCheck['rejected']; ?> con errores.</p>
 <?php foreach ($audioCheck['errors'] as $audioError): ?><p class="list-audio-note"><?php echo h($audioError); ?></p><?php endforeach; ?>
 <?php endif; ?>
-<p id="list-audio-availability" class="list-audio-note">La generación de audios para esta lista aún no está disponible.</p>
+<p id="list-audio-availability" class="list-audio-note" role="status" style="white-space:pre-line">Listo para generar con gTTS local.</p>
 </section>
 </div>
+<script>
+(() => {
+    const output = document.getElementById('list-audio-availability');
+    const button = document.getElementById('list-audio-generate');
+    const valid = <?php echo $audioPayload !== null ? 'true' : 'false'; ?>;
+    const signature = <?php echo json_encode($audioPayload['signature'] ?? ''); ?>;
+    const url = <?php echo json_encode('list_audio_status.php?id='.(int)$listId.'&campaign_id='.(int)$campaignId); ?>;
+    let timer;
+    function render(job) {
+        if (!job) { output.textContent = valid ? 'Listo para generar con gTTS local.' : 'Corrige los datos del flujo o la lista antes de generar.'; return; }
+        const active = job.state === 'starting' || job.state === 'running';
+        button.disabled = !valid || active;
+        if (valid && job.signature !== signature) {
+            output.textContent = 'La base o el flujo cambió. Genera nuevamente sus audios.';
+        } else {
+            const labels = {starting:'Iniciando generación…',running:'Generando audios…',ready:'Audios listos.',failed:'Generación con errores.'};
+            output.textContent = (labels[job.state] || 'Estado desconocido.') + ' Generados: ' + (job.generated || 0) + '. Reutilizados: ' + (job.reused || 0) + '. Fallidos: ' + (job.failed || 0) + '. Procesados: ' + (job.completed || 0) + '/' + (job.total || 0) + '.';
+            if (job.errors && job.errors.length) output.textContent += '\n' + job.errors.join('\n');
+        }
+        if (active) timer = setTimeout(poll, 2500);
+    }
+    async function poll() {
+        try {
+            const response = await fetch(url, {cache:'no-store'});
+            const data = await response.json();
+            if (!response.ok || !data.ok) throw new Error();
+            render(data.job);
+        } catch (error) {
+            output.textContent = 'No se pudo actualizar el progreso. Reintentando…';
+            timer = setTimeout(poll, 5000);
+        }
+    }
+    document.addEventListener('visibilitychange', () => { if (document.hidden) clearTimeout(timer); else poll(); });
+    render(<?php echo json_encode($audioJob, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>);
+})();
+</script>
 <?php endif;
 bot_campaign_footer();

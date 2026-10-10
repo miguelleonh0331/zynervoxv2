@@ -83,5 +83,12 @@ integraciones, `--dry-run` no escribe y las migraciones requieren autorización
 explícita. `--skip-packages` evita cambios al sistema. No incorpora ni sobrescribe
 secretos, datos, audios o grabaciones.
 
+## Preparación gTTS para listas (2026-10-10)
+
+macelioai-tts.sh conserva el venv gTTS existente y añade copia del worker propio
+list_audio_worker.py bajo ASTERISK_ROOT/modules/bot_ivr. Prepara directorios
+bot_ivr/audio_jobs y sounds/cache/ivr_builder/gtts con escritura de grupo web
+y setgid (2770). No borra audios, inicia jobs, toca CARSA ni reinicia servicios.
+
 El gestor `installer/database.sh` crea MariaDB 10.11 en Docker, importa únicamente
 el esquema versionado, genera credenciales locales y mantiene los datos en un volumen.
