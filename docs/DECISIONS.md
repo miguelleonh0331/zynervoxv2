@@ -750,3 +750,6 @@ Scope approved: bot_ivr audit/migration and zynervox_queries event persistence. 
 
 ### 2026-10-10 - Lead segmentation by latest IVR status (ARCHITECT_AGENT)
 Approved scope: bot_ivr graph/audit schema and zynervox_queries status persistence. Lead and attempt status share latest business outcome; dial_status remains telephone evidence. Intermediate CARSA stages, terminal nodes and SQL RESULTADO update status, guarded against older attempts. Finish/recovery preserve attained IVR status.
+
+### 2026-10-10 - Services PBX AMI configuration (ARCHITECT_AGENT)
+Approved admin/core scope: level-9 PBX form, CSRF POSTs, reusable PbxAmi config/test helper and exact IsolatedGate route. Private atomic JSON under deployment directory/pbx with mode 0640; never show/log secrets. Connection test authenticates only, no calls or Asterisk configuration changes. Credentials supplied by administrator; no legacy secret import.

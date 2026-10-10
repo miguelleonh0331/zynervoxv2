@@ -62,3 +62,6 @@ DialplanOrigins::template publishes immutable zynervoxv2-amd/call-finish/outboun
 ## 2026-10-10 - IVR answer entrypoints
 
 Common template includes zynervoxv2-bot-ivr (AMD then engine unless MACHINE) and zynervoxv2-bot-ivr-sin-amd (ANSWER event then engine). Both run on the called leg and return GOSUB_RESULT=CONTINUE after engine exit. Caller routes must inherit ZV2_LIST_ID/ZV2_LEAD_ID/ZV2_CALL_ID. Template remains hidden in web; route authoring unchanged.
+
+## 2026-10-10 - PBX AMI service
+Services/pbx.php requires administrator level 9 and CSRF for test/save. PbxAmi::load/validate/test/save exposes configuration to authorized server callers only. Test authenticates and logs off, never originates a call. Save requires successful login and atomically writes deployment.directory/pbx/ami.json (0640, private directory 2770). Form never renders the secret; blank password preserves it. Credentials are not imported from legacy nor stored in Git.
