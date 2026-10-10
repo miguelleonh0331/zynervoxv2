@@ -1597,3 +1597,9 @@ al reemplazar. No a?ade ejecuci?n de llamadas ni altera otras tablas.
 Validaci?n mirmidon: migraci?n aplicada dos veces, defaults NEW/0/NULL/NULL
 verificados, siete campos originales del lead existente intactos; prueba PHP
 de importaci?n/reemplazo/rollback aprobada. Instalador incluye migraci?n 005.
+
+## 2026-10-10 ? bot_ivr: ?rea visual de creaci?n de audios
+
+list_edit.php a?ade tarjeta inferior a todo el ancho con proveedor TTS,
+concurrencia y bot?n Generar deshabilitado; reutiliza cat?logo del laboratorio.
+No ejecuta generaci?n ni altera carga de leads. README documenta alcance visual.

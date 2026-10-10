@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require __DIR__ . '/campaigns_page.php';
 require __DIR__ . '/list_service.php';
+require_once __DIR__ . '/audio_lab_service.php';
 $listId = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
 $campaignId = filter_var($_GET['campaign_id'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
 $list = null;
@@ -41,6 +42,7 @@ if ($list): ?>
 .list-card h2{font-size:13px;margin:0 0 12px}.list-meta{margin:0}.list-meta th{width:42%;background:var(--glass);color:var(--text-muted);text-transform:none;font-weight:normal;border:1px solid var(--border)}
 .list-meta td{border:1px solid var(--border)}.list-guide{padding:12px;background:var(--glass);border:1px solid var(--border);font-size:12px;line-height:1.6}
 .list-guide code{color:var(--text)}.list-form-actions{display:flex;gap:10px;flex-wrap:wrap}
+.list-audio{grid-column:1 / -1}.list-audio-controls{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}.list-audio-provider{flex:1;min-width:240px}.list-audio-speed{width:220px;max-width:100%}.list-audio-controls .carsa-btn{min-height:36px}.list-audio-controls .carsa-btn:disabled{opacity:.55;cursor:not-allowed}.list-audio-note{font-size:12px;color:var(--text-muted);margin:12px 0 0}
 .list-back{color:var(--primary-hover);font-size:13px;text-decoration:none}
 @media(max-width:1000px){.list-layout{grid-template-columns:minmax(0,1fr)}}
 </style>
@@ -67,6 +69,26 @@ if ($list): ?>
 <p>Máximo: 10 MB o el límite de esta instalación (<?php echo h(ini_get('upload_max_filesize')); ?> por archivo; <?php echo h(ini_get('post_max_size')); ?> por solicitud). Hasta 50000 registros.</p></div>
 <div class="list-form-actions"><button class="carsa-btn">Reemplazar base</button><a class="carsa-btn secondary" href="plantilla_carga.php" download>Descargar plantilla</a></div>
 </form></section>
+<section class="carsa-card list-card list-audio" aria-labelledby="list-audio-title">
+<h2 id="list-audio-title">Creación de audios</h2>
+<div class="list-audio-controls">
+<div class="carsa-field list-audio-provider"><label for="list_audio_provider">Proveedor TTS</label>
+<select id="list_audio_provider" name="audio_provider">
+<?php foreach (bot_audio_lab_providers() as $key => $label): ?>
+<option value="<?php echo h($key); ?>"<?php echo $key === 'rga' ? ' selected' : ''; ?>><?php echo h($label); ?></option>
+<?php endforeach; ?>
+</select></div>
+<div class="carsa-field list-audio-speed"><label for="list_audio_workers">Velocidad de generación</label>
+<select id="list_audio_workers" name="audio_workers" aria-describedby="list-audio-speed-help">
+<?php foreach ([1, 3, 10, 25, 60, 100] as $workers): ?>
+<option value="<?php echo $workers; ?>"<?php echo $workers === 25 ? ' selected' : ''; ?>><?php echo $workers; ?>x</option>
+<?php endforeach; ?>
+</select></div>
+<button type="button" class="carsa-btn" disabled aria-describedby="list-audio-availability">Generar</button>
+</div>
+<p id="list-audio-speed-help" class="list-audio-note">La velocidad indica cuántos audios se procesan simultáneamente.</p>
+<p id="list-audio-availability" class="list-audio-note">La generación de audios para esta lista aún no está disponible.</p>
+</section>
 </div>
 <?php endif;
 bot_campaign_footer();

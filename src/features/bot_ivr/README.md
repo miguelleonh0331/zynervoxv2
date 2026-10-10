@@ -192,24 +192,32 @@ manual temporal anterior indicaba fallos de proxies, no representa esta prueba.
 Suite aislada sin credenciales: python tests/test_audio_lab_rga.py /ruta/audio_lab_generate.py.
 
 
-## Campos de preparaci?n del discador (2026-10-10)
+## Campos de preparación del discador (2026-10-10)
 
 Aplicar models/005-lead-dialer-fields.sql a la base configurada de Bot IVR
-(mirmidon: zynervox_core); la migraci?n no fija USE ni modifica VICIdial.
+(mirmidon: zynervox_core); la migración no fija USE ni modifica VICIdial.
 A?ade status VARCHAR(6) NOT NULL DEFAULT 'NEW', called_count INT UNSIGNED
 NOT NULL DEFAULT 0, last_call_at DATETIME NULL y next_call_at DATETIME NULL.
-NEW identifica un contacto sin intento; called_count cuenta intentos de marcaci?n.
+NEW identifica un contacto sin intento; called_count cuenta intentos de marcación.
 Las fechas deben escribirse en UTC. El futuro motor define las transiciones de
-estado y la pol?tica de reintentos; ning?n campo dispara llamadas por s? mismo.
-?ndice idx_bot_list_dial_queue: list_id, status, next_call_at, lead_id.
+estado y la política de reintentos; ningún campo dispara llamadas por s? mismo.
+índice idx_bot_list_dial_queue: list_id, status, next_call_at, lead_id.
 
-Migraci?n aditiva e idempotente para MariaDB 10.6, sin borrar leads. Los contactos
+Migración aditiva e idempotente para MariaDB 10.6, sin borrar leads. Los contactos
 existentes y nuevas importaciones reciben NEW/0/NULL/NULL. Reemplazar base conserva
-su sem?ntica: elimina leads de esa lista y crea contactos nuevos con valores
+su semántica: elimina leads de esa lista y crea contactos nuevos con valores
 iniciales; no conserva su historial ni sus estados anteriores. No reemplazar una
 lista mientras el futuro motor la procesa. Historial por intento y reserva
 concurrente de leads quedan pendientes de implementar con el motor.
 
 DDL realiza commit impl?cito; no se revierte mediante ROLLBACK. Ejecutar por
-administraci?n, nunca desde list_edit.php. Verificar con la prueba existente:
+administración, nunca desde list_edit.php. Verificar con la prueba existente:
 php src/features/bot_ivr/tests/list-import-db.php /ruta/web/bot_ivr
+
+## ?rea de creación de audios por lista (2026-10-10)
+
+list_edit.php muestra una tarjeta a todo el ancho debajo de datos/carga.
+Proveedor TTS reutiliza catálogo del laboratorio (gtts/rga), predeterminado RGA.
+Velocidad 1/3/10/25/60/100x indica concurrencia, predeterminado 25x. Generar
+permanece deshabilitado con mensaje visible hasta conectar un generador por lista.
+No guarda ajustes, publica jobs, genera archivos ni llama endpoints legacy.
