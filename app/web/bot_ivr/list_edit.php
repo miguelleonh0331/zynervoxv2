@@ -102,6 +102,7 @@ if ($list): ?>
 @media(max-width:650px){.audio-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.audio-stat strong{font-size:26px}}
 @media(max-width:1000px){.list-layout{grid-template-columns:minmax(0,1fr)}}
 .call-stats{margin-top:16px}.call-stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.call-stats-grid div{padding:16px;border:1px solid var(--border);border-radius:8px;background:var(--glass);text-align:center}.call-stats-grid strong{display:block;font-size:28px}.call-stats-grid span{font-size:12px;color:var(--text-muted)}.call-state{margin-top:12px}.call-state-label{display:flex;justify-content:space-between;gap:12px;font-size:12px}.call-state progress{display:block;width:100%;height:10px;accent-color:#347cc5}.call-errors{overflow-x:auto;margin-top:18px}.call-errors h3{font-size:13px}.call-errors code{display:block;font-size:10px;overflow-wrap:anywhere}.call-stats-error{color:#c74451}
+.list-accordion{align-self:start}.list-accordion summary{cursor:pointer;font-size:13px;font-weight:bold}.list-accordion[open] summary{margin-bottom:12px}
 </style>
 <a class="list-back" href="campaign_edit.php?id=<?php echo (int)$campaignId; ?>">← Volver a campaña #<?php echo (int)$campaignId; ?></a>
 <section class="carsa-card list-card call-stats" aria-label="Estadisticas de llamadas">
@@ -118,7 +119,7 @@ if ($list): ?>
 </div><p id="call-stats-error" class="call-stats-error" role="status"></p>
 </section>
 <div class="list-layout">
-<section class="carsa-card list-card"><h2>Datos de la lista</h2>
+<details class="carsa-card list-card list-accordion"><summary>Datos de la lista</summary>
 <table class="carsa-table list-meta"><tbody>
 <tr><th scope="row">List ID</th><td><?php echo (int)$listId; ?></td></tr>
 <tr><th scope="row">Nombre</th><td><?php echo h($list['name']); ?></td></tr>
@@ -127,8 +128,8 @@ if ($list): ?>
 <tr><th scope="row">Activo</th><td><?php echo $list['active'] ? 'Sí' : 'No'; ?></td></tr>
 <tr><th scope="row">Fecha de creación</th><td><?php echo h($list['created_at']); ?></td></tr>
 <tr><th scope="row">Leads</th><td><?php echo $count; ?></td></tr>
-</tbody></table></section>
-<section class="carsa-card list-card"><h2>Cargar base de clientes</h2>
+</tbody></table></details>
+<details class="carsa-card list-card list-accordion"><summary>Cargar base de clientes</summary>
 <form method="post" enctype="multipart/form-data" class="carsa-form">
 <input type="hidden" name="action" value="upload_list"><?php bot_campaign_token(); ?>
 <div class="carsa-field"><label for="clients_txt">Base de clientes (TXT)</label><input id="clients_txt" type="file" name="clients_txt" accept=".txt,text/plain" required></div>
@@ -138,7 +139,7 @@ if ($list): ?>
 <p>Archivo en <strong>UTF-8</strong>. <strong>Esta carga reemplaza todos los contactos actuales de esta lista.</strong> Se descartan teléfonos repetidos dentro del archivo y se informa cuántos registros se cargaron, duplicaron o rechazaron. Si el archivo no contiene contactos válidos o la carga falla, se conserva la base anterior.</p>
 <p>Máximo: 10 MB o el límite de esta instalación (<?php echo h(ini_get('upload_max_filesize')); ?> por archivo; <?php echo h(ini_get('post_max_size')); ?> por solicitud). Hasta 50000 registros.</p></div>
 <div class="list-form-actions"><button class="carsa-btn">Reemplazar base</button><a class="carsa-btn secondary" href="plantilla_carga.php" download>Descargar plantilla</a></div>
-</form></section>
+</form></details>
 <section class="carsa-card list-card list-audio" aria-labelledby="list-audio-title">
 <h2 id="list-audio-title"<?php echo $audioReady ? ' hidden' : ''; ?>>Creación de audios</h2>
 <form method="post" id="list-prefix-form"><input type="hidden" name="action" value="save_list_prefix"><?php bot_campaign_token(); ?></form>

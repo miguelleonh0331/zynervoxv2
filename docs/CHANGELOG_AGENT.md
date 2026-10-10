@@ -1838,3 +1838,8 @@ Implemented and deployed list Play/Stop AMI worker, async Local originate, durab
 ## 2026-10-10 - List statistics
 
 Added list statistics cards (total leads, calling, finished), status bars and latest 30 call errors with phone/call ID, state and existing cause. Reuses authenticated Play/Stop polling; refresh also when idle. No DB columns added. Deployed source files to production. Verified PHP lint/source equality, JS syntax and rollback DB fixtures for retry counting, retained errors, IVR failures, business states and campaign/list isolation.
+
+
+## 2026-10-10 - Collapsed list panels
+
+Converted list data and client upload panels to native details/summary accordions without open attributes: closed on every page load. Forms unchanged. Source copied to production; verified two collapsed panels and PHP syntax.
