@@ -1800,3 +1800,5 @@ Added CLI-only ivr_engine_agi.php with published-flow loading, lead variable ren
 - 2026-10-10: Dialplan oculta formulario por defecto; muestra al crear (?new=1), editar o corregir guardado. JavaScript tolera ausencia del editor. Desplegado; PHP lint correcto.
 
 - 2026-10-10: Contextos comunes bot IVR activan MixMonitor post-answer en recordings/bot_ivr/<call_id filtrado>.wav y StopMixMonitor antes de retornar. Desplegado y contexto sin AMD verificado. Prueba real pendiente de nombre obligatorio del lead 13119898 para flow 11.
+
+- 2026-10-10: Preparacion dirigida del lead 49 / 13119898, lista 1 flow 11: nombre de prueba Prueba y audio gTTS publicado. Llamada sin AMD 1791656150.4090 completada (IVR_END COMPLETED), grabacion WAV 22444 bytes; se conserva auditoria del intento fallido anterior. Script CLI versionado reproduce preparacion sin duplicar lead.
