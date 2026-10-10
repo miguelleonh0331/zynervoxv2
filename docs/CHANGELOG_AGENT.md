@@ -1657,3 +1657,7 @@ the isolated call engine is pending. No DB migration or legacy launch.
 
 Remove readiness, pending engine, concurrency explanation and successful variable
 summary paragraphs. Preserve validation errors, progress cards and Play gating.
+
+## 2026-10-10 - bot_ivr: publication registry
+
+Worker validates new WAV once, atomically publishes it, then records its hash in a local SQLite WAL index. Reuse and Play query the index without opening WAV. Hash deletion removes the index entry first under the hash lock. Tests cover reuse without validation and regeneration after deletion.

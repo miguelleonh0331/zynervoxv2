@@ -672,3 +672,7 @@ SQL; caché WAV/estado bajo runtime aislado. Hash incluye texto y perfil complet
 flock por hash/lista y rename atómico controlan concurrencia. No se modifica
 discador, configuración Asterisk ni tablas. No se habilitan compuestos sin
 concatenación. Alcance: Bot IVR, instalador y sus contratos/pruebas.
+
+## 2026-10-10 - bot_ivr: publication registry
+
+Use cache-local audio_registry.sqlite (published_audio hash primary key, timestamp) for publication metadata; no new Redis service or DB permissions. WAV must be immutable after publication. Deletions must use delete_audio to unpublish first. SQLite reads metadata, so this removes WAV reads, not all filesystem I/O. Existing successful manifests can seed the index without reading WAV content.

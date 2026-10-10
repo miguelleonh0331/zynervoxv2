@@ -46,14 +46,19 @@ function bot_list_audio_ready(?array $job, ?array $payload): bool {
         || ($manifest['state'] ?? '') !== 'ready'
         || (int)($manifest['campaign_id'] ?? 0) !== $payload['campaign_id']
         || count($manifest['audio'] ?? []) !== count($payload['prompts'])) return false;
+    $index = bot_list_audio_root().'/sounds/cache/ivr_builder/gtts/audio_registry.sqlite';
+    if (!is_file($index)) return false;
+    $registry = new PDO('sqlite:'.$index, null, null, [PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+    $registry->exec('PRAGMA query_only=ON');
+    $lookup = $registry->prepare('SELECT 1 FROM published_audio WHERE hash=?');
+    $checked = [];
     foreach ($manifest['audio'] as $audio) {
         $hash = $audio['hash'] ?? '';
         if (empty($audio['ready']) || !preg_match('/^[a-f0-9]{64}$/D', $hash)) return false;
-        $file = bot_list_audio_root().'/sounds/cache/ivr_builder/gtts/'.$hash.'.wav';
-        clearstatcache(true, $file);
-        if (!is_readable($file) || filesize($file) < 100) return false;
-        $header = @file_get_contents($file, false, null, 0, 12);
-        if ($header === false || substr($header, 0, 4) !== 'RIFF' || substr($header, 8, 4) !== 'WAVE') return false;
+        if (isset($checked[$hash])) continue;
+        $lookup->execute([$hash]);
+        if (!$lookup->fetchColumn()) return false;
+        $checked[$hash] = true;
     }
     return !bot_list_audio_active((int)$payload['list_id']);
 }

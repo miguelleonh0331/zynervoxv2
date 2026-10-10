@@ -8,6 +8,7 @@ import inspect
 import json
 import os
 import signal
+import sqlite3
 from pathlib import Path
 import subprocess
 import sys
@@ -88,6 +89,28 @@ def generate_gtts(text, output):
             raise RuntimeError('generation_failed')
 
 
+def audio_registry(cache):
+    path = cache / 'audio_registry.sqlite'
+    connection = sqlite3.connect(str(path), timeout=30)
+    connection.execute('PRAGMA journal_mode=WAL')
+    connection.execute('CREATE TABLE IF NOT EXISTS published_audio (hash TEXT PRIMARY KEY, published_at INTEGER NOT NULL)')
+    connection.commit()
+    path.chmod(0o660)
+    return connection
+
+
+def delete_audio(digest, cache):
+    # Unpublish first, under the same hash lease used by generation.
+    if len(digest) != 64 or any(c not in '0123456789abcdef' for c in digest):
+        raise ValueError('invalid_hash')
+    with (cache / (digest + '.lock')).open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        with audio_registry(cache) as registry:
+            registry.execute('DELETE FROM published_audio WHERE hash=?', (digest,))
+        registry.close()
+        remove_file(cache / (digest + '.wav'))
+
+
 def ensure_audio(text, cache, generator=generate_gtts):
     text = normalize(text)
     digest = audio_hash(text)
@@ -95,7 +118,10 @@ def ensure_audio(text, cache, generator=generate_gtts):
     # Keep lock files: unlinking them would allow a second lock inode for one hash.
     with (cache / (digest + '.lock')).open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        if valid_wav(target):
+        registry = audio_registry(cache)
+        published = registry.execute('SELECT 1 FROM published_audio WHERE hash=?', (digest,)).fetchone()
+        registry.close()
+        if published:
             return digest, 'reused'
         fd, temporary = tempfile.mkstemp(prefix='.' + digest + '.', suffix='.wav', dir=str(cache))
         os.close(fd)
@@ -106,6 +132,9 @@ def ensure_audio(text, cache, generator=generate_gtts):
                 raise ValueError('invalid_audio')
             temporary.chmod(0o640)
             os.replace(str(temporary), str(target))
+            with audio_registry(cache) as registry:
+                registry.execute('INSERT OR REPLACE INTO published_audio VALUES (?, ?)', (digest, int(time.time())))
+            registry.close()
         finally:
             remove_file(temporary)
     return digest, 'generated'

@@ -34,16 +34,16 @@ class CacheTest(unittest.TestCase):
             worker.PROFILE['speed'] = original
         self.assertNotEqual(worker.audio_hash('Hola Ana'), other)
 
-    def test_reuse_and_corrupt_repair(self):
+    def test_publication_reuse_without_wav_reads_and_deletion(self):
         with tempfile.TemporaryDirectory() as directory:
             cache = Path(directory)
             digest, outcome = worker.ensure_audio('Hola Ana', cache, self.wav)
             self.assertEqual(outcome, 'generated')
-            self.assertEqual(worker.ensure_audio('Hola Ana', cache, self.wav)[1], 'reused')
-            target = cache / (digest + '.wav')
-            target.write_bytes(b'RIFFbroken')
+            with patch.object(worker, 'valid_wav', side_effect=AssertionError('Published WAV reopened')):
+                self.assertEqual(worker.ensure_audio('Hola Ana', cache, self.wav)[1], 'reused')
+            worker.delete_audio(digest, cache)
             self.assertEqual(worker.ensure_audio('Hola Ana', cache, self.wav)[1], 'generated')
-            self.assertTrue(worker.valid_wav(target))
+            self.assertTrue(worker.valid_wav(cache / (digest + '.wav')))
 
     def test_parallel_identical_text_generated_once(self):
         count = [0]
