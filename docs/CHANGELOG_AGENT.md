@@ -1707,3 +1707,8 @@ is complete. Restore both when ready; Stop remains disabled pending call engine.
 
 Remove the example endpoint/aor/auth paragraph from the carrier form.
 Configuration fields and generation behavior are unchanged.
+
+## 2026-10-10 - core: side by side carrier configuration
+
+Display PJSIP and dialplan editors in two equal columns, stacked on small
+screens. Remove dialplan explanation/example and widen both textareas.
