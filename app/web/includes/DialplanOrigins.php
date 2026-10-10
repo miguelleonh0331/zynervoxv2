@@ -7,17 +7,21 @@ class DialplanOrigins {
     const COMMON = <<<'ASTERISK'
 [zynervoxv2-bot-ivr]
 exten => s,1,Set(AGISIGHUP=no)
+ same => n,MixMonitor(/var/lib/zynervoxv2/asterisk/recordings/bot_ivr/${FILTER(0-9A-Za-z._-,${ZV2_CALL_ID})}.wav)
  same => n,Gosub(zynervoxv2-amd,s,1)
  same => n,GotoIf($["${AMDSTATUS}" = "MACHINE"]?fin)
  same => n,AGI(/srv/www/htdocs/zynervoxv2/bot_ivr/ivr_engine_agi.php,${ZV2_LIST_ID},${ZV2_LEAD_ID},${ZV2_CALL_ID})
- same => n(fin),Set(GOSUB_RESULT=CONTINUE)
+ same => n(fin),StopMixMonitor()
+ same => n,Set(GOSUB_RESULT=CONTINUE)
  same => n,Return()
 
 [zynervoxv2-bot-ivr-sin-amd]
 exten => s,1,Set(AGISIGHUP=no)
+ same => n,MixMonitor(/var/lib/zynervoxv2/asterisk/recordings/bot_ivr/${FILTER(0-9A-Za-z._-,${ZV2_CALL_ID})}.wav)
  same => n,Set(MASTER_CHANNEL(ZV2_ANSWERED)=1)
  same => n,AGI(/srv/www/htdocs/zynervoxv2/bot_ivr/call_tracking_agi.php,event,${ZV2_CALL_ID},ANSWER)
  same => n,AGI(/srv/www/htdocs/zynervoxv2/bot_ivr/ivr_engine_agi.php,${ZV2_LIST_ID},${ZV2_LEAD_ID},${ZV2_CALL_ID})
+ same => n,StopMixMonitor()
  same => n,Set(GOSUB_RESULT=CONTINUE)
  same => n,Return()
 

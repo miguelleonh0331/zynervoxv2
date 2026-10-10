@@ -1798,3 +1798,5 @@ Added CLI-only ivr_engine_agi.php with published-flow loading, lead variable ren
 - 2026-10-10: Actualizadas rutas carsa_bot_amd (7306) y carsa_bot (7307) desde configs versionadas: IVR con/sin AMD, identidad de lista/lead heredada y auditoria. Publicadas en zynervox_core, regenerado extensions-zynervoxv2.conf y verificado dialplan cargado. Sin llamadas salientes de prueba.
 
 - 2026-10-10: Dialplan oculta formulario por defecto; muestra al crear (?new=1), editar o corregir guardado. JavaScript tolera ausencia del editor. Desplegado; PHP lint correcto.
+
+- 2026-10-10: Contextos comunes bot IVR activan MixMonitor post-answer en recordings/bot_ivr/<call_id filtrado>.wav y StopMixMonitor antes de retornar. Desplegado y contexto sin AMD verificado. Prueba real pendiente de nombre obligatorio del lead 13119898 para flow 11.
