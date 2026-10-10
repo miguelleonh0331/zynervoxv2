@@ -1638,3 +1638,9 @@ fallidos y pendientes, barra porcentual y detalle de errores. Ver progreso abre
 la ventana; se abre automáticamente al entrar con generación activa. Conserva
 actualización de estado existente; oculta conteos antiguos si cambia el snapshot.
 Sin cambios en generación, caché o BD.
+
+## 2026-10-10 ? bot_ivr: progreso integrado en la p?gina
+
+Las tarjetas y barra de progreso aparecen directamente debajo de los controles
+de Creaci?n de audios. Se elimina el di?logo y sus botones; se conserva la
+actualizaci?n autom?tica del estado.
