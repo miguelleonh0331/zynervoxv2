@@ -1738,3 +1738,7 @@ with context zynervoxv2-test, atomic per-file rename and mode 0640.
 No includes or reloads. Reject config-breaking login/password characters.
 Installer deploys Phones and initializes both files. DB and two files are
 not a single transaction; generation errors require retry/regeneration.
+
+## 2026-10-10 - core: annex context zynervoxv2
+
+Generate SIP and PJSIP annexes with context=zynervoxv2.

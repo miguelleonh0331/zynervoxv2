@@ -40,11 +40,11 @@ class Phones {
             $secret = $row['pass'];
             $cid = preg_replace('/[^0-9+]/', '', $row['outbound_cid']);
             if ($row['protocol'] === 'SIP') {
-                $sip .= "[$id]\ntype=friend\nhost=dynamic\ndefaultuser=$login\nsecret=$secret\ncontext=zynervoxv2-test\ndisallow=all\nallow=ulaw\nallow=alaw\ndtmfmode=rfc2833\nqualify=yes\n";
+                $sip .= "[$id]\ntype=friend\nhost=dynamic\ndefaultuser=$login\nsecret=$secret\ncontext=zynervoxv2\ndisallow=all\nallow=ulaw\nallow=alaw\ndtmfmode=rfc2833\nqualify=yes\n";
                 if ($cid !== '') $sip .= "callerid=$cid\n";
                 $sip .= "\n";
             } else {
-                $pjsip .= "[$id]\ntype=endpoint\ncontext=zynervoxv2-test\ndisallow=all\nallow=ulaw,alaw\nauth=$id-auth\naors=$id\ndtmf_mode=rfc4733\n";
+                $pjsip .= "[$id]\ntype=endpoint\ncontext=zynervoxv2\ndisallow=all\nallow=ulaw,alaw\nauth=$id-auth\naors=$id\ndtmf_mode=rfc4733\n";
                 if ($cid !== '') $pjsip .= "callerid=$cid\n";
                 $pjsip .= "\n[$id-auth]\ntype=auth\nauth_type=userpass\nusername=$login\npassword=$secret\n\n[$id]\ntype=aor\nmax_contacts=1\nremove_existing=yes\nqualify_frequency=60\n\n";
             }
