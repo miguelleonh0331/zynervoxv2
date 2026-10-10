@@ -134,7 +134,7 @@ if ($list): ?>
 </select></div>
 <div class="carsa-field list-audio-speed"><label for="list_call_origin">Origen</label>
 <select id="list_call_origin" name="call_origin"><option value="3006">Extensión 3006</option></select></div>
-<button type="button" id="list-call-play" class="carsa-btn"<?php echo $audioReady ? '' : ' disabled'; ?>>▶ Play</button>
+<button type="button" id="list-call-play" class="carsa-btn"<?php echo !$audioReady ? ' hidden' : ''; ?><?php echo $audioReady ? '' : ' disabled'; ?>>▶ Play</button>
 <button type="button" class="carsa-btn secondary" disabled>■ Stop</button>
 </form>
 <?php if ($audioCheckError !== ''): ?>
@@ -182,6 +182,8 @@ if ($list): ?>
         document.getElementById('list-audio-speed-control').hidden = button.hidden;
         button.disabled = !valid || active || (ready && !stale);
         play.disabled = !ready || !valid || active || stale;
+        play.hidden = play.disabled;
+        document.getElementById('list-call-stop').hidden = play.hidden;
         const total = stale ? 0 : Number(job && job.total || 0);
         const completed = stale ? 0 : Number(job && job.completed || 0);
         const percent = total > 0 ? Math.min(100, Math.round(completed * 100 / total)) : 0;

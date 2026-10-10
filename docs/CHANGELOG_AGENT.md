@@ -1697,3 +1697,8 @@ controls. Keep call controls visible; restore preparation if readiness changes.
 
 Hide audio summary and complete progress section when ready, on load and polling.
 Restore them if readiness changes; call controls remain visible.
+
+## 2026-10-10 - bot_ivr: hide call buttons until audio ready
+
+Hide Play and Stop on load and status updates until current audio publication
+is complete. Restore both when ready; Stop remains disabled pending call engine.
