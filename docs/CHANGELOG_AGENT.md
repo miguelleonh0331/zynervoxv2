@@ -1712,3 +1712,7 @@ Configuration fields and generation behavior are unchanged.
 
 Display PJSIP and dialplan editors in two equal columns, stacked on small
 screens. Remove dialplan explanation/example and widen both textareas.
+
+## 2026-10-10 - core: carrier editors 30/70
+
+Set PJSIP/Dialplan columns to 30/70; retain mobile stacking.

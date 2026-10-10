@@ -110,7 +110,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
         .form-section { background: transparent; border-radius: 0; padding: 0.6rem 0; margin-bottom: 0; border: none; border-bottom: 1px solid var(--border); }
         .form-section h3 { margin-top: 0; margin-bottom: 0.4rem; color: var(--text); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
         .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; }
-        .carrier-config-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+        .carrier-config-grid { display:grid; grid-template-columns:minmax(0,3fr) minmax(0,7fr); gap:1rem; }
         .carrier-config-grid textarea { width:100%; min-height:240px; box-sizing:border-box; }
         @media(max-width:800px) { .carrier-config-grid { grid-template-columns:1fr; } }
         .badge-proto { background: var(--primary); color: white; padding: 1px 5px; font-size: 0.7rem; }
