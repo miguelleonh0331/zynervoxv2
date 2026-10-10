@@ -13,4 +13,16 @@ $rendered = DialplanOrigins::render([
 checkOrigin(strpos($rendered,DialplanOrigins::HEADER) === 0 && substr_count($rendered,'[zynervoxv2]') === 1, 'one fixed header');
 checkOrigin(strpos($rendered,'_888X.') < strpos($rendered,'[helper]'), 'all carrier routes precede helper contexts');
 checkOrigin(DialplanOrigins::body(DialplanOrigins::HEADER.$body) === $body, 'editable body without header');
+$sameHelpers = DialplanOrigins::render([
+    ['carrier_id'=>'A','dialplan_entry'=>$body],
+    ['carrier_id'=>'B','dialplan_entry'=>str_replace('_07306X.','_888X.',$body)],
+]);
+checkOrigin(substr_count($sameHelpers,'[helper]')===1, 'identical helpers emitted once');
+try {
+    DialplanOrigins::render([
+        ['carrier_id'=>'A','dialplan_entry'=>$body],
+        ['carrier_id'=>'B','dialplan_entry'=>str_replace('Return()','Hangup()',$body)],
+    ]);
+    throw new RuntimeException('conflicting helper accepted');
+} catch (InvalidArgumentException $expected) {}
 echo "PASS: origin parsing, leading zeros, helper isolation and multi-carrier header\n";

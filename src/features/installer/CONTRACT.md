@@ -92,3 +92,8 @@ y setgid (2770). No borra audios, inicia jobs, toca CARSA ni reinicia servicios.
 
 El gestor `installer/database.sh` crea MariaDB 10.11 en Docker, importa únicamente
 el esquema versionado, genera credenciales locales y mantiene los datos en un volumen.
+
+
+## 2026-10-10 - Dialplan administration deployment
+
+carriers.sh also installs standalone Dialplans, sidebar and exact gate entry, creates v2_dialplans with Core DML grants, runs migrate-dialplans.php. Migration uses deployed Core configuration, moves carrier plans transactionally and generates the same runtime file. Repeated migration does not duplicate records. Aborts before clearing routes when more than one prefix or differing existing code prevents a safe migration. Does not reload PBX.

@@ -1759,3 +1759,8 @@ Add CDR timings/channels/linkedid/carrier/origin and append-only call events. AG
 ## 2026-10-10 - Prefijos de origen reutilizables
 
 Carriers permite extraer un prefijo del dialplan guardado y nombrarlo en zynervox_core.v2_dial_origins. Origen por lista pasa a dropdown; conserva dial_prefix y valida opciones disponibles con CSRF. Dialplan generado tiene cabecera zynervoxv2 fija una sola vez; editor muestra solamente cuerpo editable. Plantilla respeta lista suministrada, fallback manual 1. Instalador incluye tabla, permisos y parser. Pruebas de parsing, varios carriers, duplicados, conflictos y opciones obsoletas.
+
+
+## 2026-10-10 - Independent Dialplan page
+
+Added modules/admin/dialplan.php with listing, create/edit/delete, name, active state, code and automatic prefix detection. Sidebar Dialplan directly below Troncales SIP; isolated gate allows only this additional page. Core persists v2_dialplans; existing per-list dial_prefix remains compatible. Carrier UI no longer edits isolated dialplans; migration preserves existing 7306 code/name/state. Generation shares identical helper contexts and refuses conflicts. Installer includes schema, grants, new web files and repeatable migration. Tests cover parser, CRUD, prefix uniqueness, active filtering, context conflicts, page/CSRF and migration preservation.

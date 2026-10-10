@@ -12,3 +12,8 @@ exponer secretos de telefonía en respuestas o logs.
 ## 2026-10-10 - Extraccion de origen
 
 Carriers ofrece prefijos detectados en el dialplan guardado, nombre y boton Extraer prefijo. POST requiere nivel 9 y CSRF; prefijo debe estar en la troncal indicada. Editor aislado mantiene cabecera fija fuera del textarea. Extraer no modifica ni recarga el dialplan.
+
+
+## 2026-10-10 - Dialplan page
+
+modules/admin/dialplan.php offers independent list/new/edit/delete after Troncales SIP in sidebar. Level 9 and dedicated CSRF required for POST; SQL via Core public Dialplans API. Name, active state and code are editable; fixed zynervoxv2 header excluded from code. Prefix detected automatically, validated server-side and stored on save. Isolated carriers page manages troncales only; existing carrier dialplans migrated before use. No automatic PBX reload or outgoing calls.

@@ -14,14 +14,8 @@ class Carriers {
 
     public static function dialOrigins(): array {
         if (!\Config\Config::deployment('isolated', false)) return [];
-        $rows = self::database()->query("SELECT o.dial_prefix,o.name,o.carrier_id,c.dialplan_entry FROM v2_dial_origins o JOIN v2_carriers c ON c.carrier_id=o.carrier_id WHERE c.active='Y' ORDER BY o.name,o.dial_prefix")->fetchAll(PDO::FETCH_ASSOC);
-        $origins = [];
-        foreach ($rows as $row) {
-            if (!in_array($row['dial_prefix'], DialplanOrigins::prefixes($row['dialplan_entry']), true)) continue;
-            unset($row['dialplan_entry']);
-            $origins[] = $row;
-        }
-        return $origins;
+        require_once __DIR__.'/Dialplans.php';
+        return Dialplans::origins();
     }
 
     public static function extractDialOrigin(string $carrierId, string $prefix, string $name): void {
@@ -195,7 +189,14 @@ class Carriers {
         }
 
         $isolated = \Config\Config::deployment('isolated', false);
-        if ($isolated) $dialOut = DialplanOrigins::render($carriers);
+        if ($isolated) {
+            require_once __DIR__.'/Dialplans.php';
+            foreach (Dialplans::getAll() as $plan) {
+                if ($plan['active']==='Y') $carriers[]=['carrier_id'=>'DIALPLAN-'.$plan['dialplan_id'],'dialplan_entry'=>$plan['dialplan_entry']];
+            }
+            try { $dialOut = DialplanOrigins::render($carriers); }
+            catch (\InvalidArgumentException $e) { return ['ok'=>false,'error'=>$e->getMessage()]; }
+        }
         $runtime = (string) \Config\Config::deployment('runtime', '');
         if ($isolated && ($runtime === '' || $runtime === '/' || strpos($runtime, '/etc/asterisk') === 0 || strpos($runtime, '/var/lib/asterisk') === 0)) {
             return ['ok' => false, 'error' => 'Runtime Carriers aislado invalido'];

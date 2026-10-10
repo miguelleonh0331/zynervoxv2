@@ -67,6 +67,7 @@ function renderSidebar($activePage = 'home', $rootPrefix = '../../') {
         ['key' => 'remote',      'href' => 'modules/admin/remoteagents.php', 'icon' => 'remote',     'label' => 'Agents GSM',         'built' => true],
         ['key' => 'phones',      'href' => 'modules/admin/phones.php',       'icon' => 'phones',     'label' => 'Anexos/Teléfonos',   'built' => true],
         ['key' => 'admin',       'href' => 'modules/admin/carriers.php',     'icon' => 'admin',      'label' => 'Troncales SIP',      'built' => true],
+        ['key' => 'dialplan',    'href' => 'modules/admin/dialplan.php',     'icon' => 'scripts',    'label' => 'Dialplan',           'built' => true],
     ];
 
     // "Dev" es un checklist interno de roadmap, visible SOLO para el

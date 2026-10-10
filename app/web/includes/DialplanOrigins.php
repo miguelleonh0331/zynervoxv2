@@ -19,15 +19,27 @@ class DialplanOrigins {
     }
 
     public static function render(array $carriers): string {
-        $routes = $helpers = '';
+        $routes = '';
+        $contexts = [];
         foreach ($carriers as $carrier) {
             $body = self::body($carrier['dialplan_entry']);
             if (trim($body) === '') continue;
             $parts = preg_split('/(?=^\s*\[[^\]\n]+\])/m', $body, 2);
             $comment = '; ---- Carrier: '.$carrier['carrier_id'].' ----'."\n";
             $routes .= $comment.rtrim($parts[0])."\n\n";
-            if (isset($parts[1])) $helpers .= $comment.rtrim($parts[1])."\n\n";
+            if (isset($parts[1])) {
+                preg_match_all('/^\s*\[([^\]\n]+)\][^\n]*\n?(.*?)(?=^\s*\[|\z)/ms', $parts[1], $matches, PREG_SET_ORDER);
+                foreach ($matches as $match) {
+                    $name=trim($match[1]);
+                    if (strtolower($name)==='zynervoxv2') throw new \InvalidArgumentException('La cabecera zynervoxv2 es fija; no la repitas dentro del dialplan.');
+                    $definition=trim($match[2]);
+                    if (isset($contexts[$name]) && $contexts[$name]!==$definition) throw new \InvalidArgumentException('Contexto auxiliar repetido con contenido distinto: '.$name);
+                    $contexts[$name]=$definition;
+                }
+            }
         }
+        $helpers='';
+        foreach ($contexts as $name=>$definition) $helpers.='['.$name."]\n".$definition."\n\n";
         return self::HEADER.$routes.$helpers;
     }
 }

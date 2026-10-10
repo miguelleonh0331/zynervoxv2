@@ -21,7 +21,7 @@ runtime="$(realpath -m "$ASTERISK_ROOT")"
 [[ "$(realpath -m "$runtime/modules/asterisk")" == "$runtime/modules/asterisk" ]] || { echo 'Runtime con enlace no permitido' >&2; exit 2; }
 for file in pjsip-zynervoxv2.conf extensions-zynervoxv2.conf sip-zynervoxv2-annexos.conf pjsip-zynervoxv2-annexos.conf; do [[ ! -L "$runtime/modules/asterisk/$file" ]] || exit 2; done
 [[ "$(mysql -N -e "SELECT COUNT(*) FROM mysql.user WHERE User='$DB_USER' AND Host IN ('localhost','127.0.0.1')")" == 2 ]] || { echo 'Falta cuenta Core aislada existente' >&2; exit 1; }
-for file in includes/Carriers.php includes/DialplanOrigins.php includes/Phones.php includes/IsolatedGate.php modules/admin/carriers.php modules/admin/phones.php; do
+for file in includes/Carriers.php includes/DialplanOrigins.php includes/Dialplans.php includes/Phones.php includes/IsolatedGate.php modules/admin/carriers.php modules/admin/dialplan.php modules/admin/sidebar.php modules/admin/phones.php; do
   [[ -f "$ROOT/app/web/$file" ]] || exit 1
   [[ "$(realpath -m "$WEB_ROOT/$file")" == "$(realpath "$WEB_ROOT")/$file" ]] || { echo 'Destino web con enlace no permitido' >&2; exit 2; }
 done
@@ -41,13 +41,15 @@ CREATE TABLE IF NOT EXISTS v2_carriers (
 SQL
 mysql "$DB_NAME" < "$ROOT/src/features/core/models/phones-v2.sql"
 mysql "$DB_NAME" < "$ROOT/src/features/core/models/dial-origins-v2.sql"
+mysql "$DB_NAME" < "$ROOT/src/features/core/models/dialplans-v2.sql"
 for host in localhost 127.0.0.1; do
   mysql -e "GRANT SELECT,INSERT,UPDATE,DELETE ON zynervox_core.v2_phones TO '$DB_USER'@'$host';"
   mysql -e "GRANT SELECT,INSERT,UPDATE,DELETE ON zynervox_core.v2_carriers TO '$DB_USER'@'$host';"
   mysql -e "GRANT SELECT,INSERT,UPDATE,DELETE ON zynervox_core.v2_dial_origins TO '$DB_USER'@'$host';"
+  mysql -e "GRANT SELECT,INSERT,UPDATE,DELETE ON zynervox_core.v2_dialplans TO '$DB_USER'@'$host';"
 done
 install -d -o root -g "$WEB_GROUP" -m 0770 "$runtime/modules/asterisk"
-for file in includes/Carriers.php includes/DialplanOrigins.php includes/Phones.php includes/IsolatedGate.php modules/admin/carriers.php modules/admin/phones.php; do
+for file in includes/Carriers.php includes/DialplanOrigins.php includes/Dialplans.php includes/Phones.php includes/IsolatedGate.php modules/admin/carriers.php modules/admin/dialplan.php modules/admin/sidebar.php modules/admin/phones.php; do
   rsync -rt --itemize-changes "$ROOT/app/web/$file" "$WEB_ROOT/$file"
   chown root:"$WEB_GROUP" "$WEB_ROOT/$file"
   chmod 0640 "$WEB_ROOT/$file"
@@ -58,6 +60,7 @@ for file in pjsip-zynervoxv2.conf extensions-zynervoxv2.conf sip-zynervoxv2-anne
     install -o root -g "$WEB_GROUP" -m 0640 /dev/null "$runtime/modules/asterisk/$file"
   fi
 done
+php "$ROOT/installer/migrate-dialplans.php" "$WEB_ROOT"
 echo "MODULE_INSTALLED module=carriers database=$DB_NAME table=v2_carriers"
 echo "CARRIERS_CONFIG_DIR=$runtime/modules/asterisk"
 echo 'ACTIVACION_PENDIENTE: no se agregan includes, sudoers ni se recarga Asterisk'
