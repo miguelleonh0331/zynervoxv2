@@ -30,11 +30,19 @@ try {
     http_response_code($campaignId ? 404 : 400);
     $error = $e->getMessage();
 }
+const BOT_CAMPAIGN_STATUS_SUGGESTIONS = ['NEW','ANSWER','RESPONDE_F1','RESPONDE_F2','AGENDADO','AGENDADO_VALIDAR','NO_INTERESADO_F1','NO_INTERESADO_F2','SIN_AUDIO'];
 function bot_campaign_field_row(string $key, array $campaign): void {
     $field = BOT_CAMPAIGN_FIELDS[$key];
     $value = (string)$campaign[$key];
     echo '<tr><th scope="row"><label for="field_' . h($key) . '">' . h($field['label']) . ':</label></th><td>';
-    if ($field['type'] === 'select') {
+    if ($key === 'dial_statuses') {
+        echo '<div class="status-tags" data-input="field_dial_statuses"><div class="status-tags-list"></div>';
+        echo '<div class="status-tags-add"><input type="text" class="status-tags-new" list="dial_statuses_suggestions" placeholder="Estado (ej. AGENDADO)" maxlength="80"><button type="button" class="carsa-btn secondary compact-submit status-tags-btn">+</button></div>';
+        echo '<datalist id="dial_statuses_suggestions">';
+        foreach (BOT_CAMPAIGN_STATUS_SUGGESTIONS as $suggestion) echo '<option value="' . h($suggestion) . '">';
+        echo '</datalist>';
+        echo '<input type="hidden" id="field_' . h($key) . '" name="' . h($key) . '" value="' . h($value) . '" required></div>';
+    } elseif ($field['type'] === 'select') {
         echo '<select id="field_' . h($key) . '" name="' . h($key) . '">';
         foreach ($field['options'] as $option) {
             echo '<option value="' . h($option) . '"' . ($value === $option ? ' selected' : '') . '>' . h($option) . '</option>';
@@ -78,6 +86,14 @@ if ($campaign): ?>
 .campaign-detail details summary{cursor:pointer;color:var(--primary-hover)}
 .campaign-detail details .carsa-form{min-width:190px;max-width:260px;padding-top:8px}
 .campaign-detail details input[type=checkbox]{width:auto;display:inline-block;margin:0 5px 0 0}
+.status-tags-list{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
+.status-tags-list:empty{margin-bottom:0}
+.status-tag{display:inline-flex;align-items:center;gap:5px;padding:3px 6px 3px 9px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;font-size:11px;color:var(--text)}
+.status-tag button{border:0;background:transparent;color:var(--text-muted);cursor:pointer;font-size:13px;line-height:1;padding:0 2px}
+.status-tag button:hover{color:var(--primary-hover)}
+.status-tags-add{display:flex;gap:6px}
+.status-tags-add input{flex:1;min-width:0}
+.status-tags-btn{padding:4px 12px}
 @media(max-width:1050px){.campaign-columns{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:600px){.campaign-fields th{width:42%;padding:5px}.campaign-fields td{padding:5px}.campaign-detail .list-head{align-items:flex-start;flex-wrap:wrap}.campaign-detail .list-summary{display:block;margin:4px 0 0}}
 </style>
@@ -140,6 +156,42 @@ if ($campaign): ?>
 </dialog>
 
 <script>
+(function () {
+    document.querySelectorAll('.status-tags').forEach(box => {
+        const hidden = document.getElementById(box.dataset.input);
+        const list = box.querySelector('.status-tags-list');
+        const input = box.querySelector('.status-tags-new');
+        const addBtn = box.querySelector('.status-tags-btn');
+        let tags = hidden.value.split(/\s+/).filter(Boolean);
+        function render() {
+            hidden.value = tags.join(' ');
+            list.replaceChildren(...tags.map(tag => {
+                const chip = document.createElement('span');
+                chip.className = 'status-tag';
+                chip.textContent = tag;
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.textContent = '×';
+                remove.setAttribute('aria-label', 'Quitar ' + tag);
+                remove.addEventListener('click', () => { tags = tags.filter(t => t !== tag); render(); });
+                chip.appendChild(remove);
+                return chip;
+            }));
+        }
+        function addFromInput() {
+            const value = input.value.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '');
+            if (value && !tags.includes(value)) { tags.push(value); render(); }
+            input.value = '';
+            input.focus();
+        }
+        addBtn.addEventListener('click', addFromInput);
+        input.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ',' || event.key === ' ') { event.preventDefault(); addFromInput(); }
+        });
+        box.closest('form').addEventListener('submit', () => { hidden.value = tags.join(' '); });
+        render();
+    });
+})();
 (async function () {
     const selects = document.querySelectorAll('.ivr-flow-select');
     selects.forEach(select => { select.disabled = true; });
