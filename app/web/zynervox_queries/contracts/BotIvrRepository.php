@@ -14,6 +14,7 @@ interface BotIvrRepository {
     public function observeCallPresence(string $callId, bool $active, int $epoch): bool;
     public function startCall(int $listId, string $phone, string $callId): int;
     public function finishCall(string $callId, string $dialStatus, string $amdStatus, string $amdCause, int $hangupCause, bool $answered): void;
+    public function campaignMonitor(): array;
     public function campaigns(): array;
     public function campaign(int $id): array;
     public function createCampaign(string $name, bool $active): int;

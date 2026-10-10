@@ -30,3 +30,8 @@ User clarification supersedes readonly template display: shared system contexts 
 
 ## 2026-10-10 - PBX AMI service
 Services/pbx.php requires administrator level 9 and CSRF for test/save. PbxAmi::load/validate/test/save exposes configuration to authorized server callers only. Test authenticates and logs off, never originates a call. Save requires successful login and atomically writes deployment.directory/pbx/ami.json (0640, private directory 2770). Form never renders the secret; blank password preserves it. Credentials are not imported from legacy nor stored in Git.
+
+
+## 2026-10-10 - Isolated campaign dashboard
+
+Isolated admin login destination remains modules/admin/index.php and now renders the IVR campaign graphic monitor in place, without redirecting to Bot IVR. campaign_monitor.php renders the same read-only view; authenticated levels 7/8/9 can GET campaign_monitor_api.php. Nonisolated dashboard and VICIdial monitor remain unchanged.

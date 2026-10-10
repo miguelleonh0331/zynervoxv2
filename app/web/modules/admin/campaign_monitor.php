@@ -8,6 +8,11 @@ use Includes\Campaigns;
 use Includes\CampaignMonitor;
 
 Auth::checkAccess([7, 8, 9]);
+if (\Config\Config::deployment('isolated',false)) {
+    $monitorTitle='Monitor de campanas';
+    require __DIR__.'/../../bot_ivr/campaign_monitor_view.php';
+    exit;
+}
 
 $campaigns = Campaigns::getAll();
 // La lista de campañas monitoreadas vive en localStorage del navegador

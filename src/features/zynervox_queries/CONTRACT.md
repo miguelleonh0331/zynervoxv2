@@ -129,3 +129,8 @@ BotIvrRepository exposes createDialRun, dialRun, transitionDialRun, claimDialLea
 ## 2026-10-10 - List statistics
 
 listStatistics(listId,campaignId): array validates list/campaign ownership and returns total/calling/finished/states/errors. Latest attempt determines contact progress; current lead.status supplies distribution. Historical errors include FAIL/UNAV/CONG/LOST, unavailable/congested dial statuses, IVR ERROR and recovery/AMI rejection, ordered newest first, capped at 30. No mutation.
+
+
+## 2026-10-10 - Isolated campaign dashboard
+
+campaignMonitor(): array aggregates existing campaign/list rows, latest dial run per list and latest attempt per current contact. Returns campaign state and contact counters with scoped list progress/channels/error. No schema, AMI or status mutation. No credential/config_json/phone/recording disclosure.

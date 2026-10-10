@@ -247,3 +247,8 @@ List statistics expose only total current leads, calling and finished contacts, 
 ## 2026-10-10 - Status eligibility and AGI permission
 
 Campaign Estados a marcar selects current lead.status, including attained IVR business states; dial_status remains the independent telephony result. New imports explicitly insert NEW. No historical business state is inferred when IVR was not executed.
+
+
+## 2026-10-10 - Isolated campaign dashboard
+
+campaign_monitor_view.php presents campaign state, current contact total/calling/finished and list progress, with read-only links. Authenticated snapshot refreshes every five seconds, pauses when hidden, displays query failures. Latest worker state determines campaign state; SQL attempt closure determines lead progress.

@@ -766,3 +766,8 @@ Scope: bot_ivr UI/API and public zynervox_queries repository. Add read-only list
 ## 2026-10-10 - Lead status eligibility and AGI execution (ARCHITECT_AGENT)
 
 Scope bot_ivr/zynervox_queries/installer. Existing eligibility remains lead.status, never dial_status. Import explicitly initializes NEW. Restore execute permission for CLI AGIs after web deployment; latest list26 AMI attempt did not execute IVR (Permission denied), so no business status exists to recover for that attempt. Do not invent historical dispositions.
+
+
+## 2026-10-10 - Isolated campaign dashboard (ARCHITECT_AGENT)
+
+Scope admin entrypoints, core isolated gate, bot_ivr monitor view and public repository. Replace isolated admin redirect with read-only graphic campaign monitor at dashboard and campaign_monitor.php. Preserve legacy dashboard/monitor behavior outside isolated deployment. New repository aggregate snapshot avoids VICIdial and per-list detail queries. Authorized roles 7/8/9; no controls, credentials, or dial changes.

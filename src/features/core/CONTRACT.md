@@ -70,3 +70,8 @@ Services/pbx.php requires administrator level 9 and CSRF for test/save. PbxAmi::
 ## 2026-10-10 - List Play/Stop AMI worker
 
 AmiClient uses private PbxAmi credentials, bounded requests and ActionID correlation. Async Originate targets Local/<prefix><phone>@zynervoxv2/n, inherits list/lead IDs and assigns OtherChannelId to the reserved attempt ID. Credentials are never stored in dial runs or passed on the command line.
+
+
+## 2026-10-10 - Isolated campaign dashboard
+
+IsolatedGate permits modules/admin/campaign_monitor.php and campaign_monitor_api.php; session and role authorization remain enforced by page/API. No legacy table access enabled.
