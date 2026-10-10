@@ -38,13 +38,30 @@ try {
         [$exit]=testIvrAgi([(string)$list,(string)$lead,$id],"200 result=1\n");
         if ($exit===0) throw new RuntimeException('completed execution repeated');
     }
+    $interactive=['flow_code'=>(string)$code,'start'=>'menu','nodes'=>[
+        'menu'=>['type'=>'menu','audio_text'=>'hola como estas {nombre}','timeout_ms'=>500,'retry_count'=>0,'next'=>'','fallback'=>'sql','stt_intents'=>[['id'=>'yes','match'=>'contains_any','phrases'=>['si'],'target'=>'sql']]],
+        'sql'=>['type'=>'inject_sql','inject_sql_fields'=>['RESULTADO'=>'SIN_AUDIO','CALL_ID'=>'{call_id}'],'next'=>'end','fallback'=>'end'],
+        'end'=>['type'=>'hangup'],
+    ]];
+    file_put_contents($path,json_encode($interactive,JSON_THROW_ON_ERROR));
+    $id='ivr-graph-fixture-'.bin2hex(random_bytes(8));$ids[]=$id;
+    $lead=$repo->startCall($list,'999000123',$id);
+    // The stub creates no received WAV: the node must take its fallback without contacting STT.
+    [$exit,$out,$err]=testIvrAgi([(string)$list,(string)$lead,$id],"200 result=0\n200 result=1 (fixture-monitor)\n200 result=0 endpos=8000\n200 result=0\n200 result=0\n200 result=1\n");
+    if($exit!==0 || strpos($out,'MixMonitor')===false || strpos($out,'StopMixMonitor fixture-monitor')===false) throw new RuntimeException('Interactive AGI protocol failed: '.$err);
+    $s=$db->prepare('SELECT result FROM zynervox_bot_ivr_results WHERE call_id=?');$s->execute([$id]);
+    if ($s->fetchColumn()!=='SIN_AUDIO') throw new RuntimeException('Interactive AGI result not saved');
     echo "PASS: CLI AGI playback, completed/interrupted audit, scoped identity and repeated-execution rejection\n";
+    echo "PASS: interactive CLI AGI receive monitor, silence fallback and core result persistence\n";
 } finally {
     foreach ($ids as $id) {
         foreach(glob(call_audit_directory().'/*.json') as $journal) { $data=json_decode((string)file_get_contents($journal),true);if(($data['call_id'] ?? '')===$id)unlink($journal); }
         $db->prepare('DELETE FROM zynervox_bot_call_events WHERE call_id=?')->execute([$id]);
+        $db->prepare('DELETE FROM zynervox_bot_ivr_results WHERE call_id=?')->execute([$id]);
         $db->prepare('DELETE FROM zynervox_bot_call_attempts WHERE call_id=?')->execute([$id]);
         $lock=$runtime.'/bot_ivr/ivr_calls/'.$id.'.lock';if(is_file($lock))unlink($lock);
+        $callDir=$runtime.'/bot_ivr/ivr_calls/'.$id;
+        if (is_dir($callDir)) {foreach(glob($callDir.'/*') as $file)unlink($file);rmdir($callDir);}
     }
     if($list){$db->prepare('DELETE FROM zynervox_bot_list WHERE list_id=?')->execute([$list]);$db->prepare('DELETE FROM zynervox_bot_lists WHERE list_id=?')->execute([$list]);}
     if($campaign)$db->prepare('DELETE FROM zynervox_bot_campaigns WHERE campaign_id=?')->execute([$campaign]);

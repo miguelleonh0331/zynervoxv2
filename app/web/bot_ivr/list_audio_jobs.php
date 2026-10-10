@@ -67,7 +67,7 @@ function bot_list_audio_payload(array $flow, array $leads, int $listId, int $cam
     if (!in_array($workers, [1,3,10,25,60,100], true)) throw new RuntimeException('Velocidad de generación inválida.');
     $check = bot_list_audio_preflight($flow, $leads, $listId, $campaignId);
     if ($check['rejected']) throw new RuntimeException('Corrige las variables de los leads antes de generar. '.implode(' ', $check['errors']));
-    $templates = bot_list_audio_templates($flow);
+    $templates = bot_list_audio_templates($flow,true);
     // Composite output needs concatenation/pauses; this first provider only builds individual prompts.
     foreach (array_keys($templates) as $node) {
         if (strpos($node, '.segment_') !== false) throw new RuntimeException('La generación de audios compuestos aún no está disponible.');

@@ -6,6 +6,8 @@ ini_set('display_errors','0');
 if (function_exists('pcntl_signal')) { pcntl_async_signals(true); pcntl_signal(SIGHUP,SIG_IGN); }
 require __DIR__.'/db.php';
 require __DIR__.'/ivr_engine_service.php';
+require __DIR__.'/ivr_graph_service.php';
+require __DIR__.'/ivr_graph_io.php';
 require __DIR__.'/call_audit_service.php';
 require_once __DIR__.'/../ivr_builder/published_flow.php';
 $env=[];
@@ -45,8 +47,31 @@ try {
     $registry=new PDO('sqlite:'.$index,null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
     $registry->exec('PRAGMA query_only=ON');
     $lookup=$registry->prepare('SELECT 1 FROM published_audio WHERE hash=?');
-    $steps=bot_ivr_steps($flow,$context,$runtime,function($hash) use($lookup) { $lookup->execute([$hash]); return (bool)$lookup->fetchColumn(); });
-    $result=bot_ivr_execute($steps,$command,$audit);
+    $published=function($hash) use($lookup) { $lookup->execute([$hash]); return (bool)$lookup->fetchColumn(); };
+    if (bot_ivr_graph($flow)) {
+        $options=bot_ivr_graph_options();
+        $callDir=$dir.'/'.$call;
+        if (!is_dir($callDir) && !mkdir($callDir,0700)) throw new RuntimeException('IVR recording directory unavailable');
+        if (realpath($callDir)!==$callDir || is_link($callDir)) throw new RuntimeException('Invalid IVR recording directory');
+        $save=function($node,$fields,$settings) use($call,$options,$audit): bool {
+            try {
+                bot_ivr_repository()->saveIvrResult($call,$node,$fields);
+                if (($options['result_destination'] ?? 'core')==='sqlserver') {
+                    $out=bot_ivr_graph_io('sqlserver',['fields'=>$fields,'timeout_ms'=>$settings['timeout_ms'] ?? 6000]);
+                    return !empty($out['ok']);
+                }
+                return true;
+            } catch (Throwable $e) {
+                $audit('IVR_NODE',['node'=>$node,'action'=>'inject_sql_error','error_class'=>get_class($e)]);
+                return false;
+            }
+        };
+        $runner=new BotIvrGraphRunner($flow,$context,$call,$runtime,$published,$command,$audit,'bot_ivr_graph_io',$save,$options);
+        $result=$runner->run();
+    } else {
+        $steps=bot_ivr_steps($flow,$context,$runtime,$published);
+        $result=bot_ivr_execute($steps,$command,$audit);
+    }
     $audit('IVR_END',['result'=>$result]);
     $command('SET VARIABLE ZV2_IVR_RESULT "'.$result.'"');
 } catch (Throwable $e) {

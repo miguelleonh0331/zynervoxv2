@@ -216,3 +216,13 @@ list_edit consume Carriers::dialOrigins del contrato publico core. Dropdown Orig
 ## 2026-10-10 - Initial CLI IVR engine
 
 ivr_engine_agi.php accepts listId,leadId,callId on CLI only. Requires isolated deployment and scoped open call context from public repository, published flow and hashes in read-only SQLite. No WAV validation or TTS generation at call time. Supports linear noop/goto/create_audio/create_audio_dynamic/playback/hangup, max 100 steps, rejects cycles/unsupported nodes before playback. No STT, menus, composites, bridging, external URLs or SQL actions in this first test stage. Asterisk STREAM FILE reads audio, engine logs IVR_START/NODE/END through durable audit journals; completed/interrupted/error result distinct from CDR answer/disposition. Per-call lock and terminal IVR event reject reruns. Does not implement campaign originator/Play/Stop; Local channel originator remains next stage.
+
+## 2026-10-10 - Interactive graph execution (architect approved)
+
+The existing CLI AGI now interprets reachable acyclic graphs of up to 100 nodes. Additional supported types: amd, menu, capture_stt, bridge, inject_sql and execute. Unsupported ARI/composite/transfer nodes still fail before execution. amd listens receive-only then classifies Vosk text (not Asterisk AMD()). menu uses DTMF edges or prioritized whole-word STT intents, bounded retry/fallback. capture_stt exposes variable, variable_raw and variable_spoken for date/name/text/number. Captured variables cannot overwrite system/config identifiers.
+
+Private ivr_engine.json in deployment directory configures Vosk, gateway or direct Deepgram, optional Groq date extraction, execution service allowlist and result destination. Credentials never enter flow publications/Git/audit. No runtime imports from CARSA. Network adapters have bounded time/output and refuse redirects; URL substitutions only query values.
+
+Known contact audio remains prepublished. Captured-response audio (e.g. fecha_spoken farewell) is generated on demand with the same immutable hash registry and per-hash lease. Published WAVs are not revalidated. Receive recordings use private per-call directories under bot_ivr/ivr_calls; mixed call recording remains separate. No automatic recording retention purge in this change.
+
+Inject SQL maps allowlisted fields into a scoped idempotent result in zynervox_core.zynervox_bot_ivr_results, independently of CDR. Explicit private result_destination=sqlserver can also export with parameterized inserts; external failures follow configured fallback and are not automatically retried. External SQL delivery is not guaranteed exactly once after an ambiguous network failure. No legacy CRM writes by default.

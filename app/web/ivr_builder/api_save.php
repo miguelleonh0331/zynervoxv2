@@ -5,9 +5,7 @@ require_once __DIR__ . '/../lib/db.php';
 require_once __DIR__ . '/flow_store.php';
 ivr_builder_require_login(true);
 
-// "Puentes conversacionales" (fast_creation/bridges) no se migraron todavia
-// a Zynervox -- catalogo vacio por ahora, asi que un nodo tipo "bridge"
-// simplemente no podra validarse hasta que se traiga ese modulo tambien.
+// Legacy catalog optional: isolated v2 can embed its own bridge phrase.
 if (!function_exists('bridges_read_catalog')) {
     function bridges_read_catalog(): array { return []; }
 }
@@ -163,8 +161,9 @@ foreach ($nodes as $id => $node) {
                 break;
             }
         }
-        if (!$bridgeFound) fail("Puente inexistente en $id");
-        if (!empty($bridgeFound['audio_hash'])) {
+        // Isolated v2 embeds the bridge phrase and prebuilds its own hashed audio.
+        if (!$bridgeFound && (!\Config\Config::deployment('isolated',false) || $item['bridge_text']==='')) fail("Puente inexistente en $id");
+        if ($bridgeFound && !empty($bridgeFound['audio_hash'])) {
             $item['bridge_category'] = (string) ($bridgeFound['category'] ?? '');
             $item['bridge_text'] = (string) ($bridgeFound['text'] ?? '');
         }

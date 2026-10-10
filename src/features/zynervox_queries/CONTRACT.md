@@ -109,3 +109,7 @@ finish can supply authoritative result. No recovery while journals are pending.
 ## 2026-10-10 - IVR execution context
 
 ivrCallContext(listId,leadId,callId) returns one lead with campaign_id/id_flujo only when list/lead match the open tracked attempt and no IVR_END exists. recordCallEvent also accepts IVR_START, IVR_NODE and IVR_END; existing CDR semantics unchanged.
+
+## 2026-10-10 - IVR business results (architect approved)
+
+saveIvrResult(callId,nodeId,fields): void verifies an open attempt, derives list/lead scope from that attempt, and inserts immutable fields_json/result in zynervox_bot_ivr_results. Same call/node/payload is idempotent; different payload or closed/nonexistent attempt is rejected. Public result mapping receives prepared data only, never arbitrary SQL. No CDR or lead disposition changes. Migration 009 and account DML grants required.

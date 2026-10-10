@@ -25,3 +25,7 @@ del código 01..99 bajo el runtime configurado. Valida identidad, JSON, nodos y
 entrada; inexistencia, publicación inválida o archivo mayor de 10 MB generan
 RuntimeException. No publica, modifica BD ni activa llamadas. El consumidor
 valida las transiciones y variables antes de preparar textos personalizados.
+
+## 2026-10-10 - Embedded bridge phrase (architect approved)
+
+In isolated v2, a bridge can use its own nonempty bridge_text with bridge_id; an external legacy bridge catalog is not required. The consumer prebuilds this text with its own provider/cache. Existing catalog behavior and all target/CSRF validations remain. Legacy deployments still require their catalog.

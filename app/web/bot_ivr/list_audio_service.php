@@ -25,7 +25,15 @@ function bot_list_audio_variables(array $lead, int $listId, int $campaignId): ar
     ]);
 }
 
-function bot_list_audio_templates(array $flow): array {
+function bot_list_audio_response_variables(array $flow): array {
+    $variables=[];
+    foreach ($flow['nodes'] ?? [] as $node) if (($node['type'] ?? '')==='capture_stt' && !empty($node['variable'])) {
+        foreach (['','_raw','_spoken'] as $suffix) $variables[]=$node['variable'].$suffix;
+    }
+    return array_unique($variables);
+}
+
+function bot_list_audio_templates(array $flow, bool $prebuildOnly=false): array {
     $nodes = $flow['nodes'] ?? [];
     $pending = [$flow['start'] ?? ''];
     $seen = [];
@@ -38,7 +46,7 @@ function bot_list_audio_templates(array $flow): array {
         $node = $nodes[$id];
         $type = $node['type'] ?? '';
         $texts = [];
-        if (in_array($type, ['create_audio','create_audio_dynamic','capture_stt','menu_ari','playback','hangup'], true)) {
+        if (in_array($type, ['create_audio','create_audio_dynamic','capture_stt','menu','menu_ari','playback','hangup'], true)) {
             $texts['audio'] = $node['audio_text'] ?? '';
             if ($type === 'create_audio_dynamic' && trim((string)$texts['audio']) === '') $texts['audio'] = $node['message'] ?? '';
         }
@@ -50,7 +58,8 @@ function bot_list_audio_templates(array $flow): array {
         foreach ($texts as $kind => $text) {
             if (!is_string($text)) throw new RuntimeException('El flujo contiene un texto de audio inválido.');
             $text = trim($text);
-            if ($text !== '') $templates[$id.'.'.$kind] = $text;
+            preg_match_all('/\{([A-Za-z_][A-Za-z0-9_]*)\}/',$text,$matches);
+            if ($text !== '' && (!$prebuildOnly || !array_intersect(bot_list_audio_response_variables($flow),$matches[1]))) $templates[$id.'.'.$kind] = $text;
         }
         $targets = [$node['next'] ?? '', $node['fallback'] ?? ''];
         foreach ($node['edges'] ?? [] as $target) $targets[] = $target;
@@ -86,7 +95,7 @@ function bot_list_audio_render(string $template, array $variables): string {
 
 function bot_list_audio_preflight(array $flow, array $leads, int $listId, int $campaignId): array {
     if (!$leads) throw new RuntimeException('Carga leads en la lista antes de generar audios.');
-    $templates = bot_list_audio_templates($flow);
+    $templates = bot_list_audio_templates($flow,true);
     $result = ['leads'=>count($leads), 'ready'=>0, 'rejected'=>0, 'texts'=>0, 'errors'=>[]];
     foreach ($leads as $lead) {
         try {

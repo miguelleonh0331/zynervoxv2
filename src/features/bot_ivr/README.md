@@ -252,3 +252,13 @@ requieren reinstalar el servicio ni reiniciar Asterisk.
 Pruebas: list-audio.php (variables/payload) y list-audio-cache.py (hash, reutilización,
 corrupción, concurrencia y limpieza de parciales). Sin llamadas ni SQL en worker.
 Generación compuesta/pausas, RGA y motor de reproducción quedan pendientes.
+
+## Interactive CARSA-compatible nodes (2026-10-10)
+
+ivr_graph_service.php runs the 27-node CARSA reference fixture via existing ivr_engine_agi.php. Selection is automatic for interactive published flows. No changes to list 1 / flow 11 assignment or calling prefixes required. Flow-level amd and prefix-level Asterisk AMD are independent: use the no-AMD prefix for a flow containing its own amd node to avoid a double detection.
+
+Apply models/009-ivr-results.sql and table-scoped account grants. Install ivr_node_io.py in runtime/modules/bot_ivr, using the existing gTTS virtualenv (Python 3.6 compatible); HTTP, date parsing and gateway multipart use stdlib. Keep private deployment-directory/ivr_engine.json root:www 0640, based on models/ivr-engine.example.json. installer/ivr-interactive-nodes.sh installs the runtime adapter and migration; bootstrap-ivr-node-providers.py is an explicit one-time private migration helper, never an engine dependency. Fresh deployments require private provider configuration.
+
+Bridge nodes embed bridge_text and use normal prebuilt hashed audio. Prebuild excludes captured-response templates but validates remaining lead variables. STT capture returns date ISO plus Spanish spoken date; common dates parsed locally in America/Lima, other phrases can use configured Groq keys. Business fields persist by call/node in zynervox_bot_ivr_results. SQL Server export is optional and requires private host/database/table/user/password plus pymssql in the virtualenv; not configured by default. URL actions require exact service host/path allowlist and never log query credentials.
+
+Checks: tests/ivr-graph.php (all reference branches with injected IO), tests/ivr-node-io.py (real interpreter/date modes/service guard), tests/ivr-results-db.php (fixtures rolled back), tests/ivr-engine-agi.php (actual CLI protocol and durable events/results), tests/ivr-providers-live.php (synthetic speech through live providers, no phones/SMS/CRM). Reference fixture excludes real SMS key and uses {sms_key} from private config.

@@ -2,6 +2,18 @@
 declare(strict_types=1);
 namespace ZynervoxQueries\Mysql\BotIvr;
 trait CallQueries {
+    public function saveIvrResult(string $callId, string $nodeId, array $fields): void {
+        if (!preg_match('/^[A-Za-z0-9_.-]{1,80}$/D',$callId) || !preg_match('/^[A-Za-z0-9_-]{1,64}$/D',$nodeId) || !$fields) throw new \RuntimeException('Invalid IVR result');
+        $json=json_encode($fields,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE);
+        if (strlen($json)>65536) throw new \RuntimeException('IVR result too large');
+        $this->callAtomic(function() use($callId,$nodeId,$json,$fields) {
+            $s=$this->db->prepare('SELECT list_id,lead_id,finished_at FROM zynervox_bot_call_attempts WHERE call_id=? FOR UPDATE');$s->execute([$callId]);$call=$s->fetch(\PDO::FETCH_ASSOC);
+            if (!$call || $call['finished_at']!==null) throw new \RuntimeException('Invalid IVR result context');
+            $s=$this->db->prepare('SELECT fields_json FROM zynervox_bot_ivr_results WHERE call_id=? AND node_id=?');$s->execute([$callId,$nodeId]);$old=$s->fetchColumn();
+            if ($old!==false) {if (json_decode($old,true)!==$fields) throw new \RuntimeException('IVR result already differs');return;}
+            $this->db->prepare('INSERT INTO zynervox_bot_ivr_results(call_id,node_id,list_id,lead_id,result,fields_json,created_at) VALUES (?,?,?,?,?,?,UTC_TIMESTAMP())')->execute([$callId,$nodeId,$call['list_id'],$call['lead_id'],substr((string)($fields['RESULTADO'] ?? ''),0,80),$json]);
+        });
+    }
     public function ivrCallContext(int $listId, int $leadId, string $callId): array {
         $s=$this->db->prepare('SELECT l.lead_id,l.list_id,l.phone,l.customer_name,l.extra_json,p.campaign_id,p.id_flujo FROM zynervox_bot_call_attempts a JOIN zynervox_bot_list l ON l.lead_id=a.lead_id AND l.list_id=a.list_id JOIN zynervox_bot_lists p ON p.list_id=a.list_id WHERE a.call_id=? AND a.list_id=? AND a.lead_id=? AND a.finished_at IS NULL AND NOT EXISTS (SELECT 1 FROM zynervox_bot_call_events e WHERE e.call_id=a.call_id AND e.event_type=\'IVR_END\')');
         $s->execute([$callId,$listId,$leadId]);
