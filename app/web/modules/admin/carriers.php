@@ -62,6 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if (isset($_GET['edit_id'])) {
     $editData = Carriers::getById($_GET['edit_id']);
 }
+$showCarrierForm = ($_GET['new'] ?? '') === '1' || $editData || isset($_POST['save_carrier']);
 
 $allCarriers = Carriers::getAll();
 $serverIp = trim(shell_exec("hostname -I 2>/dev/null") ?? '');
@@ -137,7 +138,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                     <h2>Troncales</h2>
-                    <a href="carriers.php" class="link-action">+ Nueva</a>
+                    <a href="carriers.php?new=1" class="link-action">+ Nueva</a>
                 </div>
                 <table class="classic-table">
                     <thead>
@@ -176,6 +177,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
             </div>
 
             <!-- Formulario -->
+            <?php if ($showCarrierForm): ?>
             <div class="card">
                 <h2><?php echo $editData ? 'Editar Troncal' : 'Nueva Troncal (PJSIP)'; ?></h2>
                 <form method="POST" style="margin-top: 0.5rem;">
@@ -225,6 +227,7 @@ function renderField($label, $name, $value, $type = 'text', $options = []) {
 
             </div>
 
+            <?php endif; ?>
             <!-- Auditoria -->
             <div class="card">
                 <h2>Historial de Cambios (Auditoría)</h2>

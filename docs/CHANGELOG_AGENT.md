@@ -1764,3 +1764,8 @@ Carriers permite extraer un prefijo del dialplan guardado y nombrarlo en zynervo
 ## 2026-10-10 - Independent Dialplan page
 
 Added modules/admin/dialplan.php with listing, create/edit/delete, name, active state, code and automatic prefix detection. Sidebar Dialplan directly below Troncales SIP; isolated gate allows only this additional page. Core persists v2_dialplans; existing per-list dial_prefix remains compatible. Carrier UI no longer edits isolated dialplans; migration preserves existing 7306 code/name/state. Generation shares identical helper contexts and refuses conflicts. Installer includes schema, grants, new web files and repeatable migration. Tests cover parser, CRUD, prefix uniqueness, active filtering, context conflicts, page/CSRF and migration preservation.
+
+
+## 2026-10-10 - Carrier form visibility
+
+Carrier form appears only on new=1, an existing edit_id or a save POST. Default page keeps listing and audit. New link explicitly opens creation.
