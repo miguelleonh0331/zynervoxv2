@@ -1729,3 +1729,12 @@ Core and installer integration approved for isolated account persistence.
 ## 2026-10-10 - core: accept SIP and PJSIP phones
 
 Allow both protocols when saving v2 phones; default new form to SIP. Account storage remains in zynervox_core.v2_phones.
+
+## 2026-10-10 - core: generate isolated SIP/PJSIP annex files
+
+CRUD rebuilds active annexes into sip-zynervoxv2-annexos.conf and
+pjsip-zynervoxv2-annexos.conf under configured runtime/modules/asterisk,
+with context zynervoxv2-test, atomic per-file rename and mode 0640.
+No includes or reloads. Reject config-breaking login/password characters.
+Installer deploys Phones and initializes both files. DB and two files are
+not a single transaction; generation errors require retry/regeneration.

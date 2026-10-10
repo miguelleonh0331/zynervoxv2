@@ -26,6 +26,40 @@ class Phones {
         if (!\Config\Config::deployment('isolated', false)) return Audit::getRecent('phones',20);
         return self::database()->query("SELECT created_at AS audit_timestamp, user AS audit_user, action AS audit_action, details AS extension, '' AS fullname FROM v2_access_log WHERE action IN ('PHONE_CREATE','PHONE_UPDATE','PHONE_DELETE') ORDER BY id DESC LIMIT 20")->fetchAll();
     }
+    public static function generateConfiguration() {
+        if (!\Config\Config::deployment('isolated', false)) return true;
+        $directory = rtrim((string)\Config\Config::deployment('runtime'), '/').'/modules/asterisk';
+        if (strpos($directory, '/var/lib/zynervoxv2/') !== 0 || realpath($directory) !== $directory || !is_writable($directory)) throw new \RuntimeException('Directorio de anexos no disponible');
+        $sip = "; Anexos SIP v2 - generado automaticamente\n\n";
+        $pjsip = "; Anexos PJSIP v2 - generado automaticamente\n\n";
+        $rows = self::database()->query("SELECT * FROM v2_phones WHERE active='Y' ORDER BY extension")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as $row) {
+            self::validate(array_intersect_key($row, array_flip(['extension','login','pass','fullname','outbound_cid','active','protocol'])));
+            $id = $row['extension'];
+            $login = $row['login'];
+            $secret = $row['pass'];
+            $cid = preg_replace('/[^0-9+]/', '', $row['outbound_cid']);
+            if ($row['protocol'] === 'SIP') {
+                $sip .= "[$id]\ntype=friend\nhost=dynamic\ndefaultuser=$login\nsecret=$secret\ncontext=zynervoxv2-test\ndisallow=all\nallow=ulaw\nallow=alaw\ndtmfmode=rfc2833\nqualify=yes\n";
+                if ($cid !== '') $sip .= "callerid=$cid\n";
+                $sip .= "\n";
+            } else {
+                $pjsip .= "[$id]\ntype=endpoint\ncontext=zynervoxv2-test\ndisallow=all\nallow=ulaw,alaw\nauth=$id-auth\naors=$id\ndtmf_mode=rfc4733\n";
+                if ($cid !== '') $pjsip .= "callerid=$cid\n";
+                $pjsip .= "\n[$id-auth]\ntype=auth\nauth_type=userpass\nusername=$login\npassword=$secret\n\n[$id]\ntype=aor\nmax_contacts=1\nremove_existing=yes\nqualify_frequency=60\n\n";
+            }
+        }
+        foreach (['sip-zynervoxv2-annexos.conf'=>$sip, 'pjsip-zynervoxv2-annexos.conf'=>$pjsip] as $name=>$contents) {
+            $path = $directory.'/'.$name;
+            if (is_link($path)) throw new \RuntimeException('Destino de anexos invalido');
+            $temporary = tempnam($directory, '.phones-');
+            if ($temporary === false) throw new \RuntimeException('No se pudo preparar el archivo');
+            try {
+                if (file_put_contents($temporary, $contents, LOCK_EX) === false || !chmod($temporary, 0640) || !rename($temporary, $path)) throw new \RuntimeException('Datos guardados; no se pudo generar la configuracion de anexos');
+            } finally { if (is_file($temporary)) unlink($temporary); }
+        }
+        return true;
+    }
     private static function validate($data) {
         if (!\Config\Config::deployment('isolated', false)) return;
         if (!preg_match('/^[0-9]{1,20}$/D', (string)($data['extension'] ?? ''))) throw new \InvalidArgumentException('Extension invalida');
@@ -34,6 +68,8 @@ class Phones {
         foreach ($data as $key=>$value) {
             if (!in_array($key,['extension','login','pass','fullname','outbound_cid','active','protocol'],true) || !is_string($value) || strlen($value)>160 || preg_match('/[\r\n]/',$value)) throw new \InvalidArgumentException('Campo invalido');
         }
+        if (isset($data['login']) && !preg_match('/^[A-Za-z0-9_-]{1,160}$/D', $data['login'])) throw new \InvalidArgumentException('Login invalido');
+        if (isset($data['pass']) && preg_match('/[;#\x00-\x20\x7f]/', $data['pass'])) throw new \InvalidArgumentException('Password contiene caracteres no admitidos en Asterisk');
     }
 
     
@@ -96,7 +132,7 @@ class Phones {
         try {
             self::audit('DELETE', $extension);
             $stmt = $db->prepare("DELETE FROM $table WHERE extension = :id");
-            return $stmt->execute(['id' => $extension]);
+            return $stmt->execute(['id' => $extension]) && self::generateConfiguration();
         } catch (\PDOException $e) { return false; }
     }
 
@@ -144,7 +180,7 @@ class Phones {
             $stmt = $db->prepare("INSERT INTO $table ($columns) VALUES ($placeholders)");
             if ($stmt->execute($finalData)) {
                 self::audit('CREATE', $data['extension']);
-                return true;
+                return self::generateConfiguration();
             }
         } catch (\PDOException $e) { return false; }
         return false;
@@ -167,7 +203,7 @@ class Phones {
             $stmt = $db->prepare("UPDATE $table SET $setSql WHERE extension = :extensionKey");
             if ($stmt->execute($data)) {
                 self::audit('UPDATE', $extension);
-                return true;
+                return self::generateConfiguration();
             }
         } catch (\PDOException $e) { return false; }
         return false;

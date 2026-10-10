@@ -29,13 +29,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (isset($_POST['is_edit']) && $_POST['is_edit'] == '1') {
             if (Phones::update($_POST['old_extension'], $data)) {
-                $msg = "<p style='color: #047857;'>Anexo '{$data['extension']}' actualizado.</p>";
+                $msg = "<p style='color: #047857;'>Anexo '{$data['extension']}' actualizado; archivos de anexos generados.</p>";
             } else {
                 $msg = "<p style='color: #b91c1c;'>Error al actualizar anexo.</p>";
             }
         } else {
             if (Phones::create($data)) {
-                $msg = "<p style='color: #047857;'>Anexo '{$data['extension']}' creado.</p>";
+                $msg = "<p style='color: #047857;'>Anexo '{$data['extension']}' creado; archivos de anexos generados.</p>";
             } else {
                 $msg = "<p style='color: #b91c1c;'>Error al crear anexo (¿ya existe ese número?).</p>";
             }
@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($_POST['delete_phone'])) {
         if (Phones::delete($_POST['extension'])) {
-            $msg = "<p style='color: #b91c1c;'>Anexo eliminado.</p>";
+            $msg = "<p style='color: #b91c1c;'>Anexo eliminado; archivos de anexos actualizados.</p>";
         }
     }
     } catch (\Throwable $e) { $msg = "<p style='color:#b91c1c;'>No se pudo guardar; revise extension, protocolo y campos.</p>"; }

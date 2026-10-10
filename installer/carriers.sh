@@ -19,9 +19,9 @@ PHP
 runtime="$(realpath -m "$ASTERISK_ROOT")"
 [[ "$runtime" == "$ASTERISK_ROOT" && "$runtime" != / && "$runtime" != /etc && "$runtime" != /var && "$runtime" != /var/lib && "$runtime" != /etc/asterisk* && "$runtime" != /var/lib/asterisk* ]] || { echo 'Runtime compartido/invalido; no se modifica' >&2; exit 2; }
 [[ "$(realpath -m "$runtime/modules/asterisk")" == "$runtime/modules/asterisk" ]] || { echo 'Runtime con enlace no permitido' >&2; exit 2; }
-for file in pjsip-zynervoxv2.conf extensions-zynervoxv2.conf; do [[ ! -L "$runtime/modules/asterisk/$file" ]] || exit 2; done
+for file in pjsip-zynervoxv2.conf extensions-zynervoxv2.conf sip-zynervoxv2-annexos.conf pjsip-zynervoxv2-annexos.conf; do [[ ! -L "$runtime/modules/asterisk/$file" ]] || exit 2; done
 [[ "$(mysql -N -e "SELECT COUNT(*) FROM mysql.user WHERE User='$DB_USER' AND Host IN ('localhost','127.0.0.1')")" == 2 ]] || { echo 'Falta cuenta Core aislada existente' >&2; exit 1; }
-for file in includes/Carriers.php includes/IsolatedGate.php modules/admin/carriers.php; do
+for file in includes/Carriers.php includes/Phones.php includes/IsolatedGate.php modules/admin/carriers.php modules/admin/phones.php; do
   [[ -f "$ROOT/app/web/$file" ]] || exit 1
   [[ "$(realpath -m "$WEB_ROOT/$file")" == "$(realpath "$WEB_ROOT")/$file" ]] || { echo 'Destino web con enlace no permitido' >&2; exit 2; }
 done
@@ -45,12 +45,12 @@ for host in localhost 127.0.0.1; do
   mysql -e "GRANT SELECT,INSERT,UPDATE,DELETE ON zynervox_core.v2_carriers TO '$DB_USER'@'$host';"
 done
 install -d -o root -g "$WEB_GROUP" -m 0770 "$runtime/modules/asterisk"
-for file in includes/Carriers.php includes/IsolatedGate.php modules/admin/carriers.php; do
+for file in includes/Carriers.php includes/Phones.php includes/IsolatedGate.php modules/admin/carriers.php modules/admin/phones.php; do
   rsync -rt --itemize-changes "$ROOT/app/web/$file" "$WEB_ROOT/$file"
   chown root:"$WEB_GROUP" "$WEB_ROOT/$file"
   chmod 0640 "$WEB_ROOT/$file"
 done
-for file in pjsip-zynervoxv2.conf extensions-zynervoxv2.conf; do
+for file in pjsip-zynervoxv2.conf extensions-zynervoxv2.conf sip-zynervoxv2-annexos.conf pjsip-zynervoxv2-annexos.conf; do
   [[ ! -L "$runtime/modules/asterisk/$file" ]] || exit 2
   if [[ ! -e "$runtime/modules/asterisk/$file" ]]; then
     install -o root -g "$WEB_GROUP" -m 0640 /dev/null "$runtime/modules/asterisk/$file"
