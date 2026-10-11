@@ -19,7 +19,7 @@ if (getenv('DIALER_HTTP_AUDIO_FIXTURE')==='1') {
       (900000001,1,1,'lab','000000','2026-10-01 12:00:00','2026-10-01 12:01:00','/var/spool/asterisk/monitor/zynervoxv2/dialer/call-900000001.wav'),
       (900000002,1,1,'lab','000001','2026-10-01 12:00:00','2026-10-01 12:01:00','/etc/passwd')");
 }
-if (in_array($_GET['page'] ?? '',['campaigns','list'],true)) {
+if (in_array($_GET['page'] ?? '',['campaign','campaigns','list'],true)) {
     $ddl=$db->query('SHOW CREATE TABLE v2_dialer_lists')->fetch(PDO::FETCH_NUM)[1];
     $ddl=preg_replace('/^CREATE TABLE /','CREATE TEMPORARY TABLE ',$ddl);
     $ddl=preg_replace('/^  CONSTRAINT .* FOREIGN KEY .*\n/m','',$ddl);

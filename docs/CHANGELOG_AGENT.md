@@ -2065,3 +2065,23 @@ confirmaciones completas en las siete campañas existentes. Prueba real con
 campaña propia sintética #54 STOPPED e historial cerrado: eliminación completa,
 dialplan retirado y reload PBX PASS. Todas las campañas anteriores conservadas;
 sesión temporal revocada. Backup dialer-delete-fix-20261011-145604.
+
+## 2026-10-11 — Pestañas de configuración de campaña
+
+Módulo dialer: las cuatro tarjetas de dialer_campaign_edit.php se organizan en
+Configuración, Listas, Disposiciones y Agentes asignados. Un panel visible,
+contador de elementos, enlaces GET con tab validado y mejora JS sin recarga.
+Conserva valores sin guardar al cambiar de pestaña y selección al recargar.
+POST selecciona pestaña de la acción, también en errores; datos de la campaña
+se consultan separadamente para que un error no oculte todas las tarjetas.
+Accesibilidad tab/tabpanel/aria-selected, foco y flechas/Home/End. Diseño móvil
+con pestañas en dos columnas. Sin cambios del motor, DB ni contratos.
+
+PASS HTTP temporal: cuatro paneles exclusivos, fallback de tab inválido,
+crear lista/disposición conserva pestaña y CSRF inválido mantiene Agentes.
+Fixture de listas temporal también para página campaign, evitando escribir
+listas operativas en estas pruebas. Navegador real at.zynervox.site a 1440×1000
+y 390×844: cuatro pestañas, 24 campos, un panel visible, navegación de teclado,
+texto sin guardar intacto durante cambios, recarga mantiene selección y sin
+desbordamiento móvil. Backup dialer-campaign-ui-20261011-150939; lint/comparación
+fuente-runtime y sesiones propias revocadas. No se enviaron formularios reales.

@@ -12,6 +12,14 @@ function h($v) { return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8'); }
 $campaignId = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 $msg = '';
 $error = '';
+$tabs=['configuration'=>'Configuración','lists'=>'Listas','dispositions'=>'Disposiciones','agents'=>'Agentes asignados'];
+$requestedTab=$_GET['tab'] ?? 'configuration';
+$activeTab=is_string($requestedTab) && isset($tabs[$requestedTab]) ? $requestedTab : 'configuration';
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET')==='POST') {
+    $actionTabs=['start_engine'=>'configuration','stop_engine'=>'configuration','update_campaign'=>'configuration','create_list'=>'lists','create_disposition'=>'dispositions','delete_disposition'=>'dispositions','set_agents'=>'agents'];
+    $postedAction=$_POST['action'] ?? '';
+    if (is_string($postedAction) && isset($actionTabs[$postedAction])) $activeTab=$actionTabs[$postedAction];
+}
 
 try {
     if (!$campaignId) throw new RuntimeException('ID de campaña inválido.');
@@ -52,14 +60,22 @@ try {
         }
     }
 
-    $campaign = Dialer::campaign($campaignId);
-    $lists = Dialer::lists($campaignId);
-    $dispositions = Dialer::dispositions($campaignId);
-    $availableAgents = Dialer::availableAgents();
-    $assignedAgents = Dialer::agentsForCampaign($campaignId);
 } catch (Throwable $e) {
     http_response_code($campaignId ? 404 : 400);
     $error = $e->getMessage();
+}
+if ($campaignId) {
+    try {
+        $campaign = Dialer::campaign($campaignId);
+        $lists = Dialer::lists($campaignId);
+        $dispositions = Dialer::dispositions($campaignId);
+        $availableAgents = Dialer::availableAgents();
+        $assignedAgents = Dialer::agentsForCampaign($campaignId);
+    } catch (Throwable $e) {
+        unset($campaign);
+        http_response_code(404);
+        $error = $error ?: $e->getMessage();
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -77,6 +93,13 @@ try {
         .campaign-page .top-bar a{font-size:13px!important}
         .campaign-page .dialer-card{padding:24px;margin-bottom:20px;border-radius:10px;min-width:0}
         .campaign-page .dialer-card>h2{font-size:18px;margin-bottom:16px}
+        .campaign-tabs{display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--border);margin:0 0 20px}
+        .campaign-tabs a{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:3px solid transparent;color:var(--text-muted);text-decoration:none;font-size:14px;font-weight:600;border-radius:6px 6px 0 0}
+        .campaign-tabs a:hover{background:#fff8f0;color:var(--text)}
+        .campaign-tabs a[aria-selected=true]{color:#b45309;border-bottom-color:var(--primary);background:#fff}
+        .campaign-tabs .tab-count{font-size:11px;padding:1px 6px;border-radius:10px;background:#eee;color:var(--text-muted)}
+        .campaign-page [role=tabpanel][hidden]{display:none}
+        @media(max-width:700px){.campaign-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.campaign-tabs a{padding:10px;font-size:13px}}
         .engine-bar{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;padding-bottom:20px;border-bottom:1px solid var(--border);margin-bottom:20px}
         .engine-bar h2{font-size:18px;margin:0 0 8px}
         .engine-status{display:inline-flex;align-items:center;gap:8px;border-radius:20px;padding:4px 10px;background:#f1f3f5;color:#505969;font-size:12px;font-weight:700}
@@ -142,7 +165,12 @@ try {
         <?php if ($error !== ''): ?><p style="color:#fca5a5;margin-bottom:1rem;">❌ <?php echo h($error); ?></p><?php endif; ?>
 
         <?php if (!empty($campaign)): ?>
-        <div class="card dialer-card">
+        <nav class="campaign-tabs" role="tablist" aria-label="Secciones de la campaña">
+            <?php $tabCounts=['lists'=>count($lists),'dispositions'=>count($dispositions),'agents'=>count($assignedAgents)]; foreach ($tabs as $tab=>$label): ?>
+            <a id="tab-<?php echo h($tab); ?>" role="tab" aria-controls="panel-<?php echo h($tab); ?>" aria-selected="<?php echo $activeTab===$tab ? 'true' : 'false'; ?>" tabindex="<?php echo $activeTab===$tab ? '0' : '-1'; ?>" href="dialer_campaign_edit.php?id=<?php echo (int)$campaignId; ?>&amp;tab=<?php echo h($tab); ?>"><?php echo h($label); ?><?php if (isset($tabCounts[$tab])): ?><span class="tab-count"><?php echo (int)$tabCounts[$tab]; ?></span><?php endif; ?></a>
+            <?php endforeach; ?>
+        </nav>
+        <div class="card dialer-card" id="panel-configuration" role="tabpanel" aria-labelledby="tab-configuration" tabindex="0" <?php echo $activeTab!=='configuration' ? 'hidden' : ''; ?>>
             <div class="engine-bar">
                 <div><h2>Configuración de campaña</h2>
                     <div class="engine-meta"><span class="engine-status <?php echo $campaign['engine_state']==='RUNNING' ? 'running' : ''; ?>"><?php echo $campaign['engine_state']==='RUNNING' ? 'En marcha' : 'Detenido'; ?></span><span>Último ciclo: <?php echo h($campaign['worker_seen_at'] ?? 'sin observar'); ?></span></div>
@@ -196,7 +224,7 @@ try {
             </form>
         </div>
 
-        <div class="card dialer-card">
+        <div class="card dialer-card" id="panel-lists" role="tabpanel" aria-labelledby="tab-lists" tabindex="0" <?php echo $activeTab!=='lists' ? 'hidden' : ''; ?>>
             <h2>Listas</h2>
             <div class="table-scroll"><table class="dialer-table">
                 <thead><tr><th>ID</th><th>Nombre</th><th>Leads</th><th>Activa</th><th></th></tr></thead>
@@ -221,7 +249,7 @@ try {
             </form>
         </div>
 
-        <div class="card dialer-card">
+        <div class="card dialer-card" id="panel-dispositions" role="tabpanel" aria-labelledby="tab-dispositions" tabindex="0" <?php echo $activeTab!=='dispositions' ? 'hidden' : ''; ?>>
             <h2>Disposiciones</h2>
             <div class="table-scroll"><table class="dialer-table">
                 <thead><tr><th>Código</th><th>Etiqueta</th><th>Contacto</th><th>Venta</th><th>Reintenta</th><th>Espera (min)</th><th></th></tr></thead>
@@ -260,7 +288,7 @@ try {
             </form>
         </div>
 
-        <div class="card dialer-card">
+        <div class="card dialer-card" id="panel-agents" role="tabpanel" aria-labelledby="tab-agents" tabindex="0" <?php echo $activeTab!=='agents' ? 'hidden' : ''; ?>>
             <h2>Agentes asignados</h2>
             <p class="section-help">Un agente puede estar asignado a varias campañas a la vez.</p>
             <form method="POST">
@@ -280,5 +308,31 @@ try {
         </div>
         <?php endif; ?>
     </main>
+    <script>
+    const campaignTabs=Array.from(document.querySelectorAll('.campaign-tabs [role="tab"]'));
+    function selectCampaignTab(tab) {
+        for (const item of campaignTabs) {
+            const selected=item===tab;
+            item.setAttribute('aria-selected',String(selected)); item.tabIndex=selected ? 0 : -1;
+            document.getElementById(item.getAttribute('aria-controls')).hidden=!selected;
+        }
+        history.replaceState(null,'',tab.href);
+    }
+    campaignTabs.forEach((tab,index)=>{
+        tab.addEventListener('click',event=>{
+            if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            event.preventDefault(); selectCampaignTab(tab);
+        });
+        tab.addEventListener('keydown',event=>{
+            let next;
+            if (event.key==='ArrowRight') next=(index+1)%campaignTabs.length;
+            else if (event.key==='ArrowLeft') next=(index-1+campaignTabs.length)%campaignTabs.length;
+            else if (event.key==='Home') next=0;
+            else if (event.key==='End') next=campaignTabs.length-1;
+            else return;
+            event.preventDefault(); campaignTabs[next].focus(); selectCampaignTab(campaignTabs[next]);
+        });
+    });
+    </script>
 </body>
 </html>

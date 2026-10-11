@@ -102,3 +102,12 @@ Prueba PBX real sin llamadas: `DIALER_LAB_CONFIRM=OWN_DELETE_FIXTURE php
 sin canales y troncal de laboratorio DIALER_TEN_SIP inactiva/loopback. Crea y
 elimina solo su campaña nueva STOPPED con historia sintética, verifica retiro
 del dialplan y conservación de campañas existentes. No borra campañas previas.
+
+## Pestañas de campaña
+
+Configurar organiza las tarjetas en Configuración, Listas, Disposiciones y
+Agentes asignados. El parámetro tab permite abrir una sección directamente
+(configuration/lists/dispositions/agents); la acción POST conserva su sección,
+incluso si falla. Cambiar pestañas no envía formularios ni pierde lo escrito.
+Teclado: flechas izquierda/derecha, Home/End y Tab para entrar al contenido.
+Los enlaces también funcionan sin JavaScript.

@@ -62,6 +62,33 @@ status, body=post({'action':'stop_engine','csrf_token':'private_http_fixture_tok
 assert status==200 and 'Detenido' in body and 'Nuevas llamadas detenidas' in body
 print('PASS: HTTP report render, admin/supervisor/GTR, anonymous and agent rejection, missing campaign and invalid dates.')
 print('PASS: campaign/agent panels, authenticated JSON polling, admin-only engine control and CSRF rejection.')
+from html.parser import HTMLParser
+class TabState(HTMLParser):
+    def __init__(self,body):
+        super().__init__(); self.selected=[]; self.visible=[]; self.tabs=0; self.feed(body)
+    def handle_starttag(self,tag,attrs):
+        attrs=dict(attrs)
+        if attrs.get('role')=='tab':
+            self.tabs+=1
+            if attrs.get('aria-selected')=='true': self.selected.append(attrs.get('aria-controls'))
+        if attrs.get('role')=='tabpanel' and 'hidden' not in attrs: self.visible.append(attrs.get('id'))
+def check_tab(body,tab):
+    state=TabState(body)
+    assert state.tabs==4 and state.selected==state.visible==['panel-'+tab], (state.selected,state.visible)
+for tab in ['configuration','lists','dispositions','agents','invalid']:
+    status,_,body=get('?role=9&page=campaign&tab='+tab)
+    assert status==200
+    check_tab(body,tab if tab!='invalid' else 'configuration')
+status,body=post({'action':'create_list','list_name':'Temporary tab test','csrf_token':'private_http_fixture_token'})
+assert status==200 and 'Lista creada' in body
+check_tab(body,'lists')
+status,body=post({'action':'create_disposition','code':'TAB','label':'Temporary tab test','csrf_token':'private_http_fixture_token'})
+assert status==200 and 'Disposición agregada' in body
+check_tab(body,'dispositions')
+status,body=post({'action':'set_agents','csrf_token':'invalid'})
+assert status!=200 and 'Sesión inválida' in body
+check_tab(body,'agents')
+print('PASS: four exclusive tabs, invalid-tab fallback and POST success/error preserve the relevant tab; temporary fixtures only.')
 assert '>Cargar base</button>' in get('?role=9&page=list')[2]
 assert get('?role=1&page=campaigns')[0]==302
 status,body=post({'delete':'1','campaign_id':'1','csrf_token':'invalid','confirm_delete':'1'},'campaigns')
