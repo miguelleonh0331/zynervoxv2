@@ -1,5 +1,15 @@
 # Contrato: core
 
+## 2026-10-11 — Salida SIP para motor humano (ARCHITECT_AGENT)
+
+`Dialplans::outboundRoute(id)` devuelve dialplan_id, name, dial_prefix,
+protocol=SIP, endpoint y outbound_prefix de una ruta activa simple. Rechaza
+callbacks v2dialer_campaign_, destinos dinámicos, múltiples Dial, sustitución
+ambigua y aplicaciones no reconocidas. Extrae únicamente endpoint y prefijo;
+el consumidor no ejecuta los hooks IVR presentes en la ruta original.
+`sipRoute(row)` publica la misma validación sin consultar la base.
+La propiedad y edición del dialplan siguen siendo del core.
+
 ## Carriers aislado
 
 Carriers usa getCoreInstance exclusivamente en zynervox_core, tabla v2_carriers.

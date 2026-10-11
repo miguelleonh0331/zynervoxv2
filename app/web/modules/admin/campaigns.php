@@ -1,10 +1,8 @@
 <?php
 require_once __DIR__ . '/../../includes/Auth.php';
 require_once __DIR__ . '/../../includes/Dialer.php';
-require_once __DIR__ . '/../../includes/Carriers.php';
 use Includes\Auth;
 use Includes\Dialer;
-use Includes\Carriers;
 
 Auth::checkAccess([7, 8, 9]);
 if (empty($_SESSION['dialer_csrf'])) $_SESSION['dialer_csrf'] = bin2hex(random_bytes(32));
@@ -18,7 +16,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     } else {
         try {
             if (isset($_POST['create'])) {
-                $id = Dialer::createCampaign((string) ($_POST['name'] ?? ''), (string) ($_POST['carrier_id'] ?? ''), isset($_POST['active']));
+                $selected=filter_var($_POST['selected_dialplan_id'] ?? null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+                if (!$selected) throw new RuntimeException('Selecciona un dialplan de salida.');
+                $id = Dialer::createCampaignFromDialplan((string) ($_POST['name'] ?? ''), $selected, isset($_POST['active']));
                 $msg = "Campaña #$id creada.";
             } elseif (isset($_POST['toggle'])) {
                 Dialer::toggleActive((int) ($_POST['campaign_id'] ?? 0), (string) ($_POST['current_active'] ?? '0'));
@@ -36,10 +36,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
 try {
     $campaigns = Dialer::campaigns();
-    $carriers = Carriers::getAll();
+    $dialplans = Dialer::availableDialplans();
+    $dialplanNames=array_column($dialplans,'name','dialplan_id');
 } catch (Throwable $e) {
     $campaigns = [];
-    $carriers = [];
+    $dialplans = []; $dialplanNames=[];
     $error = $error ?: $e->getMessage();
 }
 ?>
@@ -74,7 +75,7 @@ try {
                 <h2>Listado de campañas</h2>
                 <table class="table-compact">
                     <thead>
-                        <tr><th>ID</th><th>Nombre</th><th>Estado</th><th>Troncal</th><th>Listas</th><th>Agentes</th><th>Acciones</th></tr>
+                        <tr><th>ID</th><th>Nombre</th><th>Estado</th><th>Dialplan</th><th>Listas</th><th>Agentes</th><th>Acciones</th></tr>
                     </thead>
                     <tbody>
                         <?php foreach ($campaigns as $c): ?>
@@ -82,7 +83,7 @@ try {
                             <td><strong><?php echo (int) $c['campaign_id']; ?></strong></td>
                             <td><?php echo htmlspecialchars($c['name']); ?></td>
                             <td><span style="color: <?php echo $c['active'] ? '#10b981' : '#ef4444'; ?>; font-weight: 600;"><?php echo $c['active'] ? 'Activa' : 'Inactiva'; ?></span></td>
-                            <td><?php echo htmlspecialchars($c['carrier_id']); ?></td>
+                            <td><?php echo htmlspecialchars($dialplanNames[$c['selected_dialplan_id'] ?? 0] ?? (empty($c['selected_dialplan_id']) ? 'Sin asignar' : 'No disponible')); ?></td>
                             <td><?php echo (int) $c['lists_count']; ?></td>
                             <td><?php echo (int) $c['agents_count']; ?></td>
                             <td style="white-space: nowrap;">
@@ -117,13 +118,15 @@ try {
                         <input type="text" name="name" required maxlength="120">
                     </div>
                     <div class="field">
-                        <label>Troncal</label>
-                        <select name="carrier_id" required>
+                        <label for="new-campaign-dialplan">Dialplan de salida</label>
+                        <select id="new-campaign-dialplan" name="selected_dialplan_id" required>
                             <option value="">Seleccione...</option>
-                            <?php foreach ($carriers as $carrier): ?>
-                                <option value="<?php echo htmlspecialchars($carrier['carrier_id']); ?>"><?php echo htmlspecialchars($carrier['carrier_id'] . ' — ' . $carrier['carrier_name']); ?></option>
+                            <?php foreach ($dialplans as $dialplan): ?>
+                                <option value="<?php echo (int)$dialplan['dialplan_id']; ?>"><?php echo htmlspecialchars($dialplan['name'] . ' — ' . $dialplan['dial_prefix']); ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <p style="font-size:12px;margin-top:8px">La troncal y el prefijo de salida se toman del dialplan. <a href="dialplan.php">Administrar dialplans</a></p>
+                        <?php if (!$dialplans): ?><p role="alert">No hay dialplans activos con una salida SIP compatible.</p><?php endif; ?>
                     </div>
                     <label style="display:flex;align-items:center;gap:6px;margin:10px 0;"><input type="checkbox" name="active" value="1" checked style="width:auto;margin:0"> Activa</label>
                     <button type="submit" name="create" class="btn-primary" style="width: 100%; padding: 0.6rem;">Crear campaña</button>

@@ -7,7 +7,7 @@ audio_fixture=/var/spool/asterisk/monitor/zynervoxv2/dialer/call-900000001.wav
 cp /mnt/zynervoxv2-fuente/src/features/dialer/tests/fixtures/lab-message.wav "$audio_fixture"
 trap 'if [[ -n "$server_pid" ]]; then kill "$server_pid" 2>/dev/null || true; fi; rm -f -- "$audio_fixture"; rm -rf -- "$stage"' EXIT
 mkdir -p "$stage/includes" "$stage/config" "$stage/modules/admin" "$stage/modules/sup" "$stage/sessions"
-for file in Dialer.php Database.php Audit.php Phones.php PbxAmi.php Auth.php ServerInfo.php Carriers.php DialplanOrigins.php; do
+for file in Dialer.php Database.php Audit.php Phones.php PbxAmi.php Auth.php ServerInfo.php Carriers.php DialplanOrigins.php Dialplans.php; do
   cp "/mnt/zynervoxv2-fuente/app/web/includes/$file" "$stage/includes/$file"
 done
 for file in dialer_report.php dialer_recordings.php dialer_campaign_edit.php dialer_list_leads.php campaigns.php dialer_agent.php sidebar.php; do

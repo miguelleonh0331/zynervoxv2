@@ -1,5 +1,20 @@
 # Contrato: dialer (motor de marcación con agentes)
 
+## 2026-10-11 — Selección de salida existente (ARCHITECT_AGENT)
+
+Migración 012 permite carrier_id NULL y añade selected_dialplan_id nullable.
+`createCampaignFromDialplan(name,id,active)` y `availableDialplans()` consumen
+la API pública Dialplans::outboundRoute; la UI elige una salida SIP existente.
+selected_dialplan_id es compartido y distinto de dialplan_id, callback propio
+posanswer. El prefijo interno se asigna automáticamente sin reutilizar el
+prefijo público. Eliminar campaña conserva su salida compartida.
+Las campañas legacy sin selección mantienen la resolución pública de Carriers.
+Cambiar salida exige STOPPED y ninguna llamada abierta bajo lock de campaña.
+Iniciar valida que la ruta esté activa y sea compatible. Originate usa solo
+endpoint/prefijo de salida, preservando AMD, Queue y grabación propios.
+La reserva rechaza un snapshot de ruta/configuración obsoleto bajo el mismo
+lock, sin consumir intentos, antes de originar con esa configuración.
+
 ## Alcance y arquitectura (2026-10-11)
 
 Motor de marcación saliente **con agentes humanos**, separado de `bot_ivr` (que es

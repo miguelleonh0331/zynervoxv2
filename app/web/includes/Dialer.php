@@ -116,6 +116,43 @@ class Dialer {
         return 'v2dialer_' . $campaignId;
     }
 
+    public static function availableDialplans(): array {
+        require_once __DIR__.'/Dialplans.php';
+        $routes=[];
+        foreach (\Includes\Dialplans::origins() as $row) {
+            if (strpos($row['name'],'v2dialer_campaign_')===0) continue;
+            try { $routes[]=\Includes\Dialplans::outboundRoute((int)$row['dialplan_id']); }
+            catch (\InvalidArgumentException $error) { /* Not a SIP outbound route supported by this engine. */ }
+        }
+        return $routes;
+    }
+
+    public static function createCampaignFromDialplan(string $name, int $dialplanId, bool $active): int {
+        require_once __DIR__.'/Dialplans.php';
+        $name=self::campaignName($name);
+        \Includes\Dialplans::outboundRoute($dialplanId);
+        $db=self::database(); $db->beginTransaction();
+        try {
+            $db->prepare('INSERT INTO v2_dialer_campaigns (name,active,carrier_id,queue_name,selected_dialplan_id,outbound_prefix) VALUES (?,?,NULL,"",?,"")')->execute([$name,(int)$active,$dialplanId]);
+            $id=(int)$db->lastInsertId();
+            $db->prepare('UPDATE v2_dialer_campaigns SET queue_name=?,dial_prefix=? WHERE campaign_id=?')->execute([self::queueName($id),self::callbackPrefix($id),$id]);
+            $db->commit();
+        } catch (\Throwable $error) { if ($db->inTransaction()) $db->rollBack(); throw $error; }
+        self::audit('CAMPAIGN_CREATE',(string)$id);
+        self::syncDialplan($id); self::syncQueues();
+        return $id;
+    }
+
+    private static function callbackPrefix(int $id): string {
+        require_once __DIR__.'/Dialplans.php';
+        $used=array_column(\Includes\Dialplans::getAll(),'dial_prefix');
+        for ($suffix=0;$suffix<100;$suffix++) {
+            $prefix='7978'.str_pad((string)$id,8,'0',STR_PAD_LEFT).str_pad((string)$suffix,2,'0',STR_PAD_LEFT);
+            if (!in_array($prefix,$used,true)) return $prefix;
+        }
+        throw new \RuntimeException('No se pudo asignar la ruta interna del marcador.');
+    }
+
     public static function createCampaign(string $name, string $carrierId, bool $active): int {
         $name = self::campaignName($name);
         $carrierId = trim($carrierId);
@@ -140,12 +177,13 @@ class Dialer {
     }
 
     public static function updateCampaign(int $id, array $input): void {
-        self::campaign($id);
+        $current=self::campaign($id);
         $name = self::campaignName((string) ($input['name'] ?? ''));
         $active = (string) ($input['active'] ?? '') === '1' ? 1 : 0;
         $values = ['name' => $name, 'active' => $active];
         if (!$active) $values['engine_state'] = 'STOPPED';
         foreach (self::CAMPAIGN_FIELDS as $key => $field) {
+            if (in_array($key,['dial_prefix','outbound_prefix'],true) && !array_key_exists($key,$input)) { $values[$key]=$current[$key]; continue; }
             $values[$key] = self::fieldValue($key, $input[$key] ?? '');
         }
         foreach (['drop' => 'drop_action', 'amd' => 'amd_action_machine'] as $kind => $action) {
@@ -157,7 +195,30 @@ class Dialer {
             $assignments[] = $key . '=:' . $key;
             $bindings[':' . $key] = $value;
         }
-        self::database()->prepare('UPDATE v2_dialer_campaigns SET ' . implode(',', $assignments) . ' WHERE campaign_id=:id')->execute($bindings);
+        $db=self::database(); $db->beginTransaction();
+        try {
+            $lock=$db->prepare('SELECT * FROM v2_dialer_campaigns WHERE campaign_id=? FOR UPDATE'); $lock->execute([$id]); $current=$lock->fetch(PDO::FETCH_ASSOC);
+            if (!$current) throw new \RuntimeException('Campaña inexistente.');
+            if (array_key_exists('selected_dialplan_id',$input)) {
+                $selected=filter_var($input['selected_dialplan_id'],FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+                if (!$selected) throw new \RuntimeException('Selecciona un dialplan de salida.');
+                require_once __DIR__.'/Dialplans.php';
+                \Includes\Dialplans::outboundRoute($selected);
+                if ($selected!==(int)($current['selected_dialplan_id'] ?? 0)) {
+                    if ($current['engine_state']!=='STOPPED' || self::inFlightCount($id)>0) throw new \RuntimeException('Detén el motor y espera a que terminen las llamadas antes de cambiar el dialplan.');
+                    $assignments[]='selected_dialplan_id=:selected'; $bindings[':selected']=$selected;
+                    $assignments[]='carrier_id=NULL';
+                    // Convert an unassigned legacy campaign without reusing its public prefix.
+                    if (empty($current['selected_dialplan_id']) && $current['dialplan_id']===null) $bindings[':dial_prefix']=self::callbackPrefix($id);
+                    $bindings[':outbound_prefix']='';
+                }
+            }
+            if (!empty($current['selected_dialplan_id'])) {
+                $bindings[':dial_prefix']=$current['dial_prefix']; $bindings[':outbound_prefix']='';
+            }
+            $db->prepare('UPDATE v2_dialer_campaigns SET ' . implode(',', $assignments) . ' WHERE campaign_id=:id')->execute($bindings);
+            $db->commit();
+        } catch (\Throwable $error) { if ($db->inTransaction()) $db->rollBack(); throw $error; }
         self::audit('CAMPAIGN_UPDATE', (string) $id);
         self::syncDialplan($id);
         self::syncQueues();
@@ -458,7 +519,7 @@ class Dialer {
     // null si no hay leads elegibles. Un solo proceso a la vez por
     // campaign_id (el CLI que llama a esto se invoca manualmente por ahora,
     // sin cron ni servicio).
-    public static function claimLead(int $campaignId, string $dialPrefix, ?int $capacity = null, ?string $reservedAgent = null, bool $requireRunning = false): ?array {
+    public static function claimLead(int $campaignId, string $dialPrefix, ?int $capacity = null, ?string $reservedAgent = null, bool $requireRunning = false, ?array $expectedCampaign = null): ?array {
         $db = self::database();
         $db->beginTransaction();
         try {
@@ -467,6 +528,12 @@ class Dialer {
             $campaign = $lock->fetch(PDO::FETCH_ASSOC);
             if (!$campaign || !$campaign['active']) { $db->commit(); return null; }
             if ($requireRunning && $campaign['engine_state'] !== 'RUNNING') { $db->commit(); return null; }
+            // Reject a route changed after the worker read it, before spending an attempt.
+            if ($expectedCampaign !== null) {
+                foreach (['selected_dialplan_id','dialplan_id','carrier_id','dial_prefix','outbound_prefix','dial_method','caller_id_number','dial_timeout_seconds'] as $field) {
+                    if (($campaign[$field] ?? null) !== ($expectedCampaign[$field] ?? null)) { $db->commit(); return null; }
+                }
+            }
             if ($reservedAgent !== null && self::agentHasWork($reservedAgent)) { $db->commit(); return null; }
             $cap = min((int) $campaign['max_concurrent_calls'], $capacity ?? (int) $campaign['max_concurrent_calls']);
             if (self::inFlightCount($campaignId) >= $cap) { $db->commit(); return null; }
@@ -547,13 +614,28 @@ class Dialer {
         foreach (['drop'=>'drop_action','amd'=>'amd_action_machine'] as $kind=>$action) {
             if (($campaign[$action] ?? '')==='MESSAGE') self::messageAudio((string)($campaign[$kind.'_message'] ?? ''));
         }
-        $endpoint = self::carrierEndpoint($carrier);
+        $endpoint = $carrier['endpoint'] ?? self::carrierEndpoint($carrier);
+        if (!preg_match('/^[A-Za-z0-9_-]{1,60}$/D',$endpoint)) throw new \RuntimeException('Endpoint de salida inválido.');
         $number = $campaign['outbound_prefix'] === '' ? $lead['phone_number'] : $campaign['outbound_prefix'] . ltrim($lead['phone_number'], '+');
         $channel = $carrier['protocol'] === 'SIP' ? 'SIP/' . $endpoint . '/' . $number : 'PJSIP/' . $number . '@' . $endpoint;
         return ['Channel' => $channel, 'Context' => 'zynervoxv2', 'Exten' => $campaign['dial_prefix'] . ltrim($lead['phone_number'], '+'),
             'Priority' => '1', 'Timeout' => (string) ((int) $campaign['dial_timeout_seconds'] * 1000),
             'CallerID' => $campaign['caller_id_number'], 'Async' => 'true', 'ChannelId' => 'zv2dialer-' . (int) $lead['call_id'],
             'Variable' => '__ZV2_DIALER_CALL_ID=' . (int) $lead['call_id']];
+    }
+
+    private static function routedFields(array $campaign, array $lead): array {
+        if (empty($campaign['selected_dialplan_id'])) {
+            require_once __DIR__.'/Carriers.php';
+            $carrier=\Includes\Carriers::getById($campaign['carrier_id']);
+            if (!$carrier) throw new \RuntimeException('Selecciona un dialplan de salida.');
+            return self::originateFields($campaign,$lead,$carrier);
+        }
+        require_once __DIR__.'/Dialplans.php';
+        $route=\Includes\Dialplans::outboundRoute((int)$campaign['selected_dialplan_id']);
+        // Reuse callback validation; the endpoint and prefix come solely from the selected dialplan.
+        $campaign['outbound_prefix']=$route['outbound_prefix'];
+        return self::originateFields($campaign,$lead,['active'=>'Y','protocol'=>$route['protocol'],'endpoint'=>$route['endpoint']]);
     }
 
     public static function originateNext(int $campaignId, ?string $agentUser = null): ?int {
@@ -564,11 +646,8 @@ class Dialer {
         if ($agentUser !== null && $campaign['dial_method'] !== 'MANUAL') throw new \RuntimeException('La marcación individual requiere modo MANUAL.');
         if ($agentUser !== null) self::reconcileUnanswered($campaignId);
         if ($agentUser === null && $campaign['dial_method'] === 'MANUAL') return null;
-        require_once __DIR__ . '/Carriers.php';
-        $carrier = \Includes\Carriers::getById($campaign['carrier_id']);
-        if (!$carrier) throw new \RuntimeException('Troncal inexistente.');
         // Validar antes de reservar, sin registrar ni mostrar credenciales.
-        self::originateFields($campaign, ['call_id' => 1, 'phone_number' => '0'], $carrier);
+        self::routedFields($campaign, ['call_id' => 1, 'phone_number' => '0']);
         if (!is_dir(self::RECORDING_DIRECTORY) || !is_writable(self::RECORDING_DIRECTORY)) throw new \RuntimeException('Directorio de grabación no disponible.');
         $agents = self::availableAgentsCount($campaignId, 'WAITING');
         // No originar sin al menos un dispositivo disponible, incluso MANUAL.
@@ -584,11 +663,11 @@ class Dialer {
             if ($reservedAgent === null) return null;
         }
         $capacity = $reservedAgent !== null ? (int) $campaign['max_concurrent_calls'] : (int) floor($count * $level);
-        $lead = self::claimLead($campaignId, $campaign['dial_prefix'], $capacity, $reservedAgent, true);
+        $lead = self::claimLead($campaignId, $campaign['dial_prefix'], $capacity, $reservedAgent, true, $campaign);
         if ($lead === null) return null;
         try {
             if ($reservedAgent !== null) self::suspendReservedAgent($reservedAgent);
-            \Includes\PbxAmi::rawAction(\Includes\PbxAmi::load(), 'Originate', self::originateFields($campaign, $lead, $carrier));
+            \Includes\PbxAmi::rawAction(\Includes\PbxAmi::load(), 'Originate', self::routedFields($campaign, $lead));
         } catch (\Throwable $error) {
             // Una respuesta AMI perdida puede haber originado: el reconciliador
             // conserva el cupo hasta confirmar ausencia. No liberar a ciegas.
@@ -1042,15 +1121,17 @@ class Dialer {
 
     public static function setEngineState(int $campaignId, string $state): void {
         if (!in_array($state, ['RUNNING','STOPPED'], true)) throw new \InvalidArgumentException('Estado del motor invalido.');
-        $campaign = self::campaign($campaignId);
-        if ($state === 'RUNNING') {
-            if (!$campaign['active'] || !$campaign['dial_prefix']) throw new \RuntimeException('Activa y configura la campaña antes de iniciar.');
-            require_once __DIR__ . '/Carriers.php';
-            $carrier = \Includes\Carriers::getById($campaign['carrier_id']);
-            if (!$carrier) throw new \RuntimeException('Troncal inexistente.');
-            self::originateFields($campaign, ['call_id'=>1,'phone_number'=>'0'], $carrier);
-        }
-        self::database()->prepare('UPDATE v2_dialer_campaigns SET engine_state=:s,worker_error=NULL WHERE campaign_id=:c')->execute(['s'=>$state,'c'=>$campaignId]);
+        $db=self::database(); $db->beginTransaction();
+        try {
+            $lock=$db->prepare('SELECT * FROM v2_dialer_campaigns WHERE campaign_id=? FOR UPDATE'); $lock->execute([$campaignId]); $campaign=$lock->fetch(PDO::FETCH_ASSOC);
+            if (!$campaign) throw new \RuntimeException('Campaña inexistente.');
+            if ($state === 'RUNNING') {
+                if (!$campaign['active'] || !$campaign['dial_prefix']) throw new \RuntimeException('Activa y configura la campaña antes de iniciar.');
+                self::routedFields($campaign, ['call_id'=>1,'phone_number'=>'0']);
+            }
+            $db->prepare('UPDATE v2_dialer_campaigns SET engine_state=:s,worker_error=NULL WHERE campaign_id=:c')->execute(['s'=>$state,'c'=>$campaignId]);
+            $db->commit();
+        } catch (\Throwable $error) { if ($db->inTransaction()) $db->rollBack(); throw $error; }
         self::audit('ENGINE_'.$state, (string) $campaignId);
     }
 

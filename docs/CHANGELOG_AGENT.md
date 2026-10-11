@@ -2096,3 +2096,14 @@ Consulta operativa verificada: Iniciar motor habilita únicamente la campaña
 actual; claimLead reúne leads elegibles de todas sus listas activas y aplica
 orden global, horarios, intentos y DNC. PROGRESSIVE/ADAPTIVE/RATIO automáticos;
 MANUAL requiere siguiente lead desde el panel del agente.
+
+## 2026-10-11 — Selección de dialplan existente para motor humano
+
+Completada revisión del trabajo pendiente: UI elige salida SIP existente,
+callback privado automático, bloqueo de cambio RUNNING/con llamadas abiertas,
+conservación de dialplans compartidos y rechazo de snapshot obsoleto al reservar.
+API y contratos core/dialer aprobados por ARCHITECT_AGENT. Regresiones remotas
+run-routing.sh, run-engine.sh y run-reporting.sh PASS en mirmidon; routing/engine
+repetidas tras corrección de concurrencia. Fixtures TEMPORARY y runtime staging,
+sin llamadas ni modificación de campañas productivas. Migración 012, copia al
+runtime y validación web real pendientes de autorización de despliegue.

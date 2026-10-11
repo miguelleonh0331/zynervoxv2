@@ -8,8 +8,9 @@ tablas `v2_dialer_*`. Contrato: [CONTRACT.md](CONTRACT.md).
 
 1. Crear campaña desde `modules/admin/campaigns.php` y abrir Configurar.
 2. Seleccionar MANUAL, PROGRESSIVE o ADAPTIVE (predictivo). RATIO mantiene nivel fijo.
-3. Configurar troncal, Caller ID, prefijo interno único y prefijo saliente
-   explícito (vacío si la troncal no lo requiere). Cargar lista y disposiciones.
+3. Elegir un dialplan de salida SIP existente y configurar Caller ID.
+   El prefijo interno se asigna automáticamente; endpoint y prefijo saliente
+   se extraen del dialplan elegido. Cargar lista y disposiciones.
 4. Asignar agentes con anexo activo y softphone registrado. Cada agente entra
    a sus colas desde `modules/admin/dialer_agent.php`.
 5. Iniciar motor desde Configurar. En MANUAL, el agente pulsa siguiente lead;
@@ -45,6 +46,9 @@ sin handler: PBX_LOST, sin inventar duración de conversación.
 ## Pruebas y continuidad
 
 `tests/run-reporting.sh`: HTTP y SQL con tablas TEMPORARY por conexión.
+`tests/run-routing.sh`: selección SIP, prefijos, callbacks automáticos, salida
+compartida conservada y rechazo de cambios RUNNING/con llamadas abiertas o de
+reservas con configuración obsoleta. Migración 012 aplicada solo a fixtures.
 `tests/run-engine.sh`: campos de rutas SIP/PJSIP, reserva, capacidad, DNC y cierres.
 `tests/sip-lab.php` + `sip-lab-peer.py`: SIP/RTP local, tres modos, AMD,
 grabación, puente, tipificación, parada y MESSAGE. `tests/run-sip-lab.sh` prepara

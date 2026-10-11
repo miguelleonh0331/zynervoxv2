@@ -934,3 +934,13 @@ regenerar dialplan/colas por APIs públicas y recargar explícitamente. Error PB
 posterior se informa como limpieza pendiente, sin revertir ficticiamente la BD.
 Sin migraciones ni cambios a otros módulos. Pruebas con FK reales en esquema
 descartable, PBX adaptado sin conexión ni llamadas y regresión HTTP.
+
+## 2026-10-11 — Salida SIP seleccionable por campaña (ARCHITECT_AGENT)
+
+Aprobado cruce core/dialer: API pública Dialplans::outboundRoute devuelve la
+salida telefónica simple, sin ejecutar hooks IVR. selected_dialplan_id comparte
+la salida existente; dialplan_id conserva propiedad exclusiva del callback.
+Prefijo interno automático, compatibilidad legacy y cambio STOPPED sin llamadas
+abiertas. Reserva compara snapshot bajo lock para rechazar rutas obsoletas sin
+consumir intentos. No tocar bot_ivr, VICIdial, credenciales ni activar PJSIP.
+Migración 012 validada en tablas TEMPORARY; despliegue productivo pendiente.

@@ -71,6 +71,8 @@ if ($campaignId) {
         $dispositions = Dialer::dispositions($campaignId);
         $availableAgents = Dialer::availableAgents();
         $assignedAgents = Dialer::agentsForCampaign($campaignId);
+        $dialplans = Dialer::availableDialplans();
+        $dialplanNames = array_column($dialplans,'name','dialplan_id');
     } catch (Throwable $e) {
         unset($campaign);
         http_response_code(404);
@@ -182,8 +184,8 @@ if ($campaignId) {
             </form>
             </div>
             <?php if ($campaign['worker_error']): ?><p role="alert"><?php echo h($campaign['worker_error']); ?></p><?php endif; ?>
-            <?php if ($campaign['outbound_prefix'] === null): ?><p role="alert">Marcación pendiente: guarda el prefijo del número requerido por la troncal (vacío si no requiere prefijo).</p><?php endif; ?>
-            <div class="campaign-context"><span>Troncal <strong><?php echo h($campaign['carrier_id']); ?></strong></span><span>Cola <code><?php echo h($campaign['queue_name']); ?></code></span></div>
+            <?php if (empty($campaign['selected_dialplan_id'])): ?><p role="alert">Selecciona un dialplan de salida y guarda la configuración.</p><?php endif; ?>
+            <div class="campaign-context"><span>Dialplan <strong><?php echo h($dialplanNames[$campaign['selected_dialplan_id'] ?? 0] ?? 'Sin dialplan disponible'); ?></strong></span><span>Cola <code><?php echo h($campaign['queue_name']); ?></code></span></div>
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>">
                 <input type="hidden" name="action" value="update_campaign">
@@ -192,8 +194,17 @@ if ($campaignId) {
                     <input type="text" id="campaign-name" name="name" value="<?php echo h($campaign['name']); ?>" maxlength="120" required>
                 </div>
                 <label class="check-label"><input type="checkbox" name="active" value="1" <?php echo $campaign['active'] ? 'checked' : ''; ?>> Campaña activa</label></div>
+                <fieldset class="config-section"><legend>Ruta de salida</legend>
+                    <div class="field"><label for="campaign-dialplan">Dialplan de salida</label>
+                    <select id="campaign-dialplan" name="selected_dialplan_id" required>
+                        <option value="">Seleccione...</option>
+                        <?php foreach ($dialplans as $dialplan): ?><option value="<?php echo (int)$dialplan['dialplan_id']; ?>" <?php echo (int)($campaign['selected_dialplan_id'] ?? 0)===(int)$dialplan['dialplan_id'] ? 'selected' : ''; ?>><?php echo h($dialplan['name'].' — '.$dialplan['dial_prefix']); ?></option><?php endforeach; ?>
+                    </select></div>
+                    <p class="section-help">La troncal SIP y el prefijo de salida están definidos en el dialplan. Para cambiar de ruta, detén el motor y espera a que terminen las llamadas. <a href="dialplan.php">Administrar dialplans</a></p>
+                    <?php if (!$dialplans): ?><p role="alert">No hay dialplans activos con una salida SIP compatible.</p><?php endif; ?>
+                </fieldset>
                 <?php $sections = [
-                    ['Conexión y salida', 'Configura la identificación y los prefijos de la llamada.', ['dial_prefix','outbound_prefix','caller_id_number']],
+                    ['Identificación de llamada', 'Configura el identificador de la llamada.', ['caller_id_number']],
                     ['Estrategia de marcación', 'Manual: el agente solicita el siguiente lead. Progresivo: una llamada por agente libre. Predictivo: ajusta el nivel según el abandono. Ratio: nivel fijo.', ['dial_method','dial_level','level_count_mode','max_concurrent_calls','dial_timeout_seconds']],
                     ['Ajuste predictivo', 'Límites y sensibilidad del ajuste automático para el modo predictivo.', ['adaptive_target_abandon_pct','adaptive_min_level','adaptive_max_level','adaptive_step','adaptive_min_sample']],
                     ['Contestadores y abandono', 'Define qué sucede al detectar un contestador o cuando no hay un agente disponible.', ['amd_enabled','amd_action_machine','amd_message','drop_call_seconds','drop_action','drop_message']],

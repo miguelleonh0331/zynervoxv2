@@ -25,6 +25,53 @@ class Dialplans {
         return self::database()->query("SELECT dialplan_id,dial_prefix,name FROM v2_dialplans WHERE active='Y' ORDER BY name,dial_prefix")->fetchAll(\PDO::FETCH_ASSOC);
     }
 
+    // Publish only the telephone route. IVR tracking/hooks are not executed by the dialer.
+    public static function outboundRoute(int $id): array {
+        $row=self::getById($id);
+        if (!$row || $row['active']!=='Y') throw new \InvalidArgumentException('El dialplan seleccionado no existe o está inactivo.');
+        if (strpos($row['name'],'v2dialer_campaign_')===0) throw new \InvalidArgumentException('Selecciona un dialplan de salida, no un callback interno.');
+        return self::sipRoute($row);
+    }
+
+    public static function sipRoute(array $row): array {
+        $invalid='El dialplan no tiene una salida SIP simple compatible con el marcador.';
+        $body=DialplanOrigins::body((string)$row['dialplan_entry']);
+        if (preg_match('/^\s*\[/m',$body)) throw new \InvalidArgumentException($invalid);
+        $prefixes=DialplanOrigins::prefixes($body);
+        if (count($prefixes)!==1 || $prefixes[0]!==$row['dial_prefix']) throw new \InvalidArgumentException($invalid);
+        $apps=[]; $phoneSets=0; $slice=null;
+        foreach (explode("\n",$body) as $line) {
+            $line=trim($line);
+            if ($line==='' || $line[0]===';') continue;
+            if (!preg_match('/^(?:exten\s*=>\s*_'.preg_quote($row['dial_prefix'],'/').'X\.\s*,\s*1|same\s*=>\s*n(?:\(fallo\))?)\s*,\s*(.+)$/iD',$line,$match)) throw new \InvalidArgumentException($invalid);
+            $apps[]=$match[1];
+            if (preg_match('/^Set\(_{0,2}ZV2_PHONE=\$\{EXTEN:([0-9]{1,2})\}\)$/D',$match[1],$set)) { $phoneSets++; $slice=(int)$set[1]; }
+        }
+        $dials=array_values(array_filter($apps,static function($app) { return stripos($app,'Dial(')===0; }));
+        if (count($dials)!==1 || !preg_match('/^Dial\(SIP\/([A-Za-z0-9_-]{1,60})\/([0-9]{0,20})(\$\{EXTEN:([0-9]{1,2})\}|\$\{ZV2_PHONE\})(?:,([0-9]{1,3})(?:,((?:b\(zynervoxv2-outbound\^s\^1\))?(?:U\(zynervoxv2-(?:amd|bot-ivr|bot-ivr-sin-amd)\))?))?)?\)$/D',$dials[0],$dial)) throw new \InvalidArgumentException($invalid);
+        if ($dial[3]==='${ZV2_PHONE}') {
+            if ($phoneSets!==1 || $slice!==strlen($row['dial_prefix'])) throw new \InvalidArgumentException($invalid);
+        } elseif ((int)$dial[4]!==strlen($row['dial_prefix']) || $phoneSets>0) throw new \InvalidArgumentException($invalid);
+        $seenDial=false;
+        foreach ($apps as $app) {
+            if ($app===$dials[0]) { $seenDial=true; continue; }
+            if (preg_match('/^NoOp\([^\r\n]*\)$/D',$app)) continue;
+            if ($seenDial) { if ($app==='Hangup()') continue; throw new \InvalidArgumentException($invalid); }
+            if (preg_match('/^Set\(_{0,2}ZV2_PHONE=\$\{EXTEN:[0-9]{1,2}\}\)$/D',$app)) continue;
+            if (in_array($app,[
+                'ExecIf($["${ZV2_LIST_ID}" = ""]?Set(ZV2_LIST_ID=1))',
+                'Set(__ZV2_LIST_ID=${ZV2_LIST_ID})','Set(__ZV2_CALL_ID=${UNIQUEID})',
+                'Set(AGISIGHUP=no)','Set(__ZV2_LEAD_ID=${ZV2_LEAD_ID})',
+                'GotoIf($["${ZV2_TRACK_OK}" != "1"]?fallo)',
+                'Set(CHANNEL(hangup_handler_push)=zynervoxv2-call-finish,s,1)',
+                'AGI(/srv/www/htdocs/zynervoxv2/bot_ivr/call_tracking_agi.php,start,${ZV2_LIST_ID},${ZV2_PHONE},${ZV2_CALL_ID},'.$row['dial_prefix'].','.$dial[1].',${CHANNEL(linkedid)})',
+            ],true)) continue;
+            throw new \InvalidArgumentException($invalid);
+        }
+        return ['dialplan_id'=>(int)$row['dialplan_id'],'name'=>$row['name'],'dial_prefix'=>$row['dial_prefix'],
+            'protocol'=>'SIP','endpoint'=>$dial[1],'outbound_prefix'=>$dial[2]];
+    }
+
     public static function save(?int $id, string $name, string $body, string $active): array {
         $name=trim($name);
         if ($name==='' || mb_strlen($name,'UTF-8')>100 || preg_match('/[\x00-\x1f]/',$name)) throw new \InvalidArgumentException('Ingresa un nombre de hasta 100 caracteres.');
