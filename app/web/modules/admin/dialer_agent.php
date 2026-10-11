@@ -134,6 +134,7 @@ try {
             <?php endforeach; ?>
             <?php if (!$campaigns): ?><p>No tienes campañas asignadas. Pídele al administrador que te asigne una en "Configurar" → Agentes asignados.</p><?php endif; ?>
         </div>
+    <section id="lead-card" class="card" style="padding:16px;margin-top:16px" hidden><h2>Cliente de la llamada</h2><p id="lead-summary"></p><dl id="lead-variables"></dl></section>
     </main>
     <script>
     const pendingAtRender = <?php echo json_encode($pending['call_id'] ?? null); ?>;
@@ -142,6 +143,13 @@ try {
             const response = await fetch('dialer_agent.php?poll=1',{cache:'no-store'});
             if (!response.ok) return;
             const state = await response.json();
+            const lead=state.lead;
+            document.getElementById('lead-card').hidden=!lead;
+            if (lead) {
+                document.getElementById('lead-summary').textContent=[lead.campaign_name,lead.phone_number,lead.first_name,lead.status,lead.ended_at ? 'tipificación pendiente' : lead.bridged_at ? 'en conversación' : 'llamando'].join(' · ');
+                const variables=document.getElementById('lead-variables'); variables.replaceChildren();
+                for (const [key,value] of Object.entries(lead.variables)) { const label=document.createElement('dt'), content=document.createElement('dd'); label.textContent=key; content.textContent=typeof value==='object' ? JSON.stringify(value) : String(value); variables.append(label,content); }
+            }
             for (const element of document.querySelectorAll('[id^="agent-state-"]')) element.textContent='fuera de cola';
             for (const session of state.sessions) {
                 const element=document.getElementById('agent-state-'+session.campaign_id);

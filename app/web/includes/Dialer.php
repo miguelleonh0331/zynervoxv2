@@ -210,6 +210,7 @@ class Dialer {
         if (!preg_match('/^[0-9]{1,20}$/D', $prefix) || !preg_match('/^v2dialer_[0-9]+$/D', $campaign['queue_name'])) throw new \RuntimeException('Prefijo/cola inválidos.');
         $agi = 'AGI(' . self::AGI_SCRIPT . ',';
         $handler = 'zynervoxv2-dialer-close-' . (int) $campaign['campaign_id'];
+        $bridge = 'zynervoxv2-dialer-bridge-' . (int) $campaign['campaign_id'];
         $lines = [
             "exten => _{$prefix}X.,1,Answer()",
             ' same => n,Set(CHANNEL(hangup_handler_push)=' . $handler . ',s,1)',
@@ -224,7 +225,7 @@ class Dialer {
             $lines[] = ' same => n,' . $agi . 'amd,${ZV2_DIALER_CALL_ID},${AMDSTATUS})';
             $lines[] = ' same => n,GotoIf($["${AMDSTATUS}" = "MACHINE"]?maquina)';
         }
-        $lines[] = ' same => n,Queue(${ZV2_DIALER_QUEUE},c,,,' . (int) $campaign['drop_call_seconds'] . ')';
+        $lines[] = ' same => n,Queue(${ZV2_DIALER_QUEUE},c,,,' . (int) $campaign['drop_call_seconds'] . ',,,' . $bridge . ')';
         if ($campaign['drop_action'] === 'MESSAGE') {
             $audio = self::messageAudio((string) $campaign['drop_message']);
             $lines[] = ' same => n,GotoIf($["${QUEUESTATUS}" = "CONTINUE"]?invalid)';
@@ -239,6 +240,9 @@ class Dialer {
         $lines[] = '[' . $handler . ']';
         $lines[] = 'exten => s,1,StopMixMonitor()';
         $lines[] = ' same => n,' . $agi . 'closed,${ZV2_DIALER_CALL_ID},${QUEUESTATUS},${UNIQUEID})';
+        $lines[] = ' same => n,Return()';
+        $lines[] = '[' . $bridge . ']';
+        $lines[] = 'exten => s,1,' . $agi . 'bridged,${ZV2_DIALER_CALL_ID},${CHANNEL(name)})';
         $lines[] = ' same => n,Return()';
         return implode("\n", $lines) . "\n";
     }
@@ -698,14 +702,15 @@ class Dialer {
         $connection = self::connectionFromQueueLog($uniqueId);
         $db->beginTransaction();
         try {
-        $stmt = $db->prepare('SELECT lead_id,amd_result,termination_reason FROM v2_dialer_call_log WHERE call_id=:id AND ended_at IS NULL FOR UPDATE');
+        $stmt = $db->prepare('SELECT lead_id,amd_result,termination_reason,agent_user,bridged_at FROM v2_dialer_call_log WHERE call_id=:id AND ended_at IS NULL FOR UPDATE');
         $stmt->execute(['id' => $callId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) { $db->commit(); return; }
         $leadId = $row['lead_id'];
         $dropped = in_array($queueStatus, ['TIMEOUT', 'FULL', 'JOINEMPTY', 'LEAVEEMPTY', 'JOINUNAVAIL', 'LEAVEUNAVAIL'], true);
         $dropped = $dropped || !empty($connection['abandoned']);
-        $reason = $row['amd_result'] === 'MACHINE' ? 'MACHINE' : ($dropped ? 'DROPPED' : (($connection['epoch'] ?? null) !== null || $queueStatus === 'CONTINUE' ? 'COMPLETED' : 'HANGUP'));
+        $agent=$connection['agent'] ?? $row['agent_user'];
+        $reason = $row['amd_result'] === 'MACHINE' ? 'MACHINE' : ($dropped ? 'DROPPED' : (($connection['epoch'] ?? null) !== null || $row['bridged_at']!==null || $queueStatus === 'CONTINUE' ? 'COMPLETED' : 'HANGUP'));
         if ($queueStatus==='PBX_LOST' && $row['amd_result']!=='MACHINE') $reason='PBX_LOST';
         if ($row['termination_reason'] === 'RECORDING_ERROR') $reason = 'RECORDING_ERROR';
         $db->prepare('UPDATE v2_dialer_call_log SET ended_at=COALESCE(ended_at,NOW()),termination_reason=:r,agent_user=:a,agent_slot=NULL,
@@ -713,7 +718,7 @@ class Dialer {
             duration_wait=CASE WHEN bridged_at>=answered_at THEN TIMESTAMPDIFF(SECOND,answered_at,bridged_at) ELSE duration_wait END,
             duration_talk=CASE WHEN :lost=1 THEN NULL WHEN ended_at>=bridged_at THEN TIMESTAMPDIFF(SECOND,bridged_at,ended_at) ELSE duration_talk END
             WHERE call_id=:id')
-            ->execute(['r' => $reason, 'a' => $connection['agent'] ?? null, 'epoch' => $connection['epoch'] ?? null, 'id' => $callId,'lost'=>$queueStatus==='PBX_LOST' ? 1 : 0]);
+            ->execute(['r' => $reason, 'a' => $agent, 'epoch' => $connection['epoch'] ?? null, 'id' => $callId,'lost'=>$queueStatus==='PBX_LOST' ? 1 : 0]);
         if ($leadId) {
             $delay = $reason === 'MACHINE' ? 1440 : ($reason === 'COMPLETED' ? 0 : 5);
             $status = $reason === 'COMPLETED' ? 'CONTACTED' : 'NEW';
@@ -721,9 +726,9 @@ class Dialer {
                 ->execute(['s' => $status, 'd' => $delay, 'id' => $leadId]);
         }
         $db->commit();
-        if (!empty($connection['agent'])) {
-            try { self::pauseForWrapup($connection['agent']); }
-            catch (\Throwable $error) { self::audit('WRAPUP_PAUSE_ERROR', $connection['agent']); }
+        if (!empty($agent)) {
+            try { self::pauseForWrapup($agent); }
+            catch (\Throwable $error) { self::audit('WRAPUP_PAUSE_ERROR', $agent); }
         } else self::releaseReservedAgent($callId);
         } catch (\Throwable $e) { if ($db->inTransaction()) $db->rollBack(); throw $e; }
     }
@@ -1172,7 +1177,64 @@ class Dialer {
     public static function agentPanelState(string $user): array {
         $stmt=self::database()->prepare('SELECT campaign_id,state,last_seen_at FROM v2_dialer_agent_intervals WHERE agent_user=:u AND open_slot IS NOT NULL');
         $stmt->execute(['u'=>$user]);
-        return ['pending'=>self::pendingDispositionForAgent($user),'sessions'=>$stmt->fetchAll(PDO::FETCH_ASSOC)];
+        return ['pending'=>self::pendingDispositionForAgent($user),'sessions'=>$stmt->fetchAll(PDO::FETCH_ASSOC),'lead'=>self::agentCurrentLead($user)];
+    }
+
+    public static function markBridged(int $callId, string $channel): void {
+        if (!preg_match('~^(SIP|PJSIP)/([A-Za-z0-9_-]+)-[a-f0-9]+$~D',$channel,$match)) throw new \RuntimeException('Canal de agente inválido.');
+        $user=null;
+        foreach (\Includes\Phones::getAll() as $phone) if ($phone['protocol']===$match[1] && $phone['extension']===$match[2]) $user=$phone['login'];
+        if ($user===null) throw new \RuntimeException('Agente desconocido.');
+        $db=self::database(); $db->beginTransaction();
+        try {
+            $q=$db->prepare('SELECT campaign_id,reserved_agent_user,agent_user FROM v2_dialer_call_log WHERE call_id=:id AND answered_at IS NOT NULL AND ended_at IS NULL FOR UPDATE'); $q->execute(['id'=>$callId]); $call=$q->fetch(PDO::FETCH_ASSOC);
+            if (!$call || !in_array($user,self::agentsForCampaign((int)$call['campaign_id']),true) || ($call['reserved_agent_user']!==null && $call['reserved_agent_user']!==$user)) throw new \RuntimeException('Puente ajeno a la asignación.');
+            if ($call['agent_user']!==null && $call['agent_user']!==$user) throw new \RuntimeException('La identidad del puente ya está registrada.');
+            $db->prepare('UPDATE v2_dialer_call_log SET agent_user=:u,bridged_at=COALESCE(bridged_at,NOW()) WHERE call_id=:id')->execute(['u'=>$user,'id'=>$callId]);
+            $db->commit();
+        } catch (\Throwable $e) { if ($db->inTransaction()) $db->rollBack(); throw $e; }
+    }
+
+    public static function agentCurrentLead(string $user): ?array {
+        $q=self::database()->prepare("SELECT l.call_id,l.campaign_id,c.name campaign_name,l.phone_number,l.ended_at,l.bridged_at,d.first_name,d.last_name,d.custom_fields,d.status
+          FROM v2_dialer_call_log l JOIN v2_dialer_campaigns c ON c.campaign_id=l.campaign_id JOIN v2_dialer_leads d ON d.lead_id=l.lead_id
+          WHERE (l.ended_at IS NULL AND (l.agent_user=:u OR l.reserved_agent_user=:reserved)) OR (l.ended_at IS NOT NULL AND l.agent_user=:closed AND l.disposition_code IS NULL)
+          ORDER BY (l.ended_at IS NULL) DESC,l.call_id DESC LIMIT 1");
+        $q->execute(['u'=>$user,'reserved'=>$user,'closed'=>$user]);
+        $row=$q->fetch(PDO::FETCH_ASSOC);
+        if (!$row) return null;
+        $row['variables']=json_decode($row['custom_fields'] ?? '{}',true) ?: [];
+        unset($row['custom_fields']);
+        return $row;
+    }
+
+    public static function recordings(int $campaignId, string $since, string $until, string $phone='', string $agent='', int $beforeId=0): array {
+        self::campaign($campaignId); $dates=self::reportDates($since,$until);
+        if (!preg_match('/^[0-9+]{0,20}$/D',$phone) || !preg_match('/^[A-Za-z0-9_-]{0,60}$/D',$agent) || $beforeId<0) throw new \InvalidArgumentException('Filtros de grabaciones inválidos.');
+        $q=self::database()->prepare("SELECT call_id,phone_number,agent_user,originated_at,ended_at,termination_reason,disposition_code,duration_talk,recording_path
+          FROM v2_dialer_call_log WHERE campaign_id=:c AND originated_at>=:since AND originated_at<:before AND ended_at IS NOT NULL AND recording_path IS NOT NULL
+          AND phone_number LIKE :phone AND (:all_agents=1 OR agent_user=:agent) AND (:first_page=1 OR call_id<:cursor) ORDER BY call_id DESC LIMIT 100");
+        $q->execute(['c'=>$campaignId,'since'=>$dates['since'],'before'=>$dates['before'],'phone'=>'%'.$phone.'%','all_agents'=>$agent==='' ? 1 : 0,'agent'=>$agent,'first_page'=>$beforeId===0 ? 1 : 0,'cursor'=>$beforeId]);
+        $rows=$q->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as &$row) {
+            $row['available']=self::recordingFile((int)$row['call_id'],(string)$row['recording_path'])!==null;
+            unset($row['recording_path']);
+        }
+        return $rows;
+    }
+
+    private static function recordingFile(int $callId, string $path): ?string {
+        $expected=self::RECORDING_DIRECTORY.'/call-'.$callId.'.wav';
+        if ($path!==$expected || is_link($path) || realpath($path)!==$expected || !is_file($path) || !is_readable($path) || filesize($path)<44) return null;
+        return $path;
+    }
+
+    public static function recording(int $callId): ?array {
+        $q=self::database()->prepare('SELECT recording_path FROM v2_dialer_call_log WHERE call_id=:id AND ended_at IS NOT NULL');
+        $q->execute(['id'=>$callId]); $path=$q->fetchColumn();
+        if (!$path) return null;
+        $file=self::recordingFile($callId,$path);
+        return $file===null ? null : ['file'=>$file,'size'=>filesize($file)];
     }
 
     private static function agentInterface(string $user): array {

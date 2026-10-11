@@ -5,6 +5,7 @@ use Includes\Auth;
 use Includes\Dialer;
 
 Auth::checkAccess([7, 8, 9]);
+if (($_GET['view'] ?? '') === 'recordings') { require __DIR__.'/dialer_recordings.php'; exit; }
 function h($value) { return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); }
 function metric($value, string $unit = ''): string {
     return $value === null ? 'N/D' : h(number_format((float) $value, $unit === '' ? 0 : 2, ',', '.')) . h($unit);
@@ -57,7 +58,7 @@ if (($_SESSION['user_level'] ?? 0) == 9) {
         <div>
             <h1>Reporte<?php echo $campaign ? ' — ' . h($campaign['name']) : ' de campaña'; ?></h1>
             <a href="campaigns.php">Campañas</a>
-            <?php if ($campaign): ?> · <a href="dialer_campaign_edit.php?id=<?php echo (int) $campaignId; ?>">Configuración</a><?php endif; ?>
+            <?php if ($campaign): ?> · <a href="dialer_campaign_edit.php?id=<?php echo (int) $campaignId; ?>">Configuración</a> · <a href="dialer_report.php?view=recordings&amp;id=<?php echo (int)$campaignId; ?>">Buscar grabaciones</a><?php endif; ?>
         </div>
     </header>
     <?php if ($error !== ''): ?><p role="alert"><?php echo h($error); ?></p><?php endif; ?>

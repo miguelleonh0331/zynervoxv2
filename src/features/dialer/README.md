@@ -64,3 +64,20 @@ su prueba opcional exige `DIALER_LAB_TEST_PJSIP=1` y activación previa del core
 No confundir pruebas de protocolo en loopback con certificación de una
 troncal comercial, NAT externo o un dispositivo MicroSIP concreto.
 Estado, evidencias y checklist: `docs/CHECKLIST_MOTOR_MARCACION_MIRMIDON.md`.
+
+## Ficha y grabaciones
+
+La ficha del agente muestra en vivo nombre, destino y variables de la carga,
+incluidos id_contacto, monto, local y direccion. Solo devuelve su llamada.
+Reporte → Buscar grabaciones filtra fechas/teléfono/agente, permite escuchar
+WAV autenticado y paginar de cien en cien. Roles 7/8/9; agentes sin acceso.
+Endpoint: dialer_report.php?view=recordings&id=CAMPAÑA.
+
+`tests/run-ten-agents.sh` prueba diez agentes SIP simultáneos en cada modo,
+variables durante el puente, RTP bidireccional, treinta WAV con las dos señales,
+estados/tipificación/reintentos, KPIs y Apache real. Requiere PBX sin llamadas
+ni campañas RUNNING. Solo destinos loopback y teléfonos sintéticos. Retiene
+historia STOPPED y WAV para revisar en web; elimina agentes/asignaciones y
+credenciales temporales y deja su troncal inactiva. Es repetible conservando
+historial, con prefijos exclusivos por campaña.
+Informe: docs/VALIDACION_MOTOR_MARCACION_SIP.md.

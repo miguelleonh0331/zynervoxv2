@@ -97,3 +97,15 @@ verify($occupied['logged_seconds']===120 && $occupied['occupancy_pct']===66.67,'
 $db->exec("UPDATE v2_dialer_agent_intervals SET started_at='2026-10-01 00:00:30' WHERE campaign_id=3 AND state='ACTIVE'");
 verify(Dialer::kpis(3,'2026-10-01','2026-10-01')['occupancy_pct']===null,'Historical call before session coverage must remain N/D');
 echo "PASS: CONNECT, KPIs, ranges, campaign isolation, nulls, level denominators, dispositions, wrapup and occupancy coverage; temporary tables only.\n";
+
+// Preserve the live callback when a rotated/truncated queue log has no CONNECT.
+$db->exec("INSERT INTO v2_dialer_call_log (campaign_id,lead_id,agent_user,phone_number,originated_at,answered_at,bridged_at) VALUES (1,1,'live_lab','000000',NOW()-INTERVAL 30 SECOND,NOW()-INTERVAL 25 SECOND,NOW()-INTERVAL 20 SECOND)");
+$liveId=(int)$db->lastInsertId();
+$db->exec("UPDATE v2_dialer_leads SET custom_fields='{" . '"monto":"100.00","local":"Laboratorio","direccion":"<script>synthetic</script>"' . "}' WHERE lead_id=1");
+verify(Dialer::agentCurrentLead('live_lab')['variables']['monto']==='100.00','Live lead variables lost');
+verify(Dialer::agentCurrentLead('unrelated_agent')===null,'Agent saw another agent lead');
+Dialer::closeCall($liveId,'','');
+$liveClosed=$db->query('SELECT * FROM v2_dialer_call_log WHERE call_id='.$liveId)->fetch(PDO::FETCH_ASSOC);
+verify($liveClosed['termination_reason']==='COMPLETED' && $liveClosed['agent_user']==='live_lab' && (int)$liveClosed['duration_talk']>=20,'Missing queue log erased live callback');
+expectFailure(static function() { Dialer::markBridged(1,'SIP/invalid\r\nAction: Hangup'); },'Invalid bridged channel accepted');
+echo "PASS: live variables, per-agent isolation and callback preservation without queue log.\n";

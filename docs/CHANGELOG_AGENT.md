@@ -2006,3 +2006,24 @@ Corrección de carrera al reiniciar: conservar RuntimeDirectory mantiene el
 inode del flock. Pasan reinicio, bloqueo del segundo worker y continuidad del
 servicio. Inventario final sin llamadas ni fixtures propios; archivos desplegados
 idénticos a fuente. Evidencia SIP final: dialer-sip-lab-20261011-131050.
+
+## 2026-10-11 — Cierre del laboratorio de tres modos y diez agentes
+
+Core/dialer aprobados por ARCHITECT_AGENT. Desbloqueadas cinco páginas exactas
+en Apache aislado, conservando allowlist existente. Ficha en vivo con variables
+propias; AGI Queue Gosub y closer preservan agente/fecha sin acceso a queue_log.
+Buscador administrativo de grabaciones integrado al reporte, filtros y cursor,
+reproducción autenticada WAV con Range, no-store y guardas de ruta.
+
+PASS: motor/SQL temporal/HTTP, AMD MACHINE, NOANSWER, hangup, overflow/MESSAGE,
+reserva compartida, inicio/parada y conciliación. Tres modos con diez llamadas
+simultáneas y diez agentes, treinta HUMAN completadas, treinta grabaciones con
+ambas señales, variables antes del hangup, nueve SALE/un RETRY por campaña,
+estados e intentos, KPIs y ocupación. Apache real valida páginas, roles y audio;
+navegador reproduce WAV de 40.62 s y filtra una grabación por teléfono.
+
+Simulador SIP estándar admite re-INVITE, puertos dinámicos y evidencia atómica;
+harness repetible conserva historial y usa prefijo por campaña. Checklist,
+contratos, API, README e informe de validación actualizados. Despliegue selectivo
+local→SMB→runtime con backups; pruebas guardadas en /var/backups/zynervoxv2.
+Sin cambios en clientes reales, PJSIP ni bot_ivr; cambio preexistente excluido.

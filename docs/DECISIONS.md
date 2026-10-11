@@ -895,3 +895,25 @@ un worker manual: recrear RuntimeDirectory podía cambiar el inode del bloqueo.
 Se conserva el directorio con RuntimeDirectoryPreserve=yes. La prueba espera
 que MainPID posea el flock antes de lanzar el duplicado, comprueba el mismo
 inode tras SIGKILL y limita temporalmente el proceso de prueba.
+
+## 2026-10-11 — Variables en vivo y audios administrados; aprobación ARCHITECT_AGENT
+
+Alcance autorizado core/dialer: cinco páginas exactas en IsolatedGate y entrada
+de audio a través del reporte. Apache real devolvía 403 antes de la corrección;
+el servidor HTTP privado no detectaba esa diferencia. Preservar allowlist
+versionada, incluida Vpn; sin wildcard ni endpoints CLI accesibles por HTTP.
+
+Queue Gosub en canal del agente registra asignación antes del puente: evita
+depender de queue_log, que wwwrun no puede leer. Se valida Phones público,
+reserva y asignación con lock; CONNECT sigue siendo referencia definitiva,
+conservando callback si falta el log. Sin listener, permisos ampliados ni tabla
+nueva. Ficha propia y variables como texto. Audio solo WAV cerrado en ruta fija,
+sin symlinks/rutas de usuario, Auth 7/8/9, streaming Range y sesión liberada.
+
+Por indicación del usuario las atenciones reales serán posteriores al laboratorio.
+Archivo recibido inspeccionado por formato/contadores: mil filas, no cargado
+ni llamado. Diez agentes y destinos SIP loopback, datos sintéticos compatibles
+con las seis columnas. Historial STOPPED retenido para búsqueda web; agentes y
+secretos temporales retirados. Predictivo nivel 1 para diez entregas; regulación
+adaptativa comprobada separadamente en pruebas transaccionales. No certificar
+sobreoferta ni proveedor/NAT/softphone físico mediante esta muestra.

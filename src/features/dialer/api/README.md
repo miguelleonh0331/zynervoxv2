@@ -13,3 +13,9 @@ Reportería: `kpis`, `abandonByLevel`.
 
 El AGI es CLI-only. El worker supervisado exige lock exclusivo y no acepta
 ejecución web. Los consumidores externos no acceden a helpers privados.
+
+Ficha: `agentPanelState`, `agentCurrentLead` (únicamente usuario autenticado).
+Telefonía añade `markBridged` para Gosub del agente; CONNECT prevalece al cierre.
+Grabaciones: `recordings` devuelve metadatos sin rutas; `recording` entrega
+file/size únicamente a consumidores de servidor que apliquen Auth 7/8/9.
+HTTP: `dialer_report.php?view=recordings`, audio por ID y Range único.

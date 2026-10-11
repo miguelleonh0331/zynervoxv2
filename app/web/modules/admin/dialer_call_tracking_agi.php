@@ -24,6 +24,8 @@ try {
             fwrite(STDOUT, 'SET VARIABLE ' . $key . ' "' . $value . '"' . "\n");
             fgets(STDIN); // respuesta AGI al SET VARIABLE
         }
+    } elseif ($action === 'bridged') {
+        Dialer::markBridged($callId,(string)($argv[3] ?? ''));
     } elseif ($action === 'recording') {
         Dialer::verifyRecording($callId, (string) ($argv[3] ?? ''));
         fwrite(STDOUT, 'SET VARIABLE ZV2_RECORDING_READY "1"' . "\n");

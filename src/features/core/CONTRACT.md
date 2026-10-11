@@ -91,3 +91,15 @@ IsolatedGate permite ?nicamente modules/vpn/index.php; este m?dulo aplica su
 propio control de sesi?n nivel9 y CSRF. Sidebar administrativo agrega Vpn,
 preservando items existentes. Integraci?n por Auth/Config p?blicos, sin cambios
 al motor PBX/DB ni acceso Apache al socketDocker. Aprobado ARCHITECT_AGENT.
+
+## 2026-10-11 — Entrada del marcador aislado (ARCHITECT_AGENT)
+
+IsolatedGate permite exactamente modules/admin/campaigns.php,
+dialer_campaign_edit.php, dialer_list_leads.php, dialer_agent.php y
+dialer_report.php (estos cuatro también bajo modules/admin/).
+Cada página conserva Auth y POST+CSRF para mutaciones. Grabaciones se consultan
+por dialer_report.php?view=recordings; vista interna, worker y AGI siguen
+bloqueados por HTTP. Sin permisos wildcard ni acceso legacy.
+Se sincronizó runtime con la allowlist versionada, preservando Vpn; no se
+modificó dicho módulo. Prueba de integración real:
+src/features/dialer/tests/apache-web.php, ejecutada por run-ten-agents.sh.

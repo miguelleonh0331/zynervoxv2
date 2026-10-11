@@ -86,7 +86,9 @@ Backups del despliegue: `/var/backups/zynervoxv2/dialer-engine-*`,
    existentes antes de iniciar un nuevo laboratorio.
 3. Usar solo SIP, según decisión del usuario. La configuración raíz PJSIP fue
    restaurada a su copia original; no se activan includes ni transportes nuevos.
-4. Cuando llegue la lista del usuario, cargar un CSV `numero,nombre`, números
+4. La lista `carga01.txt` ya fue recibida e inspeccionada (mil filas; no cargada
+   ni llamada). Para la atención posterior del usuario, importar sus seis
+   columnas, conservando variables; preparar números
    con código de país, en campaña separada. Validar la ruta de la troncal SIP y
    el anexo conectado. Empezar con pocos destinos y concurrencia máxima 1.
 5. Comprobar audio en ambos sentidos, Caller ID, grabación y tipificación;
@@ -96,3 +98,18 @@ Para detener nuevas llamadas: botón Detener en Configurar; las llamadas abierta
 terminan normalmente. Consultar `journalctl -u zynervox-dialer` y el reporte.
 Rollback de código por `git revert` del commit correspondiente y despliegue
 selectivo con backup; no revertir migraciones borrando datos operativos.
+
+## Cierre ampliado: diez agentes y web real (2026-10-11)
+
+- [x] Diez agentes SIP simultáneos en MANUAL/PROGRESSIVE/ADAPTIVE.
+- [x] Variables del cliente visibles durante la conversación y aisladas por agente.
+- [x] RTP bidireccional y treinta WAV con ambas señales de audio.
+- [x] CONTACTED/un intento, nueve SALE y un RETRY diferido por campaña.
+- [x] KPIs, ocupación, búsqueda por fecha/teléfono/agente y streaming autenticado.
+- [x] Apache real: allowlist, roles, descarga, Range 206 y rechazos 416/403.
+- [x] Navegador real: reproducción y filtro por teléfono.
+- [x] Regresión de motor, AMD, errores, parada/drenaje, reintentos y sesiones.
+
+Informe reproducible y evidencia: [VALIDACION_MOTOR_MARCACION_SIP.md](VALIDACION_MOTOR_MARCACION_SIP.md).
+La lista real permanece sin importar ni llamar; la atención personal, proveedor
+SIP/NAT y softphone del usuario corresponden a su prueba posterior.

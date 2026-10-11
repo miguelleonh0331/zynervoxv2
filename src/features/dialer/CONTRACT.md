@@ -221,3 +221,30 @@ del formato PJSIP existente, pero no se activa su configuración del core.
 La configuración raíz PJSIP quedó restaurada a su copia original. La siguiente
 validación externa utilizará números proporcionados por el usuario, una campaña
 separada y concurrencia máxima 1 para comprobar troncal y softphone.
+
+## 2026-10-11 — Ficha en vivo y búsqueda de grabaciones (ARCHITECT_AGENT)
+
+`agentPanelState(user)` añade `lead`, obtenido por `agentCurrentLead(user)`:
+únicamente su llamada abierta (agent_user/reserved_agent_user) o su última
+llamada cerrada pendiente de tipificar, con nombre y custom_fields decodificados
+en variables. El panel renderiza valores mediante textContent, sin HTML.
+
+`markBridged(callId, channel)` se ejecuta por AGI CLI desde el Gosub de Queue
+(argumento 8, en canal del agente). Resuelve extensión/protocolo por Phones
+público, valida llamada abierta contestada, asignación y reserva, y conserva
+la identidad/fecha ya registradas bajo lock. Se ejecuta antes del puente:
+bridged_at es preliminar; CONNECT tiene prioridad al cerrar. El closer conserva
+el callback cuando queue_log no está disponible, sin ampliar permisos del log.
+
+`recordings(campaignId,since,until,phone,agent,beforeId)` devuelve llamadas
+cerradas con grabación, filtros preparados, cien filas y cursor por call_id.
+No devuelve recording_path. `recording(callId)` es una API de servidor: devuelve
+file/size únicamente para un WAV cerrado, regular, legible, >=44 bytes, sin
+symlink, realpath igual a RECORDING_DIRECTORY/call-ID.wav.
+
+HTTP usa exclusivamente dialer_report.php?view=recordings, Auth 7/8/9.
+La vista dialer_recordings.php se incluye internamente; su acceso HTTP directo
+queda bloqueado. Audio por ID con Range único, HEAD, 206/416, no-store y sesión
+liberada antes de streaming; no se admiten rutas proporcionadas por clientes.
+Sin migraciones: columnas existentes. Aprobado cruce puntual core/dialer para
+allowlist exacta, conservando las entradas previamente versionadas.
