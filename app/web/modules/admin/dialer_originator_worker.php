@@ -24,12 +24,23 @@ if (!$campaign['active']) { fwrite(STDERR, "Campana inactiva.\n"); exit(1); }
 if ($campaign['dial_method'] === 'MANUAL') { fwrite(STDERR, "Campana en modo MANUAL: el originator no aplica.\n"); exit(1); }
 
 $config = PbxAmi::load();
-$maxConcurrent = (int) $campaign['max_concurrent_calls'];
+$hardCap = (int) $campaign['max_concurrent_calls'];
 $dialPrefix = (string) $campaign['dial_prefix'];
+$adaptive = $campaign['dial_method'] === 'ADAPTIVE';
 
-echo "Campana #$campaignId ({$campaign['name']}) prefijo=$dialPrefix max_concurrent=$maxConcurrent\n";
+echo "Campana #$campaignId ({$campaign['name']}) prefijo=$dialPrefix metodo={$campaign['dial_method']} max_concurrent(tope duro)=$hardCap\n";
 
 for ($tick = 1; $tick <= $ticks; $tick++) {
+    // Fase 6: en ADAPTIVE el tope efectivo es agentes_disponibles x nivel
+    // (recalculado cada tick, manual §8.2/8.3), siempre limitado por el
+    // tope duro de la campaña. RATIO/MANUAL no cambian (Fase 3 ya probada).
+    $maxConcurrent = $hardCap;
+    if ($adaptive) {
+        $level = Dialer::recalculateDialLevel($campaignId);
+        $agents = Dialer::availableAgentsCount($campaignId, (string) $campaign['level_count_mode']);
+        $maxConcurrent = min($hardCap, (int) round($agents * $level));
+        echo "[tick $tick] nivel=$level agentes=$agents tope_efectivo=$maxConcurrent\n";
+    }
     $inFlight = Dialer::inFlightCount($campaignId, $window);
     $claimed = null;
     if ($inFlight < $maxConcurrent) {

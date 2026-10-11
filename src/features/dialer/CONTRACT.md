@@ -107,6 +107,31 @@ reales: `closeMachine()` (requiere audio real para que AMD diga MACHINE) y
 la correlación de agente vía `queue_log` CONNECT (requiere un agente real
 conectado, mismo pendiente de Fase 4).
 
+## Fase 6 (2026-10-11) — Modo ADAPTIVE
+
+`Dialer::recalculateDialLevel()` implementa el algoritmo del manual §8.2 tal
+cual: histéresis (sube solo si abandono < objetivo*0.8), banda muerta (no
+toca nada entre el 80% y el 100% del objetivo), clamp a
+`adaptive_min_level`/`adaptive_max_level`, no mueve nada sin
+`adaptive_min_sample` del día. Estadística diaria por `CURDATE()` sobre
+`v2_dialer_call_log` (equivalente MySQL del `stats:{YYYYMMDD}` de Redis del
+diseño original).
+
+`Dialer::availableAgentsCount()` cuenta agentes parseando `queue show
+<name>` (sin evento AMI en vivo, mismo compromiso que Fase 4/5). El
+originator (`dialer_originator_worker.php`) en modo ADAPTIVE recalcula nivel
+y agentes cada tick y usa `min(max_concurrent_calls, agentes × nivel)` como
+tope efectivo — el tope duro de la campaña manda siempre, igual que exige el
+manual. RATIO/MANUAL no cambiaron (siguen con el tope fijo de Fase 3).
+
+Verificado con datos sintéticos (inserciones directas a `call_log`, sin
+gastar llamadas reales): sube, baja, banda muerta exacta en el objetivo,
+clamp en ambos extremos — los 6 casos pasaron. Conteo de agentes verificado
+con la extensión real 10000: `LOGGED_IN` cuenta igual pausado o no,
+`WAITING`/`NON_PAUSED` respetan pausa; sin softphone conectado el estado real
+es "Unavailable" (no "Not in use"), así que `WAITING` da 0 — correcto dado el
+estado real del dispositivo, no un bug de parseo.
+
 ## Pendiente
 
 Capacidad de troncal compartida con VICIdial real: decisión pospuesta

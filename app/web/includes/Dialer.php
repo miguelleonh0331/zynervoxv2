@@ -512,6 +512,64 @@ class Dialer {
         return null;
     }
 
+    // -------------------------------------------------------------- Nivel adaptativo (Fase 6)
+    // Algoritmo del manual §8.2: histéresis (banda muerta al 80% del
+    // objetivo), no toca nada sin muestra mínima, clamp min/max. Estadística
+    // del día (CURDATE()), igual que el "stats:{YYYYMMDD}" del diseño
+    // original pero en MySQL en vez de Redis.
+    public static function recalculateDialLevel(int $campaignId): float {
+        $campaign = self::campaign($campaignId);
+        $level = (float) $campaign['dial_level'];
+        if ($campaign['dial_method'] !== 'ADAPTIVE') return $level;
+        $stmt = self::database()->prepare(
+            "SELECT COUNT(*) placed,
+                    SUM(answered_at IS NOT NULL AND (amd_result IS NULL OR amd_result<>'MACHINE')) answered,
+                    SUM(termination_reason='DROPPED') dropped
+             FROM v2_dialer_call_log WHERE campaign_id=:c AND originated_at>=CURDATE()"
+        );
+        $stmt->execute(['c' => $campaignId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $placed = (int) $row['placed'];
+        $answered = (int) $row['answered'];
+        $dropped = (int) $row['dropped'];
+        if ($placed >= (int) $campaign['adaptive_min_sample']) {
+            $target = (float) $campaign['adaptive_target_abandon_pct'];
+            $abandonPct = $answered > 0 ? ($dropped / $answered) * 100 : 0.0;
+            $step = (float) $campaign['adaptive_step'];
+            if ($abandonPct > $target) $level -= $step;
+            elseif ($abandonPct < $target * 0.8) $level += $step;
+            $level = max((float) $campaign['adaptive_min_level'], min((float) $campaign['adaptive_max_level'], $level));
+        }
+        $level = round($level, 2);
+        self::database()->prepare('UPDATE v2_dialer_campaigns SET dial_level=:l WHERE campaign_id=:c')
+            ->execute(['l' => $level, 'c' => $campaignId]);
+        return $level;
+    }
+
+    // Cuenta agentes "disponibles" parseando `queue show <name>` (best
+    // effort, no hay evento AMI en vivo de estado de miembro — mismo
+    // compromiso que la correlación de agente en closeCall()).
+    // WAITING = libres ahora mismo; NON_PAUSED = no pausados (aunque estén
+    // en llamada); LOGGED_IN = todos los miembros.
+    public static function availableAgentsCount(int $campaignId, string $levelCountMode): int {
+        $campaign = self::campaign($campaignId);
+        $config = \Includes\PbxAmi::load();
+        $out = \Includes\PbxAmi::command($config, 'queue show ' . $campaign['queue_name']);
+        $members = 0;
+        // Formato real (Asterisk 16): "      10000 (SIP/10000) (ringinuse
+        // enabled) (dynamic) (Not in use) has taken ..." — la interfaz va
+        // entre parentesis, no al inicio de linea.
+        foreach (explode("\n", $out) as $line) {
+            if (!preg_match('/\((SIP|PJSIP|Local)\//', $line)) continue;
+            $paused = stripos($line, '(paused)') !== false;
+            $free = stripos($line, '(not in use)') !== false;
+            if ($levelCountMode === 'WAITING' && (!$free || $paused)) continue;
+            if ($levelCountMode === 'NON_PAUSED' && $paused) continue;
+            $members++;
+        }
+        return $members;
+    }
+
     public static function leadCount(int $listId): int {
         $stmt = self::database()->prepare('SELECT COUNT(*) FROM v2_dialer_leads WHERE list_id=:l');
         $stmt->execute(['l' => $listId]);
