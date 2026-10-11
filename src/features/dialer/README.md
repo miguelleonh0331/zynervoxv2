@@ -14,6 +14,9 @@ tablas `v2_dialer_*`. Contrato: [CONTRACT.md](CONTRACT.md).
 4. Asignar agentes con anexo activo y softphone registrado. Cada agente entra
    automáticamente a todas sus campañas activas al abrir `modules/admin/dialer_agent.php`.
    El panel ofrece Pausar/Reanudar global con motivo y Colgar para llamada propia.
+   Cuentas de agente (niveles menores de 7) usan CRM sin menú de gestión;
+   WhatsApp aparece como pestaña deshabilitada hasta habilitar acceso.
+   Cerrar sesión está en el encabezado. GTR/supervisor/admin conservan su menú.
    Admin9 crea/edita/desactiva motivos en "Tipos de pausa" del mismo panel.
 5. Iniciar motor desde Configurar. En MANUAL, el agente pulsa siguiente lead;
    los otros modos los ejecuta `zynervox-dialer.service`.

@@ -14,6 +14,7 @@ if (\Config\Config::deployment('isolated',false)) $_SESSION['dialer_entered']=tr
 function h($v) { return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8'); }
 
 $user = (string) ($_SESSION['user'] ?? '');
+$agentOnly = (int)$_SESSION['user_level'] < 7;
 $msg = '';
 $error = '';
 
@@ -90,6 +91,14 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         .agent-workspace{min-width:0;width:calc(100% - 260px);padding:20px;line-height:1.4;background:#e8eaed}
+        .agent-only .agent-workspace{margin-left:0;width:100%}
+        .agent-workspace .header-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+        .agent-workspace .agent-tabs{display:flex;gap:6px;border-bottom:2px solid #465569;margin-bottom:14px;align-items:stretch}
+        .agent-workspace .agent-tabs a,.agent-workspace .agent-tabs button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:10px 22px;font-size:14px;font-weight:700;border:1px solid #9ba7b6;border-bottom:0;border-radius:4px 4px 0 0;text-decoration:none}
+        .agent-workspace .agent-tabs a{background:#465569;color:#fff;border-color:#465569}
+        .agent-workspace .agent-tabs a:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
+        .agent-workspace .agent-tabs button:disabled{background:#dce1e6;color:#4b5563;cursor:not-allowed;opacity:1}
+        .agent-workspace .agent-tabs .tab-note{font-size:11px;font-weight:400}
         .agent-workspace [hidden]{display:none!important}
         .agent-workspace .top-bar{background:#303b4b;color:#fff;padding:16px 20px;border:1px solid #1c2736;margin-bottom:12px;gap:16px;flex-wrap:wrap}
         .agent-workspace h1{font-size:22px;line-height:1.2}
@@ -150,11 +159,11 @@ try {
         @media(max-width:420px){.agent-workspace .customer-fields{grid-template-columns:1fr}}
     </style>
 </head>
-<body class="agent-page">
+<body class="agent-page<?php echo $agentOnly ? ' agent-only' : ''; ?>">
     <?php
     if (($_SESSION['user_level'] ?? 0) == 9) {
         require_once __DIR__ . '/sidebar.php'; renderSidebar('dialer_agent');
-    } else {
+    } elseif (!$agentOnly) {
         require_once __DIR__ . '/../sup/sidebar.php'; renderSupSidebar('dialer_agent');
     }
     ?>
@@ -164,8 +173,19 @@ try {
                 <h1>Panel de agente</h1>
                 <p class="subtitle">Tus campañas y llamadas en un solo lugar.</p>
             </div>
-            <span class="user-badge">Agente <?php echo h($user); ?></span>
+            <div class="header-actions">
+                <span class="user-badge">Agente <?php echo h($user); ?></span>
+                <?php if ($agentOnly): ?>
+                <form method="POST" action="../../logout.php"><input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><button type="submit" class="btn-danger">Cerrar sesión</button></form>
+                <?php endif; ?>
+            </div>
         </header>
+        <?php if ($agentOnly): ?>
+        <nav class="agent-tabs" aria-label="Áreas del agente">
+            <a href="dialer_agent.php" aria-current="page">CRM</a>
+            <button type="button" disabled aria-disabled="true" title="El acceso a WhatsApp se habilitará próximamente">WhatsApp <span class="tab-note">Próximamente</span></button>
+        </nav>
+        <?php endif; ?>
 
         <?php if ($msg !== ''): ?><p class="notice" role="status"> <?php echo h($msg); ?></p><?php endif; ?>
         <?php if ($error !== ''): ?><p class="notice notice-error" role="alert"> <?php echo h($error); ?></p><?php endif; ?>

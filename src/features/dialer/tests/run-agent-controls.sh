@@ -32,9 +32,16 @@ for attempt in range(30):
     except OSError: time.sleep(.1)
 assert status==200 and 'Entrar a cola' not in body and 'Salir de cola' not in body and 'Colgar' in body
 assert body.count('action="../../logout.php"')==1, 'Agent must have a single logout form'
+assert 'class="sidebar"' not in body and 'aria-current="page">CRM</a>' in body
+assert 'disabled aria-disabled="true"' in body and 'WhatsApp <span' in body
+for target in ('campaigns.php','users.php','reports.php','filters.php','monitor.php','whatsapp.php','campaign_monitor.php'):
+    assert ('href="../admin/'+target+'"') not in body, 'Agent navigation exposes '+target
 assert "action:'bootstrap'" in body and 'Motivo de pausa' in body and 'Tipos de pausa' not in body
 status,body=request('?role=9'); assert status==200 and 'Tipos de pausa' in body
 assert body.count('action="../../logout.php"')==1, 'Admin must have a single logout form'
+assert 'class="sidebar"' in body and 'class="agent-tabs"' not in body
+status,body=request('?role=8'); assert status==200 and 'class="sidebar"' in body and 'href="../admin/campaigns.php"' in body
+assert 'class="agent-tabs"' not in body and body.count('action="../../logout.php"')==1
 status,body=request('?role=1',{'action':'bootstrap','ajax':'1','csrf_token':'invalid'}); assert status==503 and json.loads(body)['error']
 status,body=request('?role=1',{'action':'bootstrap','ajax':'1','csrf_token':'controls_fixture_token'}); assert status==200 and not json.loads(body)['error']
 status,body=request('?role=1',{'action':'save_pause_type','code':'TEST','label':'Unauthorized','active':'1','csrf_token':'controls_fixture_token'}); assert 'Solo el administrador' in body

@@ -2255,3 +2255,22 @@ CSRF, permisos, escape, propiedad Hangup y salida única). Sin revisión visual
 mediante navegador. Despliegue de un PHP sin reiniciar servicios, fuente/runtime
 idénticos, worker active y SIP5000 OK201ms. Respaldo para restauración:
 /var/backups/zynervoxv2/agent-ui-20261011-185119/dialer_agent.php.
+
+## 2026-10-11 — Navegación CRM/WhatsApp exclusiva del agente
+
+Cuentas operativas con nivel menor de7 ya no renderizan el sidebar de supervisión
+en dialer_agent. El panel ocupa todo el ancho y ofrece CRM como área actual y
+WhatsApp deshabilitada, marcada Próximamente, sin URL de acceso. Logout único
+POST+CSRF en el encabezado para agentes. GTR7/supervisor8/admin9 conservan menú.
+Revisados entrypoints campaigns/users/reports/filters/monitor/whatsapp/campaign_monitor:
+sus guards existentes exigen7/8/9; no se modifica política de acceso ni backend.
+README actualizado. No se modifican contratos ni menús compartidos.
+
+PHP lint, JavaScript node --check, estructura de formularios y run-agent-controls.sh
+PASS. HTTP verifica agente sin sidebar/links administrativos, CRM actual,
+WhatsApp disabled, logout único, admin/supervisor conservan navegación y permisos,
+bootstrap, CSRF, catálogo y Hangup. Sin revisión visual en navegador.
+Despliegue de un PHP por zynertools, fuente/runtime idénticos, sin reiniciar servicios.
+Usuario5000 confirmado nivel1, SIP5000 OK222ms, worker active.
+Respaldo para restaurar panel anterior:
+/var/backups/zynervoxv2/agent-ui-20261011-190219/dialer_agent.php.
