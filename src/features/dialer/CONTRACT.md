@@ -137,3 +137,87 @@ estado real del dispositivo, no un bug de parseo.
 Capacidad de troncal compartida con VICIdial real: decisión pospuesta
 explícitamente por el usuario, el campo `carrier_id` ya existe para
 configurarlo cuando se defina.
+
+## Corrección de continuidad (2026-10-11, aprobada ARCHITECT_AGENT)
+
+La auditoría de Fase 7 detectó que el origen Local previo podía ejecutar
+Answer/AMD/Queue sin llamar al cliente. Esa prueba no demostraba salida real.
+El módulo origina ahora directamente el endpoint SIP/PJSIP de la troncal
+mediante AMI rawAction Originate, con Context/Exten/Priority posanswer,
+Timeout y ChannelId correlacionado. No modifica PbxAmi ni la telefonía de bots.
+
+Migración 008 añade outbound_prefix, drop_message y amd_message.
+dial_prefix conserva el prefijo del callback generado; outbound_prefix es el
+prefijo del número requerido por la troncal. NULL bloquea salida hasta una
+configuración explícita; cadena vacía autoriza no agregar prefijo. Resolver
+endpoint solo desde la configuración pública de Carriers y rechazar ambigüedad.
+
+El callback inicia MixMonitor después de respuesta real, antes de AMD/Queue,
+y guarda su recording_path. Hangup handler propio detiene grabación y cierra
+idempotentemente, sin convertir MACHINE en abandono al ejecutar dos cierres.
+Las conversaciones abiertas cuentan hasta ended_at, sin ventana temporal.
+La reserva serializa por campaña y comprueba capacidad, actividad, máximo de
+intentos, DNC y horario local del lead (gmt_offset) dentro de la transacción.
+RATIO/ADAPTIVE respetan agentes × nivel y el máximo duro; MANUAL solo se inicia
+por un agente asignado, con anexo disponible y CSRF desde el panel.
+
+El worker reconcilia intentos sin answer tras timeout + 5 segundos únicamente
+cuando la consulta de canales confirma que el ChannelId ya no existe.
+NOANSWER significa sin respuesta registrada al reconciliar, sin atribuir
+BUSY ni una causa SIP. Una respuesta AMI perdida conserva el cupo hasta esa
+comprobación; nunca libera una conversación contestada por tiempo transcurrido.
+El worker CLI es acotado (--ticks/--wait), no un servicio persistente todavía.
+
+MESSAGE requiere un audio relativo, legible y existente bajo sounds, sin
+extensión, enlaces ni escapes. HANGUP no necesita audio. La reportería muestra
+ocupación N/D hasta instrumentar tiempo logueado; duración histórica desconocida
+no se reemplaza por cero. La validación final de voz/bridge/troncal requiere un
+agente MicroSIP y un destino de laboratorio autorizado.
+
+## Cierre operativo ampliado (2026-10-11, aprobado ARCHITECT_AGENT)
+
+Esta sección sustituye los pendientes y límites operativos históricos anteriores.
+MANUAL origina por decisión del agente asignado; PROGRESSIVE reserva un agente
+WAITING por intento, nivel efectivo 1; ADAPTIVE es el predictivo por abandono;
+RATIO conserva nivel fijo. Cola personal y agent_slot UNIQUE evitan reservas
+manuales/progresivas dobles entre campañas. Mientras hay reserva se pausa al
+agente en colas principales con DIALER_RESERVED, conservando su cola personal.
+Solo se revierte esa pausa automática; nunca una pausa manual.
+
+Migraciones 009–011 añaden estado RUNNING/STOPPED (default STOPPED), heartbeat,
+error visible, reserva de agente, intervalos observados y cadencia adaptativa.
+Una unidad systemd única supervisa el worker PHP; flock rechaza duplicados.
+El panel modifica BD mediante POST+CSRF y no ejecuta shell ni systemctl.
+La reserva relee estado RUNNING bajo lock. Detener no cuelga conversaciones.
+La conciliación sigue activa estando detenido y recupera NOANSWER/PBX_LOST
+solo después de confirmar que no existe su ChannelId; PBX_LOST no fabrica AHT.
+
+Queue usa MemberName=interfaz para correlación CONNECT verificable. Pausa
+WRAPUP automática en todas las campañas al terminar conversación. Tipificación
+reanuda solo esa pausa cuando no quedan pendientes; pausa manual se conserva.
+Reentrar no pausa una llamada que aún timbra. Retirar asignación quita membresía
+principal y personal idempotentemente. Disposición retryable recicla el lead
+con su demora, sin alterar intentos posteriores de ese lead.
+
+Los intervalos ACTIVE/PAUSED/WRAPUP se actualizan tras AMI confirmado. El worker
+reconcilia membresía; huecos mayores de 15 s cierran en última observación +5 s
+para no contar indisponibilidad como login. Ocupación por campaña = conversación
+más wrapup observado / tiempo ACTIVE+WRAPUP observado, recortado al periodo y
+sin duplicar intervalos del agente. Ausencia de sesiones o hueco relevante en
+el trabajo de cualquier agente produce cobertura parcial y ocupación N/D.
+Wrapup usa intervalos reales; no se infiere todo el tiempo hasta una tipificación
+tardía ni se trunca trabajo observado arbitrariamente. No hay reporte agregado
+multicampaña; sus denominadores no deben sumarse si comparten agentes.
+
+Validación autónoma: clientes SIP/RTP en loopback, troncal y agente exclusivos,
+HUMAN/MACHINE reales, bridge CONNECT, MixMonitor, tipificación, cupos entre
+campañas, inicio/parada, MESSAGE y supervisión. La equivalencia de protocolo no
+certifica un softphone físico ni proveedor/NAT externo específico.
+
+## Alcance de protocolo decidido por el usuario (2026-10-11)
+
+La operación y validación actual usan solo SIP. Se conserva compatibilidad
+del formato PJSIP existente, pero no se activa su configuración del core.
+La configuración raíz PJSIP quedó restaurada a su copia original. La siguiente
+validación externa utilizará números proporcionados por el usuario, una campaña
+separada y concurrencia máxima 1 para comprobar troncal y softphone.

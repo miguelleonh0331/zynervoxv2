@@ -33,7 +33,7 @@ $connection = new ReflectionProperty(Database::class, 'conn');
 $connection->setAccessible(true);
 $connection->setValue($instance, $db);
 $property->setValue(null, $instance);
-foreach (['v2_dialer_call_log', 'v2_dialer_campaigns', 'v2_dialer_dispositions', 'v2_dialer_leads', 'v2_access_log'] as $table) {
+foreach (['v2_dialer_call_log', 'v2_dialer_campaigns', 'v2_dialer_dispositions', 'v2_dialer_leads', 'v2_access_log', 'v2_dialer_agent_campaigns', 'v2_dialer_agent_intervals'] as $table) {
     $definition = $db->query('SHOW CREATE TABLE ' . $table)->fetch(PDO::FETCH_NUM)[1];
     $definition = preg_replace('/^CREATE TABLE /', 'CREATE TEMPORARY TABLE ', $definition);
     $definition = preg_replace('/^  CONSTRAINT .* FOREIGN KEY .*\n/m', '', $definition);
@@ -74,6 +74,7 @@ foreach ([['2026-02-30','2026-10-01'], ['2026-10-02','2026-10-01'], ['2026-1-1',
 $db->exec("UPDATE v2_dialer_call_log SET disposition_code='NO' WHERE call_id=1");
 verify(Dialer::kpis(1, '2026-10-01', '2026-10-01')['contacted'] === 0, 'Non-contact disposition counted as contact');
 $db->exec("UPDATE v2_dialer_call_log SET agent_user='lab',ended_at=NOW()-INTERVAL 15 SECOND,duration_wrapup=NULL WHERE call_id=1");
+$db->exec("INSERT INTO v2_dialer_agent_intervals (campaign_id,agent_user,state,started_at,ended_at,last_seen_at) VALUES (1,'lab','WRAPUP',NOW()-INTERVAL 15 SECOND,NOW(),NOW())");
 expectFailure(static function () { Dialer::setDisposition(1, 'other', 'SALE'); }, 'Agent can disposition another agent call');
 expectFailure(static function () { Dialer::setDisposition(1, 'lab', 'INVALID'); }, 'Unknown disposition accepted');
 Dialer::setDisposition(1, 'lab', 'SALE');
@@ -86,4 +87,13 @@ $db->exec("UPDATE v2_dialer_call_log SET ended_at=NULL,answered_at=NOW(),bridged
 Dialer::closeCall(2, 'TIMEOUT', '');
 $closed = $db->query('SELECT * FROM v2_dialer_call_log WHERE call_id=2')->fetch(PDO::FETCH_ASSOC);
 verify($closed['ended_at'] !== null && $closed['termination_reason'] === 'DROPPED' && $closed['duration_talk'] === null, 'Unbridged timeout must not get artificial talk duration');
-echo "PASS: CONNECT, KPIs, ranges, campaign isolation, nulls, level denominators, dispositions and wrapup; temporary tables only.\n";
+$db->exec("INSERT INTO v2_dialer_agent_intervals (campaign_id,agent_user,state,started_at,ended_at,last_seen_at) VALUES
+ (3,'occupancy_lab','ACTIVE','2026-10-01 00:00:00','2026-10-01 00:02:00','2026-10-01 00:02:00'),
+ (3,'occupancy_lab','PAUSED','2026-10-01 00:02:00','2026-10-01 00:05:00','2026-10-01 00:05:00')");
+$db->exec("INSERT INTO v2_dialer_call_log (campaign_id,lead_id,agent_user,phone_number,originated_at,answered_at,bridged_at,ended_at,duration_talk,duration_wrapup) VALUES
+ (3,1,'occupancy_lab','000000','2026-10-01 00:00:00','2026-10-01 00:00:02','2026-10-01 00:00:10','2026-10-01 00:01:10',60,20)");
+$occupied=Dialer::kpis(3,'2026-10-01','2026-10-01');
+verify($occupied['logged_seconds']===120 && $occupied['occupancy_pct']===66.67,'Occupancy denominator must exclude manual pauses, with observed talk + wrapup');
+$db->exec("UPDATE v2_dialer_agent_intervals SET started_at='2026-10-01 00:00:30' WHERE campaign_id=3 AND state='ACTIVE'");
+verify(Dialer::kpis(3,'2026-10-01','2026-10-01')['occupancy_pct']===null,'Historical call before session coverage must remain N/D');
+echo "PASS: CONNECT, KPIs, ranges, campaign isolation, nulls, level denominators, dispositions, wrapup and occupancy coverage; temporary tables only.\n";

@@ -1971,3 +1971,38 @@ SMB remontado por el usuario y verificado. Runtime separado de fuente confirmado
 por hashes. Se conserva el cambio ajeno ivr_engine_agi.php (sin diff de contenido;
 Git reporta metadatos pendientes). Checklist persistente añadido. Brechas de
 origination/grabación detectadas y escaladas: no declarar completo el motor.
+
+## 2026-10-11 — Motor SIP manual, progresivo y predictivo completado
+
+Originación real por troncal SIP, prefijo saliente explícito, guardas AMI,
+MixMonitor posrespuesta, verificación de grabación, AMD/MESSAGE y hangup handler
+idempotente. Capacidad y estado se verifican al reservar; MANUAL/PROGRESSIVE
+reservan globalmente al agente y usan cola personal. Panel administrativo añade
+inicio/parada y heartbeat/error; panel de agente refresca pendientes, conserva
+pausas y usa WRAPUP automático hasta tipificar. Reintentos y correcciones de
+llamadas anteriores preservan intentos posteriores del lead.
+
+Servicio zynervox-dialer instalado, habilitado y supervisado; worker CLI único
+con flock, conciliación de NOANSWER/PBX_LOST y sesiones incluso detenido.
+Migraciones 008–011 aplicadas y permisos de la tabla de intervalos concedidos
+a la identidad aislada. Ocupación usa tiempo observado, no estimaciones de login.
+
+Pruebas PHP 7.4/MySQL temporal y HTTP privado cubren métricas, filtros,
+permisos, CSRF, reserva, capacidad, DNC, reintentos, wrapup, huecos de sesiones
+y seis ramas adaptativas más cadencia. Laboratorio autónomo con UAS SIP/RTP
+Python estándar, troncal y agente loopback: MANUAL/PROGRESSIVE/ADAPTIVE con
+servicio real, HUMAN/MACHINE, CONNECT, voz grabada, tipificación, ocupación,
+reserva compartida, detener/drenar, NOANSWER, HANGUP, overflow/MESSAGE y canal
+contestado perdido. Prueba de SIGKILL confirma reinicio; segundo worker rechazado.
+Fixtures propios eliminados, auditoría y WAV/log preservados en backups.
+
+Despliegue local→SMB→runtime separado, con backup y comparación de archivos.
+README/API, herramientas de laboratorio y checklist persistente actualizados;
+MODULE_MAP regenerado con repo_agent.py. Se excluye cambio ajeno de bot_ivr.
+Por instrucción del usuario, solo SIP; configuración raíz PJSIP original
+restaurada. Pendiente de la lista ofrecida para probar troncal externa/MicroSIP.
+
+Corrección de carrera al reiniciar: conservar RuntimeDirectory mantiene el
+inode del flock. Pasan reinicio, bloqueo del segundo worker y continuidad del
+servicio. Inventario final sin llamadas ni fixtures propios; archivos desplegados
+idénticos a fuente. Evidencia SIP final: dialer-sip-lab-20261011-131050.

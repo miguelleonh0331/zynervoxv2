@@ -13,4 +13,7 @@ if (isset($_GET['role'])) {
 $_GET['id'] = $_GET['id'] ?? '1';
 $_GET['since'] = $_GET['since'] ?? '2026-10-01';
 $_GET['until'] = $_GET['until'] ?? '2026-10-01';
-require getenv('DIALER_TEST_WEB_ROOT') . '/modules/admin/dialer_report.php';
+$_SESSION['dialer_csrf']='private_http_fixture_token';
+$pages=['report'=>'dialer_report.php','campaign'=>'dialer_campaign_edit.php','agent'=>'dialer_agent.php'];
+$page=$pages[$_GET['page'] ?? 'report'] ?? 'dialer_report.php';
+require getenv('DIALER_TEST_WEB_ROOT') . '/modules/admin/'.$page;

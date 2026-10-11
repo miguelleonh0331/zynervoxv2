@@ -1,0 +1,23 @@
+[Unit]
+Description=Zynervox v2 agent dialer
+After=network.target mysql.service asterisk.service
+
+[Service]
+Type=simple
+User=wwwrun
+Group=www
+RuntimeDirectory=zynervox-dialer
+RuntimeDirectoryMode=0750
+RuntimeDirectoryPreserve=yes
+ExecStart=/usr/bin/php /srv/www/htdocs/zynervoxv2/modules/admin/dialer_engine_worker.php
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/run/zynervox-dialer /var/spool/asterisk/monitor/zynervoxv2/dialer
+
+[Install]
+WantedBy=multi-user.target

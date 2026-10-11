@@ -21,7 +21,10 @@ try {
             throw new RuntimeException('Sesión inválida, recarga la página.');
         }
         $action = (string) ($_POST['action'] ?? '');
-        if ($action === 'update_campaign') {
+        if ($action === 'start_engine' || $action === 'stop_engine') {
+            Dialer::setEngineState($campaignId,$action === 'start_engine' ? 'RUNNING' : 'STOPPED');
+            $msg = $action === 'start_engine' ? 'Motor iniciado.' : 'Nuevas llamadas detenidas; las conversaciones actuales continúan.';
+        } elseif ($action === 'update_campaign') {
             Dialer::updateCampaign($campaignId, $_POST);
             $msg = 'Configuración guardada.';
         } elseif ($action === 'create_list') {
@@ -98,6 +101,15 @@ try {
         <?php if (!empty($campaign)): ?>
         <div class="card dialer-card">
             <h2>Configuración</h2>
+            <p>Motor: <strong><?php echo h($campaign['engine_state']); ?></strong> · Último ciclo: <?php echo h($campaign['worker_seen_at'] ?? 'sin observar'); ?></p>
+            <?php if ($campaign['worker_error']): ?><p role="alert"><?php echo h($campaign['worker_error']); ?></p><?php endif; ?>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>">
+                <button class="btn-primary" name="action" value="start_engine">Iniciar motor</button>
+                <button class="carsa-btn" name="action" value="stop_engine">Detener nuevas llamadas</button>
+            </form>
+            <p>MANUAL: siguiente lead desde el panel. PROGRESSIVE: una llamada por agente libre. ADAPTIVE: predictivo ajustado por abandono. RATIO: nivel fijo.</p>
+            <?php if ($campaign['outbound_prefix'] === null): ?><p role="alert">Marcación pendiente: guarda el prefijo del número requerido por la troncal (vacío si no requiere prefijo).</p><?php endif; ?>
             <p style="font-size:12px;color:var(--text-muted);margin-top:-6px">
                 Troncal: <strong><?php echo h($campaign['carrier_id']); ?></strong> (fija al crear) ·
                 Cola Asterisk: <code><?php echo h($campaign['queue_name']); ?></code>
@@ -122,7 +134,7 @@ try {
                             </select>
                         <?php else: $numeric = in_array($field['type'], ['number', 'decimal'], true); ?>
                             <input type="<?php echo $numeric ? 'number' : 'text'; ?>" name="<?php echo h($key); ?>" value="<?php echo h($value); ?>"
-                                <?php if ($numeric): ?>min="<?php echo h($field['min']); ?>" max="<?php echo h($field['max']); ?>" step="<?php echo $field['type'] === 'decimal' ? '0.01' : '1'; ?>"<?php else: ?>maxlength="<?php echo h($field['length']); ?>"<?php endif; ?> required>
+                                <?php if ($numeric): ?>min="<?php echo h($field['min']); ?>" max="<?php echo h($field['max']); ?>" step="<?php echo $field['type'] === 'decimal' ? '0.01' : '1'; ?>" required<?php else: ?>maxlength="<?php echo h($field['length']); ?>"<?php endif; ?>>
                         <?php endif; ?>
                     </div>
                     <?php endforeach; ?>

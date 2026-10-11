@@ -7,7 +7,7 @@ mkdir -p "$stage/includes" "$stage/config" "$stage/modules/admin" "$stage/module
 for file in Dialer.php Database.php Audit.php Phones.php PbxAmi.php Auth.php ServerInfo.php; do
   cp "/mnt/zynervoxv2-fuente/app/web/includes/$file" "$stage/includes/$file"
 done
-for file in dialer_report.php sidebar.php; do
+for file in dialer_report.php dialer_campaign_edit.php dialer_agent.php sidebar.php; do
   cp "/mnt/zynervoxv2-fuente/app/web/modules/admin/$file" "$stage/modules/admin/$file"
 done
 cp /mnt/zynervoxv2-fuente/app/web/modules/sup/sidebar.php "$stage/modules/sup/sidebar.php"
@@ -42,5 +42,21 @@ assert get('?role=9&id=x')[0]==400
 assert get('?role=9&since=2026-02-30')[0]==400
 assert get('?role=9&since=2026-10-02&until=2026-10-01')[0]==400
 assert get('?role=9&since=%22%3E%3Cscript%3E')[0]==400
+assert get('?role=9&page=campaign')[0]==200
+assert get('?role=1&page=campaign')[0]==302
+assert get('?role=1&page=agent')[0]==200
+import json
+status, headers, body=get('?role=1&page=agent&poll=1')
+assert status==200 and 'sessions' in json.loads(body)
+def post(values):
+    import urllib.parse
+    request=urllib.request.Request(base+'?role=9&page=campaign',data=urllib.parse.urlencode(values).encode())
+    try: response=opener.open(request,timeout=30)
+    except urllib.error.HTTPError as error: response=error
+    return response.code,response.read().decode('utf-8')
+assert post({'action':'stop_engine','csrf_token':'invalid'})[0]!=200
+status, body=post({'action':'stop_engine','csrf_token':'private_http_fixture_token'})
+assert status==200 and 'STOPPED' in body
 print('PASS: HTTP report render, admin/supervisor/GTR, anonymous and agent rejection, missing campaign and invalid dates.')
+print('PASS: campaign/agent panels, authenticated JSON polling, admin-only engine control and CSRF rejection.')
 PY

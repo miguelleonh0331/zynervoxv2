@@ -19,7 +19,15 @@ try {
     $callId = filter_var($argv[2] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     if (!$callId) throw new RuntimeException('call_id invalido');
     if ($action === 'answered') {
-        Dialer::markAnswered($callId);
+        Dialer::markAnswered($callId, (string) ($argv[3] ?? ''));
+        foreach (['ZV2_RECORDING' => Dialer::RECORDING_DIRECTORY . '/call-' . $callId . '.wav', 'ZV2_DIALER_QUEUE' => Dialer::targetQueue($callId), 'ZV2_DIALER_READY' => '1'] as $key => $value) {
+            fwrite(STDOUT, 'SET VARIABLE ' . $key . ' "' . $value . '"' . "\n");
+            fgets(STDIN); // respuesta AGI al SET VARIABLE
+        }
+    } elseif ($action === 'recording') {
+        Dialer::verifyRecording($callId, (string) ($argv[3] ?? ''));
+        fwrite(STDOUT, 'SET VARIABLE ZV2_RECORDING_READY "1"' . "\n");
+        fgets(STDIN);
     } elseif ($action === 'amd') {
         Dialer::markAmd($callId, (string) ($argv[3] ?? ''));
     } elseif ($action === 'amd_hangup') {

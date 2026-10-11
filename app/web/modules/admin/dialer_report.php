@@ -112,7 +112,7 @@ if (($_SESSION['user_level'] ?? 0) == 9) {
             <li>Contactos tipificados: llamadas completadas con una disposición marcada como contacto. Conversión: ventas marcadas como contacto / contactos tipificados. Se usa el catálogo actual de disposiciones.</li>
             <li>Espera: promedio desde respuesta hasta conexión con agente, solo para llamadas con duración medida.</li>
             <li>AHT: promedio de conversación + tiempo observado hasta la primera tipificación tras el cierre. Los registros incompletos o históricos sin duraciones se excluyen.</li>
-            <li>Ocupación: no disponible hasta medir el tiempo logueado de los agentes.</li>
+            <li>Ocupación: conversación y wrapup observado, divididos por tiempo logueado sin pausa manual. Intervalos recortados al periodo. Cobertura: <?php echo h($kpis['occupancy_coverage']); ?>; <?php echo h($kpis['logged_seconds']); ?> segundos observados. Históricos o huecos sin sesiones: N/D.</li>
         </ul>
     </section>
     <?php endif; ?>

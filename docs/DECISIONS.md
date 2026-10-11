@@ -856,3 +856,42 @@ como pruebas sintéticas, no prueba del motor saliente completo. ARCHITECT_AGENT
 aprueba reparar origination completa mediante rawAction existente, tracking
 idempotente, grabación post-answer, límites reales y modo manual en dialer;
 aprueba aclarar CONTRACT conservando AMI/Queue/AMD, MySQL y MicroSIP.
+
+## 2026-10-11 — Cierre del motor SIP y operación persistente
+
+ARCHITECT_AGENT aprobó ampliar exclusivamente dialer: modo PROGRESSIVE, estado
+RUNNING/STOPPED, reservas globales de agentes, intervalos observados, migraciones
+008–011 y worker propio supervisado. No se modifica implementación compartida
+ni bot_ivr. Endpoint de salida se obtiene de Carriers por su contrato público;
+Queue y AMD siguen siendo nativos de Asterisk, sin ARI, Redis ni listener nuevo.
+
+Cada reserva relee estado/capacidad bajo lock; agent_slot UNIQUE impide ocupar
+al mismo agente en dos llamadas MANUAL/PROGRESSIVE. Cola personal entrega al
+agente reservado; DIALER_RESERVED pausa solo sus colas principales. Se preservan
+pausas manuales. CONNECT conserva la interfaz como MemberName para atribuir
+agente y conversación. WRAPUP pausa automáticamente hasta tipificación pendiente
+resuelta. Reintentos por disposición usan demora y no reciclan intentos nuevos
+al corregir una llamada vieja.
+
+MixMonitor obligatorio inicia posrespuesta antes de AMD. Fallo de grabación
+impide entrega al agente. MESSAGE exige audio existente; el cupo se conserva
+hasta terminar playback. El closer es idempotente. Conciliación confirma ausencia
+del ChannelId en PBX; NOANSWER y PBX_LOST no fabrican duraciones. La unidad PHP
+wwwrun:www usa flock, restart y heartbeat; el panel solo hace POST+CSRF a BD.
+
+Ocupación por campaña usa conversación más WRAPUP observado sobre intervalos
+ACTIVE+WRAPUP; pausas quedan fuera y huecos de observación se conservan. Cobertura
+insuficiente produce N/D. No sumar denominadores de campañas que comparten
+agentes. ADAPTIVE mantiene histéresis y clamp con cadencia mínima de 10 s.
+
+El usuario decidió usar únicamente SIP. Se revierte la activación exploratoria
+de includes PJSIP restaurando configuración raíz y permisos originales. No se
+certifica PJSIP ni se modifica su transporte. La prueba externa siguiente usará
+lista del usuario, campaña separada y concurrencia inicial 1; el laboratorio
+SIP/RTP no sustituye validación del proveedor, NAT y softphone físico.
+
+La prueba final de reinicio encontró una carrera entre arranque del servicio y
+un worker manual: recrear RuntimeDirectory podía cambiar el inode del bloqueo.
+Se conserva el directorio con RuntimeDirectoryPreserve=yes. La prueba espera
+que MainPID posea el flock antes de lanzar el duplicado, comprueba el mismo
+inode tras SIGKILL y limita temporalmente el proceso de prueba.

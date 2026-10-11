@@ -16,6 +16,12 @@ $user = (string) ($_SESSION['user'] ?? '');
 $msg = '';
 $error = '';
 
+if (($_GET['poll'] ?? '')==='1') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo json_encode(Dialer::agentPanelState($user),JSON_THROW_ON_ERROR); exit;
+}
+
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     if (!is_string($_POST['csrf_token'] ?? null) || !hash_equals($_SESSION['dialer_csrf'], $_POST['csrf_token'])) {
         $error = 'Sesión inválida, recarga la página.';
@@ -34,6 +40,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             } elseif ($action === 'dispose') {
                 Dialer::setDisposition((int) ($_POST['call_id'] ?? 0), $user, (string) ($_POST['code'] ?? ''));
                 $msg = 'Llamada tipificada.';
+            } elseif ($action === 'manual') {
+                $callId = Dialer::originateNext($campaignId, $user);
+                $msg = $callId === null ? 'Sin lead elegible, capacidad o agente disponible; no se marcó.' : 'Intento #' . $callId . ' enviado. La aceptación no confirma que el cliente contestó.';
             } else {
                 throw new RuntimeException('Acción inválida.');
             }
@@ -110,9 +119,12 @@ try {
             <div class="agent-camp">
                 <div>
                     <strong><?php echo h($c['name']); ?></strong>
-                    <span style="color:var(--text-muted);font-size:12px;"> · cola <?php echo h($c['queue_name']); ?> · <?php echo $c['active'] ? 'activa' : 'inactiva'; ?></span>
+                    <span style="color:var(--text-muted);font-size:12px;"> · cola <?php echo h($c['queue_name']); ?> · <?php echo $c['active'] ? 'activa' : 'inactiva'; ?> · <span id="agent-state-<?php echo (int)$c['campaign_id']; ?>">consultando estado</span></span>
                 </div>
                 <div class="actions">
+                    <?php if ($c['dial_method'] === 'MANUAL' && $c['active']): ?>
+                    <form method="POST"><input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><input type="hidden" name="campaign_id" value="<?php echo (int) $c['campaign_id']; ?>"><input type="hidden" name="action" value="manual"><button type="submit" class="btn-primary">Marcar siguiente lead</button></form>
+                    <?php endif; ?>
                     <form method="POST"><input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><input type="hidden" name="campaign_id" value="<?php echo (int) $c['campaign_id']; ?>"><input type="hidden" name="action" value="join"><button type="submit" class="carsa-btn">Entrar a cola</button></form>
                     <form method="POST"><input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><input type="hidden" name="campaign_id" value="<?php echo (int) $c['campaign_id']; ?>"><input type="hidden" name="action" value="pause"><button type="submit" class="carsa-btn secondary">Pausar</button></form>
                     <form method="POST"><input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><input type="hidden" name="campaign_id" value="<?php echo (int) $c['campaign_id']; ?>"><input type="hidden" name="action" value="unpause"><button type="submit" class="carsa-btn secondary">Despausar</button></form>
@@ -123,5 +135,21 @@ try {
             <?php if (!$campaigns): ?><p>No tienes campañas asignadas. Pídele al administrador que te asigne una en "Configurar" → Agentes asignados.</p><?php endif; ?>
         </div>
     </main>
+    <script>
+    const pendingAtRender = <?php echo json_encode($pending['call_id'] ?? null); ?>;
+    setInterval(async () => {
+        try {
+            const response = await fetch('dialer_agent.php?poll=1',{cache:'no-store'});
+            if (!response.ok) return;
+            const state = await response.json();
+            for (const element of document.querySelectorAll('[id^="agent-state-"]')) element.textContent='fuera de cola';
+            for (const session of state.sessions) {
+                const element=document.getElementById('agent-state-'+session.campaign_id);
+                if (element) element.textContent=session.state==='ACTIVE' ? 'en cola' : session.state==='WRAPUP' ? 'tipificación pendiente' : 'pausado';
+            }
+            if ((state.pending?.call_id ?? null) !== pendingAtRender && !document.querySelector('select[name="code"]')?.value && !document.querySelector('input:focus,select:focus,textarea:focus')) location.reload();
+        } catch (_) { /* Next poll retries a temporary connection failure. */ }
+    },3000);
+    </script>
 </body>
 </html>
