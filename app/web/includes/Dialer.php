@@ -258,6 +258,61 @@ class Dialer {
         return ['saved' => $saved, 'duplicates' => $parsed['duplicates'], 'rejected' => $parsed['rejected']];
     }
 
+    // ---------------------------------------------------------- Originator (Fase 3)
+
+    // Aproximacion SOLO de Fase 3: sin closer real (eso es Fase 5, que
+    // escuchara eventos AMI de Hangup), no sabemos cuando termina una
+    // llamada. Mientras tanto contamos "en vuelo" por ventana de tiempo
+    // desde que se origino. Se reemplaza en Fase 5 por el conteo real.
+    public static function inFlightCount(int $campaignId, int $windowSeconds): int {
+        $stmt = self::database()->prepare(
+            'SELECT COUNT(*) FROM v2_dialer_call_log WHERE campaign_id=:c AND originated_at > (NOW() - INTERVAL :w SECOND)'
+        );
+        $stmt->bindValue(':c', $campaignId, PDO::PARAM_INT);
+        $stmt->bindValue(':w', $windowSeconds, PDO::PARAM_INT);
+        $stmt->execute();
+        return (int) $stmt->fetchColumn();
+    }
+
+    // Reserva atomica de un lead elegible (FOR UPDATE SKIP LOCKED, igual
+    // que recomienda el manual de diseno) y registra el intento. Devuelve
+    // null si no hay leads elegibles. Un solo proceso a la vez por
+    // campaign_id (el CLI que llama a esto se invoca manualmente por ahora,
+    // sin cron ni servicio).
+    public static function claimLead(int $campaignId, string $dialPrefix): ?array {
+        $db = self::database();
+        $db->beginTransaction();
+        try {
+            $stmt = $db->prepare(
+                'SELECT d.lead_id,d.phone_number FROM v2_dialer_leads d
+                 JOIN v2_dialer_lists l ON l.list_id=d.list_id
+                 WHERE l.campaign_id=:c AND l.active=1 AND d.status=\'NEW\' AND d.next_eligible_at<=NOW()
+                 ORDER BY d.lead_id ASC LIMIT 1 FOR UPDATE SKIP LOCKED'
+            );
+            $stmt->execute(['c' => $campaignId]);
+            $lead = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$lead) { $db->commit(); return null; }
+            $db->prepare('UPDATE v2_dialer_leads SET status=\'DIALING\',called_count=called_count+1,last_call_time=NOW() WHERE lead_id=:id')
+                ->execute(['id' => $lead['lead_id']]);
+            $db->prepare('INSERT INTO v2_dialer_call_log (campaign_id,lead_id,phone_number,originated_at) VALUES (:c,:l,:p,NOW())')
+                ->execute(['c' => $campaignId, 'l' => $lead['lead_id'], 'p' => $lead['phone_number']]);
+            $callId = (int) $db->lastInsertId();
+            $db->commit();
+            return ['call_id' => $callId, 'lead_id' => (int) $lead['lead_id'], 'phone_number' => $lead['phone_number'], 'channel' => 'Local/' . $dialPrefix . $lead['phone_number'] . '@zynervoxv2/n'];
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            throw $e;
+        }
+    }
+
+    // Si AMI rechazo el originate, no dejar el lead colgado en DIALING para
+    // siempre: lo regresa a NEW y borra el intento fallido.
+    public static function releaseFailedClaim(int $callId, int $leadId): void {
+        $db = self::database();
+        $db->prepare('DELETE FROM v2_dialer_call_log WHERE call_id=:id')->execute(['id' => $callId]);
+        $db->prepare('UPDATE v2_dialer_leads SET status=\'NEW\' WHERE lead_id=:id')->execute(['id' => $leadId]);
+    }
+
     public static function leadCount(int $listId): int {
         $stmt = self::database()->prepare('SELECT COUNT(*) FROM v2_dialer_leads WHERE list_id=:l');
         $stmt->execute(['l' => $listId]);
