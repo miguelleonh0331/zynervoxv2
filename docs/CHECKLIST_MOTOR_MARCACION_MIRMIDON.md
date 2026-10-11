@@ -113,3 +113,26 @@ selectivo con backup; no revertir migraciones borrando datos operativos.
 Informe reproducible y evidencia: [VALIDACION_MOTOR_MARCACION_SIP.md](VALIDACION_MOTOR_MARCACION_SIP.md).
 La lista real permanece sin importar ni llamar; la atención personal, proveedor
 SIP/NAT y softphone del usuario corresponden a su prueba posterior.
+
+## 2026-10-11 — Despliegue y validación de selección de dialplan
+
+Código e968522 desplegado en /srv/www/htdocs/zynervoxv2: Dialer.php,
+Dialplans.php, campaigns.php y dialer_campaign_edit.php. Migración 012 aplicada
+a zynervox_core; carrier_id y selected_dialplan_id nullable confirmados.
+Sintaxis PHP y comparación fuente/runtime PASS; worker reiniciado y activo.
+Respaldo: /var/backups/zynervoxv2/dialer-selected-route-20261011-161538.
+
+Navegador real en https://at.zynervox.site/zynervoxv2/: campaña propia #56
+DIALER_ROUTE_VALIDATION_20261011_1620 creada sin leads/agentes, prefijo interno
+automático, selección 7→1 guardada, inicio MANUAL sin leads, intento 1→6 rechazado
+RUNNING conservando 1, parada y cambio a 6 guardado. Selector muestra únicamente
+carsa_bot/carsa_bot_amd/carsa_ivr; callbacks internos excluidos. Runtime resuelve
+SIP/carrier1/881851000001 para teléfono sintético, sin ejecutar Originate.
+Campaña #56 y callback retirados por API pública; rutas compartidas comparadas
+antes/después e intactas. Sesión activa de prueba revocada y cookies locales
+retiradas. Estado final: worker activo, 0 RUNNING y 0 llamadas abiertas.
+
+No se cargaron leads ni se efectuaron llamadas. Certificación con proveedor SIP
+externo/MicroSIP físico y alta de agentes desde web siguen pendientes. Reversión
+de PHP desde respaldo debe considerar las campañas que ya usan la nueva ruta;
+no eliminar selected_dialplan_id ni forzar carrier_id NOT NULL sin conciliarlas.
