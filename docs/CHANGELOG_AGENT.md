@@ -1917,3 +1917,39 @@ Verificados Compose, igualdad fuente/producción, healthcheck, creación/conexi�
 TLS y ping de cliente temporal, revocación y limpieza. Servicios existentes
 activos y SELinux Enforcing. Cambios preexistentes BotIVR/dialer no incluidos.
 GUI aún pendiente; endpoint actual LAN, sin validación por Internet.
+
+## 2026-10-11 ? Vpn administrativo desplegado sin push
+
+Nuevo panel app/web/modules/vpn, backend/hooks/Dockerfile en ops/vpn y m?dulo
+src/features/vpn. Sidebar agrega Vpn; gate permite solamente index exacto.
+CRUD metadatos/certificados, descarga no-store, revocaci?n/desconexi?n, inventario,
+?ltima conexi?n/estado y auditor?a con filtros. Tokens y SQLite fueraGit/SMB.
+Seis pruebas locales backend: validaci?n, autenticaci?n API, lifecycle/auditor?a,
+falloPKI conserva cuenta, respuesta management fragmentada y create concurrente.
+LintPHP/node; pruebas producci?n Authadmin/an?nimo/rol8/CSRF/XSS, CRUD/descarga,
+conexi?nVPN real de cliente temporal/hooks/ping, revocaci?n inmediata y eliminaci?n
+con auditor?a persistente. Prueba inicial detect? cierre prematuro management;
+corregido en fuente y redeploy, suite completa pas?. Fixtures revocados/archivados.
+Navegador: sidebar, formulario/validaci?n y ausencia de errores. API solo loopback,
+healthhealthy, certificados previos id?nticos, fuente/producci?n comparados;
+Asterisk/httpd/php-fpm/Tailscale/firewalld activos y SELinux Enforcing.
+Cambios ajenos BotIVR/dialer/PbxAmi preservados. Sidebar conserva itempreexistente.
+Sin commit/push de esta tarea. ClienteWindows pendiente por decisi?n del usuario.
+
+## 2026-10-11 — Carga ligera de Vpn
+
+Panel inicial sin consulta ni HTML de historial. Ver auditoría abre20 registros
+con filtros y páginas más antiguas/recientes. Backend separa inventory/audit,
+usa cursores por id y snapshot estable con índices; mantiene auditoría íntegra.
+Ocho pruebas backend pasan: incluye ausencia de SELECT audit en inventory,
+páginas/filtros/validación de cursor y eventos concurrentes fuera snapshot.
+PHP lint; verificación HTTP de vista inicial, límite20 y navegación/filtros.
+Cambio local primero, copiado desde SMB y backend reconstruido, sin push.
+
+## 2026-10-11 — Publicación del módulo Vpn autorizada
+
+El usuario autoriza ahora commit y push del panel y archivos reproducibles del
+servicio. Incluye código, contratos, pruebas y documentación; imágenes Docker,
+PKI, perfiles, inventario/auditoría SQLite y tokens permanecen fuera de Git.
+Pruebas backend8, lintPHP y node verificados; despliegue ya validado en soundhound.
+Cambios ajenos en BotIVR y Dialer se excluyen.

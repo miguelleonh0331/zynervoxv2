@@ -66,6 +66,7 @@ function renderSidebar($activePage = 'home', $rootPrefix = '../../') {
         ['key' => 'zynerdesk',   'href' => 'modules/admin/zynerdesk.php',    'icon' => 'remote',     'label' => 'Zynerdesk',          'built' => true],
         ['key' => 'usergroups',  'href' => 'modules/admin/usergroups.php',   'icon' => 'usergroups', 'label' => 'User Groups (Grupos)', 'built' => true],
         ['key' => 'remote',      'href' => 'modules/admin/remoteagents.php', 'icon' => 'remote',     'label' => 'Agents GSM',         'built' => true],
+        ['key' => 'vpn',          'href' => 'modules/vpn/index.php',          'icon' => 'remote',     'label' => 'Vpn',                'built' => true],
         ['key' => 'phones',      'href' => 'modules/admin/phones.php',       'icon' => 'phones',     'label' => 'Anexos/Teléfonos',   'built' => true],
         ['key' => 'admin',       'href' => 'modules/admin/carriers.php',     'icon' => 'admin',      'label' => 'Troncales SIP',      'built' => true],
         ['key' => 'dialplan',    'href' => 'modules/admin/dialplan.php',     'icon' => 'scripts',    'label' => 'Dialplan',           'built' => true],

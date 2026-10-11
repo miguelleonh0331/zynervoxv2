@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+api-token
+*.ovpn
+*.key
+*.sqlite3*

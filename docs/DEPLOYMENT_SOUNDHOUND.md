@@ -108,3 +108,21 @@ Servicios Asterisk/web/Tailscale/firewalld activos, SELinux Enforcing.
 Docker añadió sus cadenas de forwarding; ts-forward continúa presente.
 No prueba de cliente externo por Internet: falta definir endpoint público/NAT.
 GUI y módulo sidebar Vpn pendientes de una tarea posterior con contrato propio.
+
+## Panel Vpn ? 2026-10-11
+
+URL /zynervoxv2/modules/vpn/index.php, visible en sidebar, solo administradornivel9.
+Imagen derivada zynervoxv2-openvpn-admin:local a?ade Python stdlib/SQLite y hooks;
+base digest en ops/vpn/Dockerfile. Config fuente ops/vpn copiada desde SMB a
+/opt/zynervoxv2-vpn; imagen construida all?, mismo volumen y PKI previa preservados.
+API host127.0.0.1:18081; management127.0.0.1:7505 solo dentro del contenedor.
+Token PHP /etc/zynervox/zynervoxv2/vpn/api-token root:apache0640; token del
+contenedor /opt/zynervoxv2-vpn/api-token root0600 con bindroZ. Secretos fueraGit.
+Inventario/auditor?a SQLite /etc/openvpn/admin/inventory.sqlite3 en volumenprivado.
+Perfiles descargados exclusivamente por administrador, CSRF y no-store.
+Copias de seguridad config/web y hashesPKI: /root/zynervox-install/vpn-panel-*.
+Rollback restaura composeweb respaldados sin borrar volumen ni certificados.
+Pruebas: unitlocal/remote, CRUDweb, sesi?nVPN real y revocaci?n inmediata, auditor?a,
+permiso rol8/an?nimo, CSRF, XSS y navegador. Fixtures temporales archivados/revocados.
+GUI desarrollada y desplegada sin push a petici?n del usuario. EndpointLAN sigue
+192.168.3.22:1194; problema clienteWindows y accesoInternet quedan pendientes.

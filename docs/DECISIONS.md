@@ -815,3 +815,22 @@ sidebar, GUI ni instalador. Servicio CLI hwdsl2/openvpn-server fijado por digest
 volumen persistente privado y endpoint LAN explícito. GUI futura requiere
 contrato/API restringido; nunca dar socket Docker a Apache. Perfiles y claves
 fuera de Git/SMB. Acceso Internet requiere IP pública/DNS y NAT verificados.
+
+## 2026-10-11 ? Panel administrativo Vpn
+
+ARCHITECT_AGENT aprob? nuevo m?dulo vpn, integraci?n m?nima sidebar/gate y backend
+Python stdlib/SQLite dentro del contenedor OpenVPN. API loopback127.0.0.1:18081
+con token privado, sin Docker socket en PHP. Authnivel9/CSRF; actor desde sesi?n.
+Certificados/PKI autoridad, inventario reconciliado. CN inmutable y no reutilizable,
+borrado l?gico despu?s de revocar. Management desconecta sesiones; confirmaci?n
+se lee antes de cerrar canal. Hooks Unixsocket auditan CN/IP, peerUIDroot/nobody.
+Historial solo desde habilitaci?n; auditor?a append-only l?gico, no immutable root.
+Usuario cambia flujo para esta tarea: fuente/verificaci?n/despliegue, SIN PUSH.
+
+## 2026-10-11 — Auditoría Vpn bajo demanda
+
+ARCHITECT_AGENT aprueba separar lectura de inventario e historial. inventory
+no consulta/devuelve audit; acción audit paginada por id20 registros, índices
+por actor/target/action, filtros exactos y snapshot estable. Sin conteo global
+ni OFFSET. Vista inicial sin tabla histórica; usuario abre Ver auditoría y
+navega en ambos sentidos. Se mantienen todos los eventos, sin push.

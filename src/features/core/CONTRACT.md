@@ -83,3 +83,11 @@ pjsip-zynervoxv2.conf para PJSIP y sip-zynervoxv2.conf para SIP, según detecci�
 pública protocol. El dialplan conserva todas las troncales activas. No cambia
 registros ni active, ni recarga automáticamente al guardar. El servidor debe
 incluir cada archivo desde la configuración del driver correspondiente.
+
+
+## 2026-10-11 ? Entrada administrativa Vpn
+
+IsolatedGate permite ?nicamente modules/vpn/index.php; este m?dulo aplica su
+propio control de sesi?n nivel9 y CSRF. Sidebar administrativo agrega Vpn,
+preservando items existentes. Integraci?n por Auth/Config p?blicos, sin cambios
+al motor PBX/DB ni acceso Apache al socketDocker. Aprobado ARCHITECT_AGENT.
