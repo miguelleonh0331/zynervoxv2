@@ -2235,3 +2235,23 @@ No se realizó revisión visual en navegador en esta tarea.
 Despliegue de un PHP por zynertools, fuente/runtime iguales y sin reiniciar servicios.
 Worker active y SIP5000 OK195ms. Respaldo para restauración del mismo PHP:
 /var/backups/zynervoxv2/agent-ui-20261011-183821/dialer_agent.php.
+
+## 2026-10-11 — Consola de agente inspirada en distribución VICIdial
+
+Panel organizado en dos columnas: controles de llamada a la izquierda e
+información del cliente al centro; tipificación y campañas en bloques inferiores.
+Marcar usa un único formulario con selector de campañas MANUAL activas asignadas,
+conservando POST, campaign_id y CSRF. Pausar/Reanudar y Colgar mantienen acciones
+y permisos existentes. Cajas con bordes definidos y fondos visibles: marcar naranja,
+pausa ámbar, reanudar/disponible verde, Colgar rojo y cliente/campañas azul claro.
+Cliente dispone de campos separados teléfono/nombre/campaña/estado y una caja
+vacía visible sin llamada; datos y variables se actualizan con textContent.
+Catálogo administrativo al final; se conserva única salida en el sidebar.
+Estilos delimitados al panel y adaptación a pantallas pequeñas; sin cambios backend.
+
+PHP lint, node --check, estructura de formularios sin anidamiento y regresiones
+run-agent-controls.sh PASS (controles, reporting/variables y HTTP agente/admin,
+CSRF, permisos, escape, propiedad Hangup y salida única). Sin revisión visual
+mediante navegador. Despliegue de un PHP sin reiniciar servicios, fuente/runtime
+idénticos, worker active y SIP5000 OK201ms. Respaldo para restauración:
+/var/backups/zynervoxv2/agent-ui-20261011-185119/dialer_agent.php.

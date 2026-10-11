@@ -89,51 +89,65 @@ try {
     <link rel="stylesheet" href="layout.css">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        .agent-workspace{min-width:0;max-width:1600px;width:calc(100% - 260px);padding:32px;line-height:1.5}
+        .agent-workspace{min-width:0;width:calc(100% - 260px);padding:20px;line-height:1.4;background:#e8eaed}
         .agent-workspace [hidden]{display:none!important}
-        .agent-workspace .top-bar{gap:16px;margin-bottom:24px}
-        .agent-workspace h1{font-size:26px;letter-spacing:-.6px;line-height:1.2}
-        .agent-workspace .subtitle{color:var(--text-muted);font-size:14px;margin-top:6px}
-        .agent-workspace .user-badge{background:white;border:1px solid var(--border);padding:8px 14px;border-radius:24px;white-space:nowrap;font-size:13px;font-weight:600}
-        .agent-workspace .card{padding:24px;border-radius:12px;margin-bottom:20px}
-        .agent-workspace .card h2{font-size:17px;margin-bottom:8px}
-        .agent-workspace .section-description{color:var(--text-muted);font-size:13px;margin-bottom:20px}
-        .agent-workspace .controls-card{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
-        .agent-workspace .status-caption{font-size:12px;color:var(--text-muted);margin-bottom:8px}
-        .agent-workspace .status-badge{display:inline-flex;align-items:center;gap:9px;background:#ecfdf5;color:#166534;border-radius:24px;padding:8px 14px;font-size:14px;font-weight:600}
-        .agent-workspace .status-badge:before{content:'';width:8px;height:8px;flex-shrink:0;border-radius:50%;background:currentColor}
-        .agent-workspace .status-badge[data-state="paused"],.agent-workspace .status-badge[data-state="pending"]{background:#fff7ed;color:#9a3412}
-        .agent-workspace .status-badge[data-state="calling"]{background:#eff6ff;color:#1d4ed8}
-        .agent-workspace .control-actions,.agent-workspace #pause-form{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-        .agent-workspace select,.agent-workspace input:not([type="hidden"]):not([type="checkbox"]){min-height:44px;margin:0;border-radius:8px;padding:10px 12px;font-size:14px}
-        .agent-workspace #pause-form select{width:220px;max-width:100%}
-        .agent-workspace button{min-height:44px;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid transparent;line-height:1.4}
-        .agent-workspace .btn-primary{color:#2D2F3B}
-        .agent-workspace .btn-secondary{background:#fff;border-color:#cbd5e1;color:var(--text)}
-        .agent-workspace .btn-secondary:hover{background:#f8fafc;border-color:#94a3b8}
-        .agent-workspace .btn-danger{background:#b91c1c;color:#fff}
-        .agent-workspace .btn-danger:hover{background:#991b1b}
-        .agent-workspace button:focus-visible,.agent-workspace select:focus-visible,.agent-workspace input:focus-visible{outline:3px solid #2563eb;outline-offset:3px}
-        .agent-workspace .notice{border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:14px;background:#ecfdf5;color:#166534;border:1px solid #bbf7d0}
-        .agent-workspace .notice-error{background:#fef2f2;color:#991b1b;border-color:#fecaca}
-        .agent-workspace #connection-status{color:var(--text-muted);font-size:13px;margin-bottom:16px}
+        .agent-workspace .top-bar{background:#303b4b;color:#fff;padding:16px 20px;border:1px solid #1c2736;margin-bottom:12px;gap:16px;flex-wrap:wrap}
+        .agent-workspace h1{font-size:22px;line-height:1.2}
+        .agent-workspace .subtitle{font-size:13px;color:#e2e8f0;margin-top:4px}
+        .agent-workspace .user-badge{background:#fff;color:#243247;border:1px solid #cbd5e1;padding:8px 12px;font-size:13px;font-weight:700}
+        .agent-workspace .console-grid{display:grid;grid-template-columns:230px minmax(0,1fr);gap:14px;align-items:start;margin-bottom:14px}
+        .agent-workspace .card{padding:16px;border:1px solid #9ba7b6;border-radius:3px;margin-bottom:14px;background:#fff}
+        .agent-workspace .console-grid>.card{margin:0}
+        .agent-workspace .card h2{font-size:14px;letter-spacing:.3px;text-transform:uppercase;padding:10px 12px;margin:-16px -16px 16px;background:#d8e7f5;border-bottom:1px solid #93aac2;color:#183b59}
+        .agent-workspace .controls-card{background:#dde3e9}
+        .agent-workspace .controls-card h2{background:#465569;color:#fff;border-color:#303b4b}
+        .agent-workspace .status-caption{font-size:12px;font-weight:700;margin-bottom:6px;color:#334155}
+        .agent-workspace .status-badge{display:flex;align-items:center;gap:8px;border:1px solid #6ca883;background:#bcebc9;color:#14532d;padding:10px;font-size:14px;font-weight:700;margin-bottom:16px}
+        .agent-workspace .status-badge:before{content:'';width:9px;height:9px;flex-shrink:0;border-radius:50%;background:currentColor}
+        .agent-workspace .status-badge[data-state="paused"],.agent-workspace .status-badge[data-state="pending"]{background:#ffe39b;border-color:#c29838;color:#713f12}
+        .agent-workspace .status-badge[data-state="calling"]{background:#bfdbfe;border-color:#6c9ad0;color:#1e3a8a}
+        .agent-workspace .control-actions{display:grid;gap:18px}
+        .agent-workspace .control-actions form{display:grid;gap:8px}
+        .agent-workspace label{font-size:12px;color:#334155;text-transform:none;letter-spacing:0}
+        .agent-workspace select,.agent-workspace input:not([type="hidden"]):not([type="checkbox"]){min-height:42px;margin:0;border:1px solid #8494a7;border-radius:3px;padding:9px;font-size:14px;background:#fff}
+        .agent-workspace button{min-height:44px;padding:10px 14px;border-radius:3px;font-size:14px;font-weight:700;cursor:pointer;border:1px solid #8494a7;line-height:1.3}
+        .agent-workspace .btn-primary{background:#ffc06b;color:#542c00;border-color:#be791e}
+        .agent-workspace .btn-primary:hover{background:#ffac3f}
+        .agent-workspace .btn-secondary{background:#ffe39b;color:#713f12;border-color:#bd9231}
+        .agent-workspace .btn-secondary:hover{background:#ffd56c}
+        .agent-workspace #pause-form[data-paused="true"] button{background:#bcebc9;color:#14532d;border-color:#6ca883}
+        .agent-workspace .btn-danger{background:#ee9f9f;color:#711515;border-color:#bf6464}
+        .agent-workspace .btn-danger:hover{background:#ef8282}
+        .agent-workspace button:focus-visible,.agent-workspace select:focus-visible,.agent-workspace input:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
+        .agent-workspace .notice{padding:12px;margin-bottom:12px;font-size:14px;background:#bcebc9;color:#14532d;border:1px solid #6ca883}
+        .agent-workspace .notice-error{background:#ffd1d1;color:#711515;border-color:#bf6464}
+        .agent-workspace #connection-status{color:#334155;font-size:13px;margin-bottom:12px}
         .agent-workspace #connection-status[data-error="true"]{color:#991b1b}
-        .agent-workspace .agent-camp{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:20px;border:1px solid var(--border);border-radius:10px;margin-top:12px}
-        .agent-workspace .campaign-name{display:block;font-size:17px;margin-bottom:8px;overflow-wrap:anywhere}
-        .agent-workspace .campaign-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--text-muted);font-size:12px}
-        .agent-workspace .campaign-tag{border-radius:5px;background:#f1f5f9;color:#475569;padding:3px 8px;font-weight:600}
-        .agent-workspace .agent-camp .actions{flex-shrink:0}
-        .agent-workspace .pause-type-row{display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap}
+        .agent-workspace .customer-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:16px}
+        .agent-workspace .customer-fields dt{font-size:12px;font-weight:700;color:#334155;margin-bottom:5px}
+        .agent-workspace .customer-fields dd{background:#f4f7fa;border:1px solid #a7b5c4;min-height:42px;padding:10px;font-size:14px;overflow-wrap:anywhere}
+        .agent-workspace .empty-customer{background:#edf3f8;border:1px dashed #93aac2;padding:24px;color:#475569;text-align:center}
+        .agent-workspace #lead-summary{font-size:13px;color:#334155;margin-bottom:16px;overflow-wrap:anywhere}
+        .agent-workspace #lead-variables{display:grid;grid-template-columns:minmax(100px,1fr) 2fr;gap:8px;font-size:14px}
+        .agent-workspace #lead-variables dt{font-weight:700;background:#e2e8f0;padding:8px;color:#334155;overflow-wrap:anywhere}
+        .agent-workspace #lead-variables dd{border:1px solid #cbd5e1;padding:8px;overflow-wrap:anywhere}
+        .agent-workspace .section-description{color:#475569;font-size:13px;margin-bottom:12px}
+        .agent-workspace .campaign-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+        .agent-workspace .agent-camp{padding:14px;background:#edf3f8;border:1px solid #a7b5c4;border-left:5px solid #4685b5}
+        .agent-workspace .campaign-name{display:block;font-size:16px;margin-bottom:8px;overflow-wrap:anywhere}
+        .agent-workspace .campaign-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:#334155}
+        .agent-workspace .campaign-tag{background:#c7e1f7;border:1px solid #93aac2;padding:3px 6px;font-weight:700}
+        .agent-workspace .disposition-card{background:#fff7df;border-color:#c29838}
+        .agent-workspace .disposition-card h2{background:#ffe39b;color:#713f12;border-color:#c29838}
+        .agent-workspace .disposition-form{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+        .agent-workspace .disposition-form select{flex:1;min-width:180px}
+        .agent-workspace .pause-type-row{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
         .agent-workspace .pause-type-row input:not([type="hidden"]):not([type="checkbox"]){flex:1;min-width:160px;width:auto}
-        .agent-workspace .pause-type-row input[type="checkbox"]{width:auto;margin:0;accent-color:var(--primary)}
-        .agent-workspace .pause-type-row label{display:flex;align-items:center;gap:6px;text-transform:none;font-size:13px}
-        .agent-workspace #lead-summary{margin-bottom:16px;overflow-wrap:anywhere}
-        .agent-workspace #lead-variables{display:grid;grid-template-columns:minmax(100px,1fr) 2fr;gap:8px 16px;font-size:14px}
-        .agent-workspace #lead-variables dt{font-weight:600;color:var(--text-muted)}
-        .agent-workspace #lead-variables dd{overflow-wrap:anywhere}
-        .agent-workspace .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-        @media(max-width:1050px){.agent-workspace{padding:24px}.agent-workspace .agent-camp{align-items:flex-start;flex-direction:column}}
-        @media(max-width:700px){.agent-page{flex-direction:column}.agent-page .sidebar{position:static;width:100%;height:auto}.agent-workspace{margin-left:0;width:100%;padding:20px}.agent-workspace .card{padding:18px}.agent-workspace .top-bar{align-items:flex-start;flex-wrap:wrap}.agent-workspace .control-actions,.agent-workspace #pause-form{width:100%}.agent-workspace #pause-form select{flex:1;min-width:160px;width:auto}.agent-workspace .agent-camp .actions,.agent-workspace .agent-camp .actions button{width:100%}}
+        .agent-workspace .pause-type-row input[type="checkbox"]{width:auto;margin:0;accent-color:#166534}
+        .agent-workspace .pause-type-row label{display:flex;align-items:center;gap:6px}
+        @media(max-width:1000px){.agent-workspace .console-grid{grid-template-columns:200px minmax(0,1fr)}.agent-workspace .customer-fields{grid-template-columns:1fr}}
+        @media(max-width:750px){.agent-page{flex-direction:column}.agent-page .sidebar{position:static;width:100%;height:auto}.agent-workspace{margin-left:0;width:100%;padding:12px}.agent-workspace .console-grid{grid-template-columns:1fr}.agent-workspace .customer-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:420px){.agent-workspace .customer-fields{grid-template-columns:1fr}}
     </style>
 </head>
 <body class="agent-page">
@@ -156,13 +170,23 @@ try {
         <?php if ($msg !== ''): ?><p class="notice" role="status"> <?php echo h($msg); ?></p><?php endif; ?>
         <?php if ($error !== ''): ?><p class="notice notice-error" role="alert"> <?php echo h($error); ?></p><?php endif; ?>
         <p id="connection-status" role="status">Conectando a tus campañas…</p>
+        <div class="console-grid">
         <section class="card controls-card" aria-label="Estado y controles del agente">
+            <h2>Control de llamada</h2>
             <div><p class="status-caption">Estado del agente</p><span id="pause-status" class="status-badge" role="status" data-state="<?php echo $pause ? 'paused' : 'available'; ?>"><?php echo $pause ? h('Pausado: '.$pause['label']) : 'Disponible'; ?></span></div>
             <div class="control-actions">
-            <form method="POST" id="pause-form">
+            <?php $manualCampaigns=array_filter($campaigns,static function($c) { return $c['active'] && $c['dial_method']==='MANUAL'; }); if ($manualCampaigns): ?>
+            <form method="POST" id="manual-form">
+                <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><input type="hidden" name="action" value="manual">
+                <label for="manual-campaign">Campaña para marcar</label>
+                <select id="manual-campaign" name="campaign_id" required><?php foreach ($manualCampaigns as $c): ?><option value="<?php echo (int)$c['campaign_id']; ?>"><?php echo h($c['name']); ?></option><?php endforeach; ?></select>
+                <button type="submit" class="btn-primary">Marcar siguiente lead</button>
+            </form>
+            <?php endif; ?>
+            <form method="POST" id="pause-form" data-paused="<?php echo $pause ? 'true' : 'false'; ?>">
                 <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>">
                 <input type="hidden" name="action" value="<?php echo $pause ? 'unpause' : 'pause'; ?>">
-                <label for="pause-type" class="sr-only">Motivo de pausa</label><select id="pause-type" name="pause_type_id" <?php echo $pause ? 'hidden' : 'required'; ?>><option value="">Motivo de pausa…</option><?php foreach ($pauseTypes as $type): if (!$type['active']) continue; ?><option value="<?php echo (int)$type['pause_type_id']; ?>"><?php echo h($type['label']); ?></option><?php endforeach; ?></select>
+                <label for="pause-type">Motivo de pausa</label><select id="pause-type" name="pause_type_id" <?php echo $pause ? 'hidden' : 'required'; ?>><option value="">Motivo de pausa…</option><?php foreach ($pauseTypes as $type): if (!$type['active']) continue; ?><option value="<?php echo (int)$type['pause_type_id']; ?>"><?php echo h($type['label']); ?></option><?php endforeach; ?></select>
                 <button class="btn-secondary" type="submit"><?php echo $pause ? 'Reanudar' : 'Pausar'; ?></button>
             </form>
             <form method="POST" id="hangup-form" <?php echo !$lead || $lead['ended_at'] ? 'hidden' : ''; ?>>
@@ -170,22 +194,31 @@ try {
             </form>
             </div>
         </section>
-        <?php if ((int)$_SESSION['user_level']===9): ?>
-        <section class="card"><h2>Tipos de pausa</h2><p class="section-description">Gestiona los motivos disponibles para tus agentes.</p>
-        <?php foreach (array_merge($pauseTypes,[['pause_type_id'=>0,'code'=>'','label'=>'','active'=>1]]) as $type): ?>
-        <form method="POST" class="pause-type-row"><input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><input type="hidden" name="action" value="save_pause_type"><input type="hidden" name="pause_type_id" value="<?php echo (int)$type['pause_type_id']; ?>"><input aria-label="Código de pausa" name="code" value="<?php echo h($type['code']); ?>" placeholder="Código" maxlength="30" required><input aria-label="Nombre de pausa" name="label" value="<?php echo h($type['label']); ?>" placeholder="Nombre de pausa" maxlength="80" required><label><input type="checkbox" name="active" <?php echo $type['active'] ? 'checked' : ''; ?>> Activa</label><button type="submit" class="btn-secondary"><?php echo $type['pause_type_id'] ? 'Guardar' : 'Crear pausa'; ?></button></form>
-        <?php endforeach; ?></section>
-        <?php endif; ?>
+        <section id="lead-card" class="card customer-card" aria-label="Información del cliente">
+            <h2>Información del cliente</h2>
+            <div id="empty-customer" class="empty-customer">Sin llamada seleccionada. Los datos del cliente aparecerán aquí al iniciar una llamada.</div>
+            <div id="customer-content" hidden>
+                <dl class="customer-fields">
+                    <div><dt>Teléfono</dt><dd id="customer-phone">—</dd></div>
+                    <div><dt>Nombre</dt><dd id="customer-name">—</dd></div>
+                    <div><dt>Campaña</dt><dd id="customer-campaign">—</dd></div>
+                    <div><dt>Estado de llamada</dt><dd id="customer-state">—</dd></div>
+                </dl>
+                <p id="lead-summary"></p><dl id="lead-variables"></dl>
+            </div>
+        </section>
+        </div>
+
 
         <?php if ($pending): ?>
-        <div class="card" style="margin-bottom:16px;">
+        <div class="card disposition-card">
             <h2>Tipificar llamada pendiente</h2>
             <p>Campaña <strong><?php echo h($pending['campaign_name']); ?></strong> · Teléfono <?php echo h($pending['phone_number']); ?> · <?php echo h($pending['originated_at']); ?></p>
-            <form method="POST" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <form method="POST" class="disposition-form">
                 <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>">
                 <input type="hidden" name="action" value="dispose">
                 <input type="hidden" name="call_id" value="<?php echo (int) $pending['call_id']; ?>">
-                <select name="code" required>
+                <select name="code" aria-label="Resultado de la llamada" required>
                     <option value="">Selecciona disposición...</option>
                     <?php foreach ($dispositions as $d): ?>
                         <option value="<?php echo h($d['code']); ?>"><?php echo h($d['code'] . ' — ' . $d['label']); ?></option>
@@ -198,23 +231,26 @@ try {
 
         <div class="card">
             <h2>Mis campañas</h2>
-            <p class="section-description">Las campañas asignadas se conectan automáticamente. En modo manual, inicia cada llamada desde aquí.</p>
+            <p class="section-description">Las campañas asignadas se conectan automáticamente. Selecciona la campaña manual en Control de llamada para marcar.</p>
+            <div class="campaign-list">
             <?php foreach ($campaigns as $c): ?>
             <div class="agent-camp">
                 <div>
                     <strong class="campaign-name"><?php echo h($c['name']); ?></strong>
                     <div class="campaign-meta"><span class="campaign-tag"><?php echo h($c['dial_method']); ?></span><span><?php echo $c['active'] ? 'Activa' : 'Inactiva'; ?></span><span aria-hidden="true">·</span><span id="agent-state-<?php echo (int)$c['campaign_id']; ?>">Consultando estado</span></div>
                 </div>
-                <div class="actions">
-                    <?php if ($c['dial_method'] === 'MANUAL' && $c['active']): ?>
-                    <form method="POST"><input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><input type="hidden" name="campaign_id" value="<?php echo (int) $c['campaign_id']; ?>"><input type="hidden" name="action" value="manual"><button type="submit" class="btn-primary">Marcar siguiente lead</button></form>
-                    <?php endif; ?>
-                </div>
+
             </div>
             <?php endforeach; ?>
+            </div>
             <?php if (!$campaigns): ?><p>No tienes campañas asignadas. Pídele al administrador que te asigne una en "Configurar" → Agentes asignados.</p><?php endif; ?>
         </div>
-    <section id="lead-card" class="card" style="padding:16px;margin-top:16px" hidden><h2>Cliente de la llamada</h2><p id="lead-summary"></p><dl id="lead-variables"></dl></section>
+        <?php if ((int)$_SESSION['user_level']===9): ?>
+        <section class="card"><h2>Tipos de pausa</h2><p class="section-description">Gestiona los motivos disponibles para tus agentes.</p>
+        <?php foreach (array_merge($pauseTypes,[['pause_type_id'=>0,'code'=>'','label'=>'','active'=>1]]) as $type): ?>
+        <form method="POST" class="pause-type-row"><input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><input type="hidden" name="action" value="save_pause_type"><input type="hidden" name="pause_type_id" value="<?php echo (int)$type['pause_type_id']; ?>"><input aria-label="Código de pausa" name="code" value="<?php echo h($type['code']); ?>" placeholder="Código" maxlength="30" required><input aria-label="Nombre de pausa" name="label" value="<?php echo h($type['label']); ?>" placeholder="Nombre de pausa" maxlength="80" required><label><input type="checkbox" name="active" <?php echo $type['active'] ? 'checked' : ''; ?>> Activa</label><button type="submit" class="btn-secondary"><?php echo $type['pause_type_id'] ? 'Guardar' : 'Crear pausa'; ?></button></form>
+        <?php endforeach; ?></section>
+        <?php endif; ?>
     </main>
     <script>
     const pendingAtRender = <?php echo json_encode($pending['call_id'] ?? null); ?>;
@@ -229,14 +265,20 @@ try {
             const hangup=document.getElementById('hangup-form'); hangup.hidden=!lead || !!lead.ended_at;
             hangup.elements.call_id.value=lead?.call_id ?? 0;
             const pauseForm=document.getElementById('pause-form');
+            pauseForm.dataset.paused=String(!!state.pause);
             pauseForm.elements.action.value=state.pause ? 'unpause' : 'pause';
             pauseForm.elements.pause_type_id.hidden=!!state.pause; pauseForm.elements.pause_type_id.required=!state.pause;
             pauseForm.querySelector('button').textContent=state.pause ? 'Reanudar' : 'Pausar';
             const pauseStatus=document.getElementById('pause-status');
             pauseStatus.dataset.state=state.pause ? 'paused' : state.pending ? 'pending' : lead && !lead.ended_at ? 'calling' : 'available';
             pauseStatus.textContent=state.pause ? (lead && !lead.ended_at ? 'Pausa solicitada: ' : 'Pausado: ')+state.pause.label+' · '+state.pause.duration_seconds+' s' : state.pending ? 'Tipificación pendiente' : lead && !lead.ended_at ? (lead.bridged_at ? 'En conversación' : 'Llamando') : 'Disponible';
-            document.getElementById('lead-card').hidden=!lead;
+            document.getElementById('empty-customer').hidden=!!lead;
+            document.getElementById('customer-content').hidden=!lead;
             if (lead) {
+                document.getElementById('customer-phone').textContent=lead.phone_number || '—';
+                document.getElementById('customer-name').textContent=lead.first_name || '—';
+                document.getElementById('customer-campaign').textContent=lead.campaign_name || '—';
+                document.getElementById('customer-state').textContent=lead.ended_at ? 'Tipificación pendiente' : lead.bridged_at ? 'En conversación' : 'Llamando';
                 document.getElementById('lead-summary').textContent=[lead.campaign_name,lead.phone_number,lead.first_name,lead.status,lead.ended_at ? 'tipificación pendiente' : lead.bridged_at ? 'en conversación' : 'llamando'].join(' · ');
                 const variables=document.getElementById('lead-variables'); variables.replaceChildren();
                 for (const [key,value] of Object.entries(lead.variables)) { const label=document.createElement('dt'), content=document.createElement('dd'); label.textContent=key; content.textContent=typeof value==='object' ? JSON.stringify(value) : String(value); variables.append(label,content); }
