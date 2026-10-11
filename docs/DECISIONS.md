@@ -944,3 +944,16 @@ Prefijo interno automático, compatibilidad legacy y cambio STOPPED sin llamadas
 abiertas. Reserva compara snapshot bajo lock para rechazar rutas obsoletas sin
 consumir intentos. No tocar bot_ivr, VICIdial, credenciales ni activar PJSIP.
 Migración 012 validada en tablas TEMPORARY; despliegue productivo pendiente.
+
+## 2026-10-11 — Alta de agentes y acceso al marcador aislado
+
+ARCHITECT_AGENT aprueba cruce core/admin: CoreUsers, Auth, IsolatedGate,
+users.php y vista interna users_isolated.php. Mantener ruta legacy y crear
+exclusivamente nivel1 en tabla v2; no reutilizar template vicidial_users ni
+Phones::createFromUser, que crea PJSIP automáticamente. Anexo SIP separado por
+API/UI existente. Hash para contraseñas nuevas con compatibilidad histórica;
+regenerar sesión y revalidar active/rol por request aislado. Otros roles solo
+listados para proteger administración existente. Sin migración ni cambios PBX.
+Ampliación puntual de fixture report-router.php: tabla users TEMPORARY para
+que la regresión HTTP pruebe identidades reales bajo el nuevo contrato Auth.
+No editar implementación Dialer, bot_ivr, campañas, credenciales ni PJSIP.

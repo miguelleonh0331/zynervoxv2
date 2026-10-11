@@ -113,3 +113,20 @@ bloqueados por HTTP. Sin permisos wildcard ni acceso legacy.
 Se sincronizó runtime con la allowlist versionada, preservando Vpn; no se
 modificó dicho módulo. Prueba de integración real:
 src/features/dialer/tests/apache-web.php, ejecutada por run-ten-agents.sh.
+
+## 2026-10-11 — Agentes web v2 (ARCHITECT_AGENT)
+
+CoreUsers::getAll/getByUser publica solo user/full_name/user_level/active desde
+zynervox_core.v2_zynervox_users; no contraseñas. saveAgent(input,existingUser)
+crea nivel 1 explícito o edita exclusivamente nivel 1 con login numérico inmutable,
+nombre validado, estado Y/N y contraseña nueva de 8–72 bytes mediante hash.
+Contraseña vacía al editar conserva el valor existente; crear exige contraseña.
+Auditoría CORE_AGENT_CREATE/UPDATE contiene únicamente login y es transaccional.
+Sin migración, borrado de usuarios, teléfonos automáticos ni edición de admins.
+Auth admite password_verify para hashes y hash_equals para valores históricos;
+login exitoso regenera sesión. En aislado, checkAccess revalida cuenta activa,
+rol/nombre contra la BD y falla cerrado si no se puede verificar. Desactivar
+revoca acceso web al siguiente request, sin retirar membresías SIP/Queue.
+Nivel 1 aislado redirige a modules/admin/dialer_agent.php; legacy conserva
+modules/agente/index.php. IsolatedGate habilita únicamente users.php; la vista
+users_isolated.php sigue bloqueada por HTTP directo.

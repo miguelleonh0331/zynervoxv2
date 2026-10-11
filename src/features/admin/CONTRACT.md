@@ -35,3 +35,13 @@ Services/pbx.php requires administrator level 9 and CSRF for test/save. PbxAmi::
 ## 2026-10-10 - Isolated campaign dashboard
 
 Isolated admin login destination remains modules/admin/index.php and now renders the IVR campaign graphic monitor in place, without redirecting to Bot IVR. campaign_monitor.php renders the same read-only view; authenticated levels 7/8/9 can GET campaign_monitor_api.php. Nonisolated dashboard and VICIdial monitor remain unchanged.
+
+## 2026-10-11 — Usuarios aislados (ARCHITECT_AGENT)
+
+users.php selecciona vista interna users_isolated.php antes de cargar Users
+legacy. Solo administrador nivel9, POST+CSRF, APIs públicas CoreUsers. Lista
+roles existentes sin edición, crea/edita/desactiva únicamente agentes nivel1,
+login inmutable, contraseñas jamás devueltas en HTML, nombres escapados. Para
+operar: crear anexo SIP con igual login desde Phones, registrar MicroSIP y
+asignar desde Campañas. Desactivar cuenta web requiere salir primero de colas;
+no cambia configuración SIP ni asignaciones. Sin integración VICIdial habilitada.

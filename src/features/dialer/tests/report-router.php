@@ -6,9 +6,12 @@ require __DIR__ . '/reporting.php';
 ob_end_clean();
 session_start();
 $_SESSION = [];
+$usersDdl=$db->query('SHOW CREATE TABLE v2_zynervox_users')->fetch(PDO::FETCH_NUM)[1];
+$db->exec(preg_replace('/^CREATE TABLE /','CREATE TEMPORARY TABLE ',$usersDdl));
 if (isset($_GET['role'])) {
     $_SESSION['user'] = 'lab';
     $_SESSION['user_level'] = (int) $_GET['role'];
+    $db->prepare('INSERT INTO v2_zynervox_users (user,pass,full_name,user_level,active) VALUES (?,?,?, ?,\'Y\')')->execute(['lab','fixture-only','Lab',(int)$_GET['role']]);
 }
 $_GET['id'] = $_GET['id'] ?? '1';
 $_GET['since'] = $_GET['since'] ?? '2026-10-01';

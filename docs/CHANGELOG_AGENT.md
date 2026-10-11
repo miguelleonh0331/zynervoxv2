@@ -2130,3 +2130,23 @@ No se cargaron leads ni se efectuaron llamadas. Certificación con proveedor SIP
 externo/MicroSIP físico y alta de agentes desde web siguen pendientes. Reversión
 de PHP desde respaldo debe considerar las campañas que ya usan la nueva ruta;
 no eliminar selected_dialplan_id ni forzar carrier_id NOT NULL sin conciliarlas.
+
+## 2026-10-11 — Usuarios web v2 y login de agente
+
+Resuelto users.php 403 por integración legacy: ruta aislada con administrador9,
+CSRF y CRUD de agentes nivel1 vía CoreUsers. Login numérico inmutable, hash de
+contraseña nueva, campo secreto vacío al editar, contraseña vacía conserva hash;
+roles superiores protegidos. Auth revalida active/rol de sesión contra v2 y
+regenera ID al login; nivel1 abre dialer_agent.php en aislado.
+
+run-users.sh PASS: validación/duplicados, roles/hash/plaintext, protección admin,
+contraseña vacía, login inactivo, rotación sesión; HTTP admin-only, refresco rol,
+CSRF, vista directa bloqueada, escape HTML, formularios sin secretos y redirect.
+run-reporting.sh PASS tras adaptar solo fixture users TEMPORARY. PHP lint PASS.
+Despliegue en mirmidon con respaldo inicial
+/var/backups/zynervoxv2/core-users-20261011-163404. Navegador real: Users abre,
+usuario temporal 7986101101 creado, login redirige a Panel de agente, edición y
+desactivación revocan sesión. Cuenta temporal y sesión administrativa propias
+retiradas; credenciales locales temporales eliminadas. No se creó anexo ni se
+alteró asignación/campaña55, que permanece carsa0001 STOPPED, 0 llamadas abiertas.
+Limitación: desactivar cuenta web no elimina membresía SIP; salir de cola primero.

@@ -35,7 +35,10 @@ class Auth {
                                      LIMIT 1");
             $stmt->execute(['user' => $username]);
             $coreUser = $stmt->fetch();
-            if ($coreUser && $password === $coreUser['pass']) {
+            $stored = $coreUser ? (string)$coreUser['pass'] : '';
+            $hashed = password_get_info($stored)['algoName'] !== 'unknown';
+            if ($coreUser && is_string($password) && ($hashed ? password_verify($password,$stored) : hash_equals($stored,$password))) {
+                session_regenerate_id(true);
                 $_SESSION['user'] = $coreUser['user'];
                 $_SESSION['user_level'] = (int)$coreUser['user_level'];
                 $_SESSION['full_name'] = $coreUser['full_name'];
@@ -85,6 +88,16 @@ class Auth {
     // permitidos (ej. [7, 8] para paginas compartidas entre GTR y Supervisor).
     public static function checkAccess($requiredLevel) {
         self::startSession();
+        if (\Config\Config::deployment('isolated',false) && isset($_SESSION['user'])) {
+            try {
+                $stmt=Database::getCoreInstance()->prepare('SELECT full_name,user_level FROM v2_zynervox_users WHERE user=? AND active=\'Y\'');
+                $stmt->execute([$_SESSION['user']]);$current=$stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$current) { $_SESSION=[];session_destroy(); }
+                else { $_SESSION['user_level']=(int)$current['user_level'];$_SESSION['full_name']=$current['full_name']; }
+            } catch (\Throwable $error) {
+                http_response_code(503);exit('No se pudo verificar la cuenta.');
+            }
+        }
         if (!isset($_SESSION['user'])) {
             header("Location: ../../index.php");
             exit;
@@ -105,7 +118,7 @@ class Auth {
     public static function getRedirectPath($level) {
         // Rutas relativas desde la raíz del proyecto (donde está index.php)
         switch ($level) {
-            case 1: return 'modules/agente/index.php';
+            case 1: return \Config\Config::deployment('isolated',false) ? 'modules/admin/dialer_agent.php' : 'modules/agente/index.php';
             case 7:
             case 8: return 'modules/sup/index.php';
             case 9: return 'modules/admin/index.php';

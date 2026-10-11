@@ -1,5 +1,9 @@
 <?php
 require_once __DIR__ . '/../../includes/Auth.php';
+if (\Config\Config::deployment('isolated',false)) {
+    require __DIR__.'/users_isolated.php';
+    exit;
+}
 require_once __DIR__ . '/../../includes/Users.php';
 require_once __DIR__ . '/../../includes/Audit.php';
 
