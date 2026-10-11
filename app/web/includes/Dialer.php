@@ -599,8 +599,8 @@ class Dialer {
                 ->execute(['id' => $lead['lead_id']]);
             // Conservar el nivel usado al originar para diagnosticar abandono.
             $level = in_array($campaign['dial_method'], ['MANUAL','PROGRESSIVE'], true) ? 1 : $campaign['dial_level'];
-            $db->prepare('INSERT INTO v2_dialer_call_log (campaign_id,lead_id,phone_number,originated_at,dial_level_at_origin,reserved_agent_user,agent_slot) VALUES (:c,:l,:p,NOW(),:dl,:agent,:slot)')
-                ->execute(['c' => $campaignId, 'l' => $lead['lead_id'], 'p' => $lead['phone_number'], 'dl' => $level, 'agent' => $reservedAgent, 'slot' => $reservedAgent]);
+            $db->prepare('INSERT INTO v2_dialer_call_log (campaign_id,lead_id,phone_number,originated_at,dial_level_at_origin,reserved_agent_user,agent_slot,disposition_agent_user) VALUES (:c,:l,:p,NOW(),:dl,:agent,:slot,:disposition_agent)')
+                ->execute(['c' => $campaignId, 'l' => $lead['lead_id'], 'p' => $lead['phone_number'], 'dl' => $level, 'agent' => $reservedAgent, 'slot' => $reservedAgent, 'disposition_agent' => $campaign['dial_method']==='MANUAL' ? $reservedAgent : null]);
             $callId = (int) $db->lastInsertId();
             $db->prepare('UPDATE v2_dialer_call_log SET channel_uniqueid=:u WHERE call_id=:id')->execute(['u' => 'zv2dialer-' . $callId, 'id' => $callId]);
             $db->commit();
@@ -1242,7 +1242,7 @@ class Dialer {
     }
 
     private static function agentHasWork(string $user): bool {
-        $stmt = self::database()->prepare('SELECT 1 FROM v2_dialer_call_log WHERE agent_slot=:slot OR (agent_user=:agent AND ended_at IS NOT NULL AND disposition_code IS NULL) LIMIT 1');
+        $stmt = self::database()->prepare('SELECT 1 FROM v2_dialer_call_log WHERE agent_slot=:slot OR (COALESCE(agent_user,disposition_agent_user)=:agent AND ended_at IS NOT NULL AND disposition_code IS NULL) LIMIT 1');
         $stmt->execute(['slot'=>$user,'agent'=>$user]);
         return (bool) $stmt->fetchColumn();
     }
@@ -1480,7 +1480,7 @@ class Dialer {
     public static function agentCurrentLead(string $user): ?array {
         $q=self::database()->prepare("SELECT l.call_id,l.campaign_id,c.name campaign_name,l.phone_number,l.ended_at,l.bridged_at,d.first_name,d.last_name,d.custom_fields,d.status
           FROM v2_dialer_call_log l JOIN v2_dialer_campaigns c ON c.campaign_id=l.campaign_id JOIN v2_dialer_leads d ON d.lead_id=l.lead_id
-          WHERE (l.ended_at IS NULL AND (l.agent_user=:u OR l.reserved_agent_user=:reserved)) OR (l.ended_at IS NOT NULL AND l.agent_user=:closed AND l.disposition_code IS NULL)
+          WHERE (l.ended_at IS NULL AND (l.agent_user=:u OR l.reserved_agent_user=:reserved)) OR (l.ended_at IS NOT NULL AND COALESCE(l.agent_user,l.disposition_agent_user)=:closed AND l.disposition_code IS NULL)
           ORDER BY (l.ended_at IS NULL) DESC,l.call_id DESC LIMIT 1");
         $q->execute(['u'=>$user,'reserved'=>$user,'closed'=>$user]);
         $row=$q->fetch(PDO::FETCH_ASSOC);
@@ -1588,19 +1588,19 @@ class Dialer {
     // Ultima llamada de este agente sin tipificar todavia (para el panel).
     public static function pendingDispositionForAgent(string $user): ?array {
         $stmt = self::database()->prepare(
-            "SELECT l.call_id,l.campaign_id,l.phone_number,l.originated_at,c.name campaign_name
+            "SELECT l.call_id,l.campaign_id,l.phone_number,l.originated_at,l.termination_reason,c.name campaign_name
              FROM v2_dialer_call_log l JOIN v2_dialer_campaigns c ON c.campaign_id=l.campaign_id
-             WHERE l.agent_user=:u AND l.ended_at IS NOT NULL AND l.disposition_code IS NULL ORDER BY l.call_id DESC LIMIT 1"
+             WHERE COALESCE(l.agent_user,l.disposition_agent_user)=:u AND l.ended_at IS NOT NULL AND l.disposition_code IS NULL ORDER BY l.call_id DESC LIMIT 1"
         );
         $stmt->execute(['u' => $user]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     public static function setDisposition(int $callId, string $user, string $code): void {
-        $stmt = self::database()->prepare('SELECT campaign_id,agent_user,ended_at,lead_id FROM v2_dialer_call_log WHERE call_id=:id');
+        $stmt = self::database()->prepare('SELECT campaign_id,agent_user,disposition_agent_user,ended_at,lead_id FROM v2_dialer_call_log WHERE call_id=:id');
         $stmt->execute(['id' => $callId]);
         $call = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$call || $call['agent_user'] !== $user) throw new \RuntimeException('Llamada inexistente o de otro agente.');
+        if (!$call || ($call['agent_user'] ?? $call['disposition_agent_user']) !== $user) throw new \RuntimeException('Llamada inexistente o de otro agente.');
         if ($call['ended_at'] === null) throw new \RuntimeException('La llamada todavía no ha terminado.');
         $valid = self::database()->prepare('SELECT retryable,retry_delay_minutes FROM v2_dialer_dispositions WHERE campaign_id=:c AND code=:code');
         $valid->execute(['c' => $call['campaign_id'], 'code' => $code]);
@@ -1609,6 +1609,8 @@ class Dialer {
         $observed=self::database()->prepare("SELECT SUM(GREATEST(0,TIMESTAMPDIFF(SECOND,GREATEST(started_at,:closed),LEAST(COALESCE(ended_at,LEAST(NOW(),last_seen_at+INTERVAL 5 SECOND)),NOW())))) FROM v2_dialer_agent_intervals WHERE campaign_id=:c AND agent_user=:u AND state='WRAPUP' AND COALESCE(ended_at,NOW())>=:closed2");
         $observed->execute(['closed'=>$call['ended_at'],'closed2'=>$call['ended_at'],'c'=>$call['campaign_id'],'u'=>$user]);
         $wrapup=$observed->fetchColumn();
+        // A failed MANUAL attempt needs a disposition, not invented conversational wrapup.
+        if ($call['agent_user']===null && $call['disposition_agent_user']!==null) $wrapup=null;
         self::database()->prepare('UPDATE v2_dialer_call_log SET disposition_code=:code,
             duration_wrapup=COALESCE(duration_wrapup,:wrapup),
             ended_at=COALESCE(ended_at,NOW()) WHERE call_id=:id')

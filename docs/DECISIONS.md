@@ -1002,3 +1002,22 @@ propia abierta, correlación exacta ChannelId/canal actual obtenido de AMI;
 ningún canal viene del navegador ni se cierra BD anticipadamente. Catálogo,
 tres tablas nuevas y permisos propios por migraciones013–014, sin datos legacy.
 Cerrar pestaña sigue sin equivaler a Cerrar sesión.
+
+## 2026-10-11 — Dueño administrativo de tipificación MANUAL
+
+ARCHITECT_AGENT aprobó migración015 con disposition_agent_user capturado en
+claimLead exclusivamente MANUAL. Pendiente/cliente/autorización/reserva usan
+COALESCE(agent_user,disposition_agent_user), con prioridad de agente conectado.
+No se atribuye conversación a una reserva que terminó antes de respuesta;
+answered_at, bridged_at, duration_talk, grabación y duration_wrapup siguen NULL.
+La espera de tipificación bloquea siguientes intentos pero no añade muestra AHT.
+Identidad conversacional y reportería conservan agent_user; los modos automáticos
+no adquieren dueño administrativo por el solo hecho de reservar un agente.
+Snapshot futuro independiente del modo actual; no hay backfill genérico.
+
+Recuperación histórica aprobada para IDs359,361,362,363 exclusivamente, con
+campaign55/reserved5000, ended_at existente, agent_user/disposición/dueño NULL.
+Evidencia: registros Asterisk manual_ready/manual_closed de los cuatro IDs.
+Respaldo previo de filas y PHP obligatorio; sin seleccionar tipificaciones por usuario.
+Otros historiales sin evidencia permanecen intactos. La UI muestra número y
+resultado del intento y solo pospone recarga si se está editando su disposición.

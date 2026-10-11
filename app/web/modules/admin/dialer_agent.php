@@ -233,7 +233,7 @@ try {
         <?php if ($pending): ?>
         <div class="card disposition-card">
             <h2>Tipificar llamada pendiente</h2>
-            <p>Campaña <strong><?php echo h($pending['campaign_name']); ?></strong> · Teléfono <?php echo h($pending['phone_number']); ?> · <?php echo h($pending['originated_at']); ?></p>
+            <p>Intento #<?php echo (int)$pending['call_id']; ?> · <?php echo h($pending['termination_reason']); ?> · Campaña <strong><?php echo h($pending['campaign_name']); ?></strong> · Teléfono <?php echo h($pending['phone_number']); ?> · <?php echo h($pending['originated_at']); ?></p>
             <form method="POST" class="disposition-form">
                 <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>">
                 <input type="hidden" name="action" value="dispose">
@@ -308,7 +308,7 @@ try {
                 const element=document.getElementById('agent-state-'+session.campaign_id);
                 if (element) element.textContent=session.state==='ACTIVE' ? 'en cola' : session.state==='WRAPUP' ? 'tipificación pendiente' : 'pausado';
             }
-            if ((state.pending?.call_id ?? null) !== pendingAtRender && !document.querySelector('select[name="code"]')?.value && !document.querySelector('input:focus,select:focus,textarea:focus')) location.reload();
+            if ((state.pending?.call_id ?? null) !== pendingAtRender && !document.querySelector('select[name="code"]')?.value && !document.querySelector('.disposition-form input:focus,.disposition-form select:focus,.disposition-form textarea:focus')) location.reload();
         } catch (_) { /* Next poll retries a temporary connection failure. */ }
     },3000);
     </script>

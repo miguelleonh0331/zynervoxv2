@@ -47,6 +47,25 @@ expectFailure(static function() use($call) { Dialer::agentHangup('other',$call);
 Dialer::agentHangup('lab',$call);
 verify(end(PbxAmi::$events)[0]==='Hangup' && $db->query('SELECT ended_at FROM v2_dialer_call_log WHERE call_id='.$call)->fetchColumn()===null,'Hangup closed database before PBX handler');
 PbxAmi::$channels=''; expectFailure(static function() use($call) { Dialer::agentHangup('lab',$call); },'Hangup accepted absent channel');
+// MANUAL owner is separate from a connected agent, including legacy recovery.
+$db->exec("UPDATE v2_dialer_call_log SET ended_at=NOW(),agent_slot=NULL,termination_reason='HANGUP',disposition_agent_user='lab' WHERE call_id=$call");
+verify((int)Dialer::pendingDispositionForAgent('lab')['call_id']===$call && (int)Dialer::agentCurrentLead('lab')['call_id']===$call,'Failed MANUAL attempt disappeared from disposition/client');
+verify(Dialer::pendingDispositionForAgent('other')===null,'Failed attempt exposed to another agent');
+verify(Dialer::claimLead(1,'7399',1,'lab')===null,'Pending failed attempt allowed another claim');
+expectFailure(static function() use($call) { Dialer::setDisposition($call,'other','NO'); },'Failed attempt authorized another agent');
+expectFailure(static function() use($call) { Dialer::setDisposition($call,'lab','INVALID'); },'Failed attempt accepted unrelated disposition');
+$db->exec("UPDATE v2_dialer_campaigns SET dial_method='PROGRESSIVE' WHERE campaign_id=1");
+verify((int)Dialer::pendingDispositionForAgent('lab')['call_id']===$call,'Mode change lost snapshotted MANUAL owner');
+Dialer::setDisposition($call,'lab','NO');
+$row=$db->query('SELECT agent_user,answered_at,bridged_at,duration_talk,duration_wrapup,recording_path,termination_reason FROM v2_dialer_call_log WHERE call_id='.$call)->fetch(PDO::FETCH_ASSOC);
+foreach (['agent_user','answered_at','bridged_at','duration_talk','duration_wrapup','recording_path'] as $field) verify($row[$field]===null,'Failed MANUAL disposition fabricated '.$field);
+verify($row['termination_reason']==='HANGUP' && Dialer::pendingDispositionForAgent('lab')===null,'Disposition altered reason or retained pending');
+verify(Dialer::agentPause('lab')!==null,'Failed disposition removed manual pause');
+// An automatic failure with reservation alone must not become a disposition.
+$db->exec("INSERT INTO v2_dialer_call_log (campaign_id,lead_id,phone_number,originated_at,ended_at,reserved_agent_user,termination_reason) VALUES (1,1,'000000',NOW(),NOW(),'lab','NOANSWER')");
+$automatic=(int)$db->lastInsertId();
+verify(Dialer::pendingDispositionForAgent('lab')===null,'Automatic failure became MANUAL pending');
+expectFailure(static function() use($automatic) { Dialer::setDisposition($automatic,'lab','NO'); },'Automatic reservation accepted disposition');
 // Partial failure stores intent; reconciliation can finish it without reporting success.
 PbxAmi::$fail=true;
 expectFailure(static function() { Dialer::agentLogout('lab'); },'Logout reported success with PBX unavailable');

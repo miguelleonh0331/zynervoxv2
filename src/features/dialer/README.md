@@ -23,7 +23,9 @@ tablas `v2_dialer_*`. Contrato: [CONTRACT.md](CONTRACT.md).
    MANUAL llama primero al softphone: contestarlo para marcar al cliente y
    escuchar timbrado y anuncios previos a respuesta enviados por la troncal.
    MANUAL no utiliza AMD; la grabación empieza al responder el cliente.
-6. Al terminar conversación, tipificar para salir de wrapup. Pausa manual se
+6. En MANUAL, tipificar también intentos cortados, sin respuesta o fallidos antes
+   de marcar nuevamente. El panel conserva el cliente y el resultado del intento.
+   Al terminar conversación, tipificar para salir de wrapup. Pausa manual se
    conserva; cerrar navegador no equivale a salir de cola.
    Cerrar sesión retira todas las membresías; fallos PBX permiten reintentar.
 7. Detener nuevas llamadas permite terminar conversaciones ya iniciadas.

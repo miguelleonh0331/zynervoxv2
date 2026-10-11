@@ -60,7 +60,7 @@ Dialer::setEngineState($id,'STOPPED');
 verify($fields->invoke(null,Dialer::campaign($id),['call_id'=>123,'phone_number'=>'000001'])['Channel']==='SIP/peer_two/9911000001','Changed dialplan did not change carrier');
 $db->exec("UPDATE v2_dialplans SET active='N' WHERE dialplan_id=2");
 expectFailure(static function() use($id) { Dialer::setEngineState($id,'RUNNING'); },'Inactive route started');
-$db->exec("UPDATE v2_dialplans SET active='Y' WHERE dialplan_id=2");
+$db->prepare("UPDATE v2_dialplans SET active='Y',updated_at=? WHERE dialplan_id=2")->execute([$original[1]['updated_at']]);
 Dialer::deleteCampaign($id);
 verify($db->query('SELECT * FROM v2_dialplans ORDER BY dialplan_id')->fetchAll(PDO::FETCH_ASSOC)===$original,'Shared dialplans changed or deleted');
 echo "PASS: selected SIP route, number substitution, inactive/custom rejection, automatic private callback, shared ownership, stop/drain guard and carrier change.\n";

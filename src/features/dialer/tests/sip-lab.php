@@ -121,6 +121,7 @@ try {
         if ($number==='000006') check_sip(strpos(file_get_contents($directory.'/peer.log'),'EARLY_MEDIA_RECEIVED')!==false,'Provider early media did not reach agent before answer.');
         if ($row['agent_user']) Dialer::setDisposition($id,$agent,'SALE');
         else check_sip($row['answered_at']===null && $row['bridged_at']===null && $row['recording_path']===null && $row['agent_slot']===null,'Unanswered manual attempt invented conversation or retained reservation.');
+        if (!$row['agent_user']) { check_sip((int)Dialer::pendingDispositionForAgent($agent)['call_id']===$id,'Manual failure missing disposition.'); Dialer::setDisposition($id,$agent,'SALE'); }
         if ($row['recording_path'] && is_file($row['recording_path'])) $recordings[]=$row['recording_path'];
         echo json_encode(['scenario'=>$number,'call_id'=>$id,'reason'=>$row['termination_reason'],'amd'=>$row['amd_result']]),"\n";
     }
@@ -131,6 +132,7 @@ try {
         $row=wait_closed($id); unlink($directory.'/agent-control');
         check_sip($row['termination_reason']===$reason && $row['answered_at']===null && $row['recording_path']===null && $row['agent_slot']===null,'Agent failure invented customer answer or retained slot: '.json_encode($row));
         if ($action==='noanswer') check_sip(substr_count(file_get_contents($directory.'/peer.log'),'CLIENT_INVITE:')===$before,'Destination called when agent did not answer.');
+        check_sip((int)Dialer::pendingDispositionForAgent($agent)['call_id']===$id,'Agent failure missing manual disposition.'); Dialer::setDisposition($id,$agent,'SALE');
         echo 'PASS: agent '.$action.', no customer answer/recording, reservation released.',"\n";
     }
     foreach (['ringing','talking'] as $phase) {
@@ -143,7 +145,8 @@ try {
         check_sip($row['ended_at']!==null && $row['agent_slot']===null,'AMI Hangup did not close/release call.');
         if ($phase==='ringing') check_sip($row['answered_at']===null,'Hangup during ringing invented customer answer.');
         if ($row['recording_path']) $recordings[]=$row['recording_path'];
-        if ($row['agent_user']) Dialer::setDisposition($id,$agent,'SALE');
+        check_sip((int)Dialer::pendingDispositionForAgent($agent)['call_id']===$id,'Hangup missing disposition.');
+        Dialer::setDisposition($id,$agent,'SALE');
         echo 'PASS: own-call AMI Hangup '.$phase.', real PBX handler closure.',"\n";
     }
     Dialer::agentLogout($agent);

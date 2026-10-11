@@ -2274,3 +2274,41 @@ Despliegue de un PHP por zynertools, fuente/runtime idénticos, sin reiniciar se
 Usuario5000 confirmado nivel1, SIP5000 OK222ms, worker active.
 Respaldo para restaurar panel anterior:
 /var/backups/zynervoxv2/agent-ui-20261011-190219/dialer_agent.php.
+
+## 2026-10-11 — Tipificación de fallos y cancelaciones MANUAL
+
+Migración015 añade disposition_agent_user como dueño de tipificación capturado
+exclusivamente al reservar MANUAL. Pendiente, cliente cerrado, autorización y
+bloqueo de nuevas reservas respetan COALESCE(agent_user,disposition_agent_user),
+sin perder dueño al cambiar modo de campaña. Fallos no inventan agente conectado,
+answer, bridge, grabación, conversación ni duración de wrapup. La pausa manual
+se conserva; otras modalidades y métricas conversacionales mantienen su criterio.
+Panel muestra intento/resultado y la recarga para mostrar pendientes solo se
+pospone cuando se edita la propia disposición. Contrato/decisión aprobados por
+ARCHITECT_AGENT; README actualizado, sin cambios core ni dialplan generado.
+
+PHP lint y node --check PASS. Controles/HTTP PASS: fallos visibles y tipificables,
+otro agente/código ajeno rechazados, bloqueo de siguientes reservas, dueño tras
+cambio de modo, pausa conservada y automática no atribuida por reserva.
+Engine/routing/reporting/core-users PASS. Se corrigió una prueba temporal de
+rutas que restauraba active pero no su updated_at antes de comparar la fila;
+no modifica rutas persistentes. Tanda conjunta alcanzó timeout del transporte;
+comprobaciones restantes ejecutadas separadamente y aprobadas.
+SIP/RTP real loopback PASS: NOANSWER/BUSY/cancelación/AMI Hangup timbrando ahora
+exigen disposición MANUAL; conversación/PROGRESSIVE/ADAPTIVE/AMD/early media,
+reservas y grabaciones conservados. Fixtures propios retirados; sin llamadas
+externas de prueba. Evidencia: /var/backups/zynervoxv2/dialer-sip-lab-20261011-192938.
+
+Despliegue por zynertools de Dialer.php/panel y migración con cero llamadas abiertas,
+respaldo PHP/filas con nombres de columnas, reinicio worker para cargar dueño nuevo.
+Recuperación limitada a359/361/362/363, campaign55/reserved5000/closed/no agente/no
+código/no dueño, con evidencia Asterisk manual_ready/manual_closed de cada ID.
+No se eligieron disposiciones automáticamente. Respaldo:
+/var/backups/zynervoxv2/manual-dispositions-20261011-192415.
+Verificación final: fuente/runtime iguales, worker active sin errores recientes,
+SIP5000 OK210ms en DIALER_WRAPUP, pendiente/cliente363 visibles; cuatro recuperados
+con dueño5000, agente/timestamps/talk/wrapup NULL y resultados originales; campaña55
+MANUAL RUNNING AMD0, cero llamadas abiertas y cero fixtures propios.
+Rollback: revert del commit y restaurar dos PHP/reiniciar worker sin llamadas;
+conservar columna/historial aditivos y tipificaciones nuevas, sin restauración
+masiva de filas que pueda sobrescribir decisiones posteriores del usuario.

@@ -17,7 +17,7 @@ port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); pr
 DIALER_TEST_WEB_ROOT="$stage" php -d session.save_path="$stage/sessions" -S "127.0.0.1:$port" "$source/src/features/dialer/tests/agent-controls-router.php" > "$stage/server.log" 2>&1 &
 server_pid=$!
 python3 - "$port" <<'PY'
-import sys, time, json, urllib.request, urllib.error, urllib.parse
+import sys, time, json, re, urllib.request, urllib.error, urllib.parse
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,*args): return None
 opener=urllib.request.build_opener(NoRedirect)
@@ -37,6 +37,10 @@ assert 'disabled aria-disabled="true"' in body and 'WhatsApp <span' in body
 for target in ('campaigns.php','users.php','reports.php','filters.php','monitor.php','whatsapp.php','campaign_monitor.php'):
     assert ('href="../admin/'+target+'"') not in body, 'Agent navigation exposes '+target
 assert "action:'bootstrap'" in body and 'Motivo de pausa' in body and 'Tipos de pausa' not in body
+status,body=request('?role=1&pending=1'); assert status==200 and 'Tipificar llamada pendiente' in body and 'HANGUP' in body
+form=body.split('class="disposition-form"')[1].split('</form>')[0]
+call_id=re.search(r'name="call_id" value="([0-9]+)"',form).group(1)
+status,body=request('?role=1&pending=1',{'action':'dispose','call_id':call_id,'code':'NO','csrf_token':'controls_fixture_token'}); assert status==200 and 'Llamada tipificada.' in body and 'Tipificar llamada pendiente' not in body
 status,body=request('?role=9'); assert status==200 and 'Tipos de pausa' in body
 assert body.count('action="../../logout.php"')==1, 'Admin must have a single logout form'
 assert 'class="sidebar"' in body and 'class="agent-tabs"' not in body

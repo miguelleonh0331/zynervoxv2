@@ -1,5 +1,22 @@
 # Contrato: dialer (motor de marcación con agentes)
 
+## 2026-10-11 — Tipificación de intentos MANUAL sin respuesta (ARCHITECT_AGENT)
+
+Migración015 añade disposition_agent_user como dueño administrativo capturado
+al reservar exclusivamente MANUAL. Los pendientes, datos del cliente, bloqueo
+de nuevas reservas y autorización de setDisposition utilizan
+COALESCE(agent_user,disposition_agent_user). La identidad conversacional real
+prevalece. El dueño se conserva aunque cambie el modo de campaña posteriormente.
+Sin respuesta se liberan reserva/canal y se conserva resultado de fallo,
+agent_user/answered_at/bridged_at/duration_talk/grabación NULL. Ahora el dueño
+manual debe tipificar antes de marcar de nuevo; esa espera no fabrica duración
+conversacional de wrapup ni muestras AHT. Pausa manual/logout conservan intención.
+Reportería conversacional sigue usando agent_user, sin ampliar modos automáticos.
+
+Esta sección sustituye solo la exclusión de tipificación preanswer de la sección
+MANUAL anterior. No hay backfill genérico basado en modo actual: recuperación
+histórica únicamente por IDs con evidencia de origen MANUAL y respaldo previo.
+
 ## 2026-10-11 — Sesión operativa, pausas globales y Colgar (ARCHITECT_AGENT)
 
 `agentLogin(user)` incorpora idempotentemente a las campañas activas asignadas,
