@@ -59,7 +59,7 @@ def post(values):
     return response.code,response.read().decode('utf-8')
 assert post({'action':'stop_engine','csrf_token':'invalid'})[0]!=200
 status, body=post({'action':'stop_engine','csrf_token':'private_http_fixture_token'})
-assert status==200 and 'STOPPED' in body
+assert status==200 and 'Detenido' in body and 'Nuevas llamadas detenidas' in body
 print('PASS: HTTP report render, admin/supervisor/GTR, anonymous and agent rejection, missing campaign and invalid dates.')
 print('PASS: campaign/agent panels, authenticated JSON polling, admin-only engine control and CSRF rejection.')
 status, headers, body=get('?role=9&view=recordings')

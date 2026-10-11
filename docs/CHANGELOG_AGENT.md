@@ -2027,3 +2027,19 @@ harness repetible conserva historial y usa prefijo por campaña. Checklist,
 contratos, API, README e informe de validación actualizados. Despliegue selectivo
 local→SMB→runtime con backups; pruebas guardadas en /var/backups/zynervoxv2.
 Sin cambios en clientes reales, PJSIP ni bot_ivr; cambio preexistente excluido.
+
+## 2026-10-11 — Presentación de configuración del marcador
+
+Módulo dialer: dialer_campaign_edit.php organiza los 24 campos en cinco
+secciones (conexión, estrategia, ajuste predictivo, contestadores/abandono y
+leads/atención). Estado del motor destacado, botones uniformes, etiquetas
+asociadas a campos, opciones con nombres legibles conservando valores,
+formulario y tablas adaptados a pantallas pequeñas. CSS limitado a esta página;
+sin cambios de motor, DB, contratos o estilos compartidos.
+
+Despliegue selectivo con lint PHP 7.4, backup y comparación fuente/runtime.
+Revisión de navegador a 1440×1000 y 390×844: cinco secciones, 24 campos,
+cero campos sin etiqueta y sin desbordamiento horizontal; formulario válido.
+Capturas privadas .codex-temp/campaign-ui-desktop.png y campaign-ui-mobile.png.
+Regresión HTTP/SQL mediante run-reporting.sh. No se iniciaron llamadas ni se
+modificaron valores de campaña durante la revisión visual.
