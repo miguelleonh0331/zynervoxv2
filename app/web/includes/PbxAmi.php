@@ -120,6 +120,38 @@ final class PbxAmi {
         } finally {fclose($socket);}
     }
 
+    // Accion AMI generica de una sola llamada (QueueAdd/QueueRemove/
+    // QueuePause/etc.): login, envia Action+campos, devuelve el Message de
+    // la respuesta. Para colas del motor de marcacion con agentes (Fase 4).
+    public static function rawAction(array $config,string $action,array $fields): string {
+        $config=self::validate($config);$host=$config['host'];if(strpos($host,':')!==false)$host='['.$host.']';
+        $socket=@stream_socket_client('tcp://'.$host.':'.$config['port'],$errno,$error,3,STREAM_CLIENT_CONNECT);
+        if(!$socket)throw new \RuntimeException('No se pudo conectar al servidor AMI. Revisa host, puerto y acceso.');
+        try {
+            stream_set_timeout($socket,4);$banner=fgets($socket,256);
+            if($banner===false || strpos($banner,'Asterisk Call Manager/')!==0)throw new \RuntimeException('El puerto no responde como AMI de Asterisk.');
+            $loginId=bin2hex(random_bytes(8));
+            $login="Action: Login\r\nActionID: ".$loginId."\r\nUsername: ".$config['username']."\r\nSecret: ".$config['secret']."\r\nEvents: off\r\n\r\n";
+            if(fwrite($socket,$login)!==strlen($login))throw new \RuntimeException('No se pudo enviar la prueba AMI.');
+            $loginFrame=self::readPacket($socket,$loginId);
+            if($loginFrame===null || !preg_match('/^Response: Success\r?$/m',$loginFrame))throw new \RuntimeException('AMI rechazo el login. Revisa usuario, password y permisos de acceso.');
+            $actId=bin2hex(random_bytes(8));
+            $request="Action: ".$action."\r\nActionID: ".$actId."\r\n";
+            foreach ($fields as $key=>$value) $request.=$key.": ".$value."\r\n";
+            $request.="\r\n";
+            if(fwrite($socket,$request)!==strlen($request))throw new \RuntimeException('No se pudo enviar la accion AMI.');
+            $frame=self::readPacket($socket,$actId);
+            fwrite($socket,"Action: Logoff\r\n\r\n");
+            if($frame===null)throw new \RuntimeException('AMI no confirmo la accion dentro del tiempo esperado.');
+            if(!preg_match('/^Response: Success\r?$/m',$frame)) {
+                preg_match('/^Message: (.*)$/m',$frame,$m);
+                throw new \RuntimeException('AMI rechazo '.$action.(isset($m[1])?': '.trim($m[1]):'.'));
+            }
+            preg_match('/^Message: (.*)$/m',$frame,$m);
+            return isset($m[1])?trim($m[1]):$action.' aceptado.';
+        } finally {fclose($socket);}
+    }
+
     private static function readPacket($socket,string $actionId): ?string {
         $frame='';$markerSeen=false;$deadline=microtime(true)+8;
         while(microtime(true)<$deadline) {

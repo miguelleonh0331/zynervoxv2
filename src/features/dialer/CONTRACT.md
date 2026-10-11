@@ -43,6 +43,36 @@ se evalúa agregar Redis si el polling se vuelve cuello de botella, no antes.
 6. Modo ADAPTIVE (histéresis, banda muerta, clamp min/max).
 7. Reportería y KPIs.
 
+## Fase 4 (2026-10-11) — Queue + panel de agente
+
+`app_queue.so` estaba deshabilitado en `modules.conf` (`noload`, boilerplate
+de stock, no una decisión deliberada contra el motor) y nunca se había usado
+en este Asterisk: se habilitó y persiste (comentado el `noload`). Cuenta AMI
+`zynervox_watcher_ami` ampliada con permiso `agent` (QueueAdd/Remove/Pause,
+además de `call,originate,command` ya otorgados en fases previas).
+
+`Dialer::syncDialplan()`/`syncQueues()` regeneran dialplan (vía
+`Includes\Dialplans`, un plan por campaña, nombre fijo
+`v2dialer_campaign_<id>`) y `queues-zynervoxv2.conf` (un bloque por campaña
+activa, strategy `leastrecent`) en cada create/update/toggle/delete de
+campaña, y SIEMPRE disparan el reload correspondiente por AMI — regenerar el
+archivo solo (lo que hace `Carriers::regenerateAndReload()` en modo aislado)
+no alcanza, hay que recargar explícito o el cambio queda inactivo (mismo
+motivo por el que existe el botón "Dialplan reload" en Servicios > PBX).
+
+`amd_action_machine=MESSAGE` queda pendiente (sin audio configurado, cuelga
+igual que HANGUP). Panel de agente (`dialer_agent.php`) permite
+entrar/pausar/salir de cola y tipificar, pero tipificar depende de que
+`v2_dialer_call_log.agent_user`/`ended_at` se llenen — eso es el *closer*
+real de Fase 5, todavía no existe.
+
+Verificado por AMI sin agente real conectado: cola creada y recargada,
+dialplan activo real (`Queue("...", "v2dialer_N,,,,5")` en log), agente
+entra/aparece en `queue show`/pausa/sale, desborda y cuelga a los 5s exactos
+sin agente disponible. **No verificado**: que la cola realmente timbre y
+bridee a un agente humano — requiere un MicroSIP registrado y en línea, que
+solo el usuario puede proveer.
+
 ## Pendiente
 
 Capacidad de troncal compartida con VICIdial real: decisión pospuesta

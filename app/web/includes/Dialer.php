@@ -9,6 +9,7 @@ use PDO;
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/Audit.php';
 require_once __DIR__ . '/Phones.php';
+require_once __DIR__ . '/PbxAmi.php';
 
 // Motor de marcación con agentes humanos (ver src/features/dialer/CONTRACT.md).
 // Siempre zynervox_core, nunca la BD legacy: no hay modo dual como en
@@ -16,7 +17,7 @@ require_once __DIR__ . '/Phones.php';
 class Dialer {
 
     const CAMPAIGN_FIELDS = [
-        'dial_prefix'       => ['label' => 'Prefijo de marcación', 'type' => 'text', 'length' => 20],
+        'dial_prefix'       => ['label' => 'Prefijo de marcación', 'type' => 'text', 'length' => 20, 'digits' => true],
         'caller_id_number'  => ['label' => 'Caller ID', 'type' => 'text', 'length' => 20, 'digits' => true],
         'dial_method'       => ['label' => 'Método de marcado', 'type' => 'select', 'options' => ['MANUAL', 'RATIO', 'ADAPTIVE']],
         'dial_level'        => ['label' => 'Nivel de marcado', 'type' => 'decimal', 'min' => 0, 'max' => 20],
@@ -122,6 +123,8 @@ class Dialer {
             throw $e;
         }
         self::audit('CAMPAIGN_CREATE', (string) $id);
+        self::syncDialplan($id);
+        self::syncQueues();
         return $id;
     }
 
@@ -141,17 +144,111 @@ class Dialer {
         }
         self::database()->prepare('UPDATE v2_dialer_campaigns SET ' . implode(',', $assignments) . ' WHERE campaign_id=:id')->execute($bindings);
         self::audit('CAMPAIGN_UPDATE', (string) $id);
+        self::syncDialplan($id);
+        self::syncQueues();
+    }
+
+    // ------------------------------------------------------------- Dialplan/Queue (Fase 4)
+
+    // Regenera la entrada de dialplan de la campaña a partir de su config
+    // (prefijo, AMD, cola, espera sin agente) via Includes\Dialplans, el
+    // mismo mecanismo que usa /modules/admin/dialplan.php. No hace nada si
+    // la campaña no tiene prefijo o esta inactiva (se desactiva el plan).
+    public static function syncDialplan(int $campaignId): void {
+        require_once __DIR__ . '/Dialplans.php';
+        $campaign = self::campaign($campaignId);
+        $prefix = (string) $campaign['dial_prefix'];
+        $active = $prefix !== '' && (int) $campaign['active'] === 1 ? 'Y' : 'N';
+        if ($prefix === '') {
+            if ($campaign['dialplan_id'] !== null) {
+                try { \Includes\Dialplans::save((int) $campaign['dialplan_id'], 'v2dialer_campaign_' . $campaignId, "exten => _0000000000000000000X.,1,Hangup()\n", 'N'); } catch (\Throwable $e) { /* no bloquea guardar la campaña */ }
+            }
+            return;
+        }
+        $lines = ["exten => _{$prefix}X.,1,Answer()"];
+        if ((int) $campaign['amd_enabled'] === 1) {
+            $lines[] = ' same => n,AMD()';
+            $lines[] = ' same => n,GotoIf($["${AMDSTATUS}" = "MACHINE"]?maquina)';
+        }
+        $lines[] = ' same => n,Queue(' . $campaign['queue_name'] . ',,,,' . (int) $campaign['drop_call_seconds'] . ')';
+        $lines[] = ' same => n,Hangup()';
+        if ((int) $campaign['amd_enabled'] === 1) {
+            // amd_action_machine=MESSAGE queda pendiente (requiere audio
+            // configurado); por ahora ambas opciones cuelgan.
+            $lines[] = ' same => n(maquina),Hangup()';
+        }
+        $body = implode("\n", $lines) . "\n";
+        try {
+            $result = \Includes\Dialplans::save($campaign['dialplan_id'] !== null ? (int) $campaign['dialplan_id'] : null, 'v2dialer_campaign_' . $campaignId, $body, $active);
+        } catch (\Throwable $e) {
+            throw new \RuntimeException('No se pudo generar el dialplan de la campaña: ' . $e->getMessage());
+        }
+        if (!empty($result['id']) && (int) $result['id'] !== (int) ($campaign['dialplan_id'] ?? 0)) {
+            self::database()->prepare('UPDATE v2_dialer_campaigns SET dialplan_id=:d WHERE campaign_id=:c')
+                ->execute(['d' => $result['id'], 'c' => $campaignId]);
+        }
+        // Dialplans::save() (via Carriers::regenerateAndReload) solo escribe
+        // extensions-zynervoxv2.conf en modo aislado, NO recarga Asterisk
+        // (mismo motivo por el que existe el boton "Dialplan reload" en
+        // Servicios > PBX). Sin esto el cambio queda inactivo.
+        try {
+            \Includes\PbxAmi::command(\Includes\PbxAmi::load(), 'dialplan reload');
+        } catch (\Throwable $e) {
+            throw new \RuntimeException('Dialplan generado pero no se pudo recargar Asterisk: ' . $e->getMessage());
+        }
+    }
+
+    // Regenera queues-zynervoxv2.conf con un bloque por cada campaña activa
+    // y recarga app_queue. Separado de syncDialplan porque Dialplans::save
+    // regenera un archivo distinto (extensions-zynervoxv2.conf); aqui no
+    // hay tabla propia, se arma directo de v2_dialer_campaigns.
+    public static function syncQueues(): array {
+        require_once __DIR__ . '/PbxAmi.php';
+        $rows = self::database()->query("SELECT campaign_id,queue_name,wrapup_seconds FROM v2_dialer_campaigns WHERE active=1 AND queue_name<>'' ORDER BY campaign_id")->fetchAll(PDO::FETCH_ASSOC);
+        $out = "; Generado por Includes\\Dialer::syncQueues() - " . date('Y-m-d H:i:s') . "\n";
+        $out .= "; NO EDITAR A MANO, se sobreescribe desde el panel de administracion.\n\n";
+        foreach ($rows as $row) {
+            $out .= "[{$row['queue_name']}]\n";
+            $out .= "musiconhold=default\n";
+            $out .= "strategy=leastrecent\n";
+            $out .= "timeout=15\n";
+            $out .= 'wrapuptime=' . (int) $row['wrapup_seconds'] . "\n\n";
+        }
+        $runtime = (string) \Config\Config::deployment('runtime', '');
+        if ($runtime === '' || $runtime === '/' || strpos($runtime, '/etc/asterisk') === 0) {
+            throw new \RuntimeException('Runtime del motor inválido.');
+        }
+        $path = rtrim($runtime, '/') . '/modules/asterisk/queues-zynervoxv2.conf';
+        if (!is_dir(dirname($path)) || realpath(dirname($path)) !== dirname($path) || is_link($path)) {
+            throw new \RuntimeException('Directorio de colas no disponible.');
+        }
+        $tmp = tempnam(dirname($path), '.queues-');
+        if ($tmp === false || file_put_contents($tmp, $out, LOCK_EX) === false || !chmod($tmp, 0640) || !rename($tmp, $path)) {
+            if ($tmp !== false && is_file($tmp)) @unlink($tmp);
+            throw new \RuntimeException('No se pudo escribir queues-zynervoxv2.conf.');
+        }
+        $config = \Includes\PbxAmi::load();
+        $reload = \Includes\PbxAmi::command($config, 'module reload app_queue.so');
+        return ['queues' => count($rows), 'reload' => $reload];
     }
 
     public static function toggleActive(int $id, string $currentActive): void {
         $new = $currentActive === '1' ? 0 : 1;
         self::database()->prepare('UPDATE v2_dialer_campaigns SET active=:a WHERE campaign_id=:id')->execute(['a' => $new, 'id' => $id]);
         self::audit('CAMPAIGN_' . ($new ? 'ACTIVATE' : 'DEACTIVATE'), (string) $id);
+        self::syncDialplan($id);
+        self::syncQueues();
     }
 
     public static function deleteCampaign(int $id): void {
+        $campaign = self::campaign($id);
         self::database()->prepare('DELETE FROM v2_dialer_campaigns WHERE campaign_id=:id')->execute(['id' => $id]);
         self::audit('CAMPAIGN_DELETE', (string) $id);
+        if ($campaign['dialplan_id'] !== null) {
+            require_once __DIR__ . '/Dialplans.php';
+            try { \Includes\Dialplans::delete((int) $campaign['dialplan_id']); } catch (\Throwable $e) { /* best-effort */ }
+        }
+        self::syncQueues();
     }
 
     // ------------------------------------------------------------------ Listas
@@ -367,6 +464,84 @@ class Dialer {
         $stmt = self::database()->prepare('SELECT agent_user FROM v2_dialer_agent_campaigns WHERE campaign_id=:c');
         $stmt->execute(['c' => $campaignId]);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    // Campañas asignadas a un agente (vista desde el agente, no desde el admin).
+    public static function campaignsForAgent(string $user): array {
+        $stmt = self::database()->prepare(
+            'SELECT c.campaign_id,c.name,c.queue_name,c.active FROM v2_dialer_agent_campaigns a
+             JOIN v2_dialer_campaigns c ON c.campaign_id=a.campaign_id
+             WHERE a.agent_user=:u ORDER BY c.campaign_id'
+        );
+        $stmt->execute(['u' => $user]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    private static function agentInterface(string $user): array {
+        $phone = null;
+        foreach (\Includes\Phones::getAll() as $row) {
+            if ($row['login'] === $user) { $phone = $row; break; }
+        }
+        if (!$phone) throw new \RuntimeException('No tienes un anexo asignado (Anexos/Teléfonos).');
+        return [$phone['protocol'] . '/' . $phone['extension'], $phone['fullname'] ?: $user];
+    }
+
+    public static function agentJoinQueue(string $user, int $campaignId): string {
+        $campaign = self::campaign($campaignId);
+        [$interface, $name] = self::agentInterface($user);
+        $config = \Includes\PbxAmi::load();
+        $msg = \Includes\PbxAmi::rawAction($config, 'QueueAdd', [
+            'Queue' => $campaign['queue_name'], 'Interface' => $interface,
+            'MemberName' => $name, 'StateInterface' => $interface,
+        ]);
+        self::audit('AGENT_QUEUE_JOIN', $user . ':' . $campaign['queue_name']);
+        return $msg;
+    }
+
+    public static function agentLeaveQueue(string $user, int $campaignId): string {
+        $campaign = self::campaign($campaignId);
+        [$interface] = self::agentInterface($user);
+        $config = \Includes\PbxAmi::load();
+        $msg = \Includes\PbxAmi::rawAction($config, 'QueueRemove', [
+            'Queue' => $campaign['queue_name'], 'Interface' => $interface,
+        ]);
+        self::audit('AGENT_QUEUE_LEAVE', $user . ':' . $campaign['queue_name']);
+        return $msg;
+    }
+
+    public static function agentSetPause(string $user, int $campaignId, bool $paused, string $reason = ''): string {
+        $campaign = self::campaign($campaignId);
+        [$interface] = self::agentInterface($user);
+        $config = \Includes\PbxAmi::load();
+        $fields = ['Queue' => $campaign['queue_name'], 'Interface' => $interface, 'Paused' => $paused ? 'true' : 'false'];
+        if ($reason !== '') $fields['Reason'] = $reason;
+        $msg = \Includes\PbxAmi::rawAction($config, 'QueuePause', $fields);
+        self::audit('AGENT_QUEUE_PAUSE', $user . ':' . $campaign['queue_name'] . ':' . ($paused ? '1' : '0'));
+        return $msg;
+    }
+
+    // Ultima llamada de este agente sin tipificar todavia (para el panel).
+    public static function pendingDispositionForAgent(string $user): ?array {
+        $stmt = self::database()->prepare(
+            "SELECT l.call_id,l.campaign_id,l.phone_number,l.originated_at,c.name campaign_name
+             FROM v2_dialer_call_log l JOIN v2_dialer_campaigns c ON c.campaign_id=l.campaign_id
+             WHERE l.agent_user=:u AND l.disposition_code IS NULL ORDER BY l.call_id DESC LIMIT 1"
+        );
+        $stmt->execute(['u' => $user]);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    public static function setDisposition(int $callId, string $user, string $code): void {
+        $stmt = self::database()->prepare('SELECT campaign_id,agent_user FROM v2_dialer_call_log WHERE call_id=:id');
+        $stmt->execute(['id' => $callId]);
+        $call = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$call || $call['agent_user'] !== $user) throw new \RuntimeException('Llamada inexistente o de otro agente.');
+        $valid = self::database()->prepare('SELECT 1 FROM v2_dialer_dispositions WHERE campaign_id=:c AND code=:code');
+        $valid->execute(['c' => $call['campaign_id'], 'code' => $code]);
+        if (!$valid->fetchColumn()) throw new \RuntimeException('Disposición inválida para esta campaña.');
+        self::database()->prepare('UPDATE v2_dialer_call_log SET disposition_code=:code,ended_at=COALESCE(ended_at,NOW()) WHERE call_id=:id')
+            ->execute(['code' => $code, 'id' => $callId]);
+        self::audit('DISPOSITION_SET', $callId . ':' . $code);
     }
 
     public static function setCampaignAgents(int $campaignId, array $agentUsers): void {
