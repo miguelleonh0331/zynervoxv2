@@ -2085,3 +2085,14 @@ y 390×844: cuatro pestañas, 24 campos, un panel visible, navegación de teclad
 texto sin guardar intacto durante cambios, recarga mantiene selección y sin
 desbordamiento móvil. Backup dialer-campaign-ui-20261011-150939; lint/comparación
 fuente-runtime y sesiones propias revocadas. No se enviaron formularios reales.
+
+## 2026-10-11 — Listas al comienzo de las pestañas
+
+Orden actualizado a Listas, Configuración, Disposiciones y Agentes asignados;
+selección explícita y comportamiento de formularios conservados. PHP lint,
+comparación runtime/fuente y navegador real PASS (orden y panel Listas).
+Backup dialer-campaign-ui-20261011-151251; sesión temporal propia revocada.
+Consulta operativa verificada: Iniciar motor habilita únicamente la campaña
+actual; claimLead reúne leads elegibles de todas sus listas activas y aplica
+orden global, horarios, intentos y DNC. PROGRESSIVE/ADAPTIVE/RATIO automáticos;
+MANUAL requiere siguiente lead desde el panel del agente.

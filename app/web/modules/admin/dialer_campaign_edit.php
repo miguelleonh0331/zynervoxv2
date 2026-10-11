@@ -12,7 +12,7 @@ function h($v) { return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8'); }
 $campaignId = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 $msg = '';
 $error = '';
-$tabs=['configuration'=>'Configuración','lists'=>'Listas','dispositions'=>'Disposiciones','agents'=>'Agentes asignados'];
+$tabs=['lists'=>'Listas','configuration'=>'Configuración','dispositions'=>'Disposiciones','agents'=>'Agentes asignados'];
 $requestedTab=$_GET['tab'] ?? 'configuration';
 $activeTab=is_string($requestedTab) && isset($tabs[$requestedTab]) ? $requestedTab : 'configuration';
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET')==='POST') {
