@@ -257,3 +257,18 @@ campaign_monitor_view.php presents campaign state, current contact total/calling
 ## 2026-10-10 - Active campaign status summary
 
 Dashboard and campaign monitor omit inactive campaigns and show per-campaign lead state count bars. Automatic refresh applies both changes.
+
+## 2026-10-11 — Reenviar terminal
+
+El runner acepta reenviar y consume la API pública ivr_builder/forwarding.php.
+Anexo/troncal PJSIP crean un canal saliente con Dial y predial fijo que aplica
+headers resueltos de variables disponibles durante la llamada. Comprueba endpoint,
+valida número y headers antes de crear el canal; payload heredado codificado,
+sin pasar valores como argumentos Gosub. Dial espera hasta 30 segundos para
+respuesta. ANSWER devuelve TRANSFERRED; un fallo devuelve FORWARD_FAILED;
+interrupción del canal conserva INTERRUPTED. No inicia llamadas autónomas.
+Nodos anteriores anexo/contexto/prioridad usan Goto y retornan TRANSFERRED sin
+colgar el canal. Contexto vacío usa CONTEXT actual. Sin next/fallback.
+Flujos sin textos no requieren preflight de audio en el runner; la preparación
+TTS conserva la exigencia de textos por defecto. El AGI principal conserva sus
+requisitos existentes de runtime/registro de audios. No se modifica en esta tarea.

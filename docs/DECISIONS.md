@@ -789,3 +789,12 @@ legacy ficticios. Fuente Windows/SMB elegida expresamente por el usuario;
 despliegue con snapshot comprimido para evitar latencia por archivo. No publica
 automaticamente esta excepcion como politica general de produccion. Sin cambios
 internos a modulos funcionales, sin llamadas reales ni carriers prellenados.
+
+## 2026-10-11 — Reenviar con variables y headers SIP
+
+ARCHITECT_AGENT aprobó alcance ivr_builder + bot_ivr, contratos y predial mínimo.
+Se conserva tipo reenviar y compatibilidad con destinos por contexto. Configuración
+forwarding se guarda en data_json existente, evitando migraciones. Salida PJSIP
+con predial fijo y helper AGI aplica headers al canal llamado; solo X-* y
+User-to-User, variables resueltas antes de marcar, sin valores en auditoría.
+Despliegue autorizado fuente local → SMB → Soundhound, sin ejecutar instalador.

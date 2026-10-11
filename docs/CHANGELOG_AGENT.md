@@ -1890,3 +1890,12 @@ del usuario en ivr_engine_agi.php. Sin datos productivos ni llamadas reales.
 - Alcance aprobado por ARCHITECT_AGENT: presentación de app/web/bot_ivr/campaign_edit.php; sin cambios de contrato, esquema ni servicios. El guardado existente preserva metadatos omitidos.
 - Flujo autorizado: fuente local → montaje SMB /mnt/zynervoxv2-fuente → /var/www/html/zynervoxv2 en soundhound. Copia con backup privado, root:apache 0640, restorecon y recarga PHP-FPM; sin ejecutar instalador.
 - Verificación: PHP lint local/remoto, renderizado sin los nueve controles y con campos conservados, SHA256 fuente/destino idéntico, login y página Bot IVR autenticados HTTP 200. No se crearon campañas ni se cambiaron datos para probar.
+
+## 2026-10-11 — IVR Builder: Reenviar a anexo o troncal con variables
+
+- Nodo reenviar renombrado a Reenviar; destino Anexo SIP/Troncal SIP, número plantilla y hasta 16 headers X-* o User-to-User. Autocompletado @ reutiliza variables cargadas; valores con {variable} se resuelven durante la llamada.
+- Persistencia aditiva en data_json existente, recuperación en flow_load y publicación JSON; compatible con anexo/contexto/prioridad anteriores. Sin migración ni modificación de flujos existentes.
+- Motor v2 admite nodo terminal: valida endpoint PJSIP, destino y variables; Dial con predial fijo aplica headers al canal llamado mediante helper AGI. Headers ausentes/inseguros o error de escritura abortan. Valores no se registran en auditoría. Preparación TTS conserva sus controles; runner admite ausencia de textos.
+- Alcance y contratos aprobados por ARCHITECT_AGENT. Fuente local → montaje SMB → producción Soundhound; backup privado, permisos/ACL y etiqueta SELinux exacta del nuevo AGI. Include local-first de extensions-forwarding.conf en /etc/asterisk/extensions.conf y dialplan reload. Sin ejecutar instalador.
+- Verificación: lint PHP/JS, expansión/faltantes/inyección/compatibilidad y terminal simulado; AGI con protocolo simulado; tablas temporales para round-trip y publicación atómica privada; regresión IVR existente; navegador autenticado creando/configurando nodo solo en memoria, sin guardar ni llamar; contexto predial cargado en Asterisk.
+- Límite: sin llamada real ni captura de INVITE. Nuevos destinos requieren endpoint PJSIP configurado. El AGI principal conserva requisitos previos de registro de audio; su cambio preexistente no se incluye en esta tarea.
