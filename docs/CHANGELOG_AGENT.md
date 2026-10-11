@@ -1883,3 +1883,10 @@ recuperacion, aislamiento BD, PBX AMI, TTS/preview WAV y paginas autenticadas.
 Reinstalacion completa final INSTALACION_OK y CHECK_RESULT=OK. Fuente Windows
 conservada; instalacion por snapshot local, sin modificar el cambio preexistente
 del usuario en ivr_engine_agi.php. Sin datos productivos ni llamadas reales.
+
+## 2026-10-11 — Bot IVR: simplificar campos de campaña
+
+- Solicitud: retirar de campaign_edit.php grupo administrativo, método/nivel de marcación, canales máximos, tiempo/prefijo de llamada, orden de leads, hopper y grabación. Se mantienen Caller ID y Estados a marcar; el grupo restante se titula Leads.
+- Alcance aprobado por ARCHITECT_AGENT: presentación de app/web/bot_ivr/campaign_edit.php; sin cambios de contrato, esquema ni servicios. El guardado existente preserva metadatos omitidos.
+- Flujo autorizado: fuente local → montaje SMB /mnt/zynervoxv2-fuente → /var/www/html/zynervoxv2 en soundhound. Copia con backup privado, root:apache 0640, restorecon y recarga PHP-FPM; sin ejecutar instalador.
+- Verificación: PHP lint local/remoto, renderizado sin los nueve controles y con campos conservados, SHA256 fuente/destino idéntico, login y página Bot IVR autenticados HTTP 200. No se crearon campañas ni se cambiaron datos para probar.
