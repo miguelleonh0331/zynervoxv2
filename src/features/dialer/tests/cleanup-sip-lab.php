@@ -14,6 +14,8 @@ foreach ($q->fetchAll(PDO::FETCH_COLUMN) as $id) {
 }
 $phone=Includes\Phones::getById('79996');
 if ($phone && $phone['fullname']==='Dialer SIP lab') Includes\Phones::delete('79996');
+$db->exec("DELETE FROM v2_dialer_agent_pauses WHERE agent_user='79996'");
+$db->exec("DELETE FROM v2_dialer_agent_status WHERE agent_user='79996'");
 $carrier=Includes\Carriers::getById('DIALER_LAB_SIP');
 if ($carrier && $carrier['carrier_name']==='Loopback dialer laboratory') Includes\Carriers::delete('DIALER_LAB_SIP');
 Includes\PbxAmi::command($ami,'sip reload');

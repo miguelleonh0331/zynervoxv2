@@ -9,6 +9,7 @@ use Includes\Dialer;
 // para agentes todavia, asi que se acepta el rango completo de niveles.
 Auth::checkAccess([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 if (empty($_SESSION['dialer_csrf'])) $_SESSION['dialer_csrf'] = bin2hex(random_bytes(32));
+if (\Config\Config::deployment('isolated',false)) $_SESSION['dialer_entered']=true;
 
 function h($v) { return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8'); }
 
@@ -29,14 +30,21 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         try {
             $action = (string) ($_POST['action'] ?? '');
             $campaignId = (int) ($_POST['campaign_id'] ?? 0);
-            if ($action === 'join') {
-                $msg = Dialer::agentJoinQueue($user, $campaignId);
-            } elseif ($action === 'leave') {
-                $msg = Dialer::agentLeaveQueue($user, $campaignId);
+            if ($action === 'bootstrap') {
+                $_SESSION['dialer_entered']=true;
+                Dialer::agentLogin($user);
+                $msg=count(array_filter(Dialer::campaignsForAgent($user),static function($c) { return (bool)$c['active']; })) ? 'Conectado a tus campañas asignadas.' : 'No tienes campañas activas asignadas.';
             } elseif ($action === 'pause') {
-                $msg = Dialer::agentSetPause($user, $campaignId, true, (string) ($_POST['reason'] ?? ''));
+                $typeId=filter_var($_POST['pause_type_id'] ?? null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+                if (!$typeId) throw new RuntimeException('Selecciona un tipo de pausa.');
+                Dialer::agentPauseAll($user,$typeId); $msg='Pausa aplicada a todas tus campañas.';
             } elseif ($action === 'unpause') {
-                $msg = Dialer::agentSetPause($user, $campaignId, false);
+                Dialer::agentPauseAll($user,null); $msg='Agente reanudado.';
+            } elseif ($action === 'hangup') {
+                Dialer::agentHangup($user,(int)($_POST['call_id'] ?? 0)); $msg='Solicitud de colgar enviada.';
+            } elseif ($action === 'save_pause_type') {
+                if ((int)$_SESSION['user_level']!==9) throw new RuntimeException('Solo el administrador gestiona tipos de pausa.');
+                Dialer::savePauseType((int)($_POST['pause_type_id'] ?? 0),(string)($_POST['code'] ?? ''),(string)($_POST['label'] ?? ''),isset($_POST['active'])); $msg='Tipo de pausa guardado.';
             } elseif ($action === 'dispose') {
                 Dialer::setDisposition((int) ($_POST['call_id'] ?? 0), $user, (string) ($_POST['code'] ?? ''));
                 $msg = 'Llamada tipificada.';
@@ -52,14 +60,24 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     }
 }
 
+if (($_POST['action'] ?? '')==='bootstrap' && ($_POST['ajax'] ?? '')==='1') {
+    header('Content-Type: application/json; charset=utf-8'); header('Cache-Control: no-store');
+    if ($error!=='') http_response_code(503);
+    echo json_encode(['message'=>$msg,'error'=>$error],JSON_THROW_ON_ERROR); exit;
+}
+
 try {
     $campaigns = Dialer::campaignsForAgent($user);
     $pending = Dialer::pendingDispositionForAgent($user);
     $dispositions = $pending ? Dialer::dispositions((int) $pending['campaign_id']) : [];
+    $pauseTypes=Dialer::pauseTypes((int)$_SESSION['user_level']===9);
+    $pause=Dialer::agentPause($user);
+    $lead=Dialer::agentCurrentLead($user);
 } catch (Throwable $e) {
     $campaigns = [];
     $pending = null;
     $dispositions = [];
+    $pauseTypes=[]; $pause=null; $lead=null;
     $error = $error ?: $e->getMessage();
 }
 ?>
@@ -93,6 +111,26 @@ try {
 
         <?php if ($msg !== ''): ?><p style="color:#10b981;margin-bottom:1rem;">✅ <?php echo h($msg); ?></p><?php endif; ?>
         <?php if ($error !== ''): ?><p style="color:#fca5a5;margin-bottom:1rem;">❌ <?php echo h($error); ?></p><?php endif; ?>
+        <p id="connection-status" role="status">Conectando a tus campañas…</p>
+        <div class="card" style="margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+            <span id="pause-status"><?php echo $pause ? h('Pausado: '.$pause['label']) : 'Disponible'; ?></span>
+            <form method="POST" id="pause-form">
+                <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>">
+                <input type="hidden" name="action" value="<?php echo $pause ? 'unpause' : 'pause'; ?>">
+                <select name="pause_type_id" <?php echo $pause ? 'hidden' : 'required'; ?>><option value="">Motivo de pausa…</option><?php foreach ($pauseTypes as $type): if (!$type['active']) continue; ?><option value="<?php echo (int)$type['pause_type_id']; ?>"><?php echo h($type['label']); ?></option><?php endforeach; ?></select>
+                <button class="carsa-btn" type="submit"><?php echo $pause ? 'Reanudar' : 'Pausar'; ?></button>
+            </form>
+            <form method="POST" id="hangup-form" <?php echo !$lead || $lead['ended_at'] ? 'hidden' : ''; ?>>
+                <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><input type="hidden" name="action" value="hangup"><input type="hidden" name="call_id" value="<?php echo (int)($lead['call_id'] ?? 0); ?>"><button type="submit" class="carsa-btn danger">Colgar</button>
+            </form>
+            <form method="POST" action="../../logout.php"><input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><button type="submit" class="carsa-btn">Cerrar sesión</button></form>
+        </div>
+        <?php if ((int)$_SESSION['user_level']===9): ?>
+        <section class="card" style="margin-bottom:16px;"><h2>Tipos de pausa</h2>
+        <?php foreach (array_merge($pauseTypes,[['pause_type_id'=>0,'code'=>'','label'=>'','active'=>1]]) as $type): ?>
+        <form method="POST" style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap;"><input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><input type="hidden" name="action" value="save_pause_type"><input type="hidden" name="pause_type_id" value="<?php echo (int)$type['pause_type_id']; ?>"><input name="code" value="<?php echo h($type['code']); ?>" placeholder="Código" maxlength="30" required><input name="label" value="<?php echo h($type['label']); ?>" placeholder="Nombre de pausa" maxlength="80" required><label><input type="checkbox" name="active" <?php echo $type['active'] ? 'checked' : ''; ?>> Activa</label><button type="submit" class="carsa-btn"><?php echo $type['pause_type_id'] ? 'Guardar' : 'Crear pausa'; ?></button></form>
+        <?php endforeach; ?></section>
+        <?php endif; ?>
 
         <?php if ($pending): ?>
         <div class="card" style="margin-bottom:16px;">
@@ -125,10 +163,6 @@ try {
                     <?php if ($c['dial_method'] === 'MANUAL' && $c['active']): ?>
                     <form method="POST"><input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><input type="hidden" name="campaign_id" value="<?php echo (int) $c['campaign_id']; ?>"><input type="hidden" name="action" value="manual"><button type="submit" class="btn-primary">Marcar siguiente lead</button></form>
                     <?php endif; ?>
-                    <form method="POST"><input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><input type="hidden" name="campaign_id" value="<?php echo (int) $c['campaign_id']; ?>"><input type="hidden" name="action" value="join"><button type="submit" class="carsa-btn">Entrar a cola</button></form>
-                    <form method="POST"><input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><input type="hidden" name="campaign_id" value="<?php echo (int) $c['campaign_id']; ?>"><input type="hidden" name="action" value="pause"><button type="submit" class="carsa-btn secondary">Pausar</button></form>
-                    <form method="POST"><input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><input type="hidden" name="campaign_id" value="<?php echo (int) $c['campaign_id']; ?>"><input type="hidden" name="action" value="unpause"><button type="submit" class="carsa-btn secondary">Despausar</button></form>
-                    <form method="POST"><input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><input type="hidden" name="campaign_id" value="<?php echo (int) $c['campaign_id']; ?>"><input type="hidden" name="action" value="leave"><button type="submit" class="carsa-btn danger">Salir de cola</button></form>
                 </div>
             </div>
             <?php endforeach; ?>
@@ -138,12 +172,21 @@ try {
     </main>
     <script>
     const pendingAtRender = <?php echo json_encode($pending['call_id'] ?? null); ?>;
+    const connectionStatus=document.getElementById('connection-status');
+    fetch('dialer_agent.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({action:'bootstrap',ajax:'1',csrf_token:<?php echo json_encode($_SESSION['dialer_csrf']); ?>})}).then(async response=>{const result=await response.json();connectionStatus.textContent=result.error || result.message;}).catch(()=>{connectionStatus.textContent='No se pudo conectar a las campañas. Recarga para reintentar.';});
     setInterval(async () => {
         try {
             const response = await fetch('dialer_agent.php?poll=1',{cache:'no-store'});
             if (!response.ok) return;
             const state = await response.json();
             const lead=state.lead;
+            const hangup=document.getElementById('hangup-form'); hangup.hidden=!lead || !!lead.ended_at;
+            hangup.elements.call_id.value=lead?.call_id ?? 0;
+            const pauseForm=document.getElementById('pause-form');
+            pauseForm.elements.action.value=state.pause ? 'unpause' : 'pause';
+            pauseForm.elements.pause_type_id.hidden=!!state.pause; pauseForm.elements.pause_type_id.required=!state.pause;
+            pauseForm.querySelector('button').textContent=state.pause ? 'Reanudar' : 'Pausar';
+            document.getElementById('pause-status').textContent=state.pause ? (lead && !lead.ended_at ? 'Pausa solicitada: ' : 'Pausado: ')+state.pause.label+' · '+state.pause.duration_seconds+' s' : state.pending ? 'Tipificación pendiente' : 'Disponible';
             document.getElementById('lead-card').hidden=!lead;
             if (lead) {
                 document.getElementById('lead-summary').textContent=[lead.campaign_name,lead.phone_number,lead.first_name,lead.status,lead.ended_at ? 'tipificación pendiente' : lead.bridged_at ? 'en conversación' : 'llamando'].join(' · ');

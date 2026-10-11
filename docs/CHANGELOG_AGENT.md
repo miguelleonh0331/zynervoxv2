@@ -2182,3 +2182,39 @@ propios de campañas/anexos/troncal. No se llamaron números externos reales.
 La comprobación del proveedor y MicroSIP físicos corresponde a la siguiente
 prueba del usuario. Rollback: revert del commit de esta tarea, despliegue de
 esos tres PHP, syncDialplan por API y reinicio worker con cero llamadas abiertas.
+
+## 2026-10-11 — Ingreso automático y controles globales del agente
+
+Panel de agente ingresa por POST+CSRF a todas las campañas activas asignadas.
+Se eliminan botones entrar/salir de cola; Pausar/Reanudar es global, con catálogo
+administrable por nivel9, historial y duración desde la solicitud. Recargar,
+bootstrap y tipificación conservan pausa. Una llamada reservada conserva su
+cola personal hasta cierre; los intervalos permanecen ACTIVE mientras conversa.
+Estado durable bloquea nuevas reservas durante pausa/logout incluso si AMI aún
+muestra disponibilidad. Colgar valida propiedad y UID/canal exactos, solicita
+AMI Hangup y deja el cierre al handler PBX. Logout POST+CSRF retira membresías;
+fallo parcial conserva intención offline y sesión web para reintento.
+Cerrar pestaña/expirar sesión no reemplaza el logout explícito.
+
+Contratos core/dialer revisados por ARCHITECT_AGENT. Migraciones013 y014 añaden
+catálogo, estado e historial y permisos limitados a sus tres tablas para runtime.
+Migración inicial conserva agentes operativos existentes sin sobrescribir offline.
+Pruebas controles/HTTP PASS: multicampaña, persistencia, historial, catálogo admin,
+CSRF, escape, aislamiento Hangup, reserva/pausa concurrente y logout parcial.
+Regresiones engine/routing/reporting/core-users y PHP lint PASS.
+Laboratorio SIP/RTP loopback PASS: MANUAL/PROGRESSIVE/ADAPTIVE, pausa durante
+intento reservado, cierre/tipificación conservan pausa, Hangup timbrando y hablando,
+AMD HUMAN/MACHINE/MESSAGE automático y ringback/early media manual conservados.
+Fixtures propios retirados; no se realizaron llamadas externas a clientes.
+
+Despliegue por zynertools desde E:/servidores/zynerdesk/proyectos/zynervoxv2 a
+/srv/www/htdocs/zynervoxv2, con cero llamadas abiertas antes de copiar y reinicio
+del worker; sin cambios al dialplan generado en esta tarea.
+Respaldo: /var/backups/zynervoxv2/agent-controls-20261011-180141.
+Evidencia: /var/backups/zynervoxv2/dialer-sip-lab-20261011-180339.
+Verificación final: cinco PHP fuente/runtime idénticos, worker active sin errores
+recientes, SIP5000 OK196ms y en colas55, campaña55 carsa0001 MANUAL RUNNING AMD0,
+intento317 COMPLETED/tipificación01, catálogo3, usuario5000 logged_in1 sin pausa,
+cero llamadas abiertas y cero campañas/estado/pausas de fixtures propios.
+Rollback: restaurar cinco PHP del respaldo y reiniciar worker sin llamadas abiertas;
+conservar tablas aditivas e historial, sin eliminar datos nuevos de usuarios.

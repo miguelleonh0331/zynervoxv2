@@ -1,5 +1,15 @@
 # Contrato: core
 
+## 2026-10-11 — Logout del panel de agente (ARCHITECT_AGENT)
+
+En modo aislado, una sesión que haya abierto dialer_agent usa logout.php por
+POST con dialer_csrf. El entrypoint invoca la API pública Dialer::agentLogout
+antes de Auth::logout. Una salida PBX parcial conserva la sesión y muestra
+reintento, sin fingir que se retiró de todas las colas. Sidebars admin/sup
+renderizan formulario POST para esas sesiones. Sesiones sin panel de agente
+y modo legacy conservan su navegación de logout. Auth/Phones/PbxAmi internos
+no cambian. El ingreso operativo automático pertenece al panel/módulo dialer.
+
 ## 2026-10-11 — Salida SIP para motor humano (ARCHITECT_AGENT)
 
 `Dialplans::outboundRoute(id)` devuelve dialplan_id, name, dial_prefix,

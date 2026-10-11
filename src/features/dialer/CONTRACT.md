@@ -1,5 +1,40 @@
 # Contrato: dialer (motor de marcación con agentes)
 
+## 2026-10-11 — Sesión operativa, pausas globales y Colgar (ARCHITECT_AGENT)
+
+`agentLogin(user)` incorpora idempotentemente a las campañas activas asignadas,
+incluidas las STOPPED. El panel inicia esa operación mediante POST automático
+autenticado con CSRF, nunca desde GET/poll. Quita controles manuales join/leave.
+`agentLogout(user)` guarda intención offline antes de retirar colas principales
+y personales y cerrar intervalos/pausas. AMI parcial conserva esa intención y
+devuelve error reintentable; el worker/closer no reincorporan ni reactivan al
+agente offline. Cerrar pestaña no sustituye la acción explícita Cerrar sesión.
+
+Migración013 crea estado operativo global, catálogo y eventos de pausa global
+con open_slot UNIQUE por agente. Migración014 concede permisos exclusivamente
+a esas tablas al runtime aislado. Catálogo admin9: crear/editar/activar/desactivar,
+sin borrar historia. La etiqueta se copia al evento y duración se registra desde
+solicitud hasta reanudación/logout; no se suman campañas compartidas.
+`agentPauseAll(user,typeId|null)` guarda intención durable antes de AMI.
+Prioridad: pausa manual, pendiente de tipificación, reserva, disponibilidad.
+Recargar/tipificar preserva la pausa manual. Desactivar un motivo no impide
+terminar una pausa existente. Durante un intento reservado se pausan principales
+pero se mantiene personal para terminar PROGRESSIVE; al cerrar se aplica pausa
+allí. Pausar no cuelga. El trabajo de una llamada abierta conserva intervalo
+ACTIVE hasta su cierre, aunque el agente haya solicitado pausa.
+
+La reserva MANUAL/PROGRESSIVE consulta intención offline/pausa bajo lock global
+del agente dentro de claimLead; un snapshot WAITING obsoleto no consume lead ni
+intento. Conteo de disponibilidad también respeta intención durable. Las pausas
+anteriores sin código global conservan su bloqueo al reentrar/cerrar/tipificar.
+
+`agentHangup(user,callId)` admite únicamente llamada abierta de agent_user o
+reserved_agent_user autenticado. Busca su ChannelId exacto en canales actuales
+de AMI, valida nombre de canal y envía Hangup. No acepta usuario/canal enviados
+por navegador ni cierra BD anticipadamente: el handler PBX conserva grabación,
+liberación de cupo y tipificación. RATIO/ADAPTIVE antes de asignación no son
+llamadas propias de un agente. Acciones HTTP aplican Auth y POST+CSRF.
+
 ## 2026-10-11 — MANUAL conecta primero al agente (ARCHITECT_AGENT)
 
 Esta sección sustituye el flujo posanswer por Queue únicamente para MANUAL.

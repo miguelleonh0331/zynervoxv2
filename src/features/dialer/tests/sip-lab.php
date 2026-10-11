@@ -73,7 +73,16 @@ try {
             }
         } else $id=Dialer::originateNext($c,$mode==='MANUAL' ? $agent : null);
         check_sip($id!==null,$mode.' did not originate.');
-        if ($mode==='MANUAL') Dialer::agentJoinQueue($agent,$c); // Login during ringing must keep personal queue available.
+        if ($mode==='MANUAL') {
+            Dialer::agentLogin($agent); // Reload during ringing must keep personal queue available.
+            $pauseType=(int)Dialer::pauseTypes()[0]['pause_type_id'];
+            Dialer::agentPauseAll($agent,$pauseType); Dialer::agentLogin($agent);
+            check_sip(Dialer::agentPause($agent)!==null,'Auto login removed requested pause.');
+        }
+        if ($mode==='PROGRESSIVE') {
+            $pauseType=(int)Dialer::pauseTypes()[0]['pause_type_id'];
+            Dialer::agentPauseAll($agent,$pauseType);
+        }
         if ($mode==='MANUAL') {
             Dialer::setEngineState($campaigns[1],'RUNNING');
             check_sip(Dialer::originateNext($campaigns[1])===null,'Shared agent reserved twice across campaigns.');
@@ -92,6 +101,10 @@ try {
         check_sip(is_file($row['recording_path']) && filesize($row['recording_path'])>44,'Missing real RTP recording.'); $recordings[]=$row['recording_path'];
         check_sip(Dialer::pendingDispositionForAgent($agent)['call_id']==$id,'No pending disposition.');
         Dialer::setDisposition($id,$agent,'SALE');
+        if ($mode==='MANUAL' || $mode==='PROGRESSIVE') {
+            check_sip(Dialer::agentPause($agent)!==null,'Closer/disposition removed requested pause.');
+            Dialer::agentPauseAll($agent,null);
+        }
         $k=Dialer::kpis($c); check_sip($k['sales']===1 && $k['occupancy_pct']!==null,'Sale/occupancy not observed.');
         echo json_encode(['mode'=>$mode,'call_id'=>$id,'amd'=>$row['amd_result'],'reason'=>$row['termination_reason'],'agent'=>$row['agent_user'],'talk_seconds'=>$row['duration_talk'],'recording_bytes'=>filesize($row['recording_path']),'occupancy_pct'=>$k['occupancy_pct']]),"\n";
     }
@@ -120,6 +133,23 @@ try {
         if ($action==='noanswer') check_sip(substr_count(file_get_contents($directory.'/peer.log'),'CLIENT_INVITE:')===$before,'Destination called when agent did not answer.');
         echo 'PASS: agent '.$action.', no customer answer/recording, reservation released.',"\n";
     }
+    foreach (['ringing','talking'] as $phase) {
+        prepare_number($c,'000001'); Dialer::setEngineState($c,'RUNNING'); $id=Dialer::originateNext($c,$agent); check_sip($id!==null,'Hangup fixture did not originate.'); Dialer::setEngineState($c,'STOPPED');
+        if ($phase==='talking') {
+            for ($i=0;$i<30;$i++) { if (call_row($id)['bridged_at']!==null) break; usleep(100000); }
+            check_sip(call_row($id)['bridged_at']!==null,'Hangup fixture never bridged.');
+        } else usleep(400000);
+        Dialer::agentHangup($agent,$id); $row=wait_closed($id);
+        check_sip($row['ended_at']!==null && $row['agent_slot']===null,'AMI Hangup did not close/release call.');
+        if ($phase==='ringing') check_sip($row['answered_at']===null,'Hangup during ringing invented customer answer.');
+        if ($row['recording_path']) $recordings[]=$row['recording_path'];
+        if ($row['agent_user']) Dialer::setDisposition($id,$agent,'SALE');
+        echo 'PASS: own-call AMI Hangup '.$phase.', real PBX handler closure.',"\n";
+    }
+    Dialer::agentLogout($agent);
+    check_sip(Dialer::availableAgentsCount($c,'LOGGED_IN')===0,'Logout retained agent availability.');
+    Dialer::agentLogin($agent);
+    check_sip(Dialer::availableAgentsCount($c,'WAITING')===1,'Automatic login did not restore assigned membership.');
     // Preserve the actual AMD/MESSAGE regression in the destination-first mode.
     change_settings($c,['dial_method'=>'PROGRESSIVE']); prepare_number($c,'000002');
     $lead=Dialer::claimLead($c,Dialer::campaign($c)['dial_prefix'],1,$agent);
@@ -173,6 +203,8 @@ try {
         Dialer::deleteCampaign($c);
     }
     Phones::delete($agent); Carriers::delete($carrierId); PbxAmi::command($ami,'sip reload');
+    $db->prepare('DELETE FROM v2_dialer_agent_pauses WHERE agent_user=?')->execute([$agent]);
+    $db->prepare('DELETE FROM v2_dialer_agent_status WHERE agent_user=?')->execute([$agent]);
     if (getenv('DIALER_LAB_TEST_PJSIP')==='1') PbxAmi::command($ami,'pjsip reload');
     PbxAmi::command($ami,'dialplan reload');
     $evidence=getenv('DIALER_LAB_EVIDENCE');

@@ -42,6 +42,7 @@ foreach (['v2_dialer_call_log', 'v2_dialer_campaigns', 'v2_dialer_dispositions',
     $db->exec($definition);
 }
 $db->exec(file_get_contents(__DIR__.'/../models/012-selected-dialplan.sql'));
+$db->exec(str_replace('CREATE TABLE IF NOT EXISTS','CREATE TEMPORARY TABLE IF NOT EXISTS',file_get_contents(__DIR__.'/../models/013-agent-controls.sql')));
 $db->exec("INSERT INTO v2_dialer_campaigns (campaign_id,name,carrier_id,queue_name) VALUES (1,'Laboratorio','TEST','lab1'),(2,'Otra','TEST','lab2'),(3,'Vacía','TEST','lab3')");
 $db->exec("INSERT INTO v2_dialer_leads (lead_id,list_id,phone_number) VALUES (1,1,'000000')");
 $db->exec("INSERT INTO v2_dialer_dispositions (campaign_id,code,label,is_contact,is_sale) VALUES (1,'SALE','Venta',1,1),(1,'NO','No contacto',0,0),(2,'SALE','Otro catálogo',0,0)");

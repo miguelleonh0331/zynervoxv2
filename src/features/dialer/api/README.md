@@ -7,6 +7,8 @@ el estado del usuario autenticado, sin permitir mutaciones por GET.
 
 Operación: `setEngineState`, `workerTick`, `originateNext` y `claimLead`.
 Agente: `agentJoinQueue`, `agentLeaveQueue`, `agentSetPause`, `setDisposition`.
+Panel: `agentLogin`, `agentLogout`, `agentPauseAll`, `agentPause`, `agentHangup`.
+Catálogo: `pauseTypes`, `savePauseType` (consumidor HTTP restringido a admin9).
 Telefonía: `originateFields`, `markAnswered`, `verifyRecording`, `markAmd`,
 `closeCall`, `reconcileUnanswered` (incluye recuperación PBX_LOST).
 Reportería: `kpis`, `abandonByLevel`.

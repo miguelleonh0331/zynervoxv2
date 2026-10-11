@@ -30,9 +30,13 @@ function renderSupSidebar($activePage = 'campaigns') {
         <?php endforeach; ?>
     </div>
 
+    <?php if (!empty($_SESSION['dialer_entered'])): ?>
+    <form method="POST" action="../../logout.php" style="margin-top:auto;"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['dialer_csrf'],ENT_QUOTES,'UTF-8'); ?>"><button type="submit" class="nav-item logout-link" style="color:#ef4444;background:none;border:0;width:100%;cursor:pointer;"><?php echo _svgIcon('logout'); ?> Cerrar Sesión</button></form>
+    <?php else: ?>
     <a href="../../logout.php" class="nav-item logout-link" style="margin-top: auto; color: #ef4444;">
         <?php echo _svgIcon('logout'); ?> Cerrar Sesión
     </a>
+    <?php endif; ?>
 </aside>
 <?php
 }

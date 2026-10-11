@@ -12,7 +12,9 @@ tablas `v2_dialer_*`. Contrato: [CONTRACT.md](CONTRACT.md).
    El prefijo interno se asigna automáticamente; endpoint y prefijo saliente
    se extraen del dialplan elegido. Cargar lista y disposiciones.
 4. Asignar agentes con anexo activo y softphone registrado. Cada agente entra
-   a sus colas desde `modules/admin/dialer_agent.php`.
+   automáticamente a todas sus campañas activas al abrir `modules/admin/dialer_agent.php`.
+   El panel ofrece Pausar/Reanudar global con motivo y Colgar para llamada propia.
+   Admin9 crea/edita/desactiva motivos en "Tipos de pausa" del mismo panel.
 5. Iniciar motor desde Configurar. En MANUAL, el agente pulsa siguiente lead;
    los otros modos los ejecuta `zynervox-dialer.service`.
    MANUAL llama primero al softphone: contestarlo para marcar al cliente y
@@ -20,6 +22,7 @@ tablas `v2_dialer_*`. Contrato: [CONTRACT.md](CONTRACT.md).
    MANUAL no utiliza AMD; la grabación empieza al responder el cliente.
 6. Al terminar conversación, tipificar para salir de wrapup. Pausa manual se
    conserva; cerrar navegador no equivale a salir de cola.
+   Cerrar sesión retira todas las membresías; fallos PBX permiten reintentar.
 7. Detener nuevas llamadas permite terminar conversaciones ya iniciadas.
 
 La reserva de lead comprueba actividad, estado RUNNING, horario del lead,
@@ -54,6 +57,10 @@ sin handler: PBX_LOST, sin inventar duración de conversación.
 compartida conservada y rechazo de cambios RUNNING/con llamadas abiertas o de
 reservas con configuración obsoleta. Migración 012 aplicada solo a fixtures.
 `tests/run-engine.sh`: campos de rutas SIP/PJSIP, reserva, capacidad, DNC y cierres.
+`tests/run-agent-controls.sh`: SQL/HTTP TEMPORARY y PBX en memoria, ingreso
+multicampaña, pausa durable, historial, reserva durante pausa, logout parcial,
+propiedad de Hangup, CSRF y permisos del catálogo. Migraciones013–014 agregan
+catálogo/estado/pausas y sus permisos runtime, sin alterar tablas legacy.
 `tests/sip-lab.php` + `sip-lab-peer.py`: SIP/RTP local, tres modos, AMD,
 grabación, puente, tipificación, parada y MESSAGE. Incluye pruebas de MANUAL
 agente primero, 183/RTP previo a respuesta, ocupado,

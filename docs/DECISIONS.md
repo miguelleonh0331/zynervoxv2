@@ -978,3 +978,27 @@ mientras cierra el padre, fallback al closer contestado conserva el cierre.
 Alcance: Dialer.php, tracking AGI, dialer_agent.php, pruebas, README/CONTRACT y
 registros. Prohibido tocar implementaciones core, bot_ivr, VICIdial o activar
 PJSIP. Artefactos Asterisk se regeneran exclusivamente por API pública.
+
+## 2026-10-11 — Controles operativos de agente y catálogo de pausas
+
+ARCHITECT_AGENT aprueba cruce core/dialer por APIs públicas. Bootstrap
+automático POST+CSRF al entrar al panel, todas las campañas activas asignadas
+aunque motor STOPPED; logout aislado POST+CSRF retira principales/personales
+antes de destruir sesión. Sidebars cambian únicamente esa salida de sesiones
+del marcador. Auth, drivers SIP, PbxAmi y bot_ivr no se modifican.
+
+Estado global durable y eventos de pausa con open_slot UNIQUE por agente;
+catálogo admin9 con activar/desactivar, etiqueta histórica copiada. El motivo
+y tiempo solicitado se conservan al recargar/tipificar; duración global no
+suma campañas compartidas. Pausa no cuelga y personal permanece disponible
+durante reserva progresiva ya iniciada. Llamada abierta conserva intervalo
+ACTIVE hasta cierre; después se aplica pausa sobre disponibilidad/tipificación.
+Las pausas históricas no reconocidas conservan su bloqueo. El estado offline
+evita reactivación por closer/worker; fallo AMI muestra intención pendiente.
+
+claimLead bloquea estado del agente y rechaza pausa/logout durable aun cuando
+PBX muestre WAITING obsoleto, sin consumir intento. Hangup solo para llamada
+propia abierta, correlación exacta ChannelId/canal actual obtenido de AMI;
+ningún canal viene del navegador ni se cierra BD anticipadamente. Catálogo,
+tres tablas nuevas y permisos propios por migraciones013–014, sin datos legacy.
+Cerrar pestaña sigue sin equivaler a Cerrar sesión.
