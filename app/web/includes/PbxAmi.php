@@ -93,7 +93,7 @@ final class PbxAmi {
     // llamada conteste ni termine). Solo para pruebas puntuales con un canal
     // ya armado (Local/<exten>@<contexto>/n); el motor real (Fase 3) usara su
     // propio originator.
-    public static function originate(array $config,string $channel): string {
+    public static function originate(array $config,string $channel,array $variables=[]): string {
         $config=self::validate($config);$host=$config['host'];if(strpos($host,':')!==false)$host='['.$host.']';
         $socket=@stream_socket_client('tcp://'.$host.':'.$config['port'],$errno,$error,3,STREAM_CLIENT_CONNECT);
         if(!$socket)throw new \RuntimeException('No se pudo conectar al servidor AMI. Revisa host, puerto y acceso.');
@@ -106,7 +106,9 @@ final class PbxAmi {
             $loginFrame=self::readPacket($socket,$loginId);
             if($loginFrame===null || !preg_match('/^Response: Success\r?$/m',$loginFrame))throw new \RuntimeException('AMI rechazo el login. Revisa usuario, password y permisos de acceso.');
             $originId=bin2hex(random_bytes(8));
-            $request="Action: Originate\r\nActionID: ".$originId."\r\nChannel: ".$channel."\r\nAsync: true\r\n\r\n";
+            $request="Action: Originate\r\nActionID: ".$originId."\r\nChannel: ".$channel."\r\nAsync: true\r\n";
+            foreach ($variables as $key=>$value) $request.="Variable: ".$key."=".$value."\r\n";
+            $request.="\r\n";
             if(fwrite($socket,$request)!==strlen($request))throw new \RuntimeException('No se pudo enviar el originate AMI.');
             $frame=self::readPacket($socket,$originId);
             fwrite($socket,"Action: Logoff\r\n\r\n");

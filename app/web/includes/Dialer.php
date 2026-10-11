@@ -16,6 +16,10 @@ require_once __DIR__ . '/PbxAmi.php';
 // Carriers/Phones porque este motor no tiene equivalente legacy que reusar.
 class Dialer {
 
+    // Ruta absoluta fija (como los AGI de bot_ivr); produccion vive siempre
+    // en /srv/www/htdocs/zynervoxv2.
+    const AGI_SCRIPT = '/srv/www/htdocs/zynervoxv2/modules/admin/dialer_call_tracking_agi.php';
+
     const CAMPAIGN_FIELDS = [
         'dial_prefix'       => ['label' => 'Prefijo de marcación', 'type' => 'text', 'length' => 20, 'digits' => true],
         'caller_id_number'  => ['label' => 'Caller ID', 'type' => 'text', 'length' => 20, 'digits' => true],
@@ -165,17 +169,29 @@ class Dialer {
             }
             return;
         }
-        $lines = ["exten => _{$prefix}X.,1,Answer()"];
+        // El AGI avisa en cada paso a Dialer::markAnswered/markAmd/closeCall
+        // (ver dialer_call_tracking_agi.php), mismo patron que
+        // bot_ivr/call_tracking_agi.php, en vez de un listener de eventos
+        // AMI aparte.
+        $agi = 'AGI(' . self::AGI_SCRIPT . ',';
+        $lines = [
+            "exten => _{$prefix}X.,1,Answer()",
+            ' same => n,' . $agi . 'answered,${ZV2_DIALER_CALL_ID})',
+        ];
         if ((int) $campaign['amd_enabled'] === 1) {
             $lines[] = ' same => n,AMD()';
+            $lines[] = ' same => n,' . $agi . 'amd,${ZV2_DIALER_CALL_ID},${AMDSTATUS},${AMDCAUSE})';
             $lines[] = ' same => n,GotoIf($["${AMDSTATUS}" = "MACHINE"]?maquina)';
         }
         $lines[] = ' same => n,Queue(' . $campaign['queue_name'] . ',,,,' . (int) $campaign['drop_call_seconds'] . ')';
+        $lines[] = ' same => n,' . $agi . 'closed,${ZV2_DIALER_CALL_ID},${QUEUESTATUS},${UNIQUEID})';
         $lines[] = ' same => n,Hangup()';
         if ((int) $campaign['amd_enabled'] === 1) {
             // amd_action_machine=MESSAGE queda pendiente (requiere audio
-            // configurado); por ahora ambas opciones cuelgan.
-            $lines[] = ' same => n(maquina),Hangup()';
+            // configurado); por ahora ambas opciones cuelgan. No cuenta
+            // como abandono (manual §9.2): el closer no corre para MACHINE.
+            $lines[] = ' same => n(maquina),' . $agi . 'amd_hangup,${ZV2_DIALER_CALL_ID})';
+            $lines[] = ' same => n,Hangup()';
         }
         $body = implode("\n", $lines) . "\n";
         try {
@@ -408,6 +424,92 @@ class Dialer {
         $db = self::database();
         $db->prepare('DELETE FROM v2_dialer_call_log WHERE call_id=:id')->execute(['id' => $callId]);
         $db->prepare('UPDATE v2_dialer_leads SET status=\'NEW\' WHERE lead_id=:id')->execute(['id' => $leadId]);
+    }
+
+    // ---------------------------------------------------------------- Closer (Fase 5)
+    // Llamado desde dialer_call_tracking_agi.php en cada paso del dialplan
+    // generado por syncDialplan(). Reemplaza la aproximacion por ventana de
+    // tiempo de inFlightCount() con cierre real basado en lo que de verdad
+    // pasó en la llamada.
+
+    public static function markAnswered(int $callId): void {
+        self::database()->prepare('UPDATE v2_dialer_call_log SET answered_at=COALESCE(answered_at,NOW()) WHERE call_id=:id')
+            ->execute(['id' => $callId]);
+    }
+
+    public static function markAmd(int $callId, string $status): void {
+        if (!in_array($status, ['HUMAN', 'MACHINE', 'NOTSURE'], true)) return;
+        self::database()->prepare('UPDATE v2_dialer_call_log SET amd_result=:s WHERE call_id=:id')
+            ->execute(['s' => $status, 'id' => $callId]);
+    }
+
+    // Contestador detectado: NUNCA cuenta como abandono (manual §9.2) — el
+    // lead simplemente no llegó a entrar a la cola. Libera el lead para
+    // reciclado como MACHINE en vez de dejarlo en DIALING para siempre.
+    public static function closeMachine(int $callId): void {
+        $db = self::database();
+        $stmt = $db->prepare('SELECT lead_id FROM v2_dialer_call_log WHERE call_id=:id');
+        $stmt->execute(['id' => $callId]);
+        $leadId = $stmt->fetchColumn();
+        $db->prepare('UPDATE v2_dialer_call_log SET ended_at=NOW(),termination_reason=\'MACHINE\' WHERE call_id=:id')
+            ->execute(['id' => $callId]);
+        if ($leadId) {
+            $db->prepare("UPDATE v2_dialer_leads SET status='NEW',next_eligible_at=NOW()+INTERVAL 24 HOUR WHERE lead_id=:id")
+                ->execute(['id' => $leadId]);
+        }
+    }
+
+    // Cierra la llamada cuando Queue() devuelve el control. queueStatus es
+    // ${QUEUESTATUS}: vacio/CONTINUE = se tendió el puente y terminó solo
+    // (completado); TIMEOUT/FULL/JOINEMPTY/LEAVEEMPTY/JOINUNAVAIL/
+    // LEAVEUNAVAIL = nunca hubo agente a tiempo (abandono, por simplicidad
+    // de Fase 5 se agrupan todos como DROPPED). El agente que atendió se
+    // busca en queue_log (evento CONNECT) por no tener listener de eventos
+    // AMI en tiempo real.
+    public static function closeCall(int $callId, string $queueStatus, string $uniqueId): void {
+        $db = self::database();
+        $stmt = $db->prepare('SELECT lead_id FROM v2_dialer_call_log WHERE call_id=:id');
+        $stmt->execute(['id' => $callId]);
+        $leadId = $stmt->fetchColumn();
+        $dropped = in_array($queueStatus, ['TIMEOUT', 'FULL', 'JOINEMPTY', 'LEAVEEMPTY', 'JOINUNAVAIL', 'LEAVEUNAVAIL'], true);
+        $reason = $dropped ? 'DROPPED' : 'COMPLETED';
+        $agentUser = $dropped ? null : self::agentFromQueueLog($uniqueId);
+        $db->prepare('UPDATE v2_dialer_call_log SET ended_at=NOW(),termination_reason=:r,agent_user=:a,bridged_at=CASE WHEN :a2 IS NOT NULL THEN NOW() ELSE bridged_at END WHERE call_id=:id')
+            ->execute(['r' => $reason, 'a' => $agentUser, 'a2' => $agentUser, 'id' => $callId]);
+        if ($leadId) {
+            $delay = $dropped ? 5 : 0;
+            $status = $dropped ? 'NEW' : 'CONTACTED';
+            $db->prepare("UPDATE v2_dialer_leads SET status=:s,next_eligible_at=NOW()+INTERVAL :d MINUTE WHERE lead_id=:id")
+                ->execute(['s' => $status, 'd' => $delay, 'id' => $leadId]);
+        }
+    }
+
+    // Busca en queue_log (texto plano, formato
+    // epoch|callid|queue|agent|event|...) la línea CONNECT de este
+    // uniqueid y traduce la interfaz (SIP/10000) al login del agente via
+    // v2_phones. Best-effort: si no encuentra nada devuelve null, nunca
+    // rompe el cierre de la llamada.
+    private static function agentFromQueueLog(string $uniqueId): ?string {
+        $path = '/var/log/asterisk/queue_log';
+        if ($uniqueId === '' || !is_file($path) || !is_readable($path)) return null;
+        $handle = @fopen($path, 'r');
+        if (!$handle) return null;
+        $interface = null;
+        try {
+            fseek($handle, 0, SEEK_END);
+            $size = ftell($handle);
+            $chunk = (string) @stream_get_contents($handle, min($size, 200000), max(0, $size - 200000));
+        } finally { fclose($handle); }
+        foreach (array_reverse(explode("\n", $chunk)) as $line) {
+            $cols = explode('|', $line);
+            if (count($cols) >= 4 && $cols[1] === $uniqueId && ($cols[4] ?? '') === 'CONNECT') { $interface = $cols[3]; break; }
+        }
+        if ($interface === null || strpos($interface, '/') === false) return null;
+        [, $extension] = explode('/', $interface, 2);
+        foreach (\Includes\Phones::getAll() as $phone) {
+            if ($phone['extension'] === $extension) return $phone['login'];
+        }
+        return null;
     }
 
     public static function leadCount(int $listId): int {

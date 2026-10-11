@@ -73,6 +73,40 @@ sin agente disponible. **No verificado**: que la cola realmente timbre y
 bridee a un agente humano — requiere un MicroSIP registrado y en línea, que
 solo el usuario puede proveer.
 
+## Fase 5 (2026-10-11) — Closer real, sin listener de eventos AMI
+
+En vez de un proceso separado escuchando eventos AMI (lo que proponía el
+manual original), el dialplan generado por `syncDialplan()` llama a
+`modules/admin/dialer_call_tracking_agi.php` en cada paso (answered, amd,
+closed) — mismo patrón que `bot_ivr/call_tracking_agi.php`, ya probado en
+producción. El AGI llama a `Dialer::markAnswered/markAmd/closeCall/
+closeMachine`, que reemplazan la aproximación por ventana de tiempo de
+`inFlightCount()` (Fase 3) por cierre real.
+
+`closeCall()` determina abandono vs. completado por `${QUEUESTATUS}` (TIMEOUT/
+FULL/JOINEMPTY/LEAVEEMPTY/JOINUNAVAIL/LEAVEUNAVAIL → `DROPPED`, agrupados sin
+distinguir matices por ahora). El agente que atendió se busca parseando
+`/var/log/asterisk/queue_log` (evento `CONNECT`) por `${UNIQUEID}`, no por un
+evento AMI en vivo — best-effort, nunca bloquea el cierre si no lo encuentra.
+MACHINE (AMD) nunca cuenta como abandono, tal como exige el manual: libera el
+lead directo a reciclado de 24h sin tocar `termination_reason=DROPPED`.
+
+**Gotcha real encontrado y corregido:** un AGI nuevo subido por `push.py`
+no llega ejecutable (sftp no fija el bit +x en archivos nuevos) — Asterisk
+lo ignora con "Permission denied" sin tumbar la llamada, pero el cierre
+nunca corre. Cualquier AGI nuevo necesita `chmod 750` explícito tras el
+primer deploy.
+
+Verificado end to end en mirmidon (sin agente real): 2 leads marcados,
+originados, `AMD()` corrió de verdad (`NOTSURE` por falta de audio real,
+tratado como humano según el manual), entraron a `Queue()`, desbordaron a
+los 4s exactos (`drop_call_seconds`), `call_log` quedó con `answered_at`,
+`amd_result`, `ended_at`, `termination_reason=DROPPED`, y los leads
+volvieron a `NEW` con `next_eligible_at` +5 min. No probado con datos
+reales: `closeMachine()` (requiere audio real para que AMD diga MACHINE) y
+la correlación de agente vía `queue_log` CONNECT (requiere un agente real
+conectado, mismo pendiente de Fase 4).
+
 ## Pendiente
 
 Capacidad de troncal compartida con VICIdial real: decisión pospuesta

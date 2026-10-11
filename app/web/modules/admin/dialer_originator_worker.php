@@ -36,7 +36,7 @@ for ($tick = 1; $tick <= $ticks; $tick++) {
         $claimed = Dialer::claimLead($campaignId, $dialPrefix);
         if ($claimed) {
             try {
-                $msg = PbxAmi::originate($config, $claimed['channel']);
+                $msg = PbxAmi::originate($config, $claimed['channel'], ['ZV2_DIALER_CALL_ID' => $claimed['call_id']]);
                 echo "[tick $tick] en_vuelo=$inFlight claim lead={$claimed['lead_id']} phone={$claimed['phone_number']} call_id={$claimed['call_id']} -> $msg\n";
             } catch (Throwable $e) {
                 Dialer::releaseFailedClaim($claimed['call_id'], $claimed['lead_id']);
