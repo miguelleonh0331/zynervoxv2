@@ -31,7 +31,7 @@ ivr_builder_require_login();
 <div class="resizer" id="resizer" title="Arrastra para agrandar/achicar el panel de propiedades"></div>
 <aside class="side right"><strong>Propiedades</strong><div id="props" class="small">Seleccione nodo.</div></aside></div>
 </div><!-- /.ivr-shell -->
-<script src="assets/js/nodes/forwarding.js"></script>
+<script src="assets/js/nodes/forwarding.js?v=sip1"></script>
 <script src="assets/js/editor/core.js?v=forwarding1"></script>
 <script src="assets/js/api/client.js"></script>
 <script src="assets/js/nodes/media.js"></script>

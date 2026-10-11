@@ -798,3 +798,12 @@ forwarding se guarda en data_json existente, evitando migraciones. Salida PJSIP
 con predial fijo y helper AGI aplica headers al canal llamado; solo X-* y
 User-to-User, variables resueltas antes de marcar, sin valores en auditoría.
 Despliegue autorizado fuente local → SMB → Soundhound, sin ejecutar instalador.
+
+## 2026-10-11 — SIP en Reenviar y Soundhound
+
+ARCHITECT_AGENT aprobó ampliar ivr_builder/bot_ivr/core: protocolo SIP/PJSIP,
+metadata existente conservada y archivos de troncales separados. Carga de peer
+ya activo autorizada sin cambiar active ni hacer pruebas de llamadas externas.
+chan_sip20 compilado con fuente/opciones actuales, UDP5061 sin conflicto con
+PJSIP5060. Headers SIP mediante slots heredados, verificados y limpiados solo
+si fueron creados por el nodo; no limpieza global de headers.

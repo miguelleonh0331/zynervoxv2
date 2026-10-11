@@ -71,3 +71,22 @@ Validacion repetida de instalacion para conservar esquemas y configuracion.
 
 Los cambios del instalador no agregan includes ni recargan PBX automaticamente;
 la activacion inicial se preparo exclusivamente en este servidor nuevo.
+
+## Ampliación SIP — 2026-10-11
+
+chan_sip compilado desde la misma fuente Asterisk 20.21.0 y cargado sin reemplazar
+el binario ni reiniciar el servicio. Se habilitó en menuselect.makeopts y se
+retiró noload de modules.conf. Archivo fuente sip-soundhound.conf copiado
+local-first a /etc/asterisk/sip.conf; chan_sip escucha UDP5061, PJSIP conserva
+UDP5060. Anexos SIP deben indicar puerto5061 al registrar en Soundhound.
+No se añadieron reglas públicas de firewall. chan_sip corresponde a Asterisk20;
+no trasladar este módulo binario a otra versión/compilación de Asterisk.
+
+Incluye runtime/modules/asterisk/sip-zynervoxv2.conf y sip-zynervoxv2-annexos.conf.
+Carriers genera SIP/PJSIP por separado; se cargó carrier1 previamente activo,
+sin cambiar active ni crear registros. Configuración y contraseñas de troncales
+siguen fuera de Git. El selector Reenviar guarda protocolo, peer/endpoint,
+destino y headers con variables del flujo. Predial PJSIP permanece separado.
+Prueba interna Local verificó SIPAddHeader, lectura de slots heredados y limpieza
+sin tocar un header previo; contexto temporal de prueba retirado. Sin llamadas
+externas ni prueba de entrega de INVITE al proveedor.

@@ -1899,3 +1899,12 @@ del usuario en ivr_engine_agi.php. Sin datos productivos ni llamadas reales.
 - Alcance y contratos aprobados por ARCHITECT_AGENT. Fuente local → montaje SMB → producción Soundhound; backup privado, permisos/ACL y etiqueta SELinux exacta del nuevo AGI. Include local-first de extensions-forwarding.conf en /etc/asterisk/extensions.conf y dialplan reload. Sin ejecutar instalador.
 - Verificación: lint PHP/JS, expansión/faltantes/inyección/compatibilidad y terminal simulado; AGI con protocolo simulado; tablas temporales para round-trip y publicación atómica privada; regresión IVR existente; navegador autenticado creando/configurando nodo solo en memoria, sin guardar ni llamar; contexto predial cargado en Asterisk.
 - Límite: sin llamada real ni captura de INVITE. Nuevos destinos requieren endpoint PJSIP configurado. El AGI principal conserva requisitos previos de registro de audio; su cambio preexistente no se incluye en esta tarea.
+
+## 2026-10-11 — Soporte SIP (chan_sip) para Reenviar
+
+- Selector SIP/PJSIP, variables múltiples en headers y conservación de headers al cambiar protocolo. Default PJSIP para nodos anteriores; metadata desconocida se preserva al guardar.
+- Runtime valida peer SIP, aplica/valida headers en slots libres, marca con SIP/peer/numero y limpia solo slots propios. Rechaza escapes decodificables; slots llenos abortan antes de Dial. PJSIP conserva predial.
+- Core separa configuración de troncales SIP/PJSIP, sin modificar registros ni active. Fuente local desplegada desde SMB en Soundhound con backup, permisos y SELinux Enforcing.
+- chan_sip.so compilado con fuente Asterisk20.21 y opciones actuales; carga ABI correcta. /etc/asterisk/sip.conf preparado en local, UDP5061; PJSIP UDP5060 permanece. carrier1 existente cargado. Sin ejecutar instalador.
+- Pruebas: normalización/variables/inyección, SIP y PJSIP simulados, slots previos/llenos; persistencia y metadata ajena en tablas temporales, publicación privada; detección de protocolos y regresión IVR; AGI PJSIP; navegador selector SIP + header {nombre}|{numero}, sin guardar flujo. Prueba interna Local real de SIPAddHeader y limpieza, sin llamadas externas; configuración de prueba retirada.
+- Commit/push solo archivos de tarea; ivr_engine_agi.php preexistente se conserva fuera del commit. Entrega externa de llamadas/INVITE sigue sin probar.

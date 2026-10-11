@@ -8,6 +8,8 @@ function ivr_forwarding_config(array $node): array {
     $endpoint=$config['endpoint'] ?? '';
     $number=$config['number'] ?? '';
     $headers=$config['headers'] ?? [];
+    $protocol=$config['protocol'] ?? 'PJSIP';
+    if (!in_array($protocol,['SIP','PJSIP'],true)) throw new InvalidArgumentException('Reenviar: protocolo inválido.');
     if (!in_array($mode,['dialplan','anexo','trunk'],true) || !is_string($endpoint) || !is_string($number) || !is_array($headers) || count($headers)>16) throw new InvalidArgumentException('Reenviar: destino inválido.');
     if ($mode!=='dialplan' && !preg_match('/^[A-Za-z0-9_.-]{1,80}$/D',$endpoint)) throw new InvalidArgumentException('Reenviar: indica el endpoint del anexo o troncal.');
     if ($mode==='dialplan' && (!preg_match('/^[A-Za-z0-9_*#.-]{1,80}$/D',$number) || $headers)) throw new InvalidArgumentException('Reenviar por contexto no admite headers.');
@@ -22,7 +24,7 @@ function ivr_forwarding_config(array $node): array {
         if (strpbrk($withoutVariables,'{}')!==false) throw new InvalidArgumentException('Reenviar: variable inválida en header.');
         $clean[]=['name'=>$name,'value'=>$value];$seen[strtolower($name)]=true;
     }
-    return ['mode'=>$mode,'endpoint'=>$endpoint,'number'=>$number,'headers'=>$clean];
+    return ['mode'=>$mode,'protocol'=>$protocol,'endpoint'=>$endpoint,'number'=>$number,'headers'=>$clean];
 }
 
 function ivr_forwarding_render(array $node,array $variables): array {
@@ -40,6 +42,7 @@ function ivr_forwarding_render(array $node,array $variables): array {
     foreach ($config['headers'] as &$header) {
         $header['value']=$render($header['value']);
         if (strlen($header['value'])>1024 || preg_match('/[\x00-\x1f\x7f${}]/',$header['value'])) throw new RuntimeException('Reenviar: valor de header inseguro.');
+        if ($config['protocol']==='SIP' && str_contains($header['value'],'\\')) throw new RuntimeException('Reenviar: escapes de header SIP no permitidos.');
     }
     return $config;
 }

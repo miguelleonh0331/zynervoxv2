@@ -13,9 +13,15 @@ function flow_store(PDO $db, array $flow): void {
             'INSERT INTO bot_ivr_flows (flow_code,name,data_json,start_node_id,list_id) VALUES (:c,:n,:j,:s,:l)
              ON DUPLICATE KEY UPDATE name=VALUES(name), data_json=VALUES(data_json), start_node_id=VALUES(start_node_id), list_id=VALUES(list_id)'
         );
+        $existing=$db->prepare('SELECT data_json FROM bot_ivr_flows WHERE flow_code=? FOR UPDATE');
+        $existing->execute([$code]);
+        $old=$existing->fetchColumn();
+        $metadata=$old!==false && $old!==''?json_decode($old,true,512,JSON_THROW_ON_ERROR):[];
+        if (!is_array($metadata)) throw new RuntimeException('Invalid flow metadata');
         $forwarding=[];
         foreach ($flow['nodes'] as $id=>$node) if (($node['type'] ?? '')==='reenviar') $forwarding[$id]=ivr_forwarding_config($node);
-        $meta->execute([':j'=>json_encode(['forwarding'=>$forwarding],JSON_THROW_ON_ERROR),':c'=>$code, ':n'=>$flow['name'], ':s'=>$flow['start'], ':l'=>$flow['list_id'] ?? null]);
+        $metadata['forwarding']=$forwarding;
+        $meta->execute([':j'=>json_encode($metadata,JSON_THROW_ON_ERROR),':c'=>$code, ':n'=>$flow['name'], ':s'=>$flow['start'], ':l'=>$flow['list_id'] ?? null]);
         $db->prepare('DELETE FROM bot_ivr_flow_nodes WHERE flow_code=:c')->execute([':c'=>$code]);
 
         $nodeSql = 'INSERT INTO bot_ivr_flow_nodes

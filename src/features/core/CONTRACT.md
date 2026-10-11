@@ -75,3 +75,11 @@ AmiClient uses private PbxAmi credentials, bounded requests and ActionID correla
 ## 2026-10-10 - Isolated campaign dashboard
 
 IsolatedGate permits modules/admin/campaign_monitor.php and campaign_monitor_api.php; session and role authorization remain enforced by page/API. No legacy table access enabled.
+
+## 2026-10-11 — Archivos por protocolo de carrier
+
+Carriers::regenerateAndReload en despliegue aislado genera archivos separados:
+pjsip-zynervoxv2.conf para PJSIP y sip-zynervoxv2.conf para SIP, según detección
+pública protocol. El dialplan conserva todas las troncales activas. No cambia
+registros ni active, ni recarga automáticamente al guardar. El servidor debe
+incluir cada archivo desde la configuración del driver correspondiente.

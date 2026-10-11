@@ -14,9 +14,12 @@ try {
         $db->exec("DROP TEMPORARY TABLE zv2_copy_$table");
     }
     $node=['type'=>'reenviar','message'=>'','audio'=>'','audio_text'=>'','audio_hash'=>'','audio_status'=>'pending','capture_mode'=>'date','variable'=>'','bridge_id'=>'','bridge_category'=>'','bridge_text'=>'','execute_url'=>'','execute_method'=>'GET','anexo'=>'','contexto'=>'','prioridad'=>1,'next'=>'','fallback'=>'','timeout_ms'=>6000,'retry_count'=>0,'retry_text'=>'','retry_audio'=>'','retry_audio_hash'=>'','position'=>['x'=>1,'y'=>1],'compose_provider'=>'deepgram','composite_hash'=>'','composite_status'=>'pending','edges'=>[],'stt_intents'=>[],'ranges'=>[],'segments'=>[],'inject_sql_fields'=>[],
-    'forwarding'=>['mode'=>'trunk','endpoint'=>'carrier1','number'=>'{numero}','headers'=>[['name'=>'X-Cliente','value'=>'{nombre}']]]];
+    'forwarding'=>['mode'=>'trunk','protocol'=>'SIP','endpoint'=>'carrier1','number'=>'{numero}','headers'=>[['name'=>'X-Cliente','value'=>'{nombre}']]]];
     $flow=['flow_code'=>'99','name'=>'Temporary test','start'=>'forward','list_id'=>null,'nodes'=>['forward'=>$node]];
     flow_store($db,$flow);
+    $db->exec("UPDATE bot_ivr_flows SET data_json=JSON_SET(data_json,'$.unrelated','keep') WHERE flow_code='99'");
+    flow_store($db,$flow);
+    if (json_decode($db->query("SELECT data_json FROM bot_ivr_flows WHERE flow_code='99'")->fetchColumn(),true)['unrelated']!=='keep') throw new RuntimeException('Metadata was lost');
     $loaded=flow_load($db,'99');
     if ($loaded['nodes']['forward']['forwarding']!==$node['forwarding']) throw new RuntimeException('Forwarding round trip failed');
     $json=json_encode($loaded,JSON_THROW_ON_ERROR);

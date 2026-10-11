@@ -250,13 +250,40 @@ final class BotIvrGraphRunner {
                     return 'TRANSFERRED';
                 }
                 $endpoint=$forward['endpoint'];
-                $reply=$this->send('GET FULL VARIABLE "${PJSIP_ENDPOINT('.$endpoint.',aors)}"');
+                $protocol=$forward['protocol'];
+                $lookup=$protocol==='SIP'?'SIPPEER('.$endpoint.',ip)':'PJSIP_ENDPOINT('.$endpoint.',aors)';
+                $reply=$this->send('GET FULL VARIABLE "${'.$lookup.'}"');
                 if (!preg_match('/^200 result=1 \(([^)]+)\)$/D',(string)$reply)) throw new RuntimeException('Forward endpoint unavailable');
-                $encoded=base64_encode(json_encode($forward['headers'],JSON_THROW_ON_ERROR));
-                $reply=$this->send('SET VARIABLE __ZV2_FORWARD_HEADERS "'.$encoded.'"');
-                if (!preg_match('/^200 result=1(?:\s|$)/',(string)$reply)) throw new RuntimeException('Forward headers unavailable');
-                $target='PJSIP/'.($forward['mode']==='trunk'?$forward['number'].'@':'').$endpoint;
-                $this->exec('Dial',$target.',30,b(zynervoxv2-forward-headers^s^1)');
+                if ($protocol==='SIP') {
+                    if (preg_match('/\((?:0\.0\.0\.0|\(null\))\)$/',(string)$reply)) throw new RuntimeException('Forward SIP peer unavailable');
+                    $slots=[];$slot=1;
+                    try {
+                        foreach ($forward['headers'] as $header) {
+                            while ($slot<=50) {
+                                $reply=$this->send('GET VARIABLE SIPADDHEADER'.sprintf('%02d',$slot));
+                                if ($reply==='200 result=0') break;
+                                if ($reply===null || !preg_match('/^200 result=1 \(.*\)$/D',$reply)) throw new RuntimeException('Forward SIP header slot unavailable');
+                                $slot++;
+                            }
+                            if ($slot>50) throw new RuntimeException('Forward SIP headers full');
+                            $created=$slot++;$slots[]=$created;
+                            $this->exec('SIPAddHeader',ivr_forwarding_agi_quote($header['name'].':'.$header['value']));
+                            $reply=$this->send('GET VARIABLE SIPADDHEADER'.sprintf('%02d',$created));
+                            if ($reply!=='200 result=1 ('.$header['name'].':'.$header['value'].')') throw new RuntimeException('Forward SIP header was not applied');
+                        }
+                        $target='SIP/'.$endpoint.($forward['mode']==='trunk'?'/'.$forward['number']:'');
+                        $this->exec('Dial',$target.',30');
+                    } finally {
+                        // Clear only slots created here; existing channel headers survive.
+                        foreach ($slots as $created) $this->send('SET VARIABLE __SIPADDHEADER'.sprintf('%02d',$created).' ""');
+                    }
+                } else {
+                    $encoded=base64_encode(json_encode($forward['headers'],JSON_THROW_ON_ERROR));
+                    $reply=$this->send('SET VARIABLE __ZV2_FORWARD_HEADERS "'.$encoded.'"');
+                    if (!preg_match('/^200 result=1(?:\s|$)/',(string)$reply)) throw new RuntimeException('Forward headers unavailable');
+                    $target='PJSIP/'.($forward['mode']==='trunk'?$forward['number'].'@':'').$endpoint;
+                    $this->exec('Dial',$target.',30,b(zynervoxv2-forward-headers^s^1)');
+                }
                 if ($this->hungup) return 'INTERRUPTED';
                 $reply=$this->send('GET VARIABLE DIALSTATUS');
                 $ok=preg_match('/^200 result=1 \(ANSWER\)$/D',(string)$reply)===1;

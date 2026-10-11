@@ -272,3 +272,14 @@ colgar el canal. Contexto vacío usa CONTEXT actual. Sin next/fallback.
 Flujos sin textos no requieren preflight de audio en el runner; la preparación
 TTS conserva la exigencia de textos por defecto. El AGI principal conserva sus
 requisitos existentes de runtime/registro de audios. No se modifica en esta tarea.
+
+## 2026-10-11 — Protocolo SIP adicional en Reenviar
+
+forwarding.protocol acepta SIP/PJSIP; ausente conserva PJSIP. La metadata
+ajena a forwarding se preserva en data_json. SIP usa peer configurado, validado
+con SIPPEER, y Dial SIP/peer/numero (troncal) o SIP/peer (anexo). SIPAddHeader
+recibe headers resueltos; el runner verifica cada slot nuevo y limpia solo esos
+slots al salir, sin borrar headers anteriores. Se rechazan escapes con barra
+invertida en valores SIP para evitar controles decodificados por chan_sip.
+PJSIP mantiene su predial. Cambiar protocolo en el editor conserva headers.
+Variables múltiples pueden combinarse en un valor, por ejemplo {nombre}|{numero}.
