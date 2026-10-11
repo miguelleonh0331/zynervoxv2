@@ -38,6 +38,19 @@ assert status==200, (status,body[:300])
 assert 'Abandono por nivel' in body and 'Ocupaci\u00f3n de agente' in body and 'N/D' in body
 for role in [7,8]:
     assert get('?role='+str(role))[0]==200
+import re
+status,_,filtered=get('?role=9&list_id=2')
+assert status==200 and 'Inactive &lt;script&gt;fixture&lt;/script&gt;' in filtered and '<script>fixture</script>' not in filtered
+assert 'value="2" selected' in filtered and 'Ocupación por lista: N/D' in filtered
+for label,count in [('Intentos',1),('Tipificadas (total)',1),('Contactos tipificados',0),('Cerradas sin tipificar',0),('Contestadas',0)]:
+    assert '<dt>'+label+'</dt><dd>'+str(count)+'</dd>' in filtered, label
+assert 'Sin respuesta (NOANSWER)' in filtered and '<td>NO</td>' in filtered
+status,_,empty=get('?role=9&list_id=4'); assert status==200 and '<dt>Intentos</dt><dd>0</dd>' in empty
+for value in ['3','999','0','-1','x','2%20OR%201=1','%3Cscript%3E']:
+    assert get('?role=9&list_id='+value)[0]==400, value
+assert get('?role=9&list_id%5B%5D=2')[0]==400
+assert get('?role=8&list_id=2')[0]==200 and get('?role=7&list_id=2')[0]==200
+print('PASS: list selector, inactive and empty lists, scope on KPIs/results/dispositions/levels, escaped labels, foreign/invalid list rejection and supervisor/GTR access.')
 assert get('?role=1')[0]==302
 assert get('')[0]==302
 assert get('?role=9&id=999')[0]==404

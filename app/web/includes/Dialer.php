@@ -1047,12 +1047,50 @@ class Dialer {
         return ['since' => $since, 'until' => $until, 'before' => (new \DateTimeImmutable($until))->modify('+1 day')->format('Y-m-d')];
     }
 
-    public static function kpis(int $campaignId, string $sinceDate = '', string $untilDate = ''): array {
+    private static function reportListScope(int $campaignId, ?int $listId): string {
+        if ($listId===null) return '';
+        $q=self::database()->prepare('SELECT 1 FROM v2_dialer_lists WHERE campaign_id=? AND list_id=?'); $q->execute([$campaignId,$listId]);
+        if ($listId<1 || !$q->fetchColumn()) throw new \InvalidArgumentException('Lista inválida o ajena a esta campaña.');
+        // The lead FK is RESTRICT: retain the existing historical association without copying data.
+        return ' AND EXISTS (SELECT 1 FROM v2_dialer_leads report_lead WHERE report_lead.lead_id=l.lead_id AND report_lead.list_id=:list)';
+    }
+
+    public static function reportBreakdown(int $campaignId, string $sinceDate='', string $untilDate='', ?int $listId=null): array {
+        self::campaign($campaignId); $dates=self::reportDates($sinceDate,$untilDate);
+        $scope=self::reportListScope($campaignId,$listId);
+        $bindings=['c'=>$campaignId,'since'=>$dates['since'],'before'=>$dates['before']]+($listId===null ? [] : ['list'=>$listId]);
+        $q=self::database()->prepare("SELECT CASE WHEN l.ended_at IS NULL THEN 'EN_CURSO' ELSE COALESCE(l.termination_reason,'SIN_RESULTADO') END result,COUNT(*) calls
+            FROM v2_dialer_call_log l WHERE l.campaign_id=:c AND l.originated_at>=:since AND l.originated_at<:before".$scope.' GROUP BY result ORDER BY calls DESC,result');
+        $q->execute($bindings); $results=$q->fetchAll(PDO::FETCH_ASSOC);
+        $q=self::database()->prepare("SELECT l.disposition_code code,d.label,COUNT(*) calls
+            FROM v2_dialer_call_log l LEFT JOIN v2_dialer_dispositions d ON d.campaign_id=l.campaign_id AND d.code=l.disposition_code
+            WHERE l.campaign_id=:c AND l.originated_at>=:since AND l.originated_at<:before AND l.ended_at IS NOT NULL AND l.disposition_code IS NOT NULL".$scope.' GROUP BY l.disposition_code,d.label ORDER BY calls DESC,l.disposition_code');
+        $q->execute($bindings);
+        return ['results'=>$results,'dispositions'=>$q->fetchAll(PDO::FETCH_ASSOC)];
+    }
+
+    public static function campaignReport(int $campaignId, string $sinceDate='', string $untilDate='', ?int $listId=null): array {
+        $db=self::database();
+        // All visible totals and breakdowns use one snapshot while calls continue live.
+        $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+        $db->beginTransaction();
+        try {
+            $report=['kpis'=>self::kpis($campaignId,$sinceDate,$untilDate,$listId),'levels'=>self::abandonByLevel($campaignId,$sinceDate,$untilDate,$listId),'breakdown'=>self::reportBreakdown($campaignId,$sinceDate,$untilDate,$listId)];
+            $db->commit(); return $report;
+        } catch (\Throwable $error) { if ($db->inTransaction()) $db->rollBack(); throw $error; }
+    }
+
+    public static function kpis(int $campaignId, string $sinceDate = '', string $untilDate = '', ?int $listId = null): array {
         $dates = self::reportDates($sinceDate, $untilDate);
         self::campaign($campaignId);
+        $scope=self::reportListScope($campaignId,$listId);
         $stmt = self::database()->prepare(
             "SELECT
                 COUNT(*) placed,
+                COUNT(DISTINCT l.phone_number) unique_phones,
+                SUM(l.ended_at IS NOT NULL) closed,
+                SUM(l.ended_at IS NOT NULL AND l.disposition_code IS NOT NULL) disposed,
+                SUM(l.ended_at IS NOT NULL AND l.disposition_code IS NULL) closed_unclassified,
                 SUM(l.answered_at IS NOT NULL) answered_total,
                 SUM(l.answered_at IS NOT NULL AND COALESCE(l.amd_result,'')<>'MACHINE') answered_human,
                 SUM(l.answered_at IS NOT NULL AND l.amd_result='MACHINE') answered_machine,
@@ -1066,9 +1104,9 @@ class Dialer {
                 AVG(CASE WHEN l.ended_at IS NOT NULL AND l.bridged_at IS NOT NULL AND l.duration_talk>=0 AND l.duration_wrapup>=0 THEN l.duration_talk+l.duration_wrapup END) aht_seconds
              FROM v2_dialer_call_log l
              LEFT JOIN v2_dialer_dispositions d ON d.campaign_id=l.campaign_id AND d.code=l.disposition_code
-             WHERE l.campaign_id=:c AND l.originated_at>=:since AND l.originated_at<:before"
+             WHERE l.campaign_id=:c AND l.originated_at>=:since AND l.originated_at<:before".$scope
         );
-        $stmt->execute(['c' => $campaignId, 'since' => $dates['since'], 'before' => $dates['before']]);
+        $stmt->execute(['c' => $campaignId, 'since' => $dates['since'], 'before' => $dates['before']]+($listId===null ? [] : ['list'=>$listId]));
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
         $placed = (int) ($row['placed'] ?? 0);
         $answeredTotal = (int) ($row['answered_total'] ?? 0);
@@ -1076,11 +1114,15 @@ class Dialer {
         $answeredMachine = (int) ($row['answered_machine'] ?? 0);
         $dropped = (int) ($row['dropped'] ?? 0);
         $pct = static function ($num, $den) { return $den > 0 ? round($num / $den * 100, 2) : null; };
-        $occupancy = self::occupancy($campaignId,$dates['since'],$dates['before']);
+        $occupancy = $listId===null ? self::occupancy($campaignId,$dates['since'],$dates['before']) : ['pct'=>null,'logged'=>null,'coverage'=>'list_unavailable'];
         return [
             'since' => $dates['since'],
             'until' => $dates['until'],
             'placed' => $placed,
+            'unique_phones' => (int)($row['unique_phones'] ?? 0),
+            'closed' => (int)($row['closed'] ?? 0),
+            'disposed' => (int)($row['disposed'] ?? 0),
+            'closed_unclassified' => (int)($row['closed_unclassified'] ?? 0),
             'answered_total' => $answeredTotal,
             'answered_human' => $answeredHuman,
             'answered_machine' => $answeredMachine,
@@ -1144,9 +1186,10 @@ class Dialer {
 
     // "¿Hasta qué nivel puedo subir sin pasarme del abandono permitido?"
     // (manual §10.1) — el motivo por el que dial_level_at_origin existe.
-    public static function abandonByLevel(int $campaignId, string $sinceDate = '', string $untilDate = ''): array {
+    public static function abandonByLevel(int $campaignId, string $sinceDate = '', string $untilDate = '', ?int $listId = null): array {
         $dates = self::reportDates($sinceDate, $untilDate);
         self::campaign($campaignId);
+        $scope=self::reportListScope($campaignId,$listId);
         $stmt = self::database()->prepare(
             "SELECT dial_level_at_origin,
                     COUNT(*) llamadas,
@@ -1154,11 +1197,11 @@ class Dialer {
                     SUM(answered_at IS NOT NULL AND COALESCE(amd_result,'')<>'MACHINE' AND termination_reason='DROPPED') abandonos,
                     ROUND(SUM(answered_at IS NOT NULL AND COALESCE(amd_result,'')<>'MACHINE' AND termination_reason='DROPPED')/
                         NULLIF(SUM(answered_at IS NOT NULL AND COALESCE(amd_result,'')<>'MACHINE'),0)*100,2) abandono_pct
-             FROM v2_dialer_call_log
-             WHERE campaign_id=:c AND originated_at>=:since AND originated_at<:before AND dial_level_at_origin IS NOT NULL
+             FROM v2_dialer_call_log l
+             WHERE l.campaign_id=:c AND originated_at>=:since AND originated_at<:before AND dial_level_at_origin IS NOT NULL".$scope."
              GROUP BY dial_level_at_origin ORDER BY dial_level_at_origin"
         );
-        $stmt->execute(['c' => $campaignId, 'since' => $dates['since'], 'before' => $dates['before']]);
+        $stmt->execute(['c' => $campaignId, 'since' => $dates['since'], 'before' => $dates['before']]+($listId===null ? [] : ['list'=>$listId]));
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

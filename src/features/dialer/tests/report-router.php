@@ -22,13 +22,16 @@ if (getenv('DIALER_HTTP_AUDIO_FIXTURE')==='1') {
       (900000001,1,1,'lab','000000','2026-10-01 12:00:00','2026-10-01 12:01:00','/var/spool/asterisk/monitor/zynervoxv2/dialer/call-900000001.wav'),
       (900000002,1,1,'lab','000001','2026-10-01 12:00:00','2026-10-01 12:01:00','/etc/passwd')");
 }
+$ddl=$db->query('SHOW CREATE TABLE v2_dialer_lists')->fetch(PDO::FETCH_NUM)[1];
+$ddl=preg_replace('/^CREATE TABLE /','CREATE TEMPORARY TABLE ',$ddl);
+$ddl=preg_replace('/^  CONSTRAINT .* FOREIGN KEY .*\n/m','',$ddl);
+$ddl=preg_replace('/,\n\)/',"\n)",$ddl);
+$db->exec($ddl);
+$db->exec("INSERT INTO v2_dialer_lists (list_id,campaign_id,name) VALUES (1,1,'Synthetic'),(2,1,'Inactive <script>fixture</script>'),(3,2,'Foreign'),(4,1,'Empty')");
+$db->exec("UPDATE v2_dialer_lists SET active=0 WHERE list_id=2");
+$db->exec("INSERT INTO v2_dialer_leads (lead_id,list_id,phone_number) VALUES (2,2,'000009')");
+$db->exec("INSERT INTO v2_dialer_call_log (call_id,campaign_id,lead_id,phone_number,originated_at,ended_at,termination_reason,disposition_code,dial_level_at_origin) VALUES (800000003,1,2,'000009','2026-10-01 12:00:00','2026-10-01 12:00:10','NOANSWER','NO',1)");
 if (in_array($_GET['page'] ?? '',['campaign','campaigns','list'],true)) {
-    $ddl=$db->query('SHOW CREATE TABLE v2_dialer_lists')->fetch(PDO::FETCH_NUM)[1];
-    $ddl=preg_replace('/^CREATE TABLE /','CREATE TEMPORARY TABLE ',$ddl);
-    $ddl=preg_replace('/^  CONSTRAINT .* FOREIGN KEY .*\n/m','',$ddl);
-    $ddl=preg_replace('/,\n\)/',"\n)",$ddl);
-    $db->exec($ddl);
-    $db->exec("INSERT INTO v2_dialer_lists (list_id,campaign_id,name) VALUES (1,1,'Synthetic')");
     $_GET['campaign_id']=$_GET['campaign_id'] ?? '1';
 }
 $pages=['report'=>'dialer_report.php','campaign'=>'dialer_campaign_edit.php','agent'=>'dialer_agent.php','campaigns'=>'campaigns.php','list'=>'dialer_list_leads.php'];

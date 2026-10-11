@@ -390,3 +390,21 @@ campaña limpian además la selección. No se cuelgan llamadas ya reservadas.
 El panel guarda selección por POST autenticado+CSRF y muestra habilitación y
 cuenta atrás; la ejecución pertenece al worker, independiente del navegador.
 MANUAL conserva agente primero, ringback/early media y omisión de AMD.
+
+## 2026-10-11 — Reporte por lista y conciliación (ARCHITECT_AGENT)
+
+kpis y abandonByLevel admiten listId nullable opcional; NULL conserva reporte
+completo. reportBreakdown devuelve resultados PBX de todos los intentos y
+catálogo de disposiciones de cerradas tipificadas. Filtro EXISTS sobre lead_id
+se aplica idénticamente en los tres; valida lista de la misma campaña e incluye
+inactivas. FK fk_dialer_call_log_lead RESTRICT confirmada en runtime conserva
+asociación al lead/lista; no hay migración ni cambio a importación, FK o leads.
+
+campaignReport ejecuta KPIs, niveles y desgloses dentro de una transacción
+REPEATABLE READ propia para mostrar un único snapshot mientras siguen llamadas.
+Añade unique_phones, closed, disposed y closed_unclassified. Intentos=cerradas+
+abiertas; cerradas=tipificadas+cerradas sin tipificar. Tipificaciones incluyen
+fallos MANUAL; contactos/ventas conservan requisito COMPLETED+catálogo actual.
+Cerradas sin código no significa necesariamente un pendiente asignado a agente.
+Con lista, ocupación/tiempo logueado son NULL/N/D, porque sesiones son por campaña.
+Roles7/8/9 conservados; UI valida ID de lista, escapa etiquetas y conserva filtro.

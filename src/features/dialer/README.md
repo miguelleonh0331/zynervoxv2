@@ -142,3 +142,9 @@ Los enlaces también funcionan sin JavaScript.
 
 Prueba aislada de continuación/cancelación: `tests/run-manual-autodial.sh`.
 La prueba SIP loopback incluye continuidad del worker y grabación real.
+
+Reporte (`modules/admin/dialer_report.php`): elegir Todas las listas o Lista cargada
+(incluidas inactivas), fechas y Ver reporte. Se muestran intentos, números únicos,
+cerradas, total tipificado, sin tipificar, resultados PBX y disposiciones.
+Todos los desgloses usan el mismo filtro; ocupación por lista permanece N/D.
+Prueba aislada: `tests/run-report-lists.sh`; HTTP/roles/validación: `tests/run-reporting.sh`.

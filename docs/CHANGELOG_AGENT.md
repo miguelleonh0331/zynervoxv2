@@ -2349,3 +2349,36 @@ lista cargada y reconciliación de cifras. Análisis de carsa0001: lista50 "0000
 actuales2 usan COMPLETED+is_contact; total tipificaciones no aparece. Propuesta:
 selector Todas/lista aplicado a totales/desgloses, tipificadas totales separadas
 de contactos, resultados PBX y disposiciones. Sin cambios al reporte aún.
+
+## 2026-10-11 — Reporte filtrado por lista y conciliación de llamadas
+
+Usuario autorizó continuar con "procede"; ARCHITECT_AGENT aprobó alcance/contrato
+y revisión final sin bloqueadores. Selector Todas/lista cargada, incluidas
+inactivas, validación campaña y escape de etiquetas. KPIs, porcentajes, AHT,
+abandono por nivel y resultados/disposiciones comparten el mismo filtro EXISTS.
+Snapshot REPEATABLE READ mantiene consistencia entre bloques con llamadas en curso.
+Nuevos indicadores: números únicos, cerradas, total tipificado y cerradas sin
+código. Tablas PBX y disposición con totales; las ecuaciones permiten conciliar.
+Contactos/ventas conservan COMPLETED+catálogo actual. Ocupación por lista N/D,
+sin atribuir tiempos de sesión de campaña a una lista. Sin cambio de esquema,
+importación, FK, reservas, autodial ni datos de llamadas. FK al lead RESTRICT
+confirmada en runtime y cero huérfanos en campaña55.
+
+Pruebas: lint dos PHP; report-lists sobre TEMPORARY tables (varias listas,
+inactivas/vacías/ajenas, intentos repetidos, fechas, porcentajes y conciliación),
+run-reporting HTTP (selector, roles7/8/9, agentes/anónimos rechazados, IDs inválidos,
+etiquetas escapadas, fecha, paneles/tabs/CSRF y búsqueda/rangos de grabaciones),
+run-engine (MANUAL/PROGRESSIVE/ADAPTIVE y métricas anteriores). Todas pasaron;
+servidor HTTP privado y fixture WAV retirados. Sin browser ni llamadas de prueba.
+
+Despliegue zynertools local-first de Dialer.php y dialer_report.php; propietario
+y permisos preservados; source=runtime. Respaldo PHP:
+/var/backups/zynervoxv2/report-lists-20261011-151901.
+Worker siguió active sin reinicio. Verificación live del reporte55/list50:
+14intentos=14cerradas+0abiertas; 14cerradas=11tipificadas+3sin código;7números únicos,
+2contestadas/contactos. Resultados HANGUP11+COMPLETED2+CHANUNAVAIL1=14;
+disposiciones NoContacto9+contacto2=11. Nuevos intentos del usuario durante trabajo
+explican aumento frente al análisis previo10/7; no se alteró historia.
+Campaña55 MANUAL RUNNING autodial1 AMD0 worker_errorNULL (flag activado por usuario).
+Rama main; base8312990. Rollback seguro: git revert del commit de este cambio,
+volver a copiar los dos PHP; sin restaurar BD ni interrumpir llamadas.

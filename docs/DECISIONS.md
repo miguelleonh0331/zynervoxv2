@@ -1040,3 +1040,19 @@ en predicado global OR+COALESCE para evitar bloquear llamadas de agentes ajenos.
 Fuente se trabaja en E:\servidores\zynerdesk\proyectos\zynervoxv2; runtime mirmidon
 por zynertools con respaldo previo y columnas aditivas. Flag de campaña55 queda OFF;
 únicas llamadas de verificación en fixtures loopback autorizadas.
+
+## 2026-10-11 — Reporte por lista sin migración
+
+Autorización explícita del usuario: "puedes seguir con la modificación de reporte,
+procede". ARCHITECT_AGENT aprobó filtro opcional en kpis/abandonByLevel, API de
+desgloses y snapshot global. Runtime confirma FK call_log→lead RESTRICT y cero
+huérfanos en campaña55; asociación a lista se consulta mediante EXISTS sin copiar
+columnas, modificar importación ni alterar FK. Listas inactivas siguen consultables.
+
+Intentos=cerradas+abiertas; cerradas=tipificadas+cerradas sin tipificar. Tipificación
+de fallo no crea conversación: contactos/ventas siguen exigiendo COMPLETED y
+catálogo actual. Los desgloses de resultado PBX y disposición comparten lista y
+fechas; un snapshot REPEATABLE READ mantiene consistencia durante actividad.
+Ocupación por lista N/D, sin inventar asignación de sesión por lista. Totales
+por campaña mantienen comportamiento anterior y nuevas claves son aditivas.
+Despliegue de dos PHP, sin reinicio del worker ni modificaciones a datos de llamadas.
