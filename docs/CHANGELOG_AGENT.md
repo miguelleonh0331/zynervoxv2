@@ -2218,3 +2218,20 @@ intento317 COMPLETED/tipificación01, catálogo3, usuario5000 logged_in1 sin pau
 cero llamadas abiertas y cero campañas/estado/pausas de fixtures propios.
 Rollback: restaurar cinco PHP del respaldo y reiniciar worker sin llamadas abiertas;
 conservar tablas aditivas e historial, sin eliminar datos nuevos de usuarios.
+
+## 2026-10-11 — Presentación del panel de agente
+
+Panel dialer_agent: estilos locales delimitados al panel, controles de 44px,
+selector y Pausar alineados, Colgar rojo, estado con texto e indicador de color
+(disponible/pausado/tipificación/llamando/conversación), tarjetas de campaña con
+modo y estado, mensajes legibles, foco visible y adaptación a pantallas pequeñas.
+Se retira logout duplicado del contenido; se conserva el POST+CSRF del sidebar.
+No se modifica el motor, los contratos, las tablas ni los menús compartidos.
+
+PHP lint y JavaScript node --check PASS. run-agent-controls.sh PASS con controles,
+reporting/variables y HTTP agente/admin; regresión comprueba una sola salida por
+rol, bootstrap, CSRF, permisos de catálogo, escape y propiedad de Hangup.
+No se realizó revisión visual en navegador en esta tarea.
+Despliegue de un PHP por zynertools, fuente/runtime iguales y sin reiniciar servicios.
+Worker active y SIP5000 OK195ms. Respaldo para restauración del mismo PHP:
+/var/backups/zynervoxv2/agent-ui-20261011-183821/dialer_agent.php.
