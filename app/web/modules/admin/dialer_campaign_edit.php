@@ -88,6 +88,7 @@ try {
             <div>
                 <h1 style="font-size: 1.25rem; font-weight: 700;"><?php echo $campaign ?? null ? h('Campaña #' . $campaignId . ' — ' . $campaign['name']) : 'Campaña'; ?></h1>
                 <a href="campaigns.php" style="font-size:12px;color:var(--text-muted)">&larr; Volver al listado</a>
+                <?php if (!empty($campaign)): ?> · <a href="dialer_report.php?id=<?php echo (int) $campaignId; ?>">Ver reporte</a><?php endif; ?>
             </div>
         </header>
 

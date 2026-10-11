@@ -834,3 +834,25 @@ no consulta/devuelve audit; acción audit paginada por id20 registros, índices
 por actor/target/action, filtros exactos y snapshot estable. Sin conteo global
 ni OFFSET. Vista inicial sin tabla histórica; usuario abre Ver auditoría y
 navega en ambos sentidos. Se mantienen todos los eventos, sin push.
+
+## 2026-10-11 — Motor dialer: auditoría de continuidad y Fase 7
+
+ARCHITECT_AGENT aprueba trabajar exclusivamente en el runtime del módulo dialer
+(Dialer.php, páginas dialer/campaigns, worker y AGI), pruebas del módulo y
+documentación append-only. No se modifican bot_ivr, VICIdial, PbxAmi, Carriers ni
+Dialplans. Despliegue selectivo autorizado desde SMB a la raíz web separada,
+con backups, hashes y pruebas. El usuario reactivó el objetivo del motor completo.
+
+Fórmulas de reportería: abandono humano / respuestas humanas, idéntico por nivel;
+contacto = respuestas humanas / intentos; ASR = contestadas / intentos;
+conversión = ventas marcadas como contacto / contactos tipificados usando el
+catálogo actual. MACHINE queda fuera de abandono. AHT usa conversación + primera
+tipificación observadas, espera usa duración respuesta→CONNECT; los históricos
+sin duraciones no inventan ceros. Ocupación N/D hasta medir tiempo logueado.
+
+La auditoría del origen real detecta que el worker previo origina Local hacia
+Answer/AMD/Queue sin Dial a troncal ni MixMonitor. Las fases anteriores quedan
+como pruebas sintéticas, no prueba del motor saliente completo. ARCHITECT_AGENT
+aprueba reparar origination completa mediante rawAction existente, tracking
+idempotente, grabación post-answer, límites reales y modo manual en dialer;
+aprueba aclarar CONTRACT conservando AMI/Queue/AMD, MySQL y MicroSIP.

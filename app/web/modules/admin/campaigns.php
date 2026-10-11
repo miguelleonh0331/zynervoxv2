@@ -86,6 +86,7 @@ try {
                             <td><?php echo (int) $c['agents_count']; ?></td>
                             <td style="white-space: nowrap;">
                                 <a class="link-action" href="dialer_campaign_edit.php?id=<?php echo (int) $c['campaign_id']; ?>">Configurar</a>
+                                <a class="link-action" href="dialer_report.php?id=<?php echo (int) $c['campaign_id']; ?>">Reporte</a>
                                 <form method="POST" class="inline-form" style="display:inline">
                                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['dialer_csrf']); ?>">
                                     <input type="hidden" name="campaign_id" value="<?php echo (int) $c['campaign_id']; ?>">

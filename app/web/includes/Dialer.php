@@ -407,8 +407,10 @@ class Dialer {
             if (!$lead) { $db->commit(); return null; }
             $db->prepare('UPDATE v2_dialer_leads SET status=\'DIALING\',called_count=called_count+1,last_call_time=NOW() WHERE lead_id=:id')
                 ->execute(['id' => $lead['lead_id']]);
-            $db->prepare('INSERT INTO v2_dialer_call_log (campaign_id,lead_id,phone_number,originated_at) VALUES (:c,:l,:p,NOW())')
-                ->execute(['c' => $campaignId, 'l' => $lead['lead_id'], 'p' => $lead['phone_number']]);
+            // Conservar el nivel usado al originar para diagnosticar abandono.
+            $level = $db->query('SELECT dial_level FROM v2_dialer_campaigns WHERE campaign_id=' . (int) $campaignId)->fetchColumn();
+            $db->prepare('INSERT INTO v2_dialer_call_log (campaign_id,lead_id,phone_number,originated_at,dial_level_at_origin) VALUES (:c,:l,:p,NOW(),:dl)')
+                ->execute(['c' => $campaignId, 'l' => $lead['lead_id'], 'p' => $lead['phone_number'], 'dl' => $level]);
             $callId = (int) $db->lastInsertId();
             $db->commit();
             return ['call_id' => $callId, 'lead_id' => (int) $lead['lead_id'], 'phone_number' => $lead['phone_number'], 'channel' => 'Local/' . $dialPrefix . $lead['phone_number'] . '@zynervoxv2/n'];
@@ -473,9 +475,13 @@ class Dialer {
         $leadId = $stmt->fetchColumn();
         $dropped = in_array($queueStatus, ['TIMEOUT', 'FULL', 'JOINEMPTY', 'LEAVEEMPTY', 'JOINUNAVAIL', 'LEAVEUNAVAIL'], true);
         $reason = $dropped ? 'DROPPED' : 'COMPLETED';
-        $agentUser = $dropped ? null : self::agentFromQueueLog($uniqueId);
-        $db->prepare('UPDATE v2_dialer_call_log SET ended_at=NOW(),termination_reason=:r,agent_user=:a,bridged_at=CASE WHEN :a2 IS NOT NULL THEN NOW() ELSE bridged_at END WHERE call_id=:id')
-            ->execute(['r' => $reason, 'a' => $agentUser, 'a2' => $agentUser, 'id' => $callId]);
+        $connection = $dropped ? null : self::connectionFromQueueLog($uniqueId);
+        $db->prepare('UPDATE v2_dialer_call_log SET ended_at=COALESCE(ended_at,NOW()),termination_reason=:r,agent_user=:a,
+            bridged_at=COALESCE(FROM_UNIXTIME(:epoch),bridged_at),
+            duration_wait=CASE WHEN bridged_at>=answered_at THEN TIMESTAMPDIFF(SECOND,answered_at,bridged_at) ELSE duration_wait END,
+            duration_talk=CASE WHEN ended_at>=bridged_at THEN TIMESTAMPDIFF(SECOND,bridged_at,ended_at) ELSE duration_talk END
+            WHERE call_id=:id')
+            ->execute(['r' => $reason, 'a' => $connection['agent'] ?? null, 'epoch' => $connection['epoch'] ?? null, 'id' => $callId]);
         if ($leadId) {
             $delay = $dropped ? 5 : 0;
             $status = $dropped ? 'NEW' : 'CONTACTED';
@@ -489,25 +495,34 @@ class Dialer {
     // uniqueid y traduce la interfaz (SIP/10000) al login del agente via
     // v2_phones. Best-effort: si no encuentra nada devuelve null, nunca
     // rompe el cierre de la llamada.
-    private static function agentFromQueueLog(string $uniqueId): ?string {
+    private static function connectionFromQueueLog(string $uniqueId): ?array {
         $path = '/var/log/asterisk/queue_log';
         if ($uniqueId === '' || !is_file($path) || !is_readable($path)) return null;
         $handle = @fopen($path, 'r');
         if (!$handle) return null;
-        $interface = null;
         try {
             fseek($handle, 0, SEEK_END);
             $size = ftell($handle);
             $chunk = (string) @stream_get_contents($handle, min($size, 200000), max(0, $size - 200000));
         } finally { fclose($handle); }
-        foreach (array_reverse(explode("\n", $chunk)) as $line) {
-            $cols = explode('|', $line);
-            if (count($cols) >= 4 && $cols[1] === $uniqueId && ($cols[4] ?? '') === 'CONNECT') { $interface = $cols[3]; break; }
-        }
-        if ($interface === null || strpos($interface, '/') === false) return null;
+        $connection = self::parseQueueConnection($chunk, $uniqueId);
+        if ($connection === null) return null;
+        $interface = $connection['interface'];
         [, $extension] = explode('/', $interface, 2);
         foreach (\Includes\Phones::getAll() as $phone) {
-            if ($phone['extension'] === $extension) return $phone['login'];
+            if ($phone['extension'] === $extension) return ['agent' => $phone['login'], 'epoch' => $connection['epoch']];
+        }
+        return ['agent' => null, 'epoch' => $connection['epoch']];
+    }
+
+    private static function parseQueueConnection(string $chunk, string $uniqueId): ?array {
+        if ($uniqueId === '') return null;
+        foreach (array_reverse(explode("\n", $chunk)) as $line) {
+            $cols = explode('|', $line);
+            if (count($cols) >= 5 && $cols[1] === $uniqueId && $cols[4] === 'CONNECT'
+                && ctype_digit($cols[0]) && (int) $cols[0] > 0 && strpos($cols[3], '/') !== false) {
+                return ['interface' => $cols[3], 'epoch' => (int) $cols[0]];
+            }
         }
         return null;
     }
@@ -568,6 +583,96 @@ class Dialer {
             $members++;
         }
         return $members;
+    }
+
+    // ------------------------------------------------------------- Reportería (Fase 7)
+    // KPIs del manual §10, calculados directo de v2_dialer_call_log — nada
+    // de instrumentación aparte.
+
+    private static function reportDates(string $sinceDate, string $untilDate): array {
+        $since = $sinceDate !== '' ? $sinceDate : date('Y-m-d', strtotime('-30 days'));
+        $until = $untilDate !== '' ? $untilDate : date('Y-m-d');
+        foreach ([$since, $until] as $date) {
+            $parsed = \DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+            if (!$parsed || $parsed->format('Y-m-d') !== $date || !preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/D', $date)) {
+                throw new \InvalidArgumentException('Fecha inválida; utiliza AAAA-MM-DD.');
+            }
+        }
+        if ($since > $until) throw new \InvalidArgumentException('La fecha inicial debe ser anterior o igual a la final.');
+        return ['since' => $since, 'until' => $until, 'before' => (new \DateTimeImmutable($until))->modify('+1 day')->format('Y-m-d')];
+    }
+
+    public static function kpis(int $campaignId, string $sinceDate = '', string $untilDate = ''): array {
+        $dates = self::reportDates($sinceDate, $untilDate);
+        self::campaign($campaignId);
+        $stmt = self::database()->prepare(
+            "SELECT
+                COUNT(*) placed,
+                SUM(l.answered_at IS NOT NULL) answered_total,
+                SUM(l.answered_at IS NOT NULL AND COALESCE(l.amd_result,'')<>'MACHINE') answered_human,
+                SUM(l.answered_at IS NOT NULL AND l.amd_result='MACHINE') answered_machine,
+                SUM(l.answered_at IS NOT NULL AND COALESCE(l.amd_result,'')<>'MACHINE' AND l.termination_reason='DROPPED') dropped,
+                SUM(l.termination_reason='COMPLETED' AND d.is_contact=1) contacted,
+                SUM(l.termination_reason='COMPLETED' AND d.is_contact=1 AND d.is_sale=1) sales,
+                SUM(l.ended_at IS NULL) in_progress,
+                COUNT(CASE WHEN l.bridged_at IS NOT NULL AND l.duration_wait>=0 THEN 1 END) wait_samples,
+                AVG(CASE WHEN l.bridged_at IS NOT NULL AND l.duration_wait>=0 THEN l.duration_wait END) avg_wait_seconds,
+                COUNT(CASE WHEN l.ended_at IS NOT NULL AND l.bridged_at IS NOT NULL AND l.duration_talk>=0 AND l.duration_wrapup>=0 THEN 1 END) aht_samples,
+                AVG(CASE WHEN l.ended_at IS NOT NULL AND l.bridged_at IS NOT NULL AND l.duration_talk>=0 AND l.duration_wrapup>=0 THEN l.duration_talk+l.duration_wrapup END) aht_seconds
+             FROM v2_dialer_call_log l
+             LEFT JOIN v2_dialer_dispositions d ON d.campaign_id=l.campaign_id AND d.code=l.disposition_code
+             WHERE l.campaign_id=:c AND l.originated_at>=:since AND l.originated_at<:before"
+        );
+        $stmt->execute(['c' => $campaignId, 'since' => $dates['since'], 'before' => $dates['before']]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        $placed = (int) ($row['placed'] ?? 0);
+        $answeredTotal = (int) ($row['answered_total'] ?? 0);
+        $answeredHuman = (int) ($row['answered_human'] ?? 0);
+        $answeredMachine = (int) ($row['answered_machine'] ?? 0);
+        $dropped = (int) ($row['dropped'] ?? 0);
+        $pct = static function ($num, $den) { return $den > 0 ? round($num / $den * 100, 2) : null; };
+        return [
+            'since' => $dates['since'],
+            'until' => $dates['until'],
+            'placed' => $placed,
+            'answered_total' => $answeredTotal,
+            'answered_human' => $answeredHuman,
+            'answered_machine' => $answeredMachine,
+            'dropped' => $dropped,
+            'contacted' => (int) ($row['contacted'] ?? 0),
+            'sales' => (int) ($row['sales'] ?? 0),
+            'in_progress' => (int) ($row['in_progress'] ?? 0),
+            'wait_samples' => (int) ($row['wait_samples'] ?? 0),
+            'aht_samples' => (int) ($row['aht_samples'] ?? 0),
+            'abandon_pct' => $pct($dropped, $answeredHuman),
+            'contact_pct' => $pct($answeredHuman, $placed),
+            'asr_pct' => $pct($answeredTotal, $placed),
+            'machine_pct' => $pct($answeredMachine, $answeredTotal),
+            'conversion_pct' => $pct((int) ($row['sales'] ?? 0), (int) ($row['contacted'] ?? 0)),
+            'occupancy_pct' => null, // Sin medición de tiempo logueado no hay denominador.
+            'avg_wait_seconds' => isset($row['avg_wait_seconds']) ? round((float) $row['avg_wait_seconds'], 1) : null,
+            'aht_seconds' => isset($row['aht_seconds']) ? round((float) $row['aht_seconds'], 1) : null,
+        ];
+    }
+
+    // "¿Hasta qué nivel puedo subir sin pasarme del abandono permitido?"
+    // (manual §10.1) — el motivo por el que dial_level_at_origin existe.
+    public static function abandonByLevel(int $campaignId, string $sinceDate = '', string $untilDate = ''): array {
+        $dates = self::reportDates($sinceDate, $untilDate);
+        self::campaign($campaignId);
+        $stmt = self::database()->prepare(
+            "SELECT dial_level_at_origin,
+                    COUNT(*) llamadas,
+                    SUM(answered_at IS NOT NULL AND COALESCE(amd_result,'')<>'MACHINE') humanos,
+                    SUM(answered_at IS NOT NULL AND COALESCE(amd_result,'')<>'MACHINE' AND termination_reason='DROPPED') abandonos,
+                    ROUND(SUM(answered_at IS NOT NULL AND COALESCE(amd_result,'')<>'MACHINE' AND termination_reason='DROPPED')/
+                        NULLIF(SUM(answered_at IS NOT NULL AND COALESCE(amd_result,'')<>'MACHINE'),0)*100,2) abandono_pct
+             FROM v2_dialer_call_log
+             WHERE campaign_id=:c AND originated_at>=:since AND originated_at<:before AND dial_level_at_origin IS NOT NULL
+             GROUP BY dial_level_at_origin ORDER BY dial_level_at_origin"
+        );
+        $stmt->execute(['c' => $campaignId, 'since' => $dates['since'], 'before' => $dates['before']]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public static function leadCount(int $listId): int {
@@ -699,7 +804,9 @@ class Dialer {
         $valid = self::database()->prepare('SELECT 1 FROM v2_dialer_dispositions WHERE campaign_id=:c AND code=:code');
         $valid->execute(['c' => $call['campaign_id'], 'code' => $code]);
         if (!$valid->fetchColumn()) throw new \RuntimeException('Disposición inválida para esta campaña.');
-        self::database()->prepare('UPDATE v2_dialer_call_log SET disposition_code=:code,ended_at=COALESCE(ended_at,NOW()) WHERE call_id=:id')
+        self::database()->prepare('UPDATE v2_dialer_call_log SET disposition_code=:code,
+            duration_wrapup=CASE WHEN ended_at IS NOT NULL THEN COALESCE(duration_wrapup,GREATEST(0,TIMESTAMPDIFF(SECOND,ended_at,NOW()))) ELSE duration_wrapup END,
+            ended_at=COALESCE(ended_at,NOW()) WHERE call_id=:id')
             ->execute(['code' => $code, 'id' => $callId]);
         self::audit('DISPOSITION_SET', $callId . ':' . $code);
     }

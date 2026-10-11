@@ -1953,3 +1953,21 @@ servicio. Incluye código, contratos, pruebas y documentación; imágenes Docker
 PKI, perfiles, inventario/auditoría SQLite y tokens permanecen fuera de Git.
 Pruebas backend8, lintPHP y node verificados; despliegue ya validado en soundhound.
 Cambios ajenos en BotIVR y Dialer se excluyen.
+
+## 2026-10-11 — Reporterí­a dialer y continuidad del motor
+
+Reporte por campaña y fechas inclusivas en dialer_report.php, enlaces desde
+campañas/configuración, KPIs y abandono por nivel con denominador humano.
+Registra nivel al reservar; captura CONNECT real y duraciones; tipificación
+preserva primera medición wrapup. Ocupación e históricos incompletos muestran N/D.
+
+Pruebas en staging privado con PHP 7.4 y MySQL de mirmidon: tablas temporales
+copiadas del esquema, sin alterar tablas persistentes ni originar llamadas.
+Pasan conteos, porcentajes, fechas inclusivas/inválidas, campañas aisladas,
+CONNECT, nulos, disposiciones, wrapup y rechazo de otro agente. HTTP pasa
+renderizado y roles 7/8/9, rechaza agente/anónimo y valida fechas/campaña.
+
+SMB remontado por el usuario y verificado. Runtime separado de fuente confirmado
+por hashes. Se conserva el cambio ajeno ivr_engine_agi.php (sin diff de contenido;
+Git reporta metadatos pendientes). Checklist persistente añadido. Brechas de
+origination/grabación detectadas y escaladas: no declarar completo el motor.
