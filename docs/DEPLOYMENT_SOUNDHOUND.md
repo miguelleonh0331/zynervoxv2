@@ -90,3 +90,21 @@ destino y headers con variables del flujo. Predial PJSIP permanece separado.
 Prueba interna Local verificó SIPAddHeader, lectura de slots heredados y limpieza
 sin tocar un header previo; contexto temporal de prueba retirado. Sin llamadas
 externas ni prueba de entrega de INVITE al proveedor.
+
+## OpenVPN Docker — 2026-10-11
+
+Docker CE 29.9.0 y Compose 5.6.0 instalados desde el repositorio oficial RHEL9
+(firma Docker verificada). OpenVPN 2.6.20 en contenedor zynervoxv2-openvpn;
+configuración fuente ops/vpn/docker-compose.yml copiada desde SMB a
+/opt/zynervoxv2-vpn/docker-compose.yml y comparada. Imagen fijada por digest.
+Volumen privado zynervoxv2-vpn-data; NET_ADMIN/tun, sin modo privileged ni red host.
+UDP1194 publicado solamente en 192.168.3.22. PoolVPN10.8.0.0/24 sin conflicto
+con rutas observadas; bridge172.30.119.0/24. Sin límite de licencia; el pool actual
+admite aproximadamente253 direcciones, ampliable mediante configuración futura.
+Perfil bootstrap privado dentro del volumen; certificados/perfiles fuera de Git.
+Cliente temporal install_check completó handshake y ping10.8.0.1, luego fue
+revocado y su contenedor eliminado. Salud del servidor VPN: healthy.
+Servicios Asterisk/web/Tailscale/firewalld activos, SELinux Enforcing.
+Docker añadió sus cadenas de forwarding; ts-forward continúa presente.
+No prueba de cliente externo por Internet: falta definir endpoint público/NAT.
+GUI y módulo sidebar Vpn pendientes de una tarea posterior con contrato propio.

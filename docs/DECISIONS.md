@@ -807,3 +807,11 @@ ya activo autorizada sin cambiar active ni hacer pruebas de llamadas externas.
 chan_sip20 compilado con fuente/opciones actuales, UDP5061 sin conflicto con
 PJSIP5060. Headers SIP mediante slots heredados, verificados y limpiados solo
 si fueron creados por el nodo; no limpieza global de headers.
+
+## 2026-10-11 — Base OpenVPN Docker para Vpn
+
+ARCHITECT_AGENT aprobó alcance ops/vpn y documentación de despliegue; sin PHP,
+sidebar, GUI ni instalador. Servicio CLI hwdsl2/openvpn-server fijado por digest,
+volumen persistente privado y endpoint LAN explícito. GUI futura requiere
+contrato/API restringido; nunca dar socket Docker a Apache. Perfiles y claves
+fuera de Git/SMB. Acceso Internet requiere IP pública/DNS y NAT verificados.

@@ -1908,3 +1908,12 @@ del usuario en ivr_engine_agi.php. Sin datos productivos ni llamadas reales.
 - chan_sip.so compilado con fuente Asterisk20.21 y opciones actuales; carga ABI correcta. /etc/asterisk/sip.conf preparado en local, UDP5061; PJSIP UDP5060 permanece. carrier1 existente cargado. Sin ejecutar instalador.
 - Pruebas: normalización/variables/inyección, SIP y PJSIP simulados, slots previos/llenos; persistencia y metadata ajena en tablas temporales, publicación privada; detección de protocolos y regresión IVR; AGI PJSIP; navegador selector SIP + header {nombre}|{numero}, sin guardar flujo. Prueba interna Local real de SIPAddHeader y limpieza, sin llamadas externas; configuración de prueba retirada.
 - Commit/push solo archivos de tarea; ivr_engine_agi.php preexistente se conserva fuera del commit. Entrega externa de llamadas/INVITE sigue sin probar.
+
+## 2026-10-11 — OpenVPN Docker Soundhound
+
+Agregados ops/vpn/docker-compose.yml y README. Instalados Docker CE/Compose y
+OpenVPN por autorización del usuario, configuración desplegada desde fuente SMB.
+Verificados Compose, igualdad fuente/producción, healthcheck, creación/conexión
+TLS y ping de cliente temporal, revocación y limpieza. Servicios existentes
+activos y SELinux Enforcing. Cambios preexistentes BotIVR/dialer no incluidos.
+GUI aún pendiente; endpoint actual LAN, sin validación por Internet.
