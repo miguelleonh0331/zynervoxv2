@@ -59,7 +59,7 @@ try {
         Dialer::updateCampaign($c,$input);
         Dialer::setCampaignAgents($c,[$agent]); Dialer::createDisposition($c,'SALE','Lab contact',true,true,false,0);
         $list=Dialer::createList($c,'Loopback only');
-        Dialer::importLeads($list,$c,Dialer::parseLeadsTxt("numero,nombre\n000001,Human\n000002,Machine\n000003,Noanswer\n000004,Drop\n000005,Earlyhangup\n"));
+        Dialer::importLeads($list,$c,Dialer::parseLeadsTxt("numero,nombre\n000001,Human\n000002,Machine\n000003,Noanswer\n000004,Drop\n000005,Earlyhangup\n000006,Earlymedia\n000007,Busy\n"));
         Dialer::agentJoinQueue($agent,$c); Dialer::agentJoinQueue($agent,$c); // Idempotent login.
     }
     foreach ($campaigns as $index=>$c) {
@@ -83,7 +83,11 @@ try {
         check_sip(Dialer::originateNext($c,$mode==='MANUAL' ? $agent : null)===null,'STOPPED allowed new origin.');
         $row=wait_closed($id);
         check_sip($row['termination_reason']==='COMPLETED' && $row['agent_user']===$agent && $row['bridged_at']!==null,$mode.' did not bridge/attribute: '.json_encode($row));
-        check_sip($row['amd_result']==='HUMAN',$mode.' AMD did not classify short greeting as HUMAN.');
+        check_sip($row['amd_result']===($mode==='MANUAL' ? null : 'HUMAN'),$mode.' AMD classification/bypass failed.');
+        if ($mode==='MANUAL') {
+            check_sip(strpos(file_get_contents($directory.'/peer.log'),'CLIENT_INVITE: agent_connected=True')!==false,'Manual called destination before agent connected.');
+            check_sip(strpos(file_get_contents($directory.'/peer.log'),'RINGING_AUDIO_RECEIVED')!==false,'Manual agent did not receive ringing audio before customer answer.');
+        }
         check_sip(strtotime($row['answered_at'])-strtotime($row['originated_at'])>=1,'Answer recorded before SIP 200.');
         check_sip(is_file($row['recording_path']) && filesize($row['recording_path'])>44,'Missing real RTP recording.'); $recordings[]=$row['recording_path'];
         check_sip(Dialer::pendingDispositionForAgent($agent)['call_id']==$id,'No pending disposition.');
@@ -93,16 +97,41 @@ try {
     }
     $c=$campaigns[0];
     change_settings($c,['amd_action_machine'=>'MESSAGE','amd_message'=>'dialer-lab/message']);
-    foreach (['000002'=>'MACHINE','000003'=>'NOANSWER','000005'=>'HANGUP'] as $number=>$reason) {
+    foreach (['000002'=>'COMPLETED','000003'=>'NOANSWER','000005'=>'COMPLETED','000006'=>'COMPLETED','000007'=>'BUSY'] as $number=>$reason) {
         prepare_number($c,$number); Dialer::setEngineState($c,'RUNNING'); $id=Dialer::originateNext($c,$agent); check_sip($id!==null,'Scenario could not originate.'); Dialer::setEngineState($c,'STOPPED');
+        if ($number==='000006') {
+            usleep(800000); $progress=call_row($id);
+            check_sip($progress['answered_at']===null && $progress['bridged_at']===null && $progress['recording_path']===null,'Agent answer/early media counted as customer answer or started recording.');
+        }
         $row=wait_closed($id); check_sip($row['termination_reason']===$reason,'Wrong scenario result: '.json_encode($row));
+        check_sip($row['amd_result']===null,'Manual must never run AMD.');
+        if ($number==='000006') check_sip(strpos(file_get_contents($directory.'/peer.log'),'EARLY_MEDIA_RECEIVED')!==false,'Provider early media did not reach agent before answer.');
+        if ($row['agent_user']) Dialer::setDisposition($id,$agent,'SALE');
+        else check_sip($row['answered_at']===null && $row['bridged_at']===null && $row['recording_path']===null && $row['agent_slot']===null,'Unanswered manual attempt invented conversation or retained reservation.');
         if ($row['recording_path'] && is_file($row['recording_path'])) $recordings[]=$row['recording_path'];
         echo json_encode(['scenario'=>$number,'call_id'=>$id,'reason'=>$row['termination_reason'],'amd'=>$row['amd_result']]),"\n";
     }
+    foreach (['noanswer'=>'NOANSWER','hangup'=>'HANGUP'] as $action=>$reason) {
+        $before=substr_count(file_get_contents($directory.'/peer.log'),'CLIENT_INVITE:');
+        file_put_contents($directory.'/agent-control',$action);
+        prepare_number($c,'000001'); Dialer::setEngineState($c,'RUNNING'); $id=Dialer::originateNext($c,$agent); check_sip($id!==null,'Agent failure fixture did not originate.'); Dialer::setEngineState($c,'STOPPED');
+        $row=wait_closed($id); unlink($directory.'/agent-control');
+        check_sip($row['termination_reason']===$reason && $row['answered_at']===null && $row['recording_path']===null && $row['agent_slot']===null,'Agent failure invented customer answer or retained slot: '.json_encode($row));
+        if ($action==='noanswer') check_sip(substr_count(file_get_contents($directory.'/peer.log'),'CLIENT_INVITE:')===$before,'Destination called when agent did not answer.');
+        echo 'PASS: agent '.$action.', no customer answer/recording, reservation released.',"\n";
+    }
+    // Preserve the actual AMD/MESSAGE regression in the destination-first mode.
+    change_settings($c,['dial_method'=>'PROGRESSIVE']); prepare_number($c,'000002');
+    $lead=Dialer::claimLead($c,Dialer::campaign($c)['dial_prefix'],1,$agent);
+    PbxAmi::rawAction($ami,'Originate',Dialer::originateFields(Dialer::campaign($c),$lead,Carriers::getById($carrierId)));
+    $row=wait_closed($lead['call_id']);
+    check_sip($row['termination_reason']==='MACHINE' && $row['amd_result']==='MACHINE','Progressive AMD/MESSAGE changed.');
+    $recordings[]=$row['recording_path'];
+    echo 'PASS: progressive MACHINE and configured MESSAGE preserved.',"\n";
     // Real SIP destination with all agents removed: explicit lower-level probe of overflow.
     foreach ($campaigns as $c) Dialer::agentLeaveQueue($agent,$c);
     $c=$campaigns[0]; prepare_number($c,'000004');
-    change_settings($c,['drop_action'=>'MESSAGE','drop_message'=>'dialer-lab/message']);
+    change_settings($c,['dial_method'=>'PROGRESSIVE','drop_action'=>'MESSAGE','drop_message'=>'dialer-lab/message']);
     $lead=Dialer::claimLead($c,Dialer::campaign($c)['dial_prefix'],1);
     PbxAmi::rawAction($ami,'Originate',Dialer::originateFields(Dialer::campaign($c),$lead,Carriers::getById($carrierId)));
     $row=wait_closed($lead['call_id']); check_sip($row['termination_reason']==='DROPPED','Real SIP queue timeout failed.'); $recordings[]=$row['recording_path'];
@@ -112,7 +141,7 @@ try {
     Carriers::update($carrierId,['carrier_name'=>'Loopback dialer laboratory','protocol'=>'PJSIP','server_ip'=>'127.0.0.1','active'=>'Y',
         'account_entry'=>"[dialer_lab_client]\ntype=endpoint\ncontext=zynervoxv2\ndisallow=all\nallow=ulaw\naors=dialer_lab_client\ndirect_media=no\nrtp_symmetric=yes\n\n[dialer_lab_client]\ntype=aor\ncontact=sip:127.0.0.1:5097\n",'dialplan_entry'=>'']);
     PbxAmi::command($ami,'pjsip reload');
-    change_settings($c,['amd_action_machine'=>'HANGUP','drop_action'=>'HANGUP']);
+    change_settings($c,['dial_method'=>'MANUAL','amd_action_machine'=>'HANGUP','drop_action'=>'HANGUP']);
     Dialer::agentJoinQueue($agent,$c); prepare_number($c,'000001'); Dialer::setEngineState($c,'RUNNING');
     $id=Dialer::originateNext($c,$agent); check_sip($id!==null,'PJSIP did not originate.'); Dialer::setEngineState($c,'STOPPED');
     $row=wait_closed($id); check_sip($row['termination_reason']==='COMPLETED' && $row['agent_user']===$agent,'PJSIP actual bridge failed: '.json_encode($row)); $recordings[]=$row['recording_path'];
@@ -132,7 +161,7 @@ try {
     }
     foreach (explode("\n",PbxAmi::command($ami,'core show channels concise')) as $line) {
         $cols=explode('!',preg_replace('/^Output: /','',$line));
-        if (count($cols)>=12 && strpos($cols[0],'SIP/dialer_lab_client-')===0) PbxAmi::rawAction($ami,'Hangup',['Channel'=>$cols[0]]);
+        if (count($cols)>=12 && (strpos($cols[0],'SIP/dialer_lab_client-')===0 || strpos($cols[0],'SIP/'.$agent.'-')===0)) PbxAmi::rawAction($ami,'Hangup',['Channel'=>$cols[0]]);
     }
     sleep(1);
     if (is_resource($process)) { proc_terminate($process); proc_close($process); }

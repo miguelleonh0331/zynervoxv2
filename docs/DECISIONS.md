@@ -957,3 +957,24 @@ listados para proteger administración existente. Sin migración ni cambios PBX.
 Ampliación puntual de fixture report-router.php: tabla users TEMPORARY para
 que la regresión HTTP pruebe identidades reales bajo el nuevo contrato Auth.
 No editar implementación Dialer, bot_ivr, campañas, credenciales ni PJSIP.
+
+## 2026-10-11 — MANUAL conecta al agente antes de marcar
+
+ARCHITECT_AGENT aprueba cambio exclusivo de dialer, sin migración ni nueva
+dependencia. AMI Originate llama al anexo reservado; Dial directo transmite
+timbrado y early media. MANUAL omite Queue/AMD para conservar el audio desde
+el comienzo. PROGRESSIVE/ADAPTIVE/RATIO mantienen destino primero.
+
+La ruta y timeout se validan al originar y viajan como variables heredadas;
+el ChannelId conserva la pierna agente. U posanswer registra respuesta real
+del cliente, inicia/verifica MixMonitor b y atribuye el puente por canal agente.
+Fallo de tracking/grabación aborta el puente. El handler de grabación corre en
+la pierna cliente, y el del agente cierra y libera reserva idempotentemente.
+Sin respuesta cliente no se fabrican conversación, agente atribuido ni wrapup.
+
+Cambiar dial_method exige STOPPED sin llamadas abiertas bajo lock, para no
+eliminar el contexto de un intento que todavía timbra. Si answered_at cambia
+mientras cierra el padre, fallback al closer contestado conserva el cierre.
+Alcance: Dialer.php, tracking AGI, dialer_agent.php, pruebas, README/CONTRACT y
+registros. Prohibido tocar implementaciones core, bot_ivr, VICIdial o activar
+PJSIP. Artefactos Asterisk se regeneran exclusivamente por API pública.

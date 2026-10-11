@@ -24,6 +24,12 @@ verify(Dialer::originateFields($campaign, $lead, $pjsip)['Channel'] === 'PJSIP/8
 expectFailure(static function () use ($campaign, $lead, $sip) { Dialer::originateFields(array_replace($campaign, ['outbound_prefix' => null]), $lead, $sip); }, 'Unconfigured route accepted');
 expectFailure(static function () use ($campaign, $lead, $sip) { Dialer::originateFields($campaign, $lead, array_replace($sip, ['account_entry' => "[a]\ntype=peer\n[b]\ntype=friend\n"])); }, 'Ambiguous endpoints accepted');
 expectFailure(static function () use ($campaign, $lead, $sip) { Dialer::originateFields($campaign, array_replace($lead, ['phone_number' => "0\r\nAction: Hangup"]), $sip); }, 'AMI injection accepted');
+$manualCampaign=array_replace($campaign,['dial_method'=>'MANUAL']);
+$manualFields=Dialer::manualOriginateFields($manualCampaign,$fields,'SIP/5000');
+verify($manualFields['Channel']==='SIP/5000' && $manualFields['Context']==='zynervoxv2-dialer-manual-1' && $manualFields['Exten']==='s','Manual must call agent first');
+verify($manualFields['ChannelId']===$fields['ChannelId'] && strpos($manualFields['Variable'],'__ZV2_DIALER_DESTINATION=SIP/lab/881851000000')!==false,'Manual must preserve correlation and validated destination');
+expectFailure(static function() use($manualCampaign,$fields) { Dialer::manualOriginateFields($manualCampaign,$fields,'SIP/5000,Action: Hangup'); },'Manual agent injection accepted');
+expectFailure(static function() use($manualCampaign,$fields) { Dialer::manualOriginateFields($manualCampaign,array_replace($fields,['Channel'=>'SIP/lab/123&Local/1']),'SIP/5000'); },'Manual destination injection accepted');
 $bodyMethod = new ReflectionMethod(Dialer::class, 'dialplanBody');
 $bodyMethod->setAccessible(true);
 $body = $bodyMethod->invoke(null, $campaign);
@@ -31,6 +37,11 @@ require $web . '/includes/DialplanOrigins.php';
 verify(\Includes\DialplanOrigins::prefixes(\Includes\DialplanOrigins::body($body)) === ['7399'], 'Generated callback/handler must satisfy public dialplan contract');
 verify(strpos($body, 'MixMonitor(') < strpos($body, 'AMD()') && strpos($body, 'AMD()') < strpos($body, 'Queue('), 'Recording begins postanswer before AMD/Queue');
 verify(strpos($body, 'hangup_handler_push') !== false && strpos($body, 'StopMixMonitor()') !== false && strpos($body, 'Return()') !== false, 'Hangup handler must close recording and return');
+$manualBody=$bodyMethod->invoke(null,$manualCampaign);
+$manualSection=substr($manualBody,strpos($manualBody,'[zynervoxv2-dialer-manual-1]'));
+verify(strpos($manualSection,'AMD()')===false && strpos($manualSection,'Queue(')===false && strpos($manualSection,'gU(')!==false,'Manual must bypass Queue/AMD and preserve early media');
+verify(strpos($manualSection,'answered,${ZV2_DIALER_CALL_ID},${ZV2_DIALER_PARENT_UID}')!==false && strpos($manualSection,'MixMonitor(${ZV2_RECORDING},b)')!==false && strpos($manualSection,'GOSUB_RESULT=ABORT')!==false,'Manual postanswer recording/correlation must fail closed');
+verify(\Includes\DialplanOrigins::prefixes(\Includes\DialplanOrigins::body($manualBody))===['7399'],'Manual context must preserve callback prefix contract');
 expectFailure(static function () use ($bodyMethod, $campaign) { $bodyMethod->invoke(null, array_replace($campaign, ['drop_action' => 'MESSAGE', 'drop_message' => '../etc/passwd'])); }, 'Invalid MESSAGE audio accepted');
 
 $db->exec('DELETE FROM v2_dialer_call_log');
@@ -74,6 +85,18 @@ expectFailure(static function () use ($failedRecording) { Dialer::verifyRecordin
 Dialer::closeCall($failedRecording, 'TIMEOUT', '');
 verify($db->query('SELECT termination_reason FROM v2_dialer_call_log WHERE call_id=' . $failedRecording)->fetchColumn() === 'RECORDING_ERROR', 'Handler overwrote mandatory-recording failure');
 echo "PASS: SIP/PJSIP fields, safe routing, recording/handler, capacity, unique reservation, long calls, failure retention, idempotence, MACHINE, DNC, attempts and assignment.\n";
+
+$db->exec("INSERT INTO v2_dialer_call_log (campaign_id,lead_id,phone_number,originated_at,agent_slot) VALUES (1,1,'000000',NOW(),'manual_fixture')");
+$manualBusy=(int)$db->lastInsertId();
+Dialer::closeManual($manualBusy,'BUSY',''); Dialer::closeManual($manualBusy,'','');
+$manualRow=$db->query('SELECT * FROM v2_dialer_call_log WHERE call_id='.$manualBusy)->fetch(PDO::FETCH_ASSOC);
+verify($manualRow['termination_reason']==='BUSY' && $manualRow['agent_slot']===null && $manualRow['answered_at']===null && $manualRow['agent_user']===null && $manualRow['duration_talk']===null,'Manual busy closure must remain idempotent, release slot and not invent conversation');
+$db->exec("INSERT INTO v2_dialer_call_log (campaign_id,lead_id,phone_number,originated_at) VALUES (1,1,'000000',NOW())");
+$manualAnswered=(int)$db->lastInsertId(); Dialer::markAnswered($manualAnswered,'zv2dialer-'.$manualAnswered);
+$db->exec('UPDATE v2_dialer_call_log SET bridged_at=NOW()-INTERVAL 3 SECOND WHERE call_id='.$manualAnswered);
+Dialer::closeManual($manualAnswered,'ANSWER',''); Dialer::closeManual($manualAnswered,'BUSY','');
+verify($db->query('SELECT termination_reason FROM v2_dialer_call_log WHERE call_id='.$manualAnswered)->fetchColumn()==='COMPLETED','Manual answer closure lost bridge or was overwritten');
+echo "PASS: manual agent-first fields, postanswer handler, no AMD/Queue, injection rejection and idempotent busy/answered closure.\n";
 
 $db->exec("UPDATE v2_dialer_campaigns SET active=1,dial_method='PROGRESSIVE',engine_state='RUNNING',local_call_time_start='00:00:00',local_call_time_end='23:59:59' WHERE campaign_id IN (1,2)");
 $db->exec("UPDATE v2_dialer_leads SET status='NEW',called_count=0,next_eligible_at=NOW() WHERE lead_id=4");

@@ -199,6 +199,7 @@ class Dialer {
         try {
             $lock=$db->prepare('SELECT * FROM v2_dialer_campaigns WHERE campaign_id=? FOR UPDATE'); $lock->execute([$id]); $current=$lock->fetch(PDO::FETCH_ASSOC);
             if (!$current) throw new \RuntimeException('Campaña inexistente.');
+            if ($values['dial_method'] !== $current['dial_method'] && ($current['engine_state'] !== 'STOPPED' || self::inFlightCount($id)>0)) throw new \RuntimeException('Detén el motor y espera a que terminen las llamadas antes de cambiar el modo.');
             if (array_key_exists('selected_dialplan_id',$input)) {
                 $selected=filter_var($input['selected_dialplan_id'],FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
                 if (!$selected) throw new \RuntimeException('Selecciona un dialplan de salida.');
@@ -305,6 +306,40 @@ class Dialer {
         $lines[] = '[' . $bridge . ']';
         $lines[] = 'exten => s,1,' . $agi . 'bridged,${ZV2_DIALER_CALL_ID},${CHANNEL(name)})';
         $lines[] = ' same => n,Return()';
+        if (($campaign['dial_method'] ?? '') === 'MANUAL') {
+            $manual = 'zynervoxv2-dialer-manual-' . (int) $campaign['campaign_id'];
+            $lines = array_merge($lines, [
+                '[' . $manual . ']',
+                'exten => s,1,Set(CHANNEL(hangup_handler_push)=' . $manual . '-close,s,1)',
+                ' same => n,Set(__ZV2_DIALER_PARENT_UID=${UNIQUEID})',
+                ' same => n,Set(__ZV2_DIALER_AGENT_CHANNEL=${CHANNEL(name)})',
+                ' same => n,' . $agi . 'manual_ready,${ZV2_DIALER_CALL_ID},${CHANNEL(name)})',
+                ' same => n,GotoIf($["${ZV2_DIALER_READY}" != "1"]?invalid)',
+                // Native Dial passes ringing and provider early media to the answered agent.
+                ' same => n,Dial(${ZV2_DIALER_DESTINATION},${ZV2_DIALER_TIMEOUT},gU(' . $manual . '-answer))',
+                ' same => n(invalid),Hangup()',
+                '[' . $manual . '-answer]',
+                'exten => s,1,Set(GOSUB_RESULT=ABORT)',
+                ' same => n,Set(ZV2_DIALER_READY=0)',
+                ' same => n,Set(CHANNEL(hangup_handler_push)=' . $manual . '-recording-close,s,1)',
+                ' same => n,' . $agi . 'answered,${ZV2_DIALER_CALL_ID},${ZV2_DIALER_PARENT_UID})',
+                ' same => n,GotoIf($["${ZV2_DIALER_READY}" != "1"]?invalid)',
+                ' same => n,MixMonitor(${ZV2_RECORDING},b)',
+                ' same => n,' . $agi . 'recording,${ZV2_DIALER_CALL_ID},${MIXMONITOR_FILENAME})',
+                ' same => n,GotoIf($["${ZV2_RECORDING_READY}" != "1"]?invalid)',
+                ' same => n,Set(ZV2_DIALER_BRIDGE_READY=0)',
+                ' same => n,' . $agi . 'manual_bridged,${ZV2_DIALER_CALL_ID},${ZV2_DIALER_AGENT_CHANNEL})',
+                ' same => n,GotoIf($["${ZV2_DIALER_BRIDGE_READY}" != "1"]?invalid)',
+                ' same => n,Set(GOSUB_RESULT=)',
+                ' same => n(invalid),Return()',
+                '[' . $manual . '-recording-close]',
+                'exten => s,1,StopMixMonitor()',
+                ' same => n,Return()',
+                '[' . $manual . '-close]',
+                'exten => s,1,' . $agi . 'manual_closed,${ZV2_DIALER_CALL_ID},${DIALSTATUS},${UNIQUEID})',
+                ' same => n,Return()',
+            ]);
+        }
         return implode("\n", $lines) . "\n";
     }
 
@@ -667,7 +702,12 @@ class Dialer {
         if ($lead === null) return null;
         try {
             if ($reservedAgent !== null) self::suspendReservedAgent($reservedAgent);
-            \Includes\PbxAmi::rawAction(\Includes\PbxAmi::load(), 'Originate', self::routedFields($campaign, $lead));
+            $fields = self::routedFields($campaign, $lead);
+            if ($campaign['dial_method'] === 'MANUAL') {
+                [$interface] = self::agentInterface($agentUser);
+                $fields = self::manualOriginateFields($campaign, $fields, $interface);
+            }
+            \Includes\PbxAmi::rawAction(\Includes\PbxAmi::load(), 'Originate', $fields);
         } catch (\Throwable $error) {
             // Una respuesta AMI perdida puede haber originado: el reconciliador
             // conserva el cupo hasta confirmar ausencia. No liberar a ciegas.
@@ -682,6 +722,35 @@ class Dialer {
         [$interface] = self::agentInterface($user);
         $line = self::memberLine($campaign,$interface);
         return $line !== null && stripos($line,'(Not in use)') !== false && stripos($line,'paused') === false;
+    }
+
+    public static function manualOriginateFields(array $campaign, array $fields, string $interface): array {
+        if ($campaign['dial_method'] !== 'MANUAL' || !preg_match('~^(SIP|PJSIP)/[A-Za-z0-9_-]{1,60}$~D', $interface)) throw new \RuntimeException('Anexo manual inválido.');
+        if (!preg_match('~^(SIP/[A-Za-z0-9_-]{1,60}/\+?[0-9]{1,40}|PJSIP/\+?[0-9]{1,40}@[A-Za-z0-9_-]{1,60})$~D', $fields['Channel'])) throw new \RuntimeException('Destino manual inválido.');
+        $fields['Variable'] .= ',__ZV2_DIALER_DESTINATION=' . $fields['Channel'] . ',__ZV2_DIALER_TIMEOUT=' . (int) $campaign['dial_timeout_seconds'];
+        $fields['Channel'] = $interface;
+        $fields['Context'] = 'zynervoxv2-dialer-manual-' . (int) $campaign['campaign_id'];
+        $fields['Exten'] = 's';
+        return $fields;
+    }
+
+    public static function manualReady(int $callId, string $channel): void {
+        $q = self::database()->prepare('SELECT l.campaign_id,l.reserved_agent_user FROM v2_dialer_call_log l JOIN v2_dialer_campaigns c ON c.campaign_id=l.campaign_id WHERE l.call_id=:id AND l.ended_at IS NULL AND l.answered_at IS NULL AND c.dial_method=\'MANUAL\'');
+        $q->execute(['id'=>$callId]); $row=$q->fetch(PDO::FETCH_ASSOC);
+        if (!$row || !$row['reserved_agent_user'] || !in_array($row['reserved_agent_user'],self::agentsForCampaign((int)$row['campaign_id']),true)) throw new \RuntimeException('Reserva manual inválida.');
+        [$interface] = self::agentInterface($row['reserved_agent_user']);
+        if (!preg_match('~^' . preg_quote($interface,'~') . '-[a-f0-9]+$~D', $channel)) throw new \RuntimeException('Canal ajeno a la reserva manual.');
+    }
+
+    public static function closeManual(int $callId, string $dialStatus, string $uniqueId): void {
+        $q=self::database()->prepare('SELECT answered_at FROM v2_dialer_call_log WHERE call_id=:id AND ended_at IS NULL');
+        $q->execute(['id'=>$callId]); $row=$q->fetch(PDO::FETCH_ASSOC);
+        if (!$row) return;
+        if ($row['answered_at'] !== null) self::closeCall($callId,'',$uniqueId);
+        elseif (!self::closeUnanswered($callId,in_array($dialStatus,['BUSY','NOANSWER','CONGESTION','CHANUNAVAIL'],true) ? $dialStatus : 'HANGUP')) {
+            // The answer hook may commit between the read and the preanswer closure.
+            self::closeCall($callId,'',$uniqueId);
+        }
     }
 
     public static function reconcileUnanswered(int $campaignId): int {

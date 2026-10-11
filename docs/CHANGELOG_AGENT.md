@@ -2150,3 +2150,35 @@ desactivación revocan sesión. Cuenta temporal y sesión administrativa propias
 retiradas; credenciales locales temporales eliminadas. No se creó anexo ni se
 alteró asignación/campaña55, que permanece carsa0001 STOPPED, 0 llamadas abiertas.
 Limitación: desactivar cuenta web no elimina membresía SIP; salir de cola primero.
+
+## 2026-10-11 — Timbrado y early media en MANUAL
+
+MANUAL origina primero el anexo reservado y luego Dial directo al cliente,
+sin Queue/AMD. Mensaje del panel pide contestar softphone. answered_at y
+MixMonitor b comienzan exclusivamente después de respuesta del cliente;
+UID padre preservado, cierre idempotente y reserva global conservados.
+Correcciones de revisión ARCHITECT_AGENT: modo solo cambia STOPPED sin
+intentos abiertos bajo lock, y cierre concurrente con answer usa fallback.
+
+PHP/Python lint, run-engine.sh, run-routing.sh y run-reporting.sh PASS.
+Laboratorio final SIP/RTP real en loopback PASS: MANUAL/progresivo/adaptativo,
+ringback RTP y 183/audio recibidos por agente antes de 200, grabación y
+tiempos sin early media, AMD HUMAN/MACHINE en modos automáticos, MESSAGE,
+ocupado, cliente/agente sin respuesta, cancelación, reserva multicampaña,
+tipificación/wrapup, parada/drain y recuperación PBX_LOST.
+
+Despliegue por zynertools, fuente E:/servidores/zynerdesk/proyectos/zynervoxv2,
+runtime /srv/www/htdocs/zynervoxv2, callback regenerado por API y worker reiniciado
+solo tras verificar cero llamadas abiertas. Respaldo original:
+/var/backups/zynervoxv2/dialer-manual-first-20261011-173343.
+Respaldo de actualización final:
+/var/backups/zynervoxv2/dialer-manual-first-20261011-173801.
+Evidencia de audio y peer.log:
+/var/backups/zynervoxv2/dialer-sip-lab-20261011-173839.
+Verificación final: fuente/runtime iguales, worker active sin errores recientes,
+campaña55 carsa0001 MANUAL RUNNING, SIP5000 OK195ms/disponible, intento317
+conserva COMPLETED y tipificación01. Cero llamadas abiertas y cero fixtures
+propios de campañas/anexos/troncal. No se llamaron números externos reales.
+La comprobación del proveedor y MicroSIP físicos corresponde a la siguiente
+prueba del usuario. Rollback: revert del commit de esta tarea, despliegue de
+esos tres PHP, syncDialplan por API y reinicio worker con cero llamadas abiertas.

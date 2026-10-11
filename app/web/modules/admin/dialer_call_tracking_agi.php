@@ -26,6 +26,16 @@ try {
         }
     } elseif ($action === 'bridged') {
         Dialer::markBridged($callId,(string)($argv[3] ?? ''));
+    } elseif ($action === 'manual_bridged') {
+        Dialer::markBridged($callId,(string)($argv[3] ?? ''));
+        fwrite(STDOUT, 'SET VARIABLE ZV2_DIALER_BRIDGE_READY "1"' . "\n");
+        fgets(STDIN);
+    } elseif ($action === 'manual_ready') {
+        Dialer::manualReady($callId,(string)($argv[3] ?? ''));
+        fwrite(STDOUT, 'SET VARIABLE ZV2_DIALER_READY "1"' . "\n");
+        fgets(STDIN);
+    } elseif ($action === 'manual_closed') {
+        Dialer::closeManual($callId,(string)($argv[3] ?? ''),(string)($argv[4] ?? ''));
     } elseif ($action === 'recording') {
         Dialer::verifyRecording($callId, (string) ($argv[3] ?? ''));
         fwrite(STDOUT, 'SET VARIABLE ZV2_RECORDING_READY "1"' . "\n");

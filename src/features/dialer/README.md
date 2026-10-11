@@ -15,13 +15,17 @@ tablas `v2_dialer_*`. Contrato: [CONTRACT.md](CONTRACT.md).
    a sus colas desde `modules/admin/dialer_agent.php`.
 5. Iniciar motor desde Configurar. En MANUAL, el agente pulsa siguiente lead;
    los otros modos los ejecuta `zynervox-dialer.service`.
+   MANUAL llama primero al softphone: contestarlo para marcar al cliente y
+   escuchar timbrado y anuncios previos a respuesta enviados por la troncal.
+   MANUAL no utiliza AMD; la grabación empieza al responder el cliente.
 6. Al terminar conversación, tipificar para salir de wrapup. Pausa manual se
    conserva; cerrar navegador no equivale a salir de cola.
 7. Detener nuevas llamadas permite terminar conversaciones ya iniciadas.
 
 La reserva de lead comprueba actividad, estado RUNNING, horario del lead,
 DNC, intentos y capacidad. MANUAL/PROGRESSIVE reservan un agente globalmente
-y lo entregan por su cola personal; durante la reserva se aparta de colas
+y MANUAL conecta directamente su anexo; PROGRESSIVE lo entrega por su cola
+personal. Durante la reserva se aparta de colas
 predictivas. El máximo de canales siempre se verifica dentro de la transacción.
 La grabación comienza tras respuesta; un fallo al iniciarla impide entregar
 al agente. MESSAGE exige audio existente bajo sounds.
@@ -51,8 +55,12 @@ compartida conservada y rechazo de cambios RUNNING/con llamadas abiertas o de
 reservas con configuración obsoleta. Migración 012 aplicada solo a fixtures.
 `tests/run-engine.sh`: campos de rutas SIP/PJSIP, reserva, capacidad, DNC y cierres.
 `tests/sip-lab.php` + `sip-lab-peer.py`: SIP/RTP local, tres modos, AMD,
-grabación, puente, tipificación, parada y MESSAGE. `tests/run-sip-lab.sh` prepara
-audio, ejecuta el laboratorio con el servicio y limpia el audio de prueba.
+grabación, puente, tipificación, parada y MESSAGE. Incluye pruebas de MANUAL
+agente primero, 183/RTP previo a respuesta, ocupado,
+agente/cliente sin respuesta, cancelación y liberación de reservas. También
+verifica que el audio previo no inicia la grabación ni los tiempos del cliente.
+`tests/run-sip-lab.sh` prepara audio, ejecuta el laboratorio con el servicio y
+limpia el audio de prueba.
 Requiere `DIALER_LAB_CONFIRM=LOOPBACK_SIP`, un PBX inicialmente sin llamadas,
 audio de `tests/fixtures/lab-message.wav` instalado temporalmente como
 `sounds/dialer-lab/message.wav`. Con `DIALER_LAB_USE_SERVICE=1`, prueba el worker

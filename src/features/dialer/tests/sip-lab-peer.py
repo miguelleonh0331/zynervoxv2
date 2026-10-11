@@ -2,6 +2,7 @@
 """Loopback-only SIP/RTP fixtures. No external number or network destination."""
 import hashlib
 import json
+import os
 import re
 import select
 import socket
@@ -20,6 +21,8 @@ client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 client.bind(('127.0.0.1', 5097))
 media = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 media.bind(('127.0.0.1', 13996))
+client_media = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+client_media.bind(('127.0.0.1', 13997))
 dialogs = {}
 register_id = str(uuid.uuid4())
 
@@ -64,11 +67,21 @@ def hangup(dialog):
 send_register()
 deadline = time.monotonic() + 180
 while time.monotonic() < deadline:
-    ready, _, _ = select.select([agent, client, media], [], [], .01)
+    ready, _, _ = select.select([agent, client, media, client_media], [], [], .01)
     now = time.monotonic()
     for sock in ready:
         data, remote = sock.recvfrom(65535)
-        if sock is media:
+        if sock is media or sock is client_media:
+            if sock is media and len(data)>12 and any(sample != 0xff for sample in data[12:]):
+                for dialog in dialogs.values():
+                    if dialog['socket'] is client and dialog['mode']=='000001' and not dialog['answered'] and not dialog['done'] and not dialog.get('ring_received'):
+                        dialog['ring_received']=True
+                        print('RINGING_AUDIO_RECEIVED: agent received ringback RTP before customer answer',flush=True)
+            if sock is media and len(data)>12 and data[12:] == (bytes([0x22])*10 + bytes([0xa2])*10)*8:
+                for dialog in dialogs.values():
+                    if dialog['socket'] is client and dialog['mode']=='000006' and not dialog['answered'] and not dialog.get('early_received'):
+                        dialog['early_received']=True
+                        print('EARLY_MEDIA_RECEIVED: agent heard provider RTP before customer answer',flush=True)
             continue
         first, h, body = parse(data)
         if first.startswith('SIP/2.0 401') and h.get('call-id') == register_id:
@@ -93,6 +106,10 @@ while time.monotonic() < deadline:
             if h['call-id'] in dialogs:
                 continue
             mode = first.split()[1].split('@')[0].split(':')[-1]
+            control = os.path.join(os.path.dirname(sys.argv[1]), 'agent-control')
+            action = open(control).read().strip() if os.path.isfile(control) and sock is agent else ''
+            if sock is client:
+                print('CLIENT_INVITE: agent_connected=' + str(any(d['socket'] is agent and d['answered'] and not d['done'] for d in dialogs.values())),flush=True)
             match = re.search(r'm=audio (\d+)', body)
             ip = re.search(r'c=IN IP4 ([\d.]+)', body)
             # Asterisk may advertise the server's public address; all media stays local.
@@ -100,27 +117,38 @@ while time.monotonic() < deadline:
             response(sock, remote, h, '180 Ringing')
             dialogs[h['call-id']] = {'headers': h, 'remote': remote, 'socket': sock,
                 'port': 5096 if sock is agent else 5097, 'mode': mode, 'rtp': rtp,
-                'answer_at': now + (.1 if sock is agent else 2), 'answered': False,
+                'answer_at': now + (.1 if sock is agent else 2), 'answered': False, 'agent_action': action,
                 'next_rtp': now, 'seq': 0, 'stamp': 0, 'ssrc': int(uuid.uuid4().hex[:8],16), 'done': False}
+            if sock is client and mode=='000006':
+                sdp='v=0\r\no=fixture 1 1 IN IP4 127.0.0.1\r\ns=Early media\r\nc=IN IP4 127.0.0.1\r\nt=0 0\r\nm=audio 13997 RTP/AVP 0\r\na=rtpmap:0 PCMU/8000\r\na=sendrecv\r\n'
+                response(sock,remote,h,'183 Session Progress',sdp)
+            if sock is client and mode=='000007':
+                response(sock,remote,h,'486 Busy Here')
+                dialogs[h['call-id']]['done']=True
     for dialog in dialogs.values():
-        if dialog['done'] or dialog['mode'] == '000003':
+        if dialog['done'] or dialog['mode'] == '000003' or dialog['agent_action']=='noanswer':
             continue
+        if not dialog['answered'] and dialog['mode']=='000006' and dialog['rtp'] and now >= dialog['next_rtp']:
+            payload=(bytes([0x22])*10 + bytes([0xa2])*10)*8
+            packet=struct.pack('!BBHII',0x80,0,dialog['seq'] % 65536,dialog['stamp'] % 2**32,dialog['ssrc'])+payload
+            client_media.sendto(packet,dialog['rtp'])
+            dialog['seq']+=1; dialog['stamp']+=160; dialog['next_rtp']=now+.02
         if not dialog['answered'] and now >= dialog['answer_at']:
-            sdp = 'v=0\r\no=fixture 1 1 IN IP4 127.0.0.1\r\ns=Dialer lab\r\nc=IN IP4 127.0.0.1\r\nt=0 0\r\nm=audio 13996 RTP/AVP 0\r\na=rtpmap:0 PCMU/8000\r\na=sendrecv\r\n'
+            sdp = 'v=0\r\no=fixture 1 1 IN IP4 127.0.0.1\r\ns=Dialer lab\r\nc=IN IP4 127.0.0.1\r\nt=0 0\r\nm=audio ' + ('13996' if dialog['socket'] is agent else '13997') + ' RTP/AVP 0\r\na=rtpmap:0 PCMU/8000\r\na=sendrecv\r\n'
             response(dialog['socket'], dialog['remote'], dialog['headers'], '200 OK', sdp)
             dialog['answered'] = True
             dialog['start'] = now
         if not dialog['answered']:
             continue
         age = now - dialog['start']
-        if age >= (8 if dialog['socket'] is agent else (.7 if dialog['mode'] == '000005' else 30)):
+        if age >= ((1 if dialog['agent_action']=='hangup' else 8) if dialog['socket'] is agent else (.7 if dialog['mode'] == '000005' else 30)):
             hangup(dialog)
             continue
         if dialog['rtp'] and now >= dialog['next_rtp']:
             voice = dialog['socket'] is agent or dialog['mode'] == '000002' or .5 <= age <= .8
             payload = (bytes([0x10])*10 + bytes([0x90])*10)*8 if voice else bytes([0xff])*160
             packet = struct.pack('!BBHII', 0x80, 0, dialog['seq'] % 65536, dialog['stamp'] % 2**32, dialog['ssrc']) + payload
-            media.sendto(packet, dialog['rtp'])
+            (media if dialog['socket'] is agent else client_media).sendto(packet, dialog['rtp'])
             dialog['seq'] += 1
             dialog['stamp'] += 160
             dialog['next_rtp'] = now + .02

@@ -1,5 +1,32 @@
 # Contrato: dialer (motor de marcación con agentes)
 
+## 2026-10-11 — MANUAL conecta primero al agente (ARCHITECT_AGENT)
+
+Esta sección sustituye el flujo posanswer por Queue únicamente para MANUAL.
+MANUAL origina primero el anexo del agente reservado. Tras su respuesta,
+Dial conecta el destino validado al reservar, transmitiendo timbrado y early
+media disponibles. MANUAL omite Queue y AMD; PROGRESSIVE, ADAPTIVE y RATIO
+conservan su flujo. El panel indica que debe contestarse el softphone y que
+MANUAL no utiliza AMD, incluso si la campaña tiene esa opción habilitada.
+
+answered_at representa exclusivamente la respuesta del cliente. El hook U
+inicia y verifica MixMonitor después de esa respuesta; opción b graba solo
+el puente. Un fallo de tracking o grabación aborta el puente. bridged_at
+conserva su precisión preliminar al ejecutar el hook, sin evento CONNECT.
+channel_uniqueid conserva el ChannelId del agente durante todo el intento;
+no se reemplaza por el identificador de la pierna cliente. El handler de
+grabación detiene MixMonitor en esa pierna; el del agente cierra idempotentemente.
+
+Sin respuesta del cliente se libera la reserva y recicla el lead, sin
+fabricar conversación, agente atribuido ni wrapup. DIALSTATUS explícito
+permite BUSY/NOANSWER/CONGESTION/CHANUNAVAIL; una cancelación sin estado fiable
+se registra como HANGUP. Si el agente nunca responde, el reconciliador conserva
+NOANSWER solo tras confirmar ausencia del ChannelId. Conversación terminada
+conserva COMPLETED, tipificación y wrapup; RECORDING_ERROR/PBX_LOST mantienen
+su significado. La reserva global sigue evitando llamadas dobles entre campañas.
+Cambiar dial_method exige motor STOPPED y ningún intento abierto bajo lock de
+campaña, para conservar el contexto mientras el agente/cliente todavía timbra.
+
 ## 2026-10-11 — Selección de salida existente (ARCHITECT_AGENT)
 
 Migración 012 permite carrier_id NULL y añade selected_dialplan_id nullable.

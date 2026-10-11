@@ -42,7 +42,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $msg = 'Llamada tipificada.';
             } elseif ($action === 'manual') {
                 $callId = Dialer::originateNext($campaignId, $user);
-                $msg = $callId === null ? 'Sin lead elegible, capacidad o agente disponible; no se marcó.' : 'Intento #' . $callId . ' enviado. La aceptación no confirma que el cliente contestó.';
+                $msg = $callId === null ? 'Sin lead elegible, capacidad o agente disponible; no se marcó.' : 'Intento #' . $callId . ' enviado. Contesta en tu softphone para marcar al cliente y escuchar el timbrado. MANUAL no usa AMD. La aceptación no confirma que el cliente contestó.';
             } else {
                 throw new RuntimeException('Acción inválida.');
             }
