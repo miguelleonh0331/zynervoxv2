@@ -917,3 +917,20 @@ con las seis columnas. Historial STOPPED retenido para búsqueda web; agentes y
 secretos temporales retirados. Predictivo nivel 1 para diez entregas; regulación
 adaptativa comprobada separadamente en pruebas transaccionales. No certificar
 sobreoferta ni proveedor/NAT/softphone físico mediante esta muestra.
+
+## 2026-10-11 — Borrado definitivo solicitado por el usuario; ARCHITECT_AGENT
+
+La restricción anterior bloqueaba toda campaña con llamadas y la FK RESTRICT
+impedía borrar listas con leads. Se permite borrar historial cerrado mediante
+POST+CSRF y confirmación explícita de datos afectados. No se ejecuta eliminación
+sobre campañas existentes para probar la mejora. Lock de campaña serializa con
+reservas; RUNNING o llamada abierta impiden borrar. Orden de borrado respeta FK,
+transacción con rollback. Conservar WAV físicos y advertir que su índice web se
+elimina. Borrar DNC propias para evitar ON DELETE SET NULL, que las convertiría
+accidentalmente en exclusiones globales; preservar DNC globales y ajenas.
+
+Capturar interfaces antes del commit; retirar solo membresías de esa campaña,
+regenerar dialplan/colas por APIs públicas y recargar explícitamente. Error PBX
+posterior se informa como limpieza pendiente, sin revertir ficticiamente la BD.
+Sin migraciones ni cambios a otros módulos. Pruebas con FK reales en esquema
+descartable, PBX adaptado sin conexión ni llamadas y regresión HTTP.

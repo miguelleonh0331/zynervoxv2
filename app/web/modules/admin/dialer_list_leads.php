@@ -29,7 +29,7 @@ try {
         if ($contents === false) throw new RuntimeException('No se pudo leer el archivo.');
         $parsed = Dialer::parseLeadsTxt($contents);
         $result = Dialer::importLeads($listId, $campaignId, $parsed);
-        $msg = 'Base reemplazada. Cargados: ' . $result['saved'] . '. Duplicados: ' . $result['duplicates'] . '. Rechazados: ' . $result['rejected'] . '.';
+        $msg = 'Base cargada. Cargados: ' . $result['saved'] . '. Duplicados: ' . $result['duplicates'] . '. Rechazados: ' . $result['rejected'] . '.';
     }
 
     $list = Dialer::list($listId, $campaignId);
@@ -78,7 +78,7 @@ try {
             <form method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>">
                 <input type="file" name="leads_txt" accept=".txt" required>
-                <button type="submit" class="carsa-btn" style="margin-top:8px;">Reemplazar base</button>
+                <button type="submit" class="carsa-btn" style="margin-top:8px;">Cargar base</button>
             </form>
         </div>
 

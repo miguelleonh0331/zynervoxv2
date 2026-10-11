@@ -2043,3 +2043,25 @@ cero campos sin etiqueta y sin desbordamiento horizontal; formulario válido.
 Capturas privadas .codex-temp/campaign-ui-desktop.png y campaign-ui-mobile.png.
 Regresión HTTP/SQL mediante run-reporting.sh. No se iniciaron llamadas ni se
 modificaron valores de campaña durante la revisión visual.
+
+## 2026-10-11 — Cargar base y eliminación de campañas
+
+Botón dialer_list_leads.php renombrado a Cargar base y mensaje Base cargada;
+conserva advertencia visible de reemplazo. campaigns.php explica eliminación
+irreversible y exige confirmación+CSRF. deleteCampaign permite historial cerrado,
+borra hijos en orden transaccional y rechaza motor RUNNING/llamadas abiertas.
+Conserva WAV, datos ajenos y DNC globales; borra DNC propias sin ampliar ámbito.
+Limpieza de membresías/dialplan/colas específica; fallo PBX posterior informa
+campaña eliminada con limpieza pendiente y se audita.
+
+Pruebas run-deletion.sh con FK reales: borrado completo, guards, rollback SQL,
+aislamiento de campaña/DNC, conservación WAV, retiro de ambas colas y error PBX
+posterior. BD descartable eliminada. Regresión engine/reporting y HTTP: Cargar
+base, permisos y POST sin CSRF/confirmación. Despliegue selectivo con backup/lint
+comparación y reinicio de worker. No se borraron campañas existentes del usuario.
+
+Validación desplegada: navegador en at.zynervox.site muestra Cargar base y
+confirmaciones completas en las siete campañas existentes. Prueba real con
+campaña propia sintética #54 STOPPED e historial cerrado: eliminación completa,
+dialplan retirado y reload PBX PASS. Todas las campañas anteriores conservadas;
+sesión temporal revocada. Backup dialer-delete-fix-20261011-145604.

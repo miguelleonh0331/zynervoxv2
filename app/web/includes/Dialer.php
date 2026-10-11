@@ -295,24 +295,45 @@ class Dialer {
     }
 
     public static function deleteCampaign(int $id): void {
-        $campaign = self::campaign($id);
-        $db=self::database();
-        $history=$db->prepare('SELECT COUNT(*) FROM v2_dialer_call_log WHERE campaign_id=:id'); $history->execute(['id'=>$id]);
-        if ((int)$history->fetchColumn()>0) throw new \RuntimeException('Campaña con llamadas: desactívala para conservar su historial.');
+        $db=self::database(); $members=[];
         $db->beginTransaction();
         try {
-            $db->prepare('DELETE FROM v2_dialer_agent_campaigns WHERE campaign_id=:id')->execute(['id'=>$id]);
-            $db->prepare('DELETE FROM v2_dialer_dispositions WHERE campaign_id=:id')->execute(['id'=>$id]);
-            $db->prepare('DELETE FROM v2_dialer_lists WHERE campaign_id=:id')->execute(['id'=>$id]);
-            $db->prepare('DELETE FROM v2_dialer_campaigns WHERE campaign_id=:id')->execute(['id'=>$id]);
+            $lock=$db->prepare('SELECT * FROM v2_dialer_campaigns WHERE campaign_id=:id FOR UPDATE');
+            $lock->execute(['id'=>$id]); $campaign=$lock->fetch(PDO::FETCH_ASSOC);
+            if (!$campaign) throw new \RuntimeException('Campaña inexistente.');
+            if ($campaign['engine_state']==='RUNNING') throw new \RuntimeException('Detén el motor antes de eliminar la campaña.');
+            $open=$db->prepare('SELECT COUNT(*) FROM v2_dialer_call_log WHERE campaign_id=:id AND ended_at IS NULL'); $open->execute(['id'=>$id]);
+            if ((int)$open->fetchColumn()>0) throw new \RuntimeException('La campaña tiene llamadas abiertas; espera a que terminen antes de eliminarla.');
+            $agents=self::agentsForCampaign($id);
+            if ($agents) foreach (\Includes\Phones::getAll() as $phone) {
+                if (!in_array($phone['login'],$agents,true) || !in_array($phone['protocol'],['SIP','PJSIP'],true) || !preg_match('/^[A-Za-z0-9_-]{1,60}$/D',$phone['extension'])) continue;
+                foreach ([$campaign['queue_name'],self::personalQueue($id,$phone['login'])] as $queue) $members[]=['Queue'=>$queue,'Interface'=>$phone['protocol'].'/'.$phone['extension']];
+            }
+            $db->prepare('DELETE FROM v2_dialer_call_log WHERE campaign_id=:id')->execute(['id'=>$id]);
+            $db->prepare('DELETE d FROM v2_dialer_leads d JOIN v2_dialer_lists l ON l.list_id=d.list_id WHERE l.campaign_id=:id')->execute(['id'=>$id]);
+            foreach (['v2_dialer_lists','v2_dialer_dispositions','v2_dialer_agent_campaigns','v2_dialer_agent_intervals','v2_dialer_dnc','v2_dialer_campaigns'] as $table) {
+                $db->prepare('DELETE FROM '.$table.' WHERE campaign_id=:id')->execute(['id'=>$id]);
+            }
             $db->commit();
         } catch (\Throwable $error) { if ($db->inTransaction()) $db->rollBack(); throw $error; }
-        self::audit('CAMPAIGN_DELETE', (string) $id);
-        if ($campaign['dialplan_id'] !== null) {
-            require_once __DIR__ . '/Dialplans.php';
-            try { \Includes\Dialplans::delete((int) $campaign['dialplan_id']); } catch (\Throwable $e) { /* best-effort */ }
+        self::audit('CAMPAIGN_DELETE', (string)$id);
+        // WAV files are retained; removing call history only removes their web index.
+        try {
+            $config=\Includes\PbxAmi::load();
+            foreach ($members as $member) {
+                if (self::memberLine(['queue_name'=>$member['Queue']],$member['Interface'])!==null) \Includes\PbxAmi::rawAction($config,'QueueRemove',$member);
+            }
+            if ($campaign['dialplan_id']!==null) {
+                require_once __DIR__.'/Dialplans.php';
+                \Includes\Dialplans::delete((int)$campaign['dialplan_id']);
+                \Includes\PbxAmi::command($config,'dialplan reload');
+            }
+            self::syncQueues();
+        } catch (\Throwable $error) {
+            self::audit('CAMPAIGN_DELETE_PBX_PENDING',(string)$id);
+            error_log('dialer campaign deletion PBX cleanup: '.$error->getMessage());
+            throw new \RuntimeException('Campaña eliminada; limpieza PBX pendiente. Revisa el registro del servicio.',0,$error);
         }
-        self::syncQueues();
     }
 
     // ------------------------------------------------------------------ Listas

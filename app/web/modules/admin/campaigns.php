@@ -24,8 +24,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 Dialer::toggleActive((int) ($_POST['campaign_id'] ?? 0), (string) ($_POST['current_active'] ?? '0'));
                 $msg = 'Estado actualizado.';
             } elseif (isset($_POST['delete'])) {
+                if (($_POST['confirm_delete'] ?? '') !== '1') throw new RuntimeException('Confirma la eliminación de la campaña.');
                 Dialer::deleteCampaign((int) ($_POST['campaign_id'] ?? 0));
-                $msg = 'Campaña eliminada.';
+                $msg = 'Campaña eliminada con sus listas, leads e historial. Los archivos de audio se conservan en el servidor.';
             }
         } catch (Throwable $e) {
             $error = $e->getMessage();
@@ -93,9 +94,10 @@ try {
                                     <input type="hidden" name="current_active" value="<?php echo (int) $c['active']; ?>">
                                     <button type="submit" name="toggle" class="link-action"><?php echo $c['active'] ? 'Desactivar' : 'Activar'; ?></button>
                                 </form>
-                                <form method="POST" class="inline-form" style="display:inline" onsubmit="return confirm('¿Eliminar campaña? (falla si tiene listas)');">
+                                <form method="POST" class="inline-form" style="display:inline" onsubmit="return confirm(<?php echo htmlspecialchars(json_encode('¿Eliminar definitivamente la campaña #' . $c['campaign_id'] . ' — ' . $c['name'] . '? Se borrarán sus listas, leads, historial, disposiciones, asignaciones y exclusiones DNC propias. Los audios físicos se conservan, pero ya no aparecerán en la web. Esta acción no se puede deshacer.'), ENT_QUOTES, 'UTF-8'); ?>);">
                                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['dialer_csrf']); ?>">
                                     <input type="hidden" name="campaign_id" value="<?php echo (int) $c['campaign_id']; ?>">
+                                    <input type="hidden" name="confirm_delete" value="1">
                                     <button type="submit" name="delete" class="link-action danger">Eliminar</button>
                                 </form>
                             </td>

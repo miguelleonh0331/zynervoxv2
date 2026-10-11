@@ -81,3 +81,24 @@ historia STOPPED y WAV para revisar en web; elimina agentes/asignaciones y
 credenciales temporales y deja su troncal inactiva. Es repetible conservando
 historial, con prefijos exclusivos por campaña.
 Informe: docs/VALIDACION_MOTOR_MARCACION_SIP.md.
+
+## Eliminar campañas y cargar bases
+
+Eliminar solicita confirmación de ID/nombre y borrado definitivo de listas,
+leads, historial, disposiciones, asignaciones y DNC propias. Detener primero
+el motor y esperar llamadas abiertas. Para conservar reportería, usar Desactivar.
+Los WAV físicos se conservan, pero sin historial dejan de aparecer en la web.
+Si aparece limpieza PBX pendiente, revisar registro; la eliminación BD ya ocurrió.
+El botón Cargar base conserva la operación documentada de reemplazar la lista.
+
+`tests/run-deletion.sh`: esquema descartable con estructura y FK reales, sin
+copiar datos operativos. Prueba eliminación, rechazo RUNNING/llamadas abiertas,
+rollback SQL, DNC global/ajenas, campaña y agente compartido, WAV y limpieza PBX
+simulada (incluido fallo posterior al commit). Siempre retira su propia BD.
+`run-reporting.sh` comprueba la etiqueta y rechazo POST sin CSRF/confirmación.
+
+Prueba PBX real sin llamadas: `DIALER_LAB_CONFIRM=OWN_DELETE_FIXTURE php
+/mnt/zynervoxv2-fuente/src/features/dialer/tests/live-deletion.php`. Requiere PBX
+sin canales y troncal de laboratorio DIALER_TEN_SIP inactiva/loopback. Crea y
+elimina solo su campaña nueva STOPPED con historia sintética, verifica retiro
+del dialplan y conservación de campañas existentes. No borra campañas previas.

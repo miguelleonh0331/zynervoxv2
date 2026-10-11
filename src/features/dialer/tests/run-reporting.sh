@@ -7,10 +7,10 @@ audio_fixture=/var/spool/asterisk/monitor/zynervoxv2/dialer/call-900000001.wav
 cp /mnt/zynervoxv2-fuente/src/features/dialer/tests/fixtures/lab-message.wav "$audio_fixture"
 trap 'if [[ -n "$server_pid" ]]; then kill "$server_pid" 2>/dev/null || true; fi; rm -f -- "$audio_fixture"; rm -rf -- "$stage"' EXIT
 mkdir -p "$stage/includes" "$stage/config" "$stage/modules/admin" "$stage/modules/sup" "$stage/sessions"
-for file in Dialer.php Database.php Audit.php Phones.php PbxAmi.php Auth.php ServerInfo.php; do
+for file in Dialer.php Database.php Audit.php Phones.php PbxAmi.php Auth.php ServerInfo.php Carriers.php DialplanOrigins.php; do
   cp "/mnt/zynervoxv2-fuente/app/web/includes/$file" "$stage/includes/$file"
 done
-for file in dialer_report.php dialer_recordings.php dialer_campaign_edit.php dialer_agent.php sidebar.php; do
+for file in dialer_report.php dialer_recordings.php dialer_campaign_edit.php dialer_list_leads.php campaigns.php dialer_agent.php sidebar.php; do
   cp "/mnt/zynervoxv2-fuente/app/web/modules/admin/$file" "$stage/modules/admin/$file"
 done
 cp /mnt/zynervoxv2-fuente/app/web/modules/sup/sidebar.php "$stage/modules/sup/sidebar.php"
@@ -51,9 +51,9 @@ assert get('?role=1&page=agent')[0]==200
 import json
 status, headers, body=get('?role=1&page=agent&poll=1')
 assert status==200 and 'sessions' in json.loads(body)
-def post(values):
+def post(values,page='campaign'):
     import urllib.parse
-    request=urllib.request.Request(base+'?role=9&page=campaign',data=urllib.parse.urlencode(values).encode())
+    request=urllib.request.Request(base+'?role=9&page='+page,data=urllib.parse.urlencode(values).encode())
     try: response=opener.open(request,timeout=30)
     except urllib.error.HTTPError as error: response=error
     return response.code,response.read().decode('utf-8')
@@ -62,6 +62,13 @@ status, body=post({'action':'stop_engine','csrf_token':'private_http_fixture_tok
 assert status==200 and 'Detenido' in body and 'Nuevas llamadas detenidas' in body
 print('PASS: HTTP report render, admin/supervisor/GTR, anonymous and agent rejection, missing campaign and invalid dates.')
 print('PASS: campaign/agent panels, authenticated JSON polling, admin-only engine control and CSRF rejection.')
+assert '>Cargar base</button>' in get('?role=9&page=list')[2]
+assert get('?role=1&page=campaigns')[0]==302
+status,body=post({'delete':'1','campaign_id':'1','csrf_token':'invalid','confirm_delete':'1'},'campaigns')
+assert status==200 and 'Sesión inválida' in body and 'dialer_campaign_edit.php?id=1' in body
+status,body=post({'delete':'1','campaign_id':'1','csrf_token':'private_http_fixture_token'},'campaigns')
+assert status==200 and 'Confirma la eliminación' in body and 'dialer_campaign_edit.php?id=1' in body
+print('PASS: Cargar base label and campaign deletion rejects missing CSRF/confirmation without deleting the campaign.')
 status, headers, body=get('?role=9&view=recordings')
 assert status==200 and '<audio controls' in body and 'Archivo no disponible' in body
 assert get('?role=9&view=recordings&phone=9999')[2].count('<audio controls')==0

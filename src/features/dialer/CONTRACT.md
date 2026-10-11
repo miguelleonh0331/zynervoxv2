@@ -248,3 +248,21 @@ queda bloqueado. Audio por ID con Range único, HEAD, 206/416, no-store y sesió
 liberada antes de streaming; no se admiten rutas proporcionadas por clientes.
 Sin migraciones: columnas existentes. Aprobado cruce puntual core/dialer para
 allowlist exacta, conservando las entradas previamente versionadas.
+
+## 2026-10-11 — Eliminación definitiva de campañas (ARCHITECT_AGENT)
+
+`deleteCampaign(id)` admite historial cerrado. Bajo lock de la campaña, rechaza
+RUNNING y cualquier llamada abierta; borra en una transacción call_log, leads
+de sus listas, listas, disposiciones, asignaciones, intervalos, DNC propias y
+campaña. DNC globales/ajenas intactas: no convertir DNC propias a NULL porque
+eso ampliaría su alcance a todas las campañas. WAV físicos conservados; al
+borrar call_log dejan de ser consultables en la búsqueda web.
+
+La interfaz exige POST+CSRF y confirm_delete=1 con confirmación explícita que
+identifica ID/nombre y datos afectados. No borra campañas al desplegar la mejora.
+Captura interfaces antes de quitar asignaciones; elimina solo membresías de
+la cola principal/personal de esa campaña, publica el dialplan mediante API
+pública con reload explícito y regenera colas. Limpieza PBX posterior al commit:
+si falla, audita CAMPAIGN_DELETE_PBX_PENDING y avisa que la campaña ya fue
+eliminada, sin fingir rollback de BD. SQL fallido revierte todos sus borrados.
+Sin migraciones; dependencias existentes. Aprobado ARCHITECT_AGENT.
