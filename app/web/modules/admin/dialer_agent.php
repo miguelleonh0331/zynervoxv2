@@ -35,6 +35,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $_SESSION['dialer_entered']=true;
                 Dialer::agentLogin($user);
                 $msg=count(array_filter(Dialer::campaignsForAgent($user),static function($c) { return (bool)$c['active']; })) ? 'Conectado a tus campañas asignadas.' : 'No tienes campañas activas asignadas.';
+            } elseif ($action === 'select_campaign') {
+                Dialer::selectManualCampaign($user,$campaignId); $msg='Campaña seleccionada; continuación anterior cancelada.';
             } elseif ($action === 'pause') {
                 $typeId=filter_var($_POST['pause_type_id'] ?? null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
                 if (!$typeId) throw new RuntimeException('Selecciona un tipo de pausa.');
@@ -61,10 +63,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     }
 }
 
-if (($_POST['action'] ?? '')==='bootstrap' && ($_POST['ajax'] ?? '')==='1') {
+if (in_array($_POST['action'] ?? '',['bootstrap','select_campaign'],true) && ($_POST['ajax'] ?? '')==='1') {
     header('Content-Type: application/json; charset=utf-8'); header('Cache-Control: no-store');
     if ($error!=='') http_response_code(503);
-    echo json_encode(['message'=>$msg,'error'=>$error],JSON_THROW_ON_ERROR); exit;
+    echo json_encode(['message'=>$msg,'error'=>$error,'autodial'=>Dialer::agentAutodialState($user)],JSON_THROW_ON_ERROR); exit;
 }
 
 try {
@@ -74,11 +76,12 @@ try {
     $pauseTypes=Dialer::pauseTypes((int)$_SESSION['user_level']===9);
     $pause=Dialer::agentPause($user);
     $lead=Dialer::agentCurrentLead($user);
+    $autodial=Dialer::agentAutodialState($user);
 } catch (Throwable $e) {
     $campaigns = [];
     $pending = null;
     $dispositions = [];
-    $pauseTypes=[]; $pause=null; $lead=null;
+    $pauseTypes=[]; $pause=null; $lead=null; $autodial=[];
     $error = $error ?: $e->getMessage();
 }
 ?>
@@ -199,7 +202,8 @@ try {
             <form method="POST" id="manual-form">
                 <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>"><input type="hidden" name="action" value="manual">
                 <label for="manual-campaign">Campaña para marcar</label>
-                <select id="manual-campaign" name="campaign_id" required><?php foreach ($manualCampaigns as $c): ?><option value="<?php echo (int)$c['campaign_id']; ?>"><?php echo h($c['name']); ?></option><?php endforeach; ?></select>
+                <select id="manual-campaign" name="campaign_id" required><option value="">Selecciona una campaña</option><?php foreach ($manualCampaigns as $c): ?><option value="<?php echo (int)$c['campaign_id']; ?>" <?php echo (int)($autodial['selected_campaign_id'] ?? 0)===(int)$c['campaign_id'] ? 'selected' : ''; ?>><?php echo h($c['name']); ?></option><?php endforeach; ?></select>
+                <p id="autodial-status" class="section-description" role="status"></p>
                 <button type="submit" class="btn-primary">Marcar siguiente lead</button>
             </form>
             <?php endif; ?>
@@ -276,11 +280,45 @@ try {
     const pendingAtRender = <?php echo json_encode($pending['call_id'] ?? null); ?>;
     const connectionStatus=document.getElementById('connection-status');
     fetch('dialer_agent.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({action:'bootstrap',ajax:'1',csrf_token:<?php echo json_encode($_SESSION['dialer_csrf']); ?>})}).then(async response=>{const result=await response.json();connectionStatus.textContent=result.error || result.message;connectionStatus.dataset.error=String(!!result.error);}).catch(()=>{connectionStatus.dataset.error='true';connectionStatus.textContent='No se pudo conectar a las campañas. Recarga para reintentar.';});
+    const manualForm=document.getElementById('manual-form');
+    let selectingCampaign=false;
+    let autodialState=<?php echo json_encode($autodial); ?>;
+    let continuationDeadline=null;
+    function renderAutodial(state) {
+        autodialState=state;
+        if (!manualForm) return;
+        const select=manualForm.elements.campaign_id;
+        if (!selectingCampaign && document.activeElement!==select) select.value=state.selected_campaign_id ?? '';
+        continuationDeadline=state.pending ? Date.now()+Math.max(0,state.seconds_until ?? 0)*1000 : null;
+        updateAutodialText();
+    }
+    function updateAutodialText() {
+        if (!manualForm) return;
+        document.getElementById('autodial-status').textContent=selectingCampaign ? 'Guardando selección…' : continuationDeadline!==null ? 'Siguiente llamada en '+Math.max(0,Math.ceil((continuationDeadline-Date.now())/1000))+' s…' : !autodialState.selected_campaign_id ? 'Selecciona la campaña para trabajar.' : autodialState.enabled ? 'Autodial activado: marca la primera llamada; después continuará al tipificar.'+(autodialState.running ? '' : ' Motor detenido.') : 'Autodial desactivado: marca cada llamada con el botón.';
+    }
+    renderAutodial(autodialState);
+    setInterval(updateAutodialText,250);
+    manualForm?.elements.campaign_id.addEventListener('change',async () => {
+        const select=manualForm.elements.campaign_id;
+        const previous=autodialState.selected_campaign_id ?? '';
+        if (!select.value) { select.value=previous; return; }
+        selectingCampaign=true; select.disabled=true; manualForm.querySelector('button').disabled=true; updateAutodialText();
+        try {
+            const response=await fetch('dialer_agent.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({action:'select_campaign',ajax:'1',csrf_token:manualForm.elements.csrf_token.value,campaign_id:select.value})});
+            const result=await response.json();
+            if (!response.ok || result.error) throw new Error(result.error || 'No se guardó la campaña.');
+            selectingCampaign=false; renderAutodial(result.autodial);
+            connectionStatus.textContent=result.message; connectionStatus.dataset.error='false';
+        } catch (error) {
+            select.value=previous; connectionStatus.textContent=error.message; connectionStatus.dataset.error='true';
+        } finally { selectingCampaign=false; select.disabled=false; manualForm.querySelector('button').disabled=false; updateAutodialText(); }
+    });
     setInterval(async () => {
         try {
             const response = await fetch('dialer_agent.php?poll=1',{cache:'no-store'});
             if (!response.ok) return;
             const state = await response.json();
+            if (!selectingCampaign) renderAutodial(state.autodial);
             const lead=state.lead;
             const hangup=document.getElementById('hangup-form'); hangup.hidden=!lead || !!lead.ended_at;
             hangup.elements.call_id.value=lead?.call_id ?? 0;

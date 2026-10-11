@@ -109,6 +109,30 @@ try {
         echo json_encode(['mode'=>$mode,'call_id'=>$id,'amd'=>$row['amd_result'],'reason'=>$row['termination_reason'],'agent'=>$row['agent_user'],'talk_seconds'=>$row['duration_talk'],'recording_bytes'=>filesize($row['recording_path']),'occupancy_pct'=>$k['occupancy_pct']]),"\n";
     }
     $c=$campaigns[0];
+    // Explicit opt-in on the loopback fixture only; the persistent worker consumes the token.
+    change_settings($c,['manual_autodial_enabled'=>'1']);
+    prepare_number($c,'000001'); Dialer::setEngineState($c,'RUNNING');
+    $source=Dialer::originateNext($c,$agent); check_sip($source!==null,'Autodial first manual attempt failed.');
+    $first=wait_closed($source); $recordings[]=$first['recording_path'];
+    prepare_number($c,'000006');
+    Dialer::setDisposition($source,$agent,'SALE');
+    check_sip(Dialer::agentAutodialState($agent)['pending'],'Autodial disposition did not arm.');
+    $scheduled=time(); $next=null;
+    Dialer::setDisposition($source,$agent,'SALE'); // Duplicate submit cannot rearm.
+    for ($attempt=0;$attempt<80;$attempt++) {
+        $q=$db->prepare('SELECT MAX(call_id) FROM v2_dialer_call_log WHERE campaign_id=? AND call_id>?'); $q->execute([$c,$source]); $value=$q->fetchColumn();
+        if ($value) { $next=(int)$value; break; } usleep(100000);
+    }
+    check_sip($next!==null,'Persistent worker did not continue MANUAL.');
+    Dialer::setEngineState($c,'STOPPED');
+    $row=wait_closed($next);
+    check_sip(strtotime($row['originated_at']) >= $scheduled+2,'Autodial ignored the disposition delay.');
+    check_sip($row['agent_user']===$agent && $row['amd_result']===null && $row['phone_number']==='000006' && $row['termination_reason']==='COMPLETED','Autodial lost MANUAL routing or attribution.');
+    check_sip(is_file($row['recording_path']) && filesize($row['recording_path'])>44,'Autodial missing recording.'); $recordings[]=$row['recording_path'];
+    Dialer::setDisposition($next,$agent,'SALE');
+    check_sip(!Dialer::agentAutodialState($agent)['pending'],'Stopped MANUAL rearmed continuation.');
+    change_settings($c,['manual_autodial_enabled'=>'0']);
+    echo json_encode(['manual_autodial'=>true,'source_call'=>$source,'next_call'=>$next,'agent'=>$row['agent_user'],'amd'=>$row['amd_result'],'recording_bytes'=>filesize($row['recording_path'])]),"\n";
     change_settings($c,['amd_action_machine'=>'MESSAGE','amd_message'=>'dialer-lab/message']);
     foreach (['000002'=>'COMPLETED','000003'=>'NOANSWER','000005'=>'COMPLETED','000006'=>'COMPLETED','000007'=>'BUSY'] as $number=>$reason) {
         prepare_number($c,$number); Dialer::setEngineState($c,'RUNNING'); $id=Dialer::originateNext($c,$agent); check_sip($id!==null,'Scenario could not originate.'); Dialer::setEngineState($c,'STOPPED');

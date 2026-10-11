@@ -27,7 +27,7 @@ try {
         foreach ($references[1] as $dependency) $clone($dependency);
         $db->exec($ddl); $copied[$table]=true;
     };
-    foreach (['v2_dialer_campaigns','v2_dialer_lists','v2_dialer_leads','v2_dialer_call_log','v2_dialer_dispositions','v2_dialer_dnc','v2_dialer_agent_campaigns','v2_dialer_agent_intervals','v2_phones','v2_access_log'] as $table) $clone($table);
+    foreach (['v2_dialer_campaigns','v2_dialer_lists','v2_dialer_leads','v2_dialer_call_log','v2_dialer_dispositions','v2_dialer_dnc','v2_dialer_agent_campaigns','v2_dialer_agent_intervals','v2_phones','v2_access_log','v2_dialer_agent_status'] as $table) $clone($table);
     // Bind only this disposable schema. No persistent operational data is copied.
     $instance=(new ReflectionClass(Database::class))->newInstanceWithoutConstructor();
     $conn=new ReflectionProperty(Database::class,'conn'); $conn->setAccessible(true); $conn->setValue($instance,$db);

@@ -1021,3 +1021,22 @@ Evidencia: registros Asterisk manual_ready/manual_closed de los cuatro IDs.
 Respaldo previo de filas y PHP obligatorio; sin seleccionar tipificaciones por usuario.
 Otros historiales sin evidencia permanecen intactos. La UI muestra número y
 resultado del intento y solo pospone recarga si se está editando su disposición.
+
+## 2026-10-11 — Autodial MANUAL opt-in por campaña
+
+Usuario autorizó implementación con "procede" tras precisar que la campaña
+seleccionada por el agente determina la continuación. ARCHITECT_AGENT aprobó
+migración016 y API/UI/worker del módulo dialer. Flag OFF por defecto; primera
+llamada explícita, continuación única a 3 segundos de primera tipificación de
+origen MANUAL probado por disposition_agent_user. Selección durable por agente,
+sin activación al login o resume. Cambio/pausa/logout/STOP/deshabilitación/retiro
+cancelan. Solicitud sin lead/anexo/capacidad o atrasada >30 segundos se consume
+sin quedar latente. Reserva y consumo son atómicos; error AMI incierto conserva
+cupo para conciliación. Sin dependencia nueva ni cambios a modos automáticos.
+
+Locks campaña→estado de agente→llamada→lead; chequeo global de trabajo es lectura
+normal posterior al lock de estado. Revisión arquitectónica descartó FOR UPDATE
+en predicado global OR+COALESCE para evitar bloquear llamadas de agentes ajenos.
+Fuente se trabaja en E:\servidores\zynerdesk\proyectos\zynervoxv2; runtime mirmidon
+por zynertools con respaldo previo y columnas aditivas. Flag de campaña55 queda OFF;
+únicas llamadas de verificación en fixtures loopback autorizadas.

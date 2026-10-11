@@ -2312,3 +2312,40 @@ MANUAL RUNNING AMD0, cero llamadas abiertas y cero fixtures propios.
 Rollback: revert del commit y restaurar dos PHP/reiniciar worker sin llamadas;
 conservar columna/historial aditivos y tipificaciones nuevas, sin restauración
 masiva de filas que pueda sobrescribir decisiones posteriores del usuario.
+
+## 2026-10-11 — Autodial MANUAL después de tipificar, por campaña seleccionada
+
+Implementado/desplegado con autorización "procede" y revisión ARCHITECT_AGENT.
+Migración016 opt-in OFF y estado seleccionado/token/due por agente. Configurar
+campaña muestra opción; panel persiste selector con POST+CSRF, indicador y cuenta
+atrás. Primera llamada manual; primera tipificación de origen MANUAL programa
+siguiente a3s. Worker revalida selección/asignación/sesión/pausa/cupos y consume
+solicitud al reservar lead. Duplicados/correcciones nunca rearman. Cambiar selección,
+pausar/salir, STOP/deactivar/deshabilitar/cambiar modo/retirar asignación cancela.
+Sin lead/anexo/capacidad y solicitudes atrasadas >30s se cancelan, sin llamada
+latente. MANUAL mantiene anexo primero, early media y bypass AMD. Otros modos
+conservan lógica. Datos y cambios de bot_ivr fuera de alcance.
+
+Validación: PHP lint; pruebas aisladas manual-autodial, engine, routing, deletion,
+agent-controls unit+HTTP (selector, CSRF y asignación); revisión final sin bloqueo.
+Fixtures de tablas temporales/esquema desechable, PBX falso y runtime de prueba.
+SIP/RTP loopback real: worker continuó386→387 tras disposición, agente79996,
+AMD NULL, grabación77484bytes. MANUAL/PROGRESSIVE/ADAPTIVE, ringback, early media,
+noanswer/busy/hangup, Colgar y MACHINE/MESSAGE también pasaron; fixtures retiradas.
+Evidencia: /var/backups/zynervoxv2/dialer-sip-lab-20261011-200021.
+
+Despliegue: respaldo PHP/config con complete-insert en
+/var/backups/zynervoxv2/manual-autodial-20261011-145147; columnas aditivas y tres PHP
+copiados local-first desde fuente SMB, propietario/permisos preservados; reinicio
+worker tras confirmar cero llamadas/canales. Verificación final fuente=runtime,
+worker active sin errores, SIP5000 OK200ms, cero llamadas/tokens/fixtures; campaña55
+MANUAL RUNNING manual_autodial_enabled0 AMD0. Autodial real se habilita en Configurar.
+Rollback: revertir PHP y reiniciar worker sin llamadas; mantener columnas aditivas,
+limpiar tokens antes de revertir; no restaurar masivamente decisiones nuevas.
+
+Nueva petición pendiente de "procede" según instrucción del usuario: reporte por
+lista cargada y reconciliación de cifras. Análisis de carsa0001: lista50 "00001",
+1000leads,10intentos,2contestadas/completadas,7tipificadas y3sin código. Contactos
+actuales2 usan COMPLETED+is_contact; total tipificaciones no aparece. Propuesta:
+selector Todas/lista aplicado a totales/desgloses, tipificadas totales separadas
+de contactos, resultados PBX y disposiciones. Sin cambios al reporte aún.

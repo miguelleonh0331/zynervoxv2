@@ -48,6 +48,9 @@ status,body=request('?role=8'); assert status==200 and 'class="sidebar"' in body
 assert 'class="agent-tabs"' not in body and body.count('action="../../logout.php"')==1
 status,body=request('?role=1',{'action':'bootstrap','ajax':'1','csrf_token':'invalid'}); assert status==503 and json.loads(body)['error']
 status,body=request('?role=1',{'action':'bootstrap','ajax':'1','csrf_token':'controls_fixture_token'}); assert status==200 and not json.loads(body)['error']
+status,body=request('?role=1',{'action':'select_campaign','ajax':'1','campaign_id':'2','csrf_token':'invalid'}); assert status==503 and json.loads(body)['error']
+status,body=request('?role=1',{'action':'select_campaign','ajax':'1','campaign_id':'2','csrf_token':'controls_fixture_token'}); selected=json.loads(body); assert status==200 and not selected['error'] and int(selected['autodial']['selected_campaign_id'])==2 and selected['autodial']['enabled'] and not selected['autodial']['pending']
+status,body=request('?role=1',{'action':'select_campaign','ajax':'1','campaign_id':'3','csrf_token':'controls_fixture_token'}); assert status==503 and json.loads(body)['error']
 status,body=request('?role=1',{'action':'save_pause_type','code':'TEST','label':'Unauthorized','active':'1','csrf_token':'controls_fixture_token'}); assert 'Solo el administrador' in body
 status,body=request('?role=9',{'action':'save_pause_type','code':'TEST','label':'<script>test</script>','active':'1','csrf_token':'controls_fixture_token'}); assert 'Tipo de pausa guardado' in body and '&lt;script&gt;test&lt;/script&gt;' in body
 status,body=request('?role=1',{'action':'hangup','call_id':'999999','csrf_token':'controls_fixture_token'}); assert 'No tienes esa llamada activa' in body

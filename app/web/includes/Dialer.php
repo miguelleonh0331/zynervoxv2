@@ -28,6 +28,7 @@ class Dialer {
         'amd_message'       => ['label' => 'Audio para contestador (ruta relativa en sounds)', 'type' => 'text', 'length' => 255],
         'caller_id_number'  => ['label' => 'Caller ID', 'type' => 'text', 'length' => 20, 'digits' => true],
         'dial_method'       => ['label' => 'Método de marcado', 'type' => 'select', 'options' => ['MANUAL', 'PROGRESSIVE', 'ADAPTIVE', 'RATIO']],
+        'manual_autodial_enabled' => ['label' => 'Autodial MANUAL después de tipificar', 'type' => 'select', 'options' => ['0', '1']],
         'dial_level'        => ['label' => 'Nivel de marcado', 'type' => 'decimal', 'min' => 0, 'max' => 20],
         'level_count_mode'  => ['label' => 'Contar agentes como', 'type' => 'select', 'options' => ['WAITING', 'NON_PAUSED', 'LOGGED_IN']],
         'adaptive_target_abandon_pct' => ['label' => '% abandono objetivo', 'type' => 'decimal', 'min' => 0, 'max' => 100],
@@ -183,7 +184,7 @@ class Dialer {
         $values = ['name' => $name, 'active' => $active];
         if (!$active) $values['engine_state'] = 'STOPPED';
         foreach (self::CAMPAIGN_FIELDS as $key => $field) {
-            if (in_array($key,['dial_prefix','outbound_prefix'],true) && !array_key_exists($key,$input)) { $values[$key]=$current[$key]; continue; }
+            if (in_array($key,['dial_prefix','outbound_prefix','manual_autodial_enabled'],true) && !array_key_exists($key,$input)) { $values[$key]=$current[$key]; continue; }
             $values[$key] = self::fieldValue($key, $input[$key] ?? '');
         }
         foreach (['drop' => 'drop_action', 'amd' => 'amd_action_machine'] as $kind => $action) {
@@ -218,6 +219,7 @@ class Dialer {
                 $bindings[':dial_prefix']=$current['dial_prefix']; $bindings[':outbound_prefix']='';
             }
             $db->prepare('UPDATE v2_dialer_campaigns SET ' . implode(',', $assignments) . ' WHERE campaign_id=:id')->execute($bindings);
+            if (!$active || $values['dial_method']!=='MANUAL' || !$values['manual_autodial_enabled']) self::cancelCampaignAutodial($id);
             $db->commit();
         } catch (\Throwable $error) { if ($db->inTransaction()) $db->rollBack(); throw $error; }
         self::audit('CAMPAIGN_UPDATE', (string) $id);
@@ -384,7 +386,12 @@ class Dialer {
 
     public static function toggleActive(int $id, string $currentActive): void {
         $new = $currentActive === '1' ? 0 : 1;
-        self::database()->prepare("UPDATE v2_dialer_campaigns SET active=:a,engine_state='STOPPED' WHERE campaign_id=:id")->execute(['a' => $new, 'id' => $id]);
+        $db=self::database(); $db->beginTransaction();
+        try {
+            $q=$db->prepare('SELECT campaign_id FROM v2_dialer_campaigns WHERE campaign_id=? FOR UPDATE'); $q->execute([$id]);
+            $db->prepare("UPDATE v2_dialer_campaigns SET active=:a,engine_state='STOPPED' WHERE campaign_id=:id")->execute(['a'=>$new,'id'=>$id]);
+            self::cancelCampaignAutodial($id); $db->commit();
+        } catch (\Throwable $error) { if ($db->inTransaction()) $db->rollBack(); throw $error; }
         self::audit('CAMPAIGN_' . ($new ? 'ACTIVATE' : 'DEACTIVATE'), (string) $id);
         self::syncDialplan($id);
         self::syncQueues();
@@ -405,6 +412,7 @@ class Dialer {
                 if (!in_array($phone['login'],$agents,true) || !in_array($phone['protocol'],['SIP','PJSIP'],true) || !preg_match('/^[A-Za-z0-9_-]{1,60}$/D',$phone['extension'])) continue;
                 foreach ([$campaign['queue_name'],self::personalQueue($id,$phone['login'])] as $queue) $members[]=['Queue'=>$queue,'Interface'=>$phone['protocol'].'/'.$phone['extension']];
             }
+            self::cancelCampaignAutodial($id,true);
             $db->prepare('DELETE FROM v2_dialer_call_log WHERE campaign_id=:id')->execute(['id'=>$id]);
             $db->prepare('DELETE d FROM v2_dialer_leads d JOIN v2_dialer_lists l ON l.list_id=d.list_id WHERE l.campaign_id=:id')->execute(['id'=>$id]);
             foreach (['v2_dialer_lists','v2_dialer_dispositions','v2_dialer_agent_campaigns','v2_dialer_agent_intervals','v2_dialer_dnc','v2_dialer_campaigns'] as $table) {
@@ -554,7 +562,7 @@ class Dialer {
     // null si no hay leads elegibles. Un solo proceso a la vez por
     // campaign_id (el CLI que llama a esto se invoca manualmente por ahora,
     // sin cron ni servicio).
-    public static function claimLead(int $campaignId, string $dialPrefix, ?int $capacity = null, ?string $reservedAgent = null, bool $requireRunning = false, ?array $expectedCampaign = null): ?array {
+    public static function claimLead(int $campaignId, string $dialPrefix, ?int $capacity = null, ?string $reservedAgent = null, bool $requireRunning = false, ?array $expectedCampaign = null, ?int $autodialSource = null): ?array {
         $db = self::database();
         $db->beginTransaction();
         try {
@@ -569,12 +577,16 @@ class Dialer {
                     if (($campaign[$field] ?? null) !== ($expectedCampaign[$field] ?? null)) { $db->commit(); return null; }
                 }
             }
-            if ($reservedAgent !== null && self::agentHasWork($reservedAgent)) { $db->commit(); return null; }
             if ($requireRunning && $reservedAgent!==null) {
                 $db->prepare('INSERT IGNORE INTO v2_dialer_agent_status (agent_user,logged_in) VALUES (?,1)')->execute([$reservedAgent]);
-                $state=$db->prepare('SELECT logged_in FROM v2_dialer_agent_status WHERE agent_user=? FOR UPDATE'); $state->execute([$reservedAgent]);
-                if (!(int)$state->fetchColumn() || self::agentPause($reservedAgent)!==null) { $db->commit(); return null; }
+                $state=$db->prepare('SELECT *,TIMESTAMPDIFF(SECOND,autodial_due_at,NOW()) due_age FROM v2_dialer_agent_status WHERE agent_user=? FOR UPDATE'); $state->execute([$reservedAgent]); $status=$state->fetch(PDO::FETCH_ASSOC);
+                if (!(int)$status['logged_in'] || self::agentPause($reservedAgent)!==null) { $db->commit(); return null; }
             }
+            if ($reservedAgent!==null && self::agentHasWork($reservedAgent)) { $db->commit(); return null; }
+            if ($requireRunning && $expectedCampaign!==null && $reservedAgent!==null && $campaign['dial_method']==='MANUAL') {
+                if (!in_array($reservedAgent,self::agentsForCampaign($campaignId),true) || (int)$status['selected_campaign_id']!==$campaignId) { $db->commit(); return null; }
+            }
+            if ($autodialSource!==null && ($reservedAgent===null || !$requireRunning || $campaign['dial_method']!=='MANUAL' || !$campaign['manual_autodial_enabled'] || (int)$status['selected_campaign_id']!==$campaignId || (int)$status['autodial_source_call_id']!==$autodialSource || $status['due_age']===null || (int)$status['due_age']<0 || (int)$status['due_age']>30)) { $db->commit(); return null; }
             $cap = min((int) $campaign['max_concurrent_calls'], $capacity ?? (int) $campaign['max_concurrent_calls']);
             if (self::inFlightCount($campaignId) >= $cap) { $db->commit(); return null; }
             $order = ['OLDEST_FIRST' => 'd.created_at,d.lead_id', 'RANK_ASC' => 'd.lead_id', 'RANDOM' => 'RAND()', 'LAST_CALL_ASC' => 'd.last_call_time,d.lead_id'][$campaign['lead_order']] ?? 'd.lead_id';
@@ -602,6 +614,7 @@ class Dialer {
             $db->prepare('INSERT INTO v2_dialer_call_log (campaign_id,lead_id,phone_number,originated_at,dial_level_at_origin,reserved_agent_user,agent_slot,disposition_agent_user) VALUES (:c,:l,:p,NOW(),:dl,:agent,:slot,:disposition_agent)')
                 ->execute(['c' => $campaignId, 'l' => $lead['lead_id'], 'p' => $lead['phone_number'], 'dl' => $level, 'agent' => $reservedAgent, 'slot' => $reservedAgent, 'disposition_agent' => $campaign['dial_method']==='MANUAL' ? $reservedAgent : null]);
             $callId = (int) $db->lastInsertId();
+            if ($reservedAgent!==null) $db->prepare('UPDATE v2_dialer_agent_status SET autodial_source_call_id=NULL,autodial_due_at=NULL WHERE agent_user=?')->execute([$reservedAgent]);
             $db->prepare('UPDATE v2_dialer_call_log SET channel_uniqueid=:u WHERE call_id=:id')->execute(['u' => 'zv2dialer-' . $callId, 'id' => $callId]);
             $db->commit();
             return ['call_id' => $callId, 'lead_id' => (int) $lead['lead_id'], 'phone_number' => $lead['phone_number']];
@@ -678,12 +691,13 @@ class Dialer {
         return self::originateFields($campaign,$lead,['active'=>'Y','protocol'=>$route['protocol'],'endpoint'=>$route['endpoint']]);
     }
 
-    public static function originateNext(int $campaignId, ?string $agentUser = null): ?int {
+    public static function originateNext(int $campaignId, ?string $agentUser = null, ?int $autodialSource = null): ?int {
         $campaign = self::campaign($campaignId);
         if (!$campaign['active']) return null;
         if ($campaign['engine_state'] !== 'RUNNING') return null;
         if ($agentUser !== null && !in_array($agentUser, self::agentsForCampaign($campaignId), true)) throw new \RuntimeException('Campaña no asignada a este agente.');
         if ($agentUser !== null && $campaign['dial_method'] !== 'MANUAL') throw new \RuntimeException('La marcación individual requiere modo MANUAL.');
+        if ($agentUser !== null && $autodialSource===null) self::selectManualCampaign($agentUser,$campaignId);
         if ($agentUser !== null) self::reconcileUnanswered($campaignId);
         if ($agentUser === null && $campaign['dial_method'] === 'MANUAL') return null;
         // Validar antes de reservar, sin registrar ni mostrar credenciales.
@@ -703,7 +717,7 @@ class Dialer {
             if ($reservedAgent === null) return null;
         }
         $capacity = $reservedAgent !== null ? (int) $campaign['max_concurrent_calls'] : (int) floor($count * $level);
-        $lead = self::claimLead($campaignId, $campaign['dial_prefix'], $capacity, $reservedAgent, true, $campaign);
+        $lead = self::claimLead($campaignId, $campaign['dial_prefix'], $capacity, $reservedAgent, true, $campaign, $autodialSource);
         if ($lead === null) return null;
         try {
             if ($reservedAgent !== null) self::suspendReservedAgent($reservedAgent);
@@ -1205,9 +1219,41 @@ class Dialer {
                 self::routedFields($campaign, ['call_id'=>1,'phone_number'=>'0']);
             }
             $db->prepare('UPDATE v2_dialer_campaigns SET engine_state=:s,worker_error=NULL WHERE campaign_id=:c')->execute(['s'=>$state,'c'=>$campaignId]);
+            if ($state==='STOPPED') self::cancelCampaignAutodial($campaignId);
             $db->commit();
         } catch (\Throwable $error) { if ($db->inTransaction()) $db->rollBack(); throw $error; }
         self::audit('ENGINE_'.$state, (string) $campaignId);
+    }
+
+    private static function cancelCampaignAutodial(int $campaignId, bool $clearSelection=false): void {
+        self::database()->prepare('UPDATE v2_dialer_agent_status SET autodial_source_call_id=NULL,autodial_due_at=NULL'.($clearSelection ? ',selected_campaign_id=NULL' : '').' WHERE selected_campaign_id=?')->execute([$campaignId]);
+    }
+
+    public static function selectManualCampaign(string $user, int $campaignId): void {
+        $db=self::database(); $db->beginTransaction();
+        try {
+            $q=$db->prepare('SELECT * FROM v2_dialer_campaigns WHERE campaign_id=? FOR UPDATE'); $q->execute([$campaignId]); $campaign=$q->fetch(PDO::FETCH_ASSOC);
+            if (!$campaign || !$campaign['active'] || $campaign['dial_method']!=='MANUAL' || !in_array($user,self::agentsForCampaign($campaignId),true)) throw new \RuntimeException('Selecciona una campaña MANUAL activa asignada.');
+            $db->prepare('INSERT IGNORE INTO v2_dialer_agent_status (agent_user,logged_in) VALUES (?,0)')->execute([$user]);
+            $db->prepare('UPDATE v2_dialer_agent_status SET selected_campaign_id=?,autodial_source_call_id=NULL,autodial_due_at=NULL WHERE agent_user=?')->execute([$campaignId,$user]);
+            $db->commit();
+        } catch (\Throwable $error) { if ($db->inTransaction()) $db->rollBack(); throw $error; }
+    }
+
+    public static function agentAutodialState(string $user): array {
+        $q=self::database()->prepare("SELECT s.selected_campaign_id,s.autodial_source_call_id,GREATEST(0,TIMESTAMPDIFF(SECOND,NOW(),s.autodial_due_at)) seconds_until,c.manual_autodial_enabled,c.active,c.engine_state,c.dial_method FROM v2_dialer_agent_status s LEFT JOIN v2_dialer_campaigns c ON c.campaign_id=s.selected_campaign_id WHERE s.agent_user=?"); $q->execute([$user]); $row=$q->fetch(PDO::FETCH_ASSOC) ?: [];
+        return ['selected_campaign_id'=>$row['selected_campaign_id'] ?? null,'enabled'=>!empty($row['manual_autodial_enabled']) && !empty($row['active']) && ($row['dial_method'] ?? '')==='MANUAL','pending'=>!empty($row['autodial_source_call_id']),'seconds_until'=>isset($row['seconds_until']) ? (int)$row['seconds_until'] : null,'running'=>($row['engine_state'] ?? '')==='RUNNING'];
+    }
+
+    public static function processManualAutodial(int $campaignId): void {
+        $q=self::database()->prepare('SELECT agent_user,autodial_source_call_id FROM v2_dialer_agent_status WHERE selected_campaign_id=? AND autodial_source_call_id IS NOT NULL AND autodial_due_at<=NOW()'); $q->execute([$campaignId]);
+        foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            try { self::originateNext($campaignId,$row['agent_user'],(int)$row['autodial_source_call_id']); }
+            finally {
+                // One-shot request: unavailable lead/device/capacity must not dial later unexpectedly.
+                self::database()->prepare('UPDATE v2_dialer_agent_status SET autodial_source_call_id=NULL,autodial_due_at=NULL WHERE agent_user=? AND selected_campaign_id=? AND autodial_source_call_id=?')->execute([$row['agent_user'],$campaignId,$row['autodial_source_call_id']]);
+            }
+        }
     }
 
     public static function workerTick(): void {
@@ -1220,6 +1266,7 @@ class Dialer {
                     // One cycle can fill several free slots; every claim rechecks DB state/capacity.
                     for ($i=0; $i<min(25,(int)$campaign['max_concurrent_calls']); $i++) if (self::originateNext($id) === null) break;
                 }
+                if ($campaign['dial_method']==='MANUAL') self::processManualAutodial($id);
                 self::database()->prepare('UPDATE v2_dialer_campaigns SET worker_seen_at=NOW(),worker_error=NULL WHERE campaign_id=:c')->execute(['c'=>$id]);
             } catch (\Throwable $error) {
                 $message = mb_substr($error->getMessage(),0,255,'UTF-8');
@@ -1352,7 +1399,7 @@ class Dialer {
     public static function agentPanelState(string $user): array {
         $stmt=self::database()->prepare('SELECT campaign_id,state,last_seen_at FROM v2_dialer_agent_intervals WHERE agent_user=:u AND open_slot IS NOT NULL');
         $stmt->execute(['u'=>$user]);
-        return ['pending'=>self::pendingDispositionForAgent($user),'sessions'=>$stmt->fetchAll(PDO::FETCH_ASSOC),'lead'=>self::agentCurrentLead($user),'pause'=>self::agentPause($user)];
+        return ['pending'=>self::pendingDispositionForAgent($user),'sessions'=>$stmt->fetchAll(PDO::FETCH_ASSOC),'lead'=>self::agentCurrentLead($user),'pause'=>self::agentPause($user),'autodial'=>self::agentAutodialState($user)];
     }
 
     public static function pauseTypes(bool $includeInactive = false): array {
@@ -1389,7 +1436,7 @@ class Dialer {
     }
 
     public static function agentLogout(string $user): void {
-        self::database()->prepare('INSERT INTO v2_dialer_agent_status (agent_user,logged_in) VALUES (?,0) ON DUPLICATE KEY UPDATE logged_in=0,updated_at=NOW()')->execute([$user]);
+        self::database()->prepare('INSERT INTO v2_dialer_agent_status (agent_user,logged_in) VALUES (?,0) ON DUPLICATE KEY UPDATE logged_in=0,autodial_source_call_id=NULL,autodial_due_at=NULL,updated_at=NOW()')->execute([$user]);
         self::database()->prepare('UPDATE v2_dialer_agent_pauses SET ended_at=NOW(),open_slot=NULL WHERE open_slot=?')->execute([$user]);
         $errors=[];
         foreach (self::campaignsForAgent($user) as $campaign) {
@@ -1410,6 +1457,7 @@ class Dialer {
                 $q=$db->prepare('SELECT pause_type_id,label FROM v2_dialer_pause_types WHERE pause_type_id=? AND active=1'); $q->execute([$typeId]); $type=$q->fetch(PDO::FETCH_ASSOC);
                 if (!$type) throw new \RuntimeException('Selecciona un tipo de pausa activo.');
             } elseif (self::pendingDispositionForAgent($user)!==null) throw new \RuntimeException('Tipifica las llamadas pendientes antes de reanudar.');
+            if ($typeId!==null) $db->prepare('UPDATE v2_dialer_agent_status SET autodial_source_call_id=NULL,autodial_due_at=NULL WHERE agent_user=?')->execute([$user]);
             $old=self::agentPause($user);
             if (!$old || (int)$old['pause_type_id']!==$typeId) {
                 $db->prepare('UPDATE v2_dialer_agent_pauses SET ended_at=NOW(),open_slot=NULL WHERE open_slot=?')->execute([$user]);
@@ -1597,27 +1645,38 @@ class Dialer {
     }
 
     public static function setDisposition(int $callId, string $user, string $code): void {
-        $stmt = self::database()->prepare('SELECT campaign_id,agent_user,disposition_agent_user,ended_at,lead_id FROM v2_dialer_call_log WHERE call_id=:id');
+        $stmt = self::database()->prepare('SELECT campaign_id,agent_user,disposition_agent_user,ended_at,lead_id,disposition_code FROM v2_dialer_call_log WHERE call_id=:id');
         $stmt->execute(['id' => $callId]);
         $call = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$call || ($call['agent_user'] ?? $call['disposition_agent_user']) !== $user) throw new \RuntimeException('Llamada inexistente o de otro agente.');
-        if ($call['ended_at'] === null) throw new \RuntimeException('La llamada todavía no ha terminado.');
-        $valid = self::database()->prepare('SELECT retryable,retry_delay_minutes FROM v2_dialer_dispositions WHERE campaign_id=:c AND code=:code');
-        $valid->execute(['c' => $call['campaign_id'], 'code' => $code]);
-        $disposition=$valid->fetch(PDO::FETCH_ASSOC);
-        if (!$disposition) throw new \RuntimeException('Disposición inválida para esta campaña.');
-        $observed=self::database()->prepare("SELECT SUM(GREATEST(0,TIMESTAMPDIFF(SECOND,GREATEST(started_at,:closed),LEAST(COALESCE(ended_at,LEAST(NOW(),last_seen_at+INTERVAL 5 SECOND)),NOW())))) FROM v2_dialer_agent_intervals WHERE campaign_id=:c AND agent_user=:u AND state='WRAPUP' AND COALESCE(ended_at,NOW())>=:closed2");
-        $observed->execute(['closed'=>$call['ended_at'],'closed2'=>$call['ended_at'],'c'=>$call['campaign_id'],'u'=>$user]);
-        $wrapup=$observed->fetchColumn();
-        // A failed MANUAL attempt needs a disposition, not invented conversational wrapup.
-        if ($call['agent_user']===null && $call['disposition_agent_user']!==null) $wrapup=null;
-        self::database()->prepare('UPDATE v2_dialer_call_log SET disposition_code=:code,
-            duration_wrapup=COALESCE(duration_wrapup,:wrapup),
-            ended_at=COALESCE(ended_at,NOW()) WHERE call_id=:id')
-            ->execute(['code' => $code, 'id' => $callId,'wrapup'=>$wrapup===false || $wrapup===null ? null : (int)$wrapup]);
-        // A correction to an old call must never recycle a newer active attempt.
-        self::database()->prepare("UPDATE v2_dialer_leads SET status=:status,next_eligible_at=NOW()+INTERVAL :delay MINUTE WHERE lead_id=:lead AND NOT EXISTS (SELECT 1 FROM v2_dialer_call_log WHERE lead_id=:lead2 AND call_id>:call)")
-            ->execute(['status'=>$disposition['retryable'] ? 'NEW' : 'CONTACTED','delay'=>(int)$disposition['retry_delay_minutes'],'lead'=>$call['lead_id'],'lead2'=>$call['lead_id'],'call'=>$callId]);
+        if (!$call) throw new \RuntimeException('Llamada inexistente.');
+        $db=self::database(); $db->beginTransaction();
+        try {
+            $q=$db->prepare('SELECT * FROM v2_dialer_campaigns WHERE campaign_id=? FOR UPDATE'); $q->execute([$call['campaign_id']]); $campaign=$q->fetch(PDO::FETCH_ASSOC);
+            $q=$db->prepare('SELECT * FROM v2_dialer_agent_status WHERE agent_user=? FOR UPDATE'); $q->execute([$user]); $status=$q->fetch(PDO::FETCH_ASSOC);
+            $q=$db->prepare('SELECT * FROM v2_dialer_call_log WHERE call_id=? FOR UPDATE'); $q->execute([$callId]); $call=$q->fetch(PDO::FETCH_ASSOC);
+            if (!$call || ($call['agent_user'] ?? $call['disposition_agent_user']) !== $user) throw new \RuntimeException('Llamada inexistente o de otro agente.');
+            if ($call['ended_at'] === null) throw new \RuntimeException('La llamada todavía no ha terminado.');
+            $valid = self::database()->prepare('SELECT retryable,retry_delay_minutes FROM v2_dialer_dispositions WHERE campaign_id=:c AND code=:code');
+            $valid->execute(['c' => $call['campaign_id'], 'code' => $code]);
+            $disposition=$valid->fetch(PDO::FETCH_ASSOC);
+            if (!$disposition) throw new \RuntimeException('Disposición inválida para esta campaña.');
+            $observed=self::database()->prepare("SELECT SUM(GREATEST(0,TIMESTAMPDIFF(SECOND,GREATEST(started_at,:closed),LEAST(COALESCE(ended_at,LEAST(NOW(),last_seen_at+INTERVAL 5 SECOND)),NOW())))) FROM v2_dialer_agent_intervals WHERE campaign_id=:c AND agent_user=:u AND state='WRAPUP' AND COALESCE(ended_at,NOW())>=:closed2");
+            $observed->execute(['closed'=>$call['ended_at'],'closed2'=>$call['ended_at'],'c'=>$call['campaign_id'],'u'=>$user]);
+            $wrapup=$observed->fetchColumn();
+            // A failed MANUAL attempt needs a disposition, not invented conversational wrapup.
+            if ($call['agent_user']===null && $call['disposition_agent_user']!==null) $wrapup=null;
+            self::database()->prepare('UPDATE v2_dialer_call_log SET disposition_code=:code,
+                duration_wrapup=COALESCE(duration_wrapup,:wrapup),
+                ended_at=COALESCE(ended_at,NOW()) WHERE call_id=:id')
+                ->execute(['code' => $code, 'id' => $callId,'wrapup'=>$wrapup===false || $wrapup===null ? null : (int)$wrapup]);
+            // A correction to an old call must never recycle a newer active attempt.
+            self::database()->prepare("UPDATE v2_dialer_leads SET status=:status,next_eligible_at=NOW()+INTERVAL :delay MINUTE WHERE lead_id=:lead AND NOT EXISTS (SELECT 1 FROM v2_dialer_call_log WHERE lead_id=:lead2 AND call_id>:call)")
+                ->execute(['status'=>$disposition['retryable'] ? 'NEW' : 'CONTACTED','delay'=>(int)$disposition['retry_delay_minutes'],'lead'=>$call['lead_id'],'lead2'=>$call['lead_id'],'call'=>$callId]);
+            if ($call['disposition_code']===null && $call['disposition_agent_user']===$user && $campaign && $campaign['active'] && $campaign['engine_state']==='RUNNING' && $campaign['dial_method']==='MANUAL' && $campaign['manual_autodial_enabled'] && $status && $status['logged_in'] && (int)$status['selected_campaign_id']===(int)$campaign['campaign_id'] && self::agentPause($user)===null && !self::agentHasWork($user) && in_array($user,self::agentsForCampaign((int)$campaign['campaign_id']),true)) {
+                $db->prepare('UPDATE v2_dialer_agent_status SET autodial_source_call_id=?,autodial_due_at=NOW()+INTERVAL 3 SECOND WHERE agent_user=?')->execute([$callId,$user]);
+            }
+            $db->commit();
+        } catch (\Throwable $error) { if ($db->inTransaction()) $db->rollBack(); throw $error; }
         self::audit('DISPOSITION_SET', $callId . ':' . $code);
         if (self::pendingDispositionForAgent($user) === null) {
             foreach (self::campaignsForAgent($user) as $campaign) {
@@ -1639,6 +1698,8 @@ class Dialer {
         }
         $db->beginTransaction();
         try {
+            $q=$db->prepare('SELECT campaign_id FROM v2_dialer_campaigns WHERE campaign_id=? FOR UPDATE'); $q->execute([$campaignId]);
+            foreach (array_diff($previous,$agentUsers) as $removed) $db->prepare('UPDATE v2_dialer_agent_status SET selected_campaign_id=NULL,autodial_source_call_id=NULL,autodial_due_at=NULL WHERE agent_user=? AND selected_campaign_id=?')->execute([$removed,$campaignId]);
             $db->prepare('DELETE FROM v2_dialer_agent_campaigns WHERE campaign_id=:c')->execute(['c' => $campaignId]);
             $stmt = $db->prepare('INSERT INTO v2_dialer_agent_campaigns (agent_user,campaign_id) VALUES (:u,:c)');
             foreach ($agentUsers as $user) {

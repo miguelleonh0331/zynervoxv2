@@ -18,11 +18,15 @@ tablas `v2_dialer_*`. Contrato: [CONTRACT.md](CONTRACT.md).
    WhatsApp aparece como pestaña deshabilitada hasta habilitar acceso.
    Cerrar sesión está en el encabezado. GTR/supervisor/admin conservan su menú.
    Admin9 crea/edita/desactiva motivos en "Tipos de pausa" del mismo panel.
-5. Iniciar motor desde Configurar. En MANUAL, el agente pulsa siguiente lead;
+5. Iniciar motor desde Configurar. En MANUAL, el agente elige campaña y pulsa siguiente lead;
    los otros modos los ejecuta `zynervox-dialer.service`.
    MANUAL llama primero al softphone: contestarlo para marcar al cliente y
    escuchar timbrado y anuncios previos a respuesta enviados por la troncal.
    MANUAL no utiliza AMD; la grabación empieza al responder el cliente.
+   Activar "Autodial MANUAL después de tipificar" en Configurar → Estrategia
+   permite continuar a los 3 segundos de guardar tipificación en la campaña
+   seleccionada. OFF por defecto. Cambiar campaña, pausar, salir o detener cancela
+   esa continuación. Sin lead/anexo/capacidad se detiene y se retoma con el botón.
 6. En MANUAL, tipificar también intentos cortados, sin respuesta o fallidos antes
    de marcar nuevamente. El panel conserva el cliente y el resultado del intento.
    Al terminar conversación, tipificar para salir de wrapup. Pausa manual se
@@ -135,3 +139,6 @@ Agentes asignados. El parámetro tab permite abrir una sección directamente
 incluso si falla. Cambiar pestañas no envía formularios ni pierde lo escrito.
 Teclado: flechas izquierda/derecha, Home/End y Tab para entrar al contenido.
 Los enlaces también funcionan sin JavaScript.
+
+Prueba aislada de continuación/cancelación: `tests/run-manual-autodial.sh`.
+La prueba SIP loopback incluye continuidad del worker y grabación real.

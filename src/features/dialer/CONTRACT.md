@@ -360,3 +360,33 @@ pública con reload explícito y regenera colas. Limpieza PBX posterior al commi
 si falla, audita CAMPAIGN_DELETE_PBX_PENDING y avisa que la campaña ya fue
 eliminada, sin fingir rollback de BD. SQL fallido revierte todos sus borrados.
 Sin migraciones; dependencias existentes. Aprobado ARCHITECT_AGENT.
+
+## 2026-10-11 — Continuación MANUAL por campaña (ARCHITECT_AGENT)
+
+Migración016 añade manual_autodial_enabled (OFF por defecto) y selección/token/due
+al estado global del agente. selectManualCampaign(user,id) acepta solo campaña
+MANUAL activa asignada, guarda la selección y cancela continuación anterior;
+login, selección y reanudación nunca originan por sí mismos. originateNext manual
+explícito también persiste selección antes de reservar.
+
+La primera tipificación de un intento cerrado con disposition_agent_user=user
+(snapshot de origen MANUAL) programa una continuación a 3 segundos exclusivamente
+si su campaña sigue seleccionada, MANUAL, activa, RUNNING y habilitada, el agente
+está conectado sin pausa/trabajo/pendientes y conserva asignación. Correcciones
+o POST repetidos no rearman. Configurar campaña después no crea solicitudes.
+
+El worker procesa una sola solicitud por agente; claimLead revalida campaña,
+selección, asignación, sesión, pausa, cupos y token bajo locks campaña→estado de
+agente, y consume el token en la misma transacción que reserva lead. Tipificación
+usa campaña→estado→llamada→lead. El chequeo global de trabajo se lee después del
+lock de estado sin bloquear llamadas ajenas. Token vencido por más de 30 segundos,
+falta de lead/anexo/capacidad y errores cancelan la solicitud (CAS fuente+selección);
+no queda una llamada latente esperando reconexión o carga posterior de lista.
+Respuesta AMI incierta mantiene la reserva para conciliación existente.
+
+Cambio de selección, pausa/logout, STOP/deactivación/deshabilitación de autodial,
+cambio de modo y retiro de asignación cancelan token; retiro y eliminación de
+campaña limpian además la selección. No se cuelgan llamadas ya reservadas.
+El panel guarda selección por POST autenticado+CSRF y muestra habilitación y
+cuenta atrás; la ejecución pertenece al worker, independiente del navegador.
+MANUAL conserva agente primero, ringback/early media y omisión de AMD.

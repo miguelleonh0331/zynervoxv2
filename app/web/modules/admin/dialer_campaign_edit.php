@@ -205,7 +205,7 @@ if ($campaignId) {
                 </fieldset>
                 <?php $sections = [
                     ['Identificación de llamada', 'Configura el identificador de la llamada.', ['caller_id_number']],
-                    ['Estrategia de marcación', 'Manual: el agente solicita el siguiente lead. Progresivo: una llamada por agente libre. Predictivo: ajusta el nivel según el abandono. Ratio: nivel fijo.', ['dial_method','dial_level','level_count_mode','max_concurrent_calls','dial_timeout_seconds']],
+                    ['Estrategia de marcación', 'Manual: el agente solicita la primera llamada. Con autodial activado, continúa 3 segundos después de tipificar solo en la campaña seleccionada por el agente. Progresivo: una llamada por agente libre. Predictivo: ajusta el nivel según el abandono. Ratio: nivel fijo.', ['dial_method','manual_autodial_enabled','dial_level','level_count_mode','max_concurrent_calls','dial_timeout_seconds']],
                     ['Ajuste predictivo', 'Límites y sensibilidad del ajuste automático para el modo predictivo.', ['adaptive_target_abandon_pct','adaptive_min_level','adaptive_max_level','adaptive_step','adaptive_min_sample']],
                     ['Contestadores y abandono', 'Define qué sucede al detectar un contestador o cuando no hay un agente disponible.', ['amd_enabled','amd_action_machine','amd_message','drop_call_seconds','drop_action','drop_message']],
                     ['Leads y atención', 'Orden de contacto, horarios locales, límite de intentos y tiempo después de la llamada.', ['lead_order','max_attempts_per_lead','wrapup_seconds','local_call_time_start','local_call_time_end']],
