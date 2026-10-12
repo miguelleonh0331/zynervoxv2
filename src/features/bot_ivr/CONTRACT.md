@@ -288,3 +288,12 @@ Variables múltiples pueden combinarse en un valor, por ejemplo {nombre}|{numero
 ## 2026-10-12 - Campaign deactivation
 
 index.php separates active/inactive campaigns using the existing active flag. Administrator POST deactivate_campaign validates CSRF and positive ID, calls the public deactivateCampaign operation and redirects to the inactive tab. Confirmation preserves all lists, leads, history and recordings. Reactivation remains available through campaign_edit. Active dialing or open tracked calls reject deactivation; no automatic hangup, worker stop or deletion.
+
+
+## 2026-10-12 - Detención de emergencia de audios por lista
+
+list_edit muestra Detener audios durante una generación activa. POST JSON a list_audio_status.php recibe action=stop, csrf y job_id; exige administrador, sesión CSRF, pertenencia lista/campaña y token de ejecución exacto. GET mantiene lectura existente; job añade job_id y active (lease real), sin PID, starttime, textos ni rutas. Estados nuevos stopping/stopped bloquean Play; Generar permanece bloqueado mientras el lease esté ocupado.
+
+Worker privado acepta --stop-list/--campaign/--job-id. Lock de control serializa lanzamiento/detención, separado del lease. Barrera de lanzamiento publica PID/starttime/token antes de ejecutar trabajo. Helper verifica identidad de proceso mediante /proc, UID, cmdline y starttime, congela padre y árbol descendiente identificado, termina únicamente esos procesos y confirma cierre/lease libre antes de stopped. Ante error libera procesos propios congelados y devuelve fallo. No acepta PID/rutas del navegador ni usa pkill.
+
+Conserva WAV publicados y registry compartido. Limpia input privado y temporales WAV identificados del trabajo cancelado; no purga caché compartida ni otros trabajos. Nueva generación reutiliza audios publicados, con otro token. Pestañas antiguas no pueden cancelar un trabajo nuevo. Cancelación terminada es idempotente. Sin SQL, llamadas, AMI ni cambios de credenciales. Desplegar worker y consumidores únicamente sin generadores antiguos activos.

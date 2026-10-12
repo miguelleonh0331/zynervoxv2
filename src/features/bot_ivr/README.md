@@ -282,3 +282,10 @@ Play starts an AMI worker using the selected channels and saved origin. Campaign
 ## 2026-10-12 - Active/inactive campaign tabs
 
 Campaign index opens Campañas activas and provides Campañas inactivas. Desactivar beside Modificar confirms the operation, then moves an idle campaign to the inactive tab without deleting lists, contacts, history or recordings. Running/stopping dial workers or open calls must finish first. Reactivate with Modificar > Activo. Rendering and temporary-table regression checks: tests/campaign-tabs.php and tests/campaign-deactivate-db.php, each receiving the bot_ivr web directory. The SQL test also accepts the deployed bot_ivr directory as its second argument to load the isolated runtime configuration; it uses the local root socket for connection-local temporary fixtures only.
+
+
+## 2026-10-12 - Botón Detener audios
+
+Botón rojo al lado de Generar, visible durante generación activa. Cancela inmediatamente el trabajo de esa lista y sus procesos de conversión; muestra Generación detenida, conserva audios terminados y permite generar otra vez aprovechando caché. No detiene llamadas ni otras listas. POST usa token por ejecución además de admin/CSRF y pertenencia. Actualizar list_edit.php, list_audio_jobs.php, list_audio_status.php y runtime/modules/bot_ivr/list_audio_worker.py, sin generadores antiguos activos ni reinicio de Asterisk.
+
+Prueba aislada: python3 -B src/features/bot_ivr/tests/list-audio-stop.py. Usa árboles reales con gTTS/conversión simulados y servidor PHP privado, sin TTS remoto, SQL ni llamadas. Verifica permisos, CSRF, scope, token/PID obsoletos, cancelación al lanzar, descongelado tras fallo, hijos terminados, otra lista intacta, caché reutilizable y limpieza de WAV parciales/input.

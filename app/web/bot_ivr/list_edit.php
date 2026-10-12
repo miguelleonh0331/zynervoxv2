@@ -158,6 +158,7 @@ if ($list): ?>
 <?php endforeach; ?>
 </select></div>
 <button type="submit" id="list-audio-generate" class="carsa-btn"<?php echo $audioReady ? ' hidden' : ''; ?><?php echo $audioPayload === null || $audioActive || $audioReady ? ' disabled' : ''; ?> aria-describedby="list-audio-availability">Generar</button>
+<button type="button" id="list-audio-stop" class="carsa-btn" style="background:#b91c1c;color:#fff"<?php echo $audioActive ? '' : ' hidden'; ?>>■ Detener audios</button>
 <div class="carsa-field list-audio-speed"><label for="list_call_channels">Canales</label>
 <select id="list_call_channels" name="call_channels">
 <?php foreach ([1, 3, 5, 10, 20, 25, 50, 100] as $channels): ?>
@@ -203,13 +204,14 @@ if ($list): ?>
 (() => {
     const output = document.getElementById('list-audio-availability');
     const button = document.getElementById('list-audio-generate');
+    const audioStop = document.getElementById('list-audio-stop');
     const play = document.getElementById('list-call-play');
     const state = document.getElementById('audio-dialog-state');
     const errors = document.getElementById('audio-dialog-errors');
     const valid = <?php echo $audioPayload !== null ? 'true' : 'false'; ?>;
     const signature = <?php echo json_encode($audioPayload['signature'] ?? ''); ?>;
     const url = <?php echo json_encode('list_audio_status.php?id='.(int)$listId.'&campaign_id='.(int)$campaignId); ?>;
-    let timer, callTimer, callRun = null, callBusy = false, lastAudioReady = false;
+    let timer, callTimer, callRun = null, callBusy = false, lastAudioReady = false, audioJob = null, audioStopping = false;
     const stop = document.getElementById('list-call-stop');
     const channels = document.getElementById('list_call_channels');
     const prefix = document.getElementById('list_call_prefix');
@@ -298,7 +300,11 @@ if ($list): ?>
     prefix.addEventListener('change', () => renderCalls(callRun));
 
     function render(job, ready) {
-        const active = job && (job.state === 'starting' || job.state === 'running');
+        clearTimeout(timer);
+        audioJob = job;
+        const active = audioStopping || job && (job.active || ['starting','running','stopping'].includes(job.state));
+        audioStop.hidden = !active;
+        audioStop.disabled = audioStopping || !job || !job.job_id;
         const stale = job && valid && job.signature !== signature;
         button.hidden = !!ready && !stale;
         document.getElementById('list-audio-summary').hidden = button.hidden;
@@ -326,7 +332,7 @@ if ($list): ?>
             state.textContent = 'Audios desactualizados';
             output.textContent = 'La base o el flujo cambió. Genera nuevamente sus audios.';
         } else {
-            const labels = {starting:'Iniciando generación…',running:'Generando audios…',ready:'Audios listos.',failed:'Generación con errores.'};
+            const labels = {starting:'Iniciando generación…',running:'Generando audios…',stopping:'Deteniendo audios…',stopped:'Generación detenida.',ready:'Audios listos.',failed:'Generación con errores.'};
             state.textContent = labels[job.state] || 'Estado desconocido';
             output.textContent = state.textContent + ' ' + completed + '/' + total + ' audios procesados.';
         }
@@ -343,6 +349,25 @@ if ($list): ?>
             timer = setTimeout(poll, 5000);
         }
     }
+    audioStop.addEventListener('click', async () => {
+        if (audioStopping || !audioJob || !audioJob.job_id) return;
+        const jobId = audioJob.job_id;
+        audioStopping = true;
+        render(audioJob, false);
+        state.textContent = 'Deteniendo audios…';
+        try {
+            const response = await fetch(url, {method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'stop',csrf:callsCsrf,job_id:jobId})});
+            const data = await response.json();
+            if (!response.ok || !data.ok) throw new Error(data.error || 'No se pudo detener la generación.');
+            audioStopping = false;
+            render(data.job, data.ready === true);
+        } catch (error) {
+            audioStopping = false;
+            render(audioJob, false);
+            errors.textContent = error.message;
+            timer = setTimeout(poll, 1000);
+        }
+    });
     document.addEventListener('visibilitychange', () => { if (document.hidden) { clearTimeout(timer); clearTimeout(callTimer); } else { poll(); pollCalls(); } });
     const initial = <?php echo json_encode($audioJob, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
     render(initial, <?php echo $audioReady ? 'true' : 'false'; ?>);

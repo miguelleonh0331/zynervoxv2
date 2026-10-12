@@ -31,7 +31,21 @@ function bot_list_audio_job_status(int $listId): ?array {
         $status['errors'] = ['El generador se detuvo. Puedes volver a generar.'];
     }
     // Never return texts, absolute paths or the full lead/audio mapping to the UI.
-    return array_intersect_key($status, array_flip(['state','signature','generated','reused','failed','completed','total','errors']));
+    $status['active'] = bot_list_audio_active($listId);
+    return array_intersect_key($status, array_flip(['state','signature','job_id','active','generated','reused','failed','completed','total','errors']));
+}
+
+
+function bot_list_audio_stop(int $listId, int $campaignId, string $jobId): void {
+    if (!preg_match('/^[a-f0-9]{32}$/D', $jobId)) throw new RuntimeException('Generación inválida. Recarga la página.');
+    $root = bot_list_audio_root();
+    $process = proc_open([__DIR__.'/../venvs/gtts_env/bin/python', $root.'/modules/bot_ivr/list_audio_worker.py',
+        '--root', $root, '--stop-list', (string)$listId, '--campaign', (string)$campaignId, '--job-id', $jobId],
+        [0=>['file','/dev/null','r'],1=>['pipe','w'],2=>['file','/dev/null','w']], $pipes);
+    if (!is_resource($process)) throw new RuntimeException('No se pudo solicitar la detención.');
+    $result = json_decode((string)stream_get_contents($pipes[1]), true);
+    fclose($pipes[1]);
+    if (proc_close($process) !== 0 || empty($result['ok'])) throw new RuntimeException('No se pudo detener esta generación. Actualiza el estado y vuelve a intentar.');
 }
 
 function bot_list_audio_ready(?array $job, ?array $payload): bool {

@@ -173,6 +173,132 @@ def paths(root, list_id):
     return root / 'bot_ivr' / 'audio_jobs' / ('list_' + str(list_id) + '.json')
 
 
+def process_identity(pid):
+    try:
+        proc = Path('/proc') / str(pid)
+        uid = proc.stat().st_uid
+        if uid != os.geteuid():
+            return None
+        stat = (proc / 'stat').read_text()
+        fields = stat[stat.rfind(')') + 2:].split()
+        return {'ppid': int(fields[1]), 'starttime': fields[19], 'state': fields[0],
+                'uid': uid, 'cmd': (proc / 'cmdline').read_bytes()}
+    except (FileNotFoundError, ProcessLookupError, PermissionError):
+        return None
+
+
+def signal_owned(pid, identity, sig):
+    current = process_identity(pid)
+    if not current or current['state'] == 'Z':
+        return False
+    if any(current[key] != identity[key] for key in ('starttime', 'uid', 'cmd')) or current['uid'] != os.geteuid():
+        raise ValueError('process_identity_changed')
+    try:
+        os.kill(pid, sig)
+        return True
+    except ProcessLookupError:
+        return False
+
+
+def execution_active(root, list_id):
+    with (root / 'bot_ivr' / 'audio_jobs' / ('list_' + str(list_id) + '.lock')).open('a') as lease:
+        try:
+            fcntl.flock(lease, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return False
+        except BlockingIOError:
+            return True
+
+
+def stop_job(root, list_id, campaign_id, job_id):
+    if list_id < 1 or campaign_id < 1 or len(job_id) != 32 or any(c not in '0123456789abcdef' for c in job_id):
+        raise ValueError('invalid_job_identity')
+    jobs = root / 'bot_ivr' / 'audio_jobs'
+    with (jobs / ('list_' + str(list_id) + '.control.lock')).open('a') as control:
+        fcntl.flock(control, fcntl.LOCK_EX)
+        status_path = paths(root, list_id)
+        state = json.loads(status_path.read_text())
+        if state.get('job_id') != job_id or state.get('list_id') != list_id or state.get('campaign_id') != campaign_id:
+            raise ValueError('job_changed')
+        if state.get('state') in ('ready', 'stopped'):
+            return
+        path = jobs / (job_id + '.input.json')
+        pid = int(state.get('pid', 0))
+        identity = process_identity(pid) if pid > 0 else None
+        targets, temporary = {}, set()
+        try:
+            if identity and identity['state'] != 'Z':
+                cmd = identity['cmd'].split(b'\0')
+                expected = {b'--root': str(root).encode(), b'--job': str(path).encode()}
+                matching = str(Path(__file__).resolve()).encode() in cmd
+                for option, value in expected.items():
+                    matching = matching and option in cmd and cmd.index(option) + 1 < len(cmd) and cmd[cmd.index(option) + 1] == value
+                if not matching or identity['starttime'] != state.get('starttime') or identity['uid'] != os.geteuid():
+                    raise ValueError('worker_identity_changed')
+                targets[pid] = identity
+                signal_owned(pid, identity, signal.SIGSTOP)
+                # Freeze descendants before discovering the next level; threads cannot spawn new work.
+                for _ in range(64):
+                    added = False
+                    for entry in Path('/proc').iterdir():
+                        if not entry.name.isdigit() or int(entry.name) in targets:
+                            continue
+                        child = process_identity(int(entry.name))
+                        if child and child['ppid'] in targets and child['state'] != 'Z':
+                            targets[int(entry.name)] = child
+                            signal_owned(int(entry.name), child, signal.SIGSTOP)
+                            added = True
+                    if not added:
+                        break
+                else:
+                    raise ValueError('process_tree_too_deep')
+                latest = json.loads(status_path.read_text())
+                if latest.get('job_id') != job_id:
+                    raise ValueError('job_changed')
+                state = latest
+                for child in targets.values():
+                    args = child['cmd'].split(b'\0')
+                    if b'--generate-wav' in args:
+                        output = Path(os.fsdecode(args[args.index(b'--generate-wav') + 1]))
+                        cache = root / 'sounds' / 'cache' / 'ivr_builder' / 'gtts'
+                        if output.parent == cache and output.name.startswith('.') and output.name.endswith('.wav'):
+                            temporary.add(output)
+                state['state'] = 'stopping'
+                state['updated_at'] = int(time.time())
+                atomic_json(status_path, state)
+                for child_pid, child in targets.items():
+                    signal_owned(child_pid, child, signal.SIGTERM)
+                    signal_owned(child_pid, child, signal.SIGCONT)
+                time.sleep(.5)
+                for child_pid, child in targets.items():
+                    signal_owned(child_pid, child, signal.SIGKILL)
+                deadline = time.monotonic() + 2
+                def live_targets():
+                    return [p for p in targets if (process_identity(p) or {}).get('state', 'Z') != 'Z']
+                while live_targets():
+                    if time.monotonic() >= deadline:
+                        raise ValueError('worker_not_stopped')
+                    time.sleep(.05)
+            if execution_active(root, list_id):
+                raise ValueError('worker_lease_still_active')
+            for output in temporary:
+                remove_file(output)
+            remove_file(path)
+            state.update(state='stopped', errors=[], updated_at=int(time.time()))
+            atomic_json(status_path, state)
+        finally:
+            # A rejected cancellation must never leave a verified live process frozen.
+            release_failed = False
+            for child_pid, child in targets.items():
+                current = process_identity(child_pid)
+                if current and current['state'] in ('T', 't') and current['starttime'] == child['starttime'] and current['uid'] == child['uid']:
+                    try:
+                        signal_owned(child_pid, current, signal.SIGCONT)
+                    except (OSError, ValueError):
+                        release_failed = True
+            if release_failed:
+                raise ValueError('could_not_resume_after_failed_stop')
+
+
 def run_job(root, path, lease_fd):
     # The inherited descriptor holds the per-list lock until this process exits.
     lease = os.fdopen(lease_fd, 'a')
@@ -181,7 +307,8 @@ def run_job(root, path, lease_fd):
     cache = root / 'sounds' / 'cache' / 'ivr_builder' / 'gtts'
     state = {'state': 'running', 'list_id': job['list_id'], 'campaign_id': job['campaign_id'],
              'signature': job['signature'], 'provider': 'gtts', 'workers': job['workers'],
-             'pid': os.getpid(), 'generated': 0, 'reused': 0, 'failed': 0,
+             'pid': os.getpid(), 'starttime': process_identity(os.getpid())['starttime'],
+             'job_id': path.name.split('.')[0], 'generated': 0, 'reused': 0, 'failed': 0,
              'total': 0, 'completed': 0, 'audio': [], 'errors': [], 'updated_at': int(time.time())}
     try:
         unique = {audio_hash(p['text']): normalize(p['text']) for p in job['prompts']}
@@ -219,22 +346,40 @@ def run_job(root, path, lease_fd):
 
 def launch(root, path):
     job = read_job(path)
+    with (path.parent / ('list_' + str(job['list_id']) + '.control.lock')).open('a') as control:
+        fcntl.flock(control, fcntl.LOCK_EX)
+        return launch_locked(root, path, job)
+
+
+def launch_locked(root, path, job):
     lock = (path.parent / ('list_' + str(job['list_id']) + '.lock')).open('a')
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
         lock.close()
         raise ValueError('already_running') from None
+    gate_read, gate_write = os.pipe()
+    process = None
     try:
-        atomic_json(paths(root, job['list_id']), {'state': 'starting', 'list_id': job['list_id'],
-                    'signature': job['signature'], 'pid': 0, 'updated_at': int(time.time())})
         with open(os.devnull, 'rb') as stdin, open(os.devnull, 'wb') as output:
             process = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '--root', str(root),
-                         '--job', str(path), '--lease-fd', str(lock.fileno())],
+                         '--job', str(path), '--lease-fd', str(lock.fileno()), '--start-fd', str(gate_read)],
                         stdin=stdin, stdout=output, stderr=output, start_new_session=True,
-                        pass_fds=(lock.fileno(),))
+                        pass_fds=(lock.fileno(), gate_read))
+        atomic_json(paths(root, job['list_id']), {'state': 'starting', 'list_id': job['list_id'],
+                    'campaign_id': job['campaign_id'], 'job_id': path.name.split('.')[0],
+                    'signature': job['signature'], 'pid': process.pid,
+                    'starttime': process_identity(process.pid)['starttime'], 'updated_at': int(time.time())})
+        os.write(gate_write, b'1')
         return process.pid
+    except Exception:
+        if process is not None:
+            process.kill()
+            process.wait()
+        raise
     finally:
+        os.close(gate_read)
+        os.close(gate_write)
         lock.close()
 
 
@@ -244,10 +389,18 @@ if __name__ == '__main__':
     parser.add_argument('--job')
     parser.add_argument('--generate-wav')
     parser.add_argument('--lease-fd', type=int)
+    parser.add_argument('--start-fd', type=int)
+    parser.add_argument('--stop-list', type=int)
+    parser.add_argument('--campaign', type=int)
+    parser.add_argument('--job-id')
     args = parser.parse_args()
     try:
         if args.generate_wav:
             convert_gtts(normalize(json.load(sys.stdin)['text']), Path(args.generate_wav))
+            sys.exit(0)
+        if args.stop_list is not None:
+            stop_job(Path(args.root).resolve(), args.stop_list, args.campaign, args.job_id)
+            print(json.dumps({'ok': True}))
             sys.exit(0)
         if not args.root or not args.job:
             raise ValueError('missing_job')
@@ -257,6 +410,10 @@ if __name__ == '__main__':
         if args.lease_fd is None:
             print(json.dumps({'ok': True, 'pid': launch(root, job)}))
         else:
+            if args.start_fd is not None:
+                if os.read(args.start_fd, 1) != b'1':
+                    raise ValueError('launch_not_committed')
+                os.close(args.start_fd)
             run_job(root, job, args.lease_fd)
     except Exception:
         print(json.dumps({'ok': False, 'error': 'No se pudo iniciar la generación; comprueba si ya está activa.'}))

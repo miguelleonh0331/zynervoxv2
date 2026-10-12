@@ -1061,3 +1061,8 @@ Despliegue de dos PHP, sin reinicio del worker ni modificaciones a datos de llam
 ## 2026-10-12 - Desactivar campañas Bot IVR
 
 El usuario sustituyó eliminación por Desactivar junto a Modificar y dos pestañas activas/inactivas; autorizó con procede. Se reutiliza active, sin migración ni borrado. ARCHITECT_AGENT aprobó ampliar BotIvrRepository con deactivateCampaign y el alcance bot_ivr/zynervox_queries. La operación usa transacción propia y bloqueo exclusivo de campaña, con snapshot posterior para rechazar marcación activa y llamadas abiertas sin invertir locks de productores. Se conservan hijos, auditoría y archivos; no requiere detener TTS ni reiniciar servicios.
+
+
+## 2026-10-12 - Cancelación de audios Bot IVR
+
+Usuario pidió botón de emergencia y autorizó procede. ARCHITECT_AGENT aprobó helper de detención síncrono en el worker existente, con token por trabajo, control lock independiente y barrera de publicación de identidad. Se conserva pipeline/cache normal y se termina únicamente el árbol propio verificado, evitando PID enviados por browser, señales amplias y carrera entre pestaña vieja y nueva generación. Estado stopped solo después de cierre y lease libre; errores descongelan supervivientes verificados. UI/endpoints conservan admin+CSRF+pertenencia. No afecta telefonía ni otros módulos.
