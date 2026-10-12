@@ -44,12 +44,28 @@ $audioWsUrl = 'ws://172.16.10.26:8900';
         .ac-modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 50; align-items: center; justify-content: center; }
         .ac-modal-backdrop.open { display: flex; }
         .ac-modal { background: #1b2333; border-radius: 6px; padding: 1rem; width: min(900px, 92vw); max-height: 85vh; overflow: auto; }
+        .ac-modal.ac-map-dialog { width: min(1600px, calc(100vw - 24px)); }
         .ac-modal h3 { color: #fff; margin: 0 0 0.6rem; }
         .ac-modal-close { float: right; cursor: pointer; color: #fff; font-size: 1.1rem; }
-        svg.ac-map { width: 100%; height: auto; background: #10182b; border-radius: 4px; }
-        .ac-map-dot { fill: #e5e7eb; }
-        .ac-map-dot.procesando { fill: #f59e0b; }
-        .ac-map-dot.bloqueado { fill: #ef4444; }
+        .ac-map-head { display: flex; align-items: end; justify-content: space-between; gap: 30px; flex-wrap: wrap; margin-bottom: 0.6rem; }
+        .ac-map-totals { display: flex; gap: 15px; flex-wrap: wrap; color: var(--text-muted); font-size: 10px; }
+        .ac-map-totals span { display: flex; align-items: center; gap: 5px; }
+        .ac-map-totals i { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; box-shadow: 0 0 7px currentColor; }
+        .ac-map-totals .proc-dot { background: #f59e0b; }
+        .ac-map-totals .block-dot { background: #ef4444; }
+        .ac-map-totals .pending-dot { background: #6b7280; }
+        .ac-live-map { position: relative; width: 100%; height: min(calc(100vh - 125px), calc((100vw - 62px) / 2)); min-height: 420px; overflow: hidden; border: 1px solid #203049; border-radius: 13px; background: linear-gradient(#09111c,#0a1320); }
+        .ac-live-map::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(rgba(65,87,119,.08) 1px,transparent 1px), linear-gradient(90deg, rgba(65,87,119,.08) 1px, transparent 1px); background-size: 8.333% 16.666%; }
+        .ac-live-map > img, .ac-map-points { position: absolute; inset: 0; width: 100%; height: 100%; }
+        .ac-live-map > img { object-fit: fill; opacity: .96; filter: drop-shadow(0 0 12px #172b45); }
+        .ac-map-dot { position: absolute; z-index: 3; width: 8px; height: 8px; padding: 0; translate: -50% -50%; border: 1px solid rgba(255,255,255,.65); border-radius: 50%; background: #d1d5db; box-shadow: 0 0 5px rgba(209,213,219,.65); }
+        .ac-map-dot.procesando { background: #f59e0b; box-shadow: 0 0 8px #f59e0b, 0 0 18px #f59e0b; animation: ac-map-pulse .9s ease-in-out infinite; }
+        .ac-map-dot.bloqueado { background: #ef4444; box-shadow: 0 0 10px #ef4444; animation: ac-map-error .65s ease-in-out infinite alternate; }
+        .ac-map-dot::after { content: attr(data-tip); position: absolute; left: 50%; bottom: 14px; translate: -50% 0; display: none; min-width: max-content; padding: 5px 7px; border: 1px solid #30435f; border-radius: 6px; background: #07101c; color: #dce8fb; font-size: 9px; pointer-events: none; }
+        .ac-map-dot:hover { z-index: 8; scale: 1.65; }
+        .ac-map-dot:hover::after { display: block; scale: .61; }
+        @keyframes ac-map-pulse { 50% { scale: 1.7; opacity: .65; } }
+        @keyframes ac-map-error { to { opacity: .35; } }
     </style>
 </head>
 <body>
@@ -133,10 +149,24 @@ $audioWsUrl = 'ws://172.16.10.26:8900';
     </main>
 
     <div class="ac-modal-backdrop" id="ac-map-backdrop">
-        <div class="ac-modal">
+        <div class="ac-modal ac-map-dialog">
             <span class="ac-modal-close" id="ac-map-close">&times;</span>
-            <h3>Distribución global de proxies</h3>
-            <svg id="ac-map-svg" class="ac-map" viewBox="0 0 360 180"></svg>
+            <header class="ac-map-head">
+                <div>
+                    <p style="color:#f59e0b; letter-spacing:.16em; font-size:10px; font-weight:800; margin:0 0 4px;">DISTRIBUCIÓN GLOBAL</p>
+                    <h3 style="margin:0;">Actividad por ubicación</h3>
+                </div>
+                <div class="ac-map-totals">
+                    <span><i></i><b id="ac-map-avail">0</b> disponibles</span>
+                    <span><i class="proc-dot"></i><b id="ac-map-proc">0</b> procesando</span>
+                    <span><i class="block-dot"></i><b id="ac-map-block">0</b> bloqueados</span>
+                    <span><i class="pending-dot"></i><b id="ac-map-pending">0</b> ubicación pendiente</span>
+                </div>
+            </header>
+            <div class="ac-live-map">
+                <img src="world-map-real.svg" alt="Mapa mundial">
+                <div id="ac-map-points" class="ac-map-points"></div>
+            </div>
         </div>
     </div>
 
@@ -282,7 +312,11 @@ $audioWsUrl = 'ws://172.16.10.26:8900';
         var mapBtn = document.getElementById('ac-map-btn');
         var mapBackdrop = document.getElementById('ac-map-backdrop');
         var mapClose = document.getElementById('ac-map-close');
-        var mapSvg = document.getElementById('ac-map-svg');
+        var mapPointsEl = document.getElementById('ac-map-points');
+        var mapAvailEl = document.getElementById('ac-map-avail');
+        var mapProcEl = document.getElementById('ac-map-proc');
+        var mapBlockEl = document.getElementById('ac-map-block');
+        var mapPendingEl = document.getElementById('ac-map-pending');
 
         var lastPoolItems = [];
 
@@ -388,22 +422,30 @@ $audioWsUrl = 'ws://172.16.10.26:8900';
 
         proxySearchEl.addEventListener('input', renderProxyGrid);
 
-        // Mapa: proyeccion equirectangular simple (lon/lat -> x/y) sobre un
-        // viewBox 360x180; sin asset externo, alcanza para ver distribucion.
+        // Mapa real (mismo asset/formula que modules/admin/farm.php -> monitor):
+        // proyeccion equirectangular lon/lat -> % de posicion sobre world-map-real.svg.
         function renderMap() {
-            var dots = '';
+            mapPointsEl.textContent = '';
+            var avail = 0, proc = 0, blocked = 0, pending = 0;
             lastPoolItems.forEach(function (item) {
-                if (item.lat === null || item.lat === undefined || item.lon === null || item.lon === undefined) return;
-                var x = (item.lon + 180) * (360 / 360);
-                var y = (90 - item.lat) * (180 / 180);
-                dots += '<circle class="ac-map-dot ' + item.status + '" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="1.6">' +
-                    '<title>' + item.endpoint + (item.country ? ' — ' + item.country : '') + '</title></circle>';
+                var hasCoords = item.lat !== null && item.lat !== undefined && item.lon !== null && item.lon !== undefined;
+                if (item.status === 'procesando') proc++;
+                else if (item.status === 'bloqueado') blocked++;
+                else avail++;
+                if (!hasCoords) { pending++; return; }
+                var x = (item.lon + 180) / 360 * 100;
+                var y = (90 - item.lat) / 180 * 100;
+                var dot = document.createElement('div');
+                dot.className = 'ac-map-dot ' + item.status;
+                dot.style.left = x + '%';
+                dot.style.top = y + '%';
+                dot.dataset.tip = item.endpoint + (item.country ? ' — ' + item.country : '') + ' (' + item.status + ')';
+                mapPointsEl.appendChild(dot);
             });
-            mapSvg.innerHTML =
-                '<rect width="360" height="180" fill="#10182b"></rect>' +
-                '<line x1="0" y1="90" x2="360" y2="90" stroke="#2a3550" stroke-width="0.5"></line>' +
-                '<line x1="180" y1="0" x2="180" y2="180" stroke="#2a3550" stroke-width="0.5"></line>' +
-                dots;
+            mapAvailEl.textContent = avail;
+            mapProcEl.textContent = proc;
+            mapBlockEl.textContent = blocked;
+            mapPendingEl.textContent = pending;
         }
 
         mapBtn.addEventListener('click', function () {
