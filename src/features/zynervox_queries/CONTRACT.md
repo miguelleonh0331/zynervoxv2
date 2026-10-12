@@ -139,3 +139,8 @@ campaignMonitor(): array aggregates existing campaign/list rows, latest dial run
 ## 2026-10-10 - Active campaign status summary
 
 campaignMonitor now returns active campaigns only (campaign.active=1), including states grouped from current zynervox_bot_list.status across campaign lists. State summaries never use attempt dial_status. No leads/empty active campaigns yield empty state arrays.
+
+
+## 2026-10-12 - Campaign deactivation (architect approved)
+
+deactivateCampaign(id): void sets only campaign.active=0 (plus automatic updated_at), preserving all other fields and children. Positive existing campaign required. Rejects starting/running/stopping dial runs and open calls, excluding recovered/lost attempts. Takes only the campaign row lock; activity is read after the lock without reversing producer lock order. Requires its own transaction and rejects an already-active connection transaction to avoid a stale activity snapshot. Repeated deactivation is idempotent when idle. No schema changes, filesystem operations or calls. Existing APIs remain unchanged.

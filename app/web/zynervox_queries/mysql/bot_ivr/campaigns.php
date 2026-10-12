@@ -38,6 +38,24 @@ trait CampaignQueries {
         $this->db->prepare('INSERT INTO zynervox_bot_campaigns (name,active) VALUES (:name,:active)')->execute([':name'=>$name, ':active'=>(int)$active]);
         return (int)$this->db->lastInsertId();
     }
+    public function deactivateCampaign(int $id): void {
+        if ($id < 1) throw new \RuntimeException('ID de campaña inválido.');
+        // Own transaction ensures the activity snapshot starts after the campaign lock.
+        if ($this->db->inTransaction()) throw new \RuntimeException('La desactivación requiere una transacción independiente.');
+        $this->callAtomic(function() use ($id) {
+            $s = $this->db->prepare('SELECT campaign_id FROM zynervox_bot_campaigns WHERE campaign_id=? FOR UPDATE');
+            $s->execute([$id]);
+            if (!$s->fetchColumn()) throw new \RuntimeException('Campaña inexistente.');
+            // Do not lock runs/lists here: their producers already hold them before the campaign.
+            $s = $this->db->prepare("SELECT run_id FROM zynervox_bot_dial_runs WHERE campaign_id=? AND state IN ('starting','running','stopping') LIMIT 1");
+            $s->execute([$id]);
+            if ($s->fetchColumn()) throw new \RuntimeException('Detén la marcación y espera a que termine antes de desactivar la campaña.');
+            $s = $this->db->prepare("SELECT a.attempt_id FROM zynervox_bot_call_attempts a JOIN zynervox_bot_lists l ON l.list_id=a.list_id WHERE l.campaign_id=? AND a.finished_at IS NULL AND a.end_source<>'RECOVERY' AND a.status<>'LOST' LIMIT 1");
+            $s->execute([$id]);
+            if ($s->fetchColumn()) throw new \RuntimeException('Espera a que finalicen las llamadas antes de desactivar la campaña.');
+            $this->db->prepare('UPDATE zynervox_bot_campaigns SET active=0 WHERE campaign_id=?')->execute([$id]);
+        });
+    }
     public function updateCampaign(int $id, array $values): void {
         // Fixed allowlist: identifiers never come from a request.
         $columns = ['name','active','scheduled','start_time','end_time','campaign_description','user_group','dial_method','lead_order','dial_statuses','hopper_level','auto_dial_level','dial_timeout','dial_prefix','campaign_cid','campaign_recording','max_channels'];

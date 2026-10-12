@@ -277,3 +277,8 @@ Checks: tests/ivr-graph.php (all reference branches with injected IO), tests/ivr
 ## 2026-10-10 - List Play/Stop AMI worker
 
 Play starts an AMI worker using the selected channels and saved origin. Campaign dial_statuses determine eligibility; Stop drains active calls without starting new contacts. Runtime leases/logs: /var/lib/zynervoxv2/asterisk/bot_ivr/call_jobs. SQL history: zynervox_bot_dial_runs and call_attempts.dial_run_id. Requires installer/list-call-worker.sh.
+
+
+## 2026-10-12 - Active/inactive campaign tabs
+
+Campaign index opens Campañas activas and provides Campañas inactivas. Desactivar beside Modificar confirms the operation, then moves an idle campaign to the inactive tab without deleting lists, contacts, history or recordings. Running/stopping dial workers or open calls must finish first. Reactivate with Modificar > Activo. Rendering and temporary-table regression checks: tests/campaign-tabs.php and tests/campaign-deactivate-db.php, each receiving the bot_ivr web directory. The SQL test also accepts the deployed bot_ivr directory as its second argument to load the isolated runtime configuration; it uses the local root socket for connection-local temporary fixtures only.

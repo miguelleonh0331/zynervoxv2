@@ -2382,3 +2382,12 @@ explican aumento frente al análisis previo10/7; no se alteró historia.
 Campaña55 MANUAL RUNNING autodial1 AMD0 worker_errorNULL (flag activado por usuario).
 Rama main; base8312990. Rollback seguro: git revert del commit de este cambio,
 volver a copiar los dos PHP; sin restaurar BD ni interrumpir llamadas.
+
+
+## 2026-10-12 - Bot IVR: desactivar y pestañas por estado
+
+Usuario autorizó con procede. index.php añade Desactivar junto a Modificar, confirmación, POST admin/CSRF, validación de ID y pestañas Campañas activas/inactivas. deactivateCampaign agrega operación pública con active=0, transacción propia y rechazo de marcación/llamadas abiertas; conserva listas, leads, metadatos, auditoría y archivos. ARCHITECT_AGENT aprobó cruce bot_ivr/zynervox_queries. Sin migración ni reinicio de servicios.
+
+Pruebas aprobadas: lint de 3PHP; campaign-tabs.php (filtros, selección, acciones, escaping, confirmación, CSRF, IDs, redirect); campaign-deactivate-db.php (tablas TEMP, estados starting/running/stopping, llamadas abiertas, conservación, aislamiento, idempotencia, rechazo de nueva marcación, reactivación y transacción externa); campaigns-db.php (rollback). La prueba fuente inicial cargó configuración legacy y falló; la regresión externa revirtió mediante finally. Se corrigió el runner para exigir configuración aislada de runtime y usar fixtures TEMP; no se cambiaron credenciales/permisos ni configuración. No se verificó apariencia en navegador ni se originaron llamadas.
+
+Desplegados 3PHP por zynertools desde fuente local/montada a /srv/www/htdocs/zynervoxv2, con permisos conservados y cmp. Backup /var/backups/zynervoxv2/bot-campaign-deactivate-20261012-071548. Todas las pruebas repetidas contra runtime pasaron; zynervox-dialer.service activo. Git baseline main 311f3a7; ivr_engine_agi.php preexistente permanece ajeno al cambio.

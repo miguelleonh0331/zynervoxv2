@@ -1056,3 +1056,8 @@ fechas; un snapshot REPEATABLE READ mantiene consistencia durante actividad.
 Ocupación por lista N/D, sin inventar asignación de sesión por lista. Totales
 por campaña mantienen comportamiento anterior y nuevas claves son aditivas.
 Despliegue de dos PHP, sin reinicio del worker ni modificaciones a datos de llamadas.
+
+
+## 2026-10-12 - Desactivar campañas Bot IVR
+
+El usuario sustituyó eliminación por Desactivar junto a Modificar y dos pestañas activas/inactivas; autorizó con procede. Se reutiliza active, sin migración ni borrado. ARCHITECT_AGENT aprobó ampliar BotIvrRepository con deactivateCampaign y el alcance bot_ivr/zynervox_queries. La operación usa transacción propia y bloqueo exclusivo de campaña, con snapshot posterior para rechazar marcación activa y llamadas abiertas sin invertir locks de productores. Se conservan hijos, auditoría y archivos; no requiere detener TTS ni reiniciar servicios.

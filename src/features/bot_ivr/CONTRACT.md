@@ -283,3 +283,8 @@ slots al salir, sin borrar headers anteriores. Se rechazan escapes con barra
 invertida en valores SIP para evitar controles decodificados por chan_sip.
 PJSIP mantiene su predial. Cambiar protocolo en el editor conserva headers.
 Variables múltiples pueden combinarse en un valor, por ejemplo {nombre}|{numero}.
+
+
+## 2026-10-12 - Campaign deactivation
+
+index.php separates active/inactive campaigns using the existing active flag. Administrator POST deactivate_campaign validates CSRF and positive ID, calls the public deactivateCampaign operation and redirects to the inactive tab. Confirmation preserves all lists, leads, history and recordings. Reactivation remains available through campaign_edit. Active dialing or open tracked calls reject deactivation; no automatic hangup, worker stop or deletion.
