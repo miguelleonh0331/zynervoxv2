@@ -2418,3 +2418,11 @@ Se excluyen cambios preexistentes/ajenos: ivr_engine_agi.php, modules/admin/side
 ### Validación final del formulario TTS (2026-10-12)
 
 tts-provider-form.php renderiza y envía la página real con colaboradores privados: valida modal, escape de nombres, registro, selección tras redirect y rechazo de CSRF/URL/nombre/pertenencia inválidos. Pasó sin SQL ni llamadas. Se comprobó UTF8 del nombre antes de guardar y se actualizó únicamente list_edit.php con lint/cmp. Sin validación visual en navegador. IsolatedGate.php también contiene cambios ajenos concurrentes y queda excluido de esta entrega.
+
+## 2026-10-12 - Importación puntual de caché CARSA para lista 56
+
+Usuario autorizó copiar y registrar audios existentes omitiendo la validación WAV. Operación aprobada por ARCHITECT_AGENT, limitada a campaña 50/lista 56/TTS_26 (ws:5, ws://172.16.10.26:8900). Prompts resueltos por APIs públicas del repositorio/flujo publicado, snapshot verificado contra catálogo y manifiesto bajo control/lease de lista. Sin generación, llamadas ni cambios de código/contrato.
+
+Origen /var/lib/asterisk/sounds/voicebot/cache/ivr_builder/macelioai (resuelve a /usr/share/asterisk/sounds/voicebot/cache/ivr_builder/macelioai); destino /var/lib/zynervoxv2/asterisk/sounds/cache/ivr_builder/gtts. Traducción SHA256 legacy macelioai|es|1.3|texto al hash de perfil WS vigente. Copia atómica bajo lock por hash, root:www 0640, INSERT SQLite después de copia; fuentes y destinos publicados conservados. Sin comprobación de formato/corrupción WAV conforme instrucción; runtime conserva validación existente.
+
+39000 prompts, 2764 hashes únicos: 837 copiados y registros añadidos (172920754 bytes), 275 ya publicados, 1651 sin fuente coincidente y 1 destino sin registro preservado. Resultado: 1112 requeridos publicados, 1652 pendientes. Verificación de existencia/registro e identidad posterior, sin escucha ni certificación de contenido. Auditoría con hashes sin textos en /var/backups/zynervoxv2/carsa-cache-import-list56-20261012-183130-4b4976/report.json y copied.jsonl. La lista permanece detenida; relanzar con TTS_26 reutiliza los importados que pasen la validación habitual. Revertir documentación no deshace la importación; para revertir datos usar el journal y eliminar solo archivos/registros añadidos, con generadores detenidos.
