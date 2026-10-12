@@ -107,6 +107,7 @@ function renderSidebar($activePage = 'home', $rootPrefix = '../../') {
         $servicios = [
             ['key' => 'zypad', 'href' => 'modules/admin/services/zypad.php', 'icon' => 'stt', 'label' => 'Zypad'],
             ['key' => 'zynerdesk_control', 'href' => 'modules/admin/services/zynerdesk_control.php', 'icon' => 'remote', 'label' => 'Zynerdesk'],
+            ['key' => 'audio_create', 'href' => 'modules/admin/services/audio_create.php', 'icon' => 'stt', 'label' => 'Zyner Vox Audio Creator'],
             ['key' => 'database', 'href' => 'modules/admin/services/database.php', 'icon' => 'services', 'label' => 'Base de datos'],
             ['key' => 'pbx', 'href' => 'modules/admin/services/pbx.php', 'icon' => 'services', 'label' => 'PBX'],
             ['key' => 'test', 'href' => 'modules/admin/services/test.php', 'icon' => 'checklist', 'label' => 'Test'],
