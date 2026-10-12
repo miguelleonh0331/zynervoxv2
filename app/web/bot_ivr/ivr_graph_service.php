@@ -97,11 +97,12 @@ function bot_ivr_url(string $template,array $vars,array $allow): string {
 }
 
 final class BotIvrGraphRunner {
-    private $flow; private $vars; private $runtime; private $published; private $command; private $event; private $io; private $result; private $options; private $callDir; private $sequence=0; private $hungup=false;
+    private $flow; private $vars; private $runtime; private $published; private $command; private $event; private $io; private $result; private $options; private $callDir; private $tts; private $sequence=0; private $hungup=false;
     public function __construct(array $flow,array $lead,string $call,string $runtime,callable $published,callable $command,callable $event,callable $io,callable $result,array $options=[]) {
         bot_ivr_validate_graph($flow);
         if (!preg_match('/^[A-Za-z0-9_.-]{1,80}$/D',$call)) throw new RuntimeException('Invalid IVR identity');
         $this->flow=$flow;$this->runtime=$runtime;$this->published=$published;$this->command=$command;$this->event=$event;$this->io=$io;$this->result=$result;$this->options=$options;
+        $this->tts=bot_tts_call_snapshot($lead,$runtime);
         $this->vars=bot_list_audio_variables($lead,(int)$lead['list_id'],(int)$lead['campaign_id']);
         $this->vars=array_merge($this->vars,$options['variables'] ?? []);
         $this->vars=array_merge($this->vars,['call_id'=>$call,'id_contacto'=>(string)$lead['lead_id'],'queue_id'=>'','numero'=>(string)$lead['phone'],'lead_id'=>(string)$lead['lead_id'],'list_id'=>(string)$lead['list_id'],'campaign_id'=>(string)$lead['campaign_id']]);
@@ -132,12 +133,12 @@ final class BotIvrGraphRunner {
             }
         }
         if ($text!=='' && $hash===null) {
-            $rendered=bot_list_audio_render($text,$this->vars);$hash=bot_ivr_audio_hash($rendered);
+            $rendered=bot_list_audio_render($text,$this->vars);$hash=bot_ivr_audio_hash($rendered,$this->tts);
             if (!(($this->published)($hash))) {
                 $captured=bot_list_audio_response_variables($this->flow);
                 preg_match_all('/\{([A-Za-z_][A-Za-z0-9_]*)\}/',$text,$matches);
                 if (!array_intersect($captured,$matches[1])) throw new RuntimeException('IVR audio not published');
-                $generated=($this->io)('audio',['text'=>$rendered]);
+                $generated=($this->io)('audio',['text'=>$rendered,'tts'=>$this->tts]);
                 if (empty($generated['ok']) || ($generated['hash'] ?? '')!==$hash) throw new RuntimeException('IVR dynamic audio failed');
             }
         }
@@ -188,7 +189,7 @@ final class BotIvrGraphRunner {
             $vars=$this->vars;
             foreach ($responses as $key) $vars[$key]='captured';
             $rendered=bot_list_audio_render($template,$vars);
-            if (!array_intersect($responses,$matches[1]) && !(($this->published)(bot_ivr_audio_hash($rendered)))) throw new RuntimeException('IVR audio not published');
+            if (!array_intersect($responses,$matches[1]) && !(($this->published)(bot_ivr_audio_hash($rendered,$this->tts)))) throw new RuntimeException('IVR audio not published');
         }
         $id=$this->flow['start'];$seen=[];
         while ($id!=='') {

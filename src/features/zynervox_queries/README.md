@@ -78,3 +78,8 @@ e INSERT comparten transacción; fallo revierte; transacción externa usa savepo
 No modifica metadatos de lista/campaña ni otras listas. Prueba list-import-db.php
 verifica reemplazo, reupload, actualización de teléfono retenido, archivo vacío,
 fallo tras borrar con rollback y aislamiento entre listas; datos de prueba revertidos.
+
+
+## 2026-10-12 - Catálogo TTS
+
+mysql/bot_ivr/tts.php implementa create/list de proveedores WebSocket registrados por administrador. Migración y permisos por tabla propios de Bot IVR. calls.php expone config_json del run en ivrCallContext para preservar el proveedor de cada llamada. No configura conexiones TTS ni autentica HTTP.

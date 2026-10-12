@@ -289,3 +289,18 @@ Campaign index opens Campañas activas and provides Campañas inactivas. Desacti
 Botón rojo al lado de Generar, visible durante generación activa. Cancela inmediatamente el trabajo de esa lista y sus procesos de conversión; muestra Generación detenida, conserva audios terminados y permite generar otra vez aprovechando caché. No detiene llamadas ni otras listas. POST usa token por ejecución además de admin/CSRF y pertenencia. Actualizar list_edit.php, list_audio_jobs.php, list_audio_status.php y runtime/modules/bot_ivr/list_audio_worker.py, sin generadores antiguos activos ni reinicio de Asterisk.
 
 Prueba aislada: python3 -B src/features/bot_ivr/tests/list-audio-stop.py. Usa árboles reales con gTTS/conversión simulados y servidor PHP privado, sin TTS remoto, SQL ni llamadas. Verifica permisos, CSRF, scope, token/PID obsoletos, cancelación al lanzar, descongelado tras fallo, hijos terminados, otra lista intacta, caché reutilizable y limpieza de WAV parciales/input.
+
+
+## 2026-10-12 - Proveedores TTS WebSocket registrados manualmente
+
+En list_edit, Agregar abre nombre y URL ws/wss. Guardar registra el proveedor global del despliegue y lo selecciona; el selector permite cambiar proveedor y regenerar incluso si ya hay audios listos. gTTS conserva su opción y hashes. El proveedor queda capturado en el manifiesto por lista y en config_json del dial run; audio estático y dinámico utilizan ese snapshot.
+
+Protocolo WebSocket: un JSON text/lang=es/speed=1.3, seguido de WAV binario completo PCM16 mono 8000 Hz o JSON de error. No aplica de nuevo tempo al WAV remoto. Conexión limitada a 15s, respuesta 60s, conversión externa 100s y audio máximo 10 MiB. Se valida antes de publicar; no hay fallback silencioso. La ruta histórica cache/ivr_builder/gtts y SQLite se comparten, con hash separado por proveedor/endpoint y versión ws-v1. El worker abre una conexión por audio generado y la cierra al terminar.
+
+Instalación: ejecutar installer/bot-tts-providers.sh SOURCE para migración 013 y SELECT/INSERT por tabla en zynervox_core; instalar websockets==9.1 en el venv aislado web/venvs/gtts_env, legible por PHP/Asterisk. macelioai-tts.sh incluye la dependencia para instalaciones nuevas. Desplegar tts_service, list_edit, list_audio_jobs, list_call_service, ivr_engine_service, ivr_graph_service; contrato y adaptadores TTS/calls/repository de zynervox_queries; list_audio_worker.py e ivr_node_io.py. No reiniciar Asterisk. Catálogo inmutable create/list; editar/eliminar proveedores no forma parte de esta entrega.
+
+Pruebas: list-audio-websocket.py usa servidor loopback real para protocolo, errores, WAV inválido, reutilización/corrupción y aislamiento de perfil; tts-profile.php valida URLs, hash PHP/Python y snapshot histórico; tts-providers-db.php valida tabla con rollback. Regresiones de caché, parada, payload, motor lineal y gráfico pasan. Validación real desde wwwrun contra ws://172.16.10.26:8900 generó WAV válido de 73890 bytes y 4.615375 s; no se generó una lista ni se lanzó una llamada. Formulario no verificado visualmente en navegador.
+
+### Validación final del formulario TTS (2026-10-12)
+
+tts-provider-form.php renderiza y envía la página real con colaboradores privados: valida modal, escape de nombres, registro, selección tras redirect y rechazo de CSRF/URL/nombre/pertenencia inválidos. Pasó sin SQL ni llamadas. Se comprobó UTF8 del nombre antes de guardar y se actualizó únicamente list_edit.php con lint/cmp. Sin validación visual en navegador. IsolatedGate.php también contiene cambios ajenos concurrentes y queda excluido de esta entrega.

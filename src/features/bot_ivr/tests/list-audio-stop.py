@@ -163,7 +163,7 @@ time.sleep(60)
         bot = web / 'bot_ivr'
         bot.mkdir(parents=True)
         source_web = SOURCE.parents[4] / 'app/web'
-        for name in ['list_audio_status.php','list_audio_jobs.php','list_audio_service.php']:
+        for name in ['list_audio_status.php','list_audio_jobs.php','list_audio_service.php','tts_service.php']:
             (bot/name).write_bytes((source_web/'bot_ivr'/name).read_bytes())
         (web/'config').mkdir()
         (web/'config/Config.php').write_text('<?php namespace Config; class Config { static function deployment($key,$default=null) { return $key === "runtime" ? '+json.dumps(str(self.root))+' : $default; }}')

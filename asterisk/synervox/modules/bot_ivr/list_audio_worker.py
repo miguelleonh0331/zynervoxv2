@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Isolated gTTS list prebuild. No database, CARSA or call-engine access."""
 import argparse
+import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import fcntl
 import hashlib
 import inspect
 import json
 import os
+import re
 import signal
 import sqlite3
 from pathlib import Path
@@ -15,6 +17,7 @@ import sys
 import tempfile
 import time
 import wave
+from urllib.parse import urlsplit
 
 PROFILE = {'provider': 'gtts', 'voice': 'google-es-com', 'language': 'es',
            'speed': '1.3', 'format': 'pcm_s16le-mono-8000', 'pipeline': 'v1'}
@@ -39,8 +42,23 @@ def normalize(text):
     return text
 
 
-def audio_hash(text):
-    payload = dict(PROFILE, text=normalize(text))
+def tts_profile(tts=None):
+    if tts is None or tts.get('key', 'gtts') == 'gtts':
+        return PROFILE
+    if not re.fullmatch(r'ws:[1-9][0-9]*', tts.get('key', '')):
+        raise ValueError('invalid_tts_provider')
+    endpoint = tts.get('endpoint', '')
+    parts = urlsplit(endpoint)
+    if (not endpoint or len(endpoint) > 512 or any(ord(c) <= 32 or ord(c) > 126 for c in endpoint)
+            or parts.scheme not in ('ws', 'wss') or not parts.hostname or parts.username is not None
+            or parts.password is not None or parts.query or parts.fragment
+            or (parts.port is not None and not 1 <= parts.port <= 65535)):
+        raise ValueError('invalid_tts_endpoint')
+    return dict(PROFILE, provider=tts['key'], voice=endpoint, pipeline='ws-v1')
+
+
+def audio_hash(text, tts=None):
+    payload = dict(tts_profile(tts), text=normalize(text))
     canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
     return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
 
@@ -74,13 +92,35 @@ def convert_gtts(text, output):
                        check=True, timeout=30, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
-def generate_gtts(text, output):
+def convert_websocket(text, output, tts):
+    import websockets
+    tts_profile(tts)
+    async def receive():
+        socket = await asyncio.wait_for(websockets.connect(tts['endpoint'], max_size=10 * 1024 * 1024,
+                                                         close_timeout=2), timeout=15)
+        try:
+            await socket.send(json.dumps({'text': text, 'lang': 'es', 'speed': 1.3}, ensure_ascii=False))
+            audio = await asyncio.wait_for(socket.recv(), timeout=60)
+            if not isinstance(audio, bytes):
+                raise RuntimeError('websocket_provider_error')
+            output.write_bytes(audio)
+        finally:
+            await socket.close()
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(receive())
+    finally:
+        loop.close()
+
+
+def generate_gtts(text, output, tts=None):
     # gTTS 2.2.x lacks its own timeout; bound the entire conversion externally.
     with subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '--generate-wav', str(output)],
                           stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                           universal_newlines=True, start_new_session=True) as process:
         try:
-            process.communicate(json.dumps({'text': text}), timeout=100)
+            process.communicate(json.dumps({'text': text, 'tts': tts}), timeout=100)
         except subprocess.TimeoutExpired:
             os.killpg(process.pid, signal.SIGKILL)
             process.communicate()
@@ -111,9 +151,9 @@ def delete_audio(digest, cache):
         remove_file(cache / (digest + '.wav'))
 
 
-def ensure_audio(text, cache, generator=generate_gtts):
+def ensure_audio(text, cache, generator=generate_gtts, tts=None):
     text = normalize(text)
-    digest = audio_hash(text)
+    digest = audio_hash(text, tts)
     target = cache / (digest + '.wav')
     # Keep lock files: unlinking them would allow a second lock inode for one hash.
     with (cache / (digest + '.lock')).open('a') as lock:
@@ -121,13 +161,16 @@ def ensure_audio(text, cache, generator=generate_gtts):
         registry = audio_registry(cache)
         published = registry.execute('SELECT 1 FROM published_audio WHERE hash=?', (digest,)).fetchone()
         registry.close()
-        if published:
+        if published and (tts is None or tts.get('key', 'gtts') == 'gtts' or valid_wav(target)):
             return digest, 'reused'
         fd, temporary = tempfile.mkstemp(prefix='.' + digest + '.', suffix='.wav', dir=str(cache))
         os.close(fd)
         temporary = Path(temporary)
         try:
-            generator(text, temporary)
+            if tts is not None and tts.get('key', 'gtts') != 'gtts':
+                generator(text, temporary, tts)
+            else:
+                generator(text, temporary)
             if not valid_wav(temporary):
                 raise ValueError('invalid_audio')
             temporary.chmod(0o640)
@@ -156,8 +199,11 @@ def read_job(path):
     if path.stat().st_size > 64 * 1024 * 1024:
         raise ValueError('job_too_large')
     job = json.loads(path.read_text(encoding='utf-8'))
-    if job.get('provider') != 'gtts' or job.get('workers') not in WORKERS:
+    if job.get('provider') not in ('gtts', 'websocket') or job.get('workers') not in WORKERS:
         raise ValueError('invalid_provider_or_workers')
+    tts_profile(job.get('tts'))
+    if (job['provider'] == 'websocket') != (job.get('tts', {}).get('key', 'gtts') != 'gtts'):
+        raise ValueError('provider_snapshot_mismatch')
     if not isinstance(job.get('list_id'), int) or job['list_id'] < 1:
         raise ValueError('invalid_list')
     if not isinstance(job.get('prompts'), list) or not job['prompts']:
@@ -306,17 +352,18 @@ def run_job(root, path, lease_fd):
     status_path = paths(root, job['list_id'])
     cache = root / 'sounds' / 'cache' / 'ivr_builder' / 'gtts'
     state = {'state': 'running', 'list_id': job['list_id'], 'campaign_id': job['campaign_id'],
-             'signature': job['signature'], 'provider': 'gtts', 'workers': job['workers'],
+             'signature': job['signature'], 'provider': job['provider'], 'tts': job.get('tts', {'key': 'gtts'}), 'workers': job['workers'],
              'pid': os.getpid(), 'starttime': process_identity(os.getpid())['starttime'],
              'job_id': path.name.split('.')[0], 'generated': 0, 'reused': 0, 'failed': 0,
              'total': 0, 'completed': 0, 'audio': [], 'errors': [], 'updated_at': int(time.time())}
     try:
-        unique = {audio_hash(p['text']): normalize(p['text']) for p in job['prompts']}
+        tts = job.get('tts')
+        unique = {audio_hash(p['text'], tts): normalize(p['text']) for p in job['prompts']}
         state['total'] = len(unique)
         atomic_json(status_path, state)
         outcomes = {}
         with ThreadPoolExecutor(max_workers=job['workers']) as pool:
-            futures = {pool.submit(ensure_audio, text, cache): digest for digest, text in unique.items()}
+            futures = {pool.submit(ensure_audio, text, cache, tts=tts): digest for digest, text in unique.items()}
             for future in as_completed(futures):
                 digest = futures[future]
                 try:
@@ -331,8 +378,8 @@ def run_job(root, path, lease_fd):
                 state['completed'] += 1
                 state['updated_at'] = int(time.time())
                 atomic_json(status_path, state)
-        state['audio'] = [{'lead_id': p['lead_id'], 'node': p['node'], 'hash': audio_hash(p['text']),
-                           'ready': outcomes[audio_hash(p['text'])]} for p in job['prompts']]
+        state['audio'] = [{'lead_id': p['lead_id'], 'node': p['node'], 'hash': audio_hash(p['text'], tts),
+                           'ready': outcomes[audio_hash(p['text'], tts)]} for p in job['prompts']]
         state['state'] = 'failed' if state['failed'] else 'ready'
     except Exception:
         state['state'] = 'failed'
@@ -368,7 +415,7 @@ def launch_locked(root, path, job):
                         pass_fds=(lock.fileno(), gate_read))
         atomic_json(paths(root, job['list_id']), {'state': 'starting', 'list_id': job['list_id'],
                     'campaign_id': job['campaign_id'], 'job_id': path.name.split('.')[0],
-                    'signature': job['signature'], 'pid': process.pid,
+                    'signature': job['signature'], 'tts': job.get('tts', {'key': 'gtts'}), 'pid': process.pid,
                     'starttime': process_identity(process.pid)['starttime'], 'updated_at': int(time.time())})
         os.write(gate_write, b'1')
         return process.pid
@@ -396,7 +443,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
     try:
         if args.generate_wav:
-            convert_gtts(normalize(json.load(sys.stdin)['text']), Path(args.generate_wav))
+            request = json.load(sys.stdin)
+            tts = request.get('tts')
+            tts_profile(tts)
+            if tts is not None and tts.get('key', 'gtts') != 'gtts':
+                convert_websocket(normalize(request['text']), Path(args.generate_wav), tts)
+            else:
+                convert_gtts(normalize(request['text']), Path(args.generate_wav))
             sys.exit(0)
         if args.stop_list is not None:
             stop_job(Path(args.root).resolve(), args.stop_list, args.campaign, args.job_id)

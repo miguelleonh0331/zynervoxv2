@@ -297,3 +297,14 @@ list_edit muestra Detener audios durante una generación activa. POST JSON a lis
 Worker privado acepta --stop-list/--campaign/--job-id. Lock de control serializa lanzamiento/detención, separado del lease. Barrera de lanzamiento publica PID/starttime/token antes de ejecutar trabajo. Helper verifica identidad de proceso mediante /proc, UID, cmdline y starttime, congela padre y árbol descendiente identificado, termina únicamente esos procesos y confirma cierre/lease libre antes de stopped. Ante error libera procesos propios congelados y devuelve fallo. No acepta PID/rutas del navegador ni usa pkill.
 
 Conserva WAV publicados y registry compartido. Limpia input privado y temporales WAV identificados del trabajo cancelado; no purga caché compartida ni otros trabajos. Nueva generación reutiliza audios publicados, con otro token. Pestañas antiguas no pueden cancelar un trabajo nuevo. Cancelación terminada es idempotente. Sin SQL, llamadas, AMI ni cambios de credenciales. Desplegar worker y consumidores únicamente sin generadores antiguos activos.
+
+
+## 2026-10-12 - Catálogo TTS WebSocket (ARCHITECT_AGENT aprobado)
+
+Agregar en list_edit recibe tts_name y tts_endpoint por POST administrativo con CSRF. URL ws/wss ASCII <=512 sin credenciales/query/fragment; nombre UTF8 1..100. Catálogo persistido en tabla propia zynervox_bot_tts_providers; generación recibe únicamente key gtts o ws:<id> y resuelve endpoint desde catálogo en servidor. Proveedores create/list, sin edición/eliminación.
+
+Payload WebSocket añade tts={key,endpoint}, provider=websocket y perfil separado; gTTS conserva payload/firma/hash históricos. Manifiesto guarda tts desde starting. Readiness sigue comprobando firma actual, mapas publicados y lease libre. Selección de otro proveedor invalida readiness en la página hasta regenerar. Configuración del dial run captura tts; ivrCallContext devuelve dial_config_json y el motor usa ese snapshot incluso si cambia el manifiesto. Runs históricos sin tts conservan gTTS. GraphRunner usa el mismo snapshot para mensajes dinámicos y lo envía a IO; no modifica ivr_engine_agi.php.
+
+Hash WS: mismo JSON canónico texto/perfil con provider=ws:<id>, voice=endpoint, language=es, speed=1.3, format=pcm_s16le-mono-8000, pipeline=ws-v1. Caché e índice anteriores compartidos; hash gTTS sin cambios. JSON text/lang/speed -> WAV binario completo; respuesta texto indica fallo. Validación WAV completa antes de publicación atómica, tamaño <=10 MiB, conexión <=15s, respuesta <=60s, subproceso <=100s. Sin fallback a otro proveedor. Una conexión por audio; cancelación mantiene identificación y limpieza de subprocesos/temporales existentes.
+
+Nueva dependencia websockets==9.1 en venv aislado Python>=3.6.1. Migración 013 y permisos SELECT/INSERT de tabla propia antes de desplegar consumidor; dependencia antes del worker. No acceder a la base productiva legacy.

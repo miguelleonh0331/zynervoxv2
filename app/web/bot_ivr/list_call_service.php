@@ -28,7 +28,7 @@ function bot_list_call_configuration(int $listId,int $campaignId): array {
     $payload=bot_list_audio_payload($flow,$repo->audioLeads($listId,$campaignId),$listId,$campaignId,25);
     if(!bot_list_audio_ready(bot_list_audio_job_status($listId),$payload))throw new RuntimeException('Los audios de la lista deben estar listos.');
     $statuses=array_values(array_unique(preg_split('/\s+/',trim($campaign['dial_statuses']))));
-    return ['statuses'=>$statuses,'order'=>$campaign['lead_order'],'prefix'=>$prefix,'flow_id'=>(int)$list['id_flujo'],'signature'=>$payload['signature'],'flow_sha256'=>hash('sha256',json_encode($flow,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)),'caller_id'=>$campaign['campaign_cid']];
+    return ['statuses'=>$statuses,'order'=>$campaign['lead_order'],'prefix'=>$prefix,'flow_id'=>(int)$list['id_flujo'],'signature'=>$payload['signature'],'tts'=>$payload['tts'] ?? ['key'=>'gtts'],'flow_sha256'=>hash('sha256',json_encode($flow,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)),'caller_id'=>$campaign['campaign_cid']];
 }
 function bot_list_call_start(int $listId,int $campaignId,int $channels,string $actor): array {
     $repo=bot_ivr_repository();$current=bot_list_call_status($listId,$campaignId);

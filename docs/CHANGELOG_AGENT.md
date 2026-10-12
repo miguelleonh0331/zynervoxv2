@@ -2405,3 +2405,16 @@ Desplegados 3PHP y worker en /srv/www/htdocs/zynervoxv2/bot_ivr y /var/lib/zyner
 ## 2026-10-12 - Botón Agregar junto a Proveedor TTS
 
 Usuario autorizó procede para añadir exclusivamente el botón. list_edit.php coloca Agregar a la derecha del selector mediante flex, type=button para no enviar el formulario. Sin manejador, formulario adicional, SQL ni cambios contractuales. Desplegado en mirmidon con backup /var/backups/zynervoxv2/tts-provider-button-20261012-075528, permisos conservados y fuente/runtime idénticos. PHP lint y diff --check aprobados; no revisión visual en navegador. Base main e6fec6a; cambio preexistente ivr_engine_agi.php excluido.
+
+
+## 2026-10-12 - Agregar proveedores TTS WebSocket
+
+Botón Agregar en list_edit ahora abre formulario nombre/URL y guarda en catálogo BD para otras listas. Generación admite gTTS y proveedores WS registrados, selección separa caché y se captura por ejecución para reproducción estática/dinámica. Migración013 y SELECT/INSERT tabla propia aplicados en zynervox_core; websockets9.1 instalado con permisos wwwrun en venv aislado. Contratos revisados por ARCHITECT_AGENT.
+
+Desplegados 10 PHP y 2 workers sin llamadas/generadores activos ni reinicio Asterisk. Backup /var/backups/zynervoxv2/tts-providers-20261012-101829. PHP lint/cmp, 12 pruebas Python WS/caché/stop, perfiles PHP/Python, payload y motores lineal/gráfico pasan; catálogo SQL probado con rollback antes/después de despliegue. Audio real desde wwwrun: 73890 bytes, PCM16 mono8000, 4.615375s. No se procesó lista completa ni se lanzó llamada; sin comprobación visual en navegador. Baseline 4f85360; rollback revert del commit de esta entrega y restauración de sus 12 archivos con motores inactivos. Conservar tabla aditiva y dependencia al revertir, para preservar datos registrados.
+
+Se excluyen cambios preexistentes/ajenos: ivr_engine_agi.php, modules/admin/sidebar.php y modules/admin/services/audio_create.php. No modificar ni incluir en commit.
+
+### Validación final del formulario TTS (2026-10-12)
+
+tts-provider-form.php renderiza y envía la página real con colaboradores privados: valida modal, escape de nombres, registro, selección tras redirect y rechazo de CSRF/URL/nombre/pertenencia inválidos. Pasó sin SQL ni llamadas. Se comprobó UTF8 del nombre antes de guardar y se actualizó únicamente list_edit.php con lint/cmp. Sin validación visual en navegador. IsolatedGate.php también contiene cambios ajenos concurrentes y queda excluido de esta entrega.

@@ -144,3 +144,10 @@ campaignMonitor now returns active campaigns only (campaign.active=1), including
 ## 2026-10-12 - Campaign deactivation (architect approved)
 
 deactivateCampaign(id): void sets only campaign.active=0 (plus automatic updated_at), preserving all other fields and children. Positive existing campaign required. Rejects starting/running/stopping dial runs and open calls, excluding recovered/lost attempts. Takes only the campaign row lock; activity is read after the lock without reversing producer lock order. Requires its own transaction and rejects an already-active connection transaction to avoid a stale activity snapshot. Repeated deactivation is idempotent when idle. No schema changes, filesystem operations or calls. Existing APIs remain unchanged.
+
+
+## 2026-10-12 - Catálogo TTS Bot IVR (ARCHITECT_AGENT aprobado)
+
+BotIvrRepository añade ttsProviders(): array de provider_id/name/endpoint ordenado por nombre/ID, y createTtsProvider(name,endpoint): int. Datos en zynervox_bot_tts_providers, esquema aislado de Bot IVR. Consumidor valida nombre/URL/protocolo y exige admin+CSRF; SQL parametrizado y URL duplicada produce RuntimeException sin detalles SQL. No actualizar ni eliminar proveedores.
+
+ivrCallContext añade dial_config_json (nullable), tomado del dial run de la llamada mediante LEFT JOIN run_id/list_id. El consumidor captura proveedor por ejecución y conserva gTTS para runs históricos sin snapshot TTS. Métodos existentes mantienen firmas y campos previos.

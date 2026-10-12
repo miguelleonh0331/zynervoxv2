@@ -40,7 +40,7 @@ find "$VENV_DIR" -type f -exec chmod 0640 {} +
 find "$VENV_DIR/bin" -type f -exec chmod 0750 {} +
 
 "$VENV_DIR/bin/pip" install --upgrade pip -q
-"$VENV_DIR/bin/pip" install gTTS -q
+"$VENV_DIR/bin/pip" install gTTS 'websockets==9.1' -q
 
 # pip (corriendo como root, DESPUES del chmod de arriba) escribe gtts/ y el
 # resto de site-packages con el umask del proceso (0077 bajo unattended.sh)

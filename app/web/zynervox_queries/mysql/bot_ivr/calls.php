@@ -21,7 +21,7 @@ trait CallQueries {
         });
     }
     public function ivrCallContext(int $listId, int $leadId, string $callId): array {
-        $s=$this->db->prepare('SELECT l.lead_id,l.list_id,l.phone,l.customer_name,l.extra_json,p.campaign_id,p.id_flujo FROM zynervox_bot_call_attempts a JOIN zynervox_bot_list l ON l.lead_id=a.lead_id AND l.list_id=a.list_id JOIN zynervox_bot_lists p ON p.list_id=a.list_id WHERE a.call_id=? AND a.list_id=? AND a.lead_id=? AND a.finished_at IS NULL AND NOT EXISTS (SELECT 1 FROM zynervox_bot_call_events e WHERE e.call_id=a.call_id AND e.event_type=\'IVR_END\')');
+        $s=$this->db->prepare('SELECT l.lead_id,l.list_id,l.phone,l.customer_name,l.extra_json,p.campaign_id,p.id_flujo,r.config_json dial_config_json FROM zynervox_bot_call_attempts a JOIN zynervox_bot_list l ON l.lead_id=a.lead_id AND l.list_id=a.list_id JOIN zynervox_bot_lists p ON p.list_id=a.list_id LEFT JOIN zynervox_bot_dial_runs r ON r.run_id=a.dial_run_id AND r.list_id=a.list_id WHERE a.call_id=? AND a.list_id=? AND a.lead_id=? AND a.finished_at IS NULL AND NOT EXISTS (SELECT 1 FROM zynervox_bot_call_events e WHERE e.call_id=a.call_id AND e.event_type=\'IVR_END\')');
         $s->execute([$callId,$listId,$leadId]);
         $row=$s->fetch(\PDO::FETCH_ASSOC);
         if (!$row || !$row['id_flujo']) throw new \RuntimeException('Invalid IVR call context');

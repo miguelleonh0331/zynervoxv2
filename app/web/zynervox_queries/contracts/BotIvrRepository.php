@@ -2,6 +2,8 @@
 declare(strict_types=1);
 namespace ZynervoxQueries;
 interface BotIvrRepository {
+    public function ttsProviders(): array;
+    public function createTtsProvider(string $name, string $endpoint): int;
     public function createDialRun(int $listId,int $campaignId,string $runId,int $channels,array $config,string $actor): void;
     public function dialRun(int $listId,int $campaignId,?string $runId=null): ?array;
     public function transitionDialRun(string $runId,string $state,string $error=''): void;

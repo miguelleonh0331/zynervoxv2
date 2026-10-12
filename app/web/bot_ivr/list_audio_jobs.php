@@ -2,8 +2,13 @@
 declare(strict_types=1);
 require_once __DIR__.'/../config/Config.php';
 require_once __DIR__.'/list_audio_service.php';
+require_once __DIR__.'/tts_service.php';
 
-function bot_list_audio_providers(): array { return ['gtts'=>'gTTS (gratis, voz básica)']; }
+function bot_list_audio_providers(array $providers = []): array {
+    $options = ['gtts'=>'gTTS (gratis, voz básica)'];
+    foreach ($providers as $provider) $options['ws:'.$provider['provider_id']] = $provider['name'].' (WebSocket)';
+    return $options;
+}
 
 function bot_list_audio_root(): string {
     return rtrim((string)\Config\Config::deployment('runtime', '/var/lib/zynervoxv2/asterisk'), '/');
@@ -77,7 +82,9 @@ function bot_list_audio_ready(?array $job, ?array $payload): bool {
     return !bot_list_audio_active((int)$payload['list_id']);
 }
 
-function bot_list_audio_payload(array $flow, array $leads, int $listId, int $campaignId, int $workers): array {
+function bot_list_audio_payload(array $flow, array $leads, int $listId, int $campaignId, int $workers, ?array $tts = null): array {
+    $tts = $tts ?? bot_tts_snapshot(bot_list_audio_root(), $listId, $campaignId);
+    bot_tts_profile($tts);
     if (!in_array($workers, [1,3,10,25,60,100], true)) throw new RuntimeException('Velocidad de generación inválida.');
     $check = bot_list_audio_preflight($flow, $leads, $listId, $campaignId);
     if ($check['rejected']) throw new RuntimeException('Corrige las variables de los leads antes de generar. '.implode(' ', $check['errors']));
@@ -97,6 +104,11 @@ function bot_list_audio_payload(array $flow, array $leads, int $listId, int $cam
     }
     $payload = ['list_id'=>$listId, 'campaign_id'=>$campaignId, 'flow'=>$flow,
                 'provider'=>'gtts', 'profile'=>'gtts-es-com-1.3-pcm16-mono8000-v1', 'prompts'=>$prompts];
+    if ($tts['key'] !== 'gtts') {
+        $payload['provider'] = 'websocket';
+        $payload['profile'] = $tts['key'].'-es-1.3-pcm16-mono8000-ws-v1';
+        $payload['tts'] = $tts;
+    }
     $signature = hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     unset($payload['flow']);
     $payload['signature'] = $signature;

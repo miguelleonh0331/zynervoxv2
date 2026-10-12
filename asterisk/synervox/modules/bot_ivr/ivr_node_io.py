@@ -193,7 +193,7 @@ def dispatch(action, data, config, runtime):
         return capture_value(data['text'], data['mode'], config)
     if action == 'audio':
         from list_audio_worker import ensure_audio
-        digest, state = ensure_audio(data['text'], runtime / 'sounds/cache/ivr_builder/gtts')
+        digest, state = ensure_audio(data['text'], runtime / 'sounds/cache/ivr_builder/gtts', tts=data.get('tts'))
         return {'ok': True, 'hash': digest, 'state': state}
     if action == 'execute':
         parts = urllib.parse.urlsplit(data['url'])

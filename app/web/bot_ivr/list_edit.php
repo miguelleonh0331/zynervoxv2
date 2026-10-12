@@ -21,14 +21,26 @@ $audioPayload = null;
 $audioJob = null;
 $audioActive = false;
 $audioReady = false;
+$ttsProviders = [];
+$selectedTts = ['key'=>'gtts'];
 try {
     if (!$listId || !$campaignId) throw new RuntimeException('ID de lista o campaña inválido.');
     $db = bot_ivr_repository();
     $list = bot_list_get($db, $listId, $campaignId);
+    $ttsProviders = $db->ttsProviders();
+    $selectedTts = bot_tts_snapshot(bot_list_audio_root(), $listId, $campaignId);
+    if (isset($_GET['tts'])) $selectedTts = bot_tts_resolve((string)$_GET['tts'], $ttsProviders);
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '') !== 'save_db_config') {
         try {
             if (empty($_POST) && empty($_FILES)) throw new RuntimeException('La carga supera el límite de esta instalación. Usa un archivo más pequeño.');
             bot_campaign_csrf();
+            if (($_POST['action'] ?? '') === 'add_tts_provider') {
+                if (!is_string($_POST['tts_name'] ?? null) || !is_string($_POST['tts_endpoint'] ?? null)) throw new RuntimeException('Completa el nombre y la URL del proveedor.');
+                $name = trim($_POST['tts_name']);
+                if ($name === '' || !mb_check_encoding($name, 'UTF-8') || mb_strlen($name, 'UTF-8') > 100 || preg_match('/[\x00-\x1f\x7f]/u', $name)) throw new RuntimeException('El nombre debe tener de 1 a 100 caracteres válidos.');
+                $id = $db->createTtsProvider($name, bot_tts_endpoint($_POST['tts_endpoint']));
+                bot_campaign_redirect('list_edit.php?id='.$listId.'&campaign_id='.$campaignId.'&tts=ws:'.$id, 'Proveedor TTS guardado. Selecciónalo para generar audios.');
+            }
             $running=bot_list_call_status($listId,$campaignId);
             if($running && in_array($running['state'],['starting','running','stopping'],true))throw new RuntimeException('Deten la marcacion antes de modificar la lista.');
             if (($_POST['action'] ?? '') === 'save_list_prefix') {
@@ -39,12 +51,14 @@ try {
                 bot_campaign_redirect('list_edit.php?id='.$listId.'&campaign_id='.$campaignId, 'Prefijo de la lista guardado.');
             }
             if (($_POST['action'] ?? '') === 'generate_list_audio') {
-                if (($_POST['audio_provider'] ?? '') !== 'gtts') throw new RuntimeException('Proveedor no disponible.');
+                if (!is_string($_POST['audio_provider'] ?? null)) throw new RuntimeException('Selecciona un proveedor disponible.');
+                $tts = bot_tts_resolve($_POST['audio_provider'], $ttsProviders);
+                if (($running['active_list'] ?? 0) > 0) throw new RuntimeException('Espera a que finalicen las llamadas antes de generar audios.');
                 if (empty($list['id_flujo'])) throw new RuntimeException('Asigna un flujo a la lista.');
                 $workers = filter_var($_POST['audio_workers'] ?? null, FILTER_VALIDATE_INT);
                 if ($workers === false) throw new RuntimeException('Velocidad de generación inválida.');
                 $flow = ivr_builder_published_flow((int)$list['id_flujo']);
-                $payload = bot_list_audio_payload($flow, $db->audioLeads($listId, $campaignId), $listId, $campaignId, $workers);
+                $payload = bot_list_audio_payload($flow, $db->audioLeads($listId, $campaignId), $listId, $campaignId, $workers, $tts);
                 if (bot_list_audio_ready(bot_list_audio_job_status($listId), $payload)) throw new RuntimeException('Los audios de esta lista ya están listos.');
                 bot_list_audio_start($payload);
                 bot_campaign_redirect('list_edit.php?id='.$listId.'&campaign_id='.$campaignId, 'Generación iniciada. El progreso se actualizará automáticamente.');
@@ -72,7 +86,7 @@ try {
         $flow = ivr_builder_published_flow((int)$list['id_flujo']);
         $audioLeads = $db->audioLeads($listId, $campaignId);
         $audioCheck = bot_list_audio_preflight($flow, $audioLeads, $listId, $campaignId);
-        $audioPayload = bot_list_audio_payload($flow, $audioLeads, $listId, $campaignId, 25);
+        $audioPayload = bot_list_audio_payload($flow, $audioLeads, $listId, $campaignId, 25, $selectedTts);
     } catch (Throwable $e) { $audioCheckError = $e->getMessage(); }
     try {
         $audioJob = bot_list_audio_job_status($listId);
@@ -93,6 +107,7 @@ if ($list): ?>
 .list-audio{grid-column:1 / -1}.list-audio-controls{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}.list-audio-provider{flex:1;min-width:240px}.list-audio-speed{width:220px;max-width:100%}.list-audio-controls .carsa-btn{min-height:36px}.list-audio-controls .carsa-btn:disabled{opacity:.55;cursor:not-allowed}.list-audio-note{font-size:12px;color:var(--text-muted);margin:12px 0 0}
 .list-audio [hidden]{display:none!important}
 .list-tts-provider-row{display:flex;align-items:center;gap:8px}.list-tts-provider-row select{flex:1;min-width:0}.list-tts-provider-row button{flex-shrink:0}
+.tts-provider-dialog{width:min(480px,90vw);border:1px solid var(--border);border-radius:10px;padding:24px;background:var(--bg-card,#fff);color:var(--text)}.tts-provider-dialog::backdrop{background:#0008}.tts-provider-dialog h2{margin-top:0}.tts-provider-dialog .carsa-field{margin-bottom:16px}
 .list-back{color:var(--primary-hover);font-size:13px;text-decoration:none}
 .audio-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}.audio-summary .list-audio-note{margin:0}
 .audio-dialog{width:100%;padding-top:20px;color:var(--text);box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
@@ -146,11 +161,11 @@ if ($list): ?>
 <form method="post" id="list-prefix-form"><input type="hidden" name="action" value="save_list_prefix"><?php bot_campaign_token(); ?></form>
 <form method="post" class="list-audio-controls">
 <input type="hidden" name="action" value="generate_list_audio"><?php bot_campaign_token(); ?>
-<div id="list-audio-provider-control" class="carsa-field list-audio-provider"<?php echo $audioReady ? ' hidden' : ''; ?>><label for="list_audio_provider">Proveedor TTS</label>
+<div id="list-audio-provider-control" class="carsa-field list-audio-provider"><label for="list_audio_provider">Proveedor TTS</label>
 <div class="list-tts-provider-row">
 <select id="list_audio_provider" name="audio_provider">
-<?php foreach (bot_list_audio_providers() as $key => $label): ?>
-<option value="<?php echo h($key); ?>"><?php echo h($label); ?></option>
+<?php foreach (bot_list_audio_providers($ttsProviders) as $key => $label): ?>
+<option value="<?php echo h($key); ?>"<?php echo $selectedTts['key'] === $key ? ' selected' : ''; ?>><?php echo h($label); ?></option>
 <?php endforeach; ?>
 </select><button type="button" id="list-tts-provider-add" class="carsa-btn secondary">Agregar</button></div></div>
 <div id="list-audio-speed-control" class="carsa-field list-audio-speed"<?php echo $audioReady ? ' hidden' : ''; ?>><label for="list_audio_workers">Velocidad de generación</label>
@@ -178,15 +193,23 @@ if ($list): ?>
 <button type="button" id="list-call-stop" class="carsa-btn secondary"<?php echo !$audioReady ? ' hidden' : ''; ?> disabled>■ Stop</button>
 <p id="list-call-status" class="list-audio-note" role="status" style="width:100%"></p>
 </form>
+<dialog id="tts-provider-dialog" class="tts-provider-dialog" aria-labelledby="tts-provider-title">
+<h2 id="tts-provider-title">Agregar proveedor TTS</h2>
+<form method="post" class="carsa-form"><input type="hidden" name="action" value="add_tts_provider"><?php bot_campaign_token(); ?>
+<div class="carsa-field"><label for="tts_name">Nombre</label><input id="tts_name" name="tts_name" maxlength="100" required placeholder="TTS servidor interno"></div>
+<div class="carsa-field"><label for="tts_endpoint">URL WebSocket</label><input id="tts_endpoint" name="tts_endpoint" type="text" maxlength="512" required placeholder="ws://172.16.10.26:8900"></div>
+<p class="list-audio-note">Disponible para generar audios de otras listas. Envía texto y recibe WAV en español.</p>
+<div class="list-form-actions"><button class="carsa-btn" type="submit">Guardar proveedor</button><button class="carsa-btn secondary" type="button" id="tts-provider-cancel">Cancelar</button></div>
+</form></dialog>
 <?php if ($originLoadError !== ''): ?><p class="list-audio-note" role="status"><?php echo h($originLoadError); ?></p><?php endif; ?>
 <?php if ($audioCheckError !== ''): ?>
 <p class="list-audio-note" role="status"><?php echo h($audioCheckError); ?></p>
 <?php elseif ($audioCheck !== null): ?>
 <?php foreach ($audioCheck['errors'] as $audioError): ?><p class="list-audio-note"><?php echo h($audioError); ?></p><?php endforeach; ?>
 <?php endif; ?>
-<div id="list-audio-summary" class="audio-summary"<?php echo $audioReady ? ' hidden' : ''; ?>><p id="list-audio-availability" class="list-audio-note" role="status">Listo para generar con gTTS local.</p></div>
+<div id="list-audio-summary" class="audio-summary"<?php echo $audioReady ? ' hidden' : ''; ?>><p id="list-audio-availability" class="list-audio-note" role="status">Listo para generar con el proveedor seleccionado.</p></div>
 <section id="list-audio-dialog" class="audio-dialog" aria-labelledby="audio-dialog-title"<?php echo $audioReady ? ' hidden' : ''; ?>>
-<div class="audio-dialog-head"><div><h2 id="audio-dialog-title">Generación de audios</h2><p class="audio-dialog-context">Lista #<?php echo (int)$listId; ?> · Flujo <?php echo h($list['id_flujo'] ?? 'Sin asignar'); ?> · gTTS local</p></div></div>
+<div class="audio-dialog-head"><div><h2 id="audio-dialog-title">Generación de audios</h2><p class="audio-dialog-context">Lista #<?php echo (int)$listId; ?> · Flujo <?php echo h($list['id_flujo'] ?? 'Sin asignar'); ?> · <?php echo h(bot_list_audio_providers($ttsProviders)[$selectedTts['key']] ?? 'Proveedor TTS'); ?></p></div></div>
 <span id="audio-dialog-state" class="audio-state" role="status">Sin generación</span>
 <div class="audio-stats">
 <article class="audio-stat" data-kind="generated"><span>Generados</span><strong id="audio-stat-generated">0</strong><small>Audios nuevos creados en esta ejecución</small></article>
@@ -212,6 +235,13 @@ if ($list): ?>
     const errors = document.getElementById('audio-dialog-errors');
     const valid = <?php echo $audioPayload !== null ? 'true' : 'false'; ?>;
     const signature = <?php echo json_encode($audioPayload['signature'] ?? ''); ?>;
+    const providerSelect = document.getElementById('list_audio_provider');
+    const providerDialog = document.getElementById('tts-provider-dialog');
+    document.getElementById('list-tts-provider-add').addEventListener('click', () => providerDialog.showModal());
+    document.getElementById('tts-provider-cancel').addEventListener('click', () => providerDialog.close());
+    providerSelect.addEventListener('change', () => {
+        const target = new URL(location.href); target.searchParams.set('tts',providerSelect.value); location.assign(target);
+    });
     const url = <?php echo json_encode('list_audio_status.php?id='.(int)$listId.'&campaign_id='.(int)$campaignId); ?>;
     let timer, callTimer, callRun = null, callBusy = false, lastAudioReady = false, audioJob = null, audioStopping = false;
     const stop = document.getElementById('list-call-stop');
@@ -312,7 +342,7 @@ if ($list): ?>
         document.getElementById('list-audio-summary').hidden = button.hidden;
         document.getElementById('list-audio-dialog').hidden = button.hidden;
         document.getElementById('list-audio-title').hidden = button.hidden;
-        document.getElementById('list-audio-provider-control').hidden = button.hidden;
+        providerSelect.disabled = !!active || !!(callRun && ['starting','running','stopping'].includes(callRun.state));
         document.getElementById('list-audio-speed-control').hidden = button.hidden;
         button.disabled = !valid || active || (ready && !stale);
         lastAudioReady = !!ready && valid && !active && !stale;
@@ -329,10 +359,10 @@ if ($list): ?>
         state.dataset.state = stale ? 'stale' : job && job.state || 'idle';
         if (!job) {
             state.textContent = valid ? 'Listo para generar' : 'Datos pendientes';
-            output.textContent = valid ? 'Listo para generar con gTTS local.' : 'Corrige los datos del flujo o la lista antes de generar.';
+            output.textContent = valid ? 'Listo para generar con el proveedor seleccionado.' : 'Corrige los datos del flujo o la lista antes de generar.';
         } else if (stale) {
             state.textContent = 'Audios desactualizados';
-            output.textContent = 'La base o el flujo cambió. Genera nuevamente sus audios.';
+            output.textContent = 'La base, el flujo o el proveedor cambió. Genera nuevamente sus audios.';
         } else {
             const labels = {starting:'Iniciando generación…',running:'Generando audios…',stopping:'Deteniendo audios…',stopped:'Generación detenida.',ready:'Audios listos.',failed:'Generación con errores.'};
             state.textContent = labels[job.state] || 'Estado desconocido';

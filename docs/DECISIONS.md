@@ -1066,3 +1066,8 @@ El usuario sustituyó eliminación por Desactivar junto a Modificar y dos pesta�
 ## 2026-10-12 - Cancelación de audios Bot IVR
 
 Usuario pidió botón de emergencia y autorizó procede. ARCHITECT_AGENT aprobó helper de detención síncrono en el worker existente, con token por trabajo, control lock independiente y barrera de publicación de identidad. Se conserva pipeline/cache normal y se termina únicamente el árbol propio verificado, evitando PID enviados por browser, señales amplias y carrera entre pestaña vieja y nueva generación. Estado stopped solo después de cierre y lease libre; errores descongelan supervivientes verificados. UI/endpoints conservan admin+CSRF+pertenencia. No afecta telefonía ni otros módulos.
+
+
+## 2026-10-12 - Proveedores WebSocket TTS manuales
+
+Decisión aprobada por ARCHITECT_AGENT: tabla propia create/list, selección persistida en manifiesto, snapshot por dial_run.config_json y propagación a audio estático/dinámico. Evitar ALTER de listas y conservar hashes gTTS. Compartir ruta/SQLite existentes con hash separado por ID/endpoint/versión WS. Endpoint resuelto de catálogo por servidor; POST admin+CSRF. Protocolo confirmado con ws://172.16.10.26:8900 devuelve WAV ya procesado, por lo que no se vuelve a aplicar tempo. Dependencia websockets9.1 Python3.6 en venv aislado. No introducir descubrimiento automático, edición/borrado de proveedores ni fallback de voz. Despliegue desde paquete local subido por SFTP al evitar copias lentas del montaje SMB.
