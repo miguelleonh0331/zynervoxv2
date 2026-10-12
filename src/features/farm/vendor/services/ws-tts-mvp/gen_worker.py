@@ -8,15 +8,26 @@ igual que pc_tts_worker_proxy.py en el Farm grande.
 Protocolo: recibe {"text","lang","speed"} por stdin (JSON, utf-8). El padre
 ya dejo HTTP_PROXY/HTTPS_PROXY seteadas al lanzar este proceso. Escribe el
 WAV resultante a stdout (binario). Error -> stderr + exit 1.
+
+Timeout propio (2026-10-12): gTTS no trae timeout -- si el proxy conecta
+pero nunca responde (proxy lento, no roto), la llamada se puede colgar
+varias decenas de segundos. Sin esto, un proxy asi queda "disponible" para
+siempre (nunca lanza excepcion) y arrastra cualquier lote que lo elija.
+Mismo patron que pc_tts_worker_proxy.py del Farm grande: hilo aparte +
+future.result(timeout=...); si se pasa, se reporta como fallo normal (el
+padre bloquea el proxy) y este proceso de todos modos termina solo.
 """
 import json
+import os
 import subprocess
 import sys
 import tempfile
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from pathlib import Path
 
 FFMPEG = "ffmpeg"
 SOX = "sox"
+GTTS_TIMEOUT = int(os.getenv("TTS_GTTS_TIMEOUT", "20"))
 
 
 def main() -> None:
@@ -31,7 +42,16 @@ def main() -> None:
         mp3_path = Path(tmpdir) / "speech.mp3"
         wav_path = Path(tmpdir) / "speech.wav"
         out_path = Path(tmpdir) / "out.wav"
-        gTTS(text=text, lang=lang, tld="com", slow=False).save(str(mp3_path))
+
+        def _fetch():
+            gTTS(text=text, lang=lang, tld="com", slow=False).save(str(mp3_path))
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            try:
+                pool.submit(_fetch).result(timeout=GTTS_TIMEOUT)
+            except FuturesTimeoutError:
+                raise RuntimeError(f"gTTS no respondio en {GTTS_TIMEOUT}s (proxy probablemente lento/colgado)") from None
+
         subprocess.run(
             [FFMPEG, "-y", "-hide_banner", "-loglevel", "error",
              "-i", str(mp3_path), "-ar", "8000", "-ac", "1", "-sample_fmt", "s16", str(wav_path)],
