@@ -1,0 +1,6 @@
+{
+  "source": "/var/lib/asterisk/sounds/voicebot/cache/ivr_builder/macelioai",
+  "providers": [
+    {"key": "ws:5", "endpoint": "ws://172.16.10.26:8900"}
+  ]
+}

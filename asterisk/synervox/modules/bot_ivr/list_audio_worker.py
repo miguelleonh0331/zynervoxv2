@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Isolated gTTS list prebuild. No database, CARSA or call-engine access."""
+"""Isolated TTS cache with optional read-only legacy macelioai reuse."""
 import argparse
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -11,6 +11,7 @@ import os
 import re
 import signal
 import sqlite3
+import stat
 from pathlib import Path
 import subprocess
 import sys
@@ -151,6 +152,32 @@ def delete_audio(digest, cache):
         remove_file(cache / (digest + '.wav'))
 
 
+def copy_macelioai_cache(text, cache, output, tts):
+    # Only explicitly equivalent voices may share the legacy gTTS audio.
+    try:
+        settings = json.loads((cache / 'legacy_macelioai.json').read_text(encoding='utf-8'))
+    except FileNotFoundError:
+        return False
+    if tts not in settings['providers']:
+        return False
+    directory = Path(settings['source'])
+    if not directory.is_absolute():
+        raise ValueError('invalid_legacy_cache_path')
+    digest = hashlib.sha256(('macelioai|es|1.3|' + text).encode('utf-8')).hexdigest()
+    try:
+        descriptor = os.open(str(directory / (digest + '.wav')), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError:
+        return False
+    with os.fdopen(descriptor, 'rb') as source:
+        if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
+            return False
+        audio = source.read(10 * 1024 * 1024 + 1)
+    if len(audio) > 10 * 1024 * 1024:
+        return False
+    output.write_bytes(audio)
+    return valid_wav(output)
+
+
 def ensure_audio(text, cache, generator=generate_gtts, tts=None):
     text = normalize(text)
     digest = audio_hash(text, tts)
@@ -167,10 +194,12 @@ def ensure_audio(text, cache, generator=generate_gtts, tts=None):
         os.close(fd)
         temporary = Path(temporary)
         try:
-            if tts is not None and tts.get('key', 'gtts') != 'gtts':
-                generator(text, temporary, tts)
-            else:
-                generator(text, temporary)
+            imported = copy_macelioai_cache(text, cache, temporary, tts)
+            if not imported:
+                if tts is not None and tts.get('key', 'gtts') != 'gtts':
+                    generator(text, temporary, tts)
+                else:
+                    generator(text, temporary)
             if not valid_wav(temporary):
                 raise ValueError('invalid_audio')
             temporary.chmod(0o640)
@@ -180,7 +209,7 @@ def ensure_audio(text, cache, generator=generate_gtts, tts=None):
             registry.close()
         finally:
             remove_file(temporary)
-    return digest, 'generated'
+    return digest, 'reused' if imported else 'generated'
 
 
 def atomic_json(path, value):
