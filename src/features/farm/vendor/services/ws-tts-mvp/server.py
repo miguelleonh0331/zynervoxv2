@@ -351,6 +351,14 @@ async def handle(websocket):
         # conexiones cortas en paralelo bastaban unas pocas canceladas para
         # ir encogiendo el pool disponible y degradar el throughput. El
         # finally corre siempre, incluso en cancelacion.
+        #
+        # Sin "async with _lock" aqui (2026-10-12, segunda vuelta): ese lock
+        # agrega su propio punto de "await", y una SEGUNDA cancelacion justo
+        # ahi (muy probable con muchas conexiones cortandose a la vez)
+        # interrumpia el propio cleanup -- el try/finally no alcanza si lo
+        # de adentro tambien puede cancelarse. Una asignacion de diccionario
+        # sola no tiene "await": ya es atomica en un event loop de un solo
+        # hilo, y al no cancelarse nunca, siempre completa.
         wav_bytes = None
         error = None
         rate_limited = False
@@ -360,21 +368,28 @@ async def handle(websocket):
             error = f"{type(exc).__name__}: {exc}"
             rate_limited = isinstance(exc, ProxyRateLimited)
         finally:
-            async with _lock:
-                if wav_bytes is not None:
-                    STATUS[proxy["endpoint"]] = "disponible"
-                elif rate_limited:
-                    BLOCKED[proxy["endpoint"]] = {"blocked_at": time.time(), "reason": error}
-                    STATUS[proxy["endpoint"]] = "bloqueado"
-                else:
-                    # Cubre fallos normales Y cancelacion/desconexion: el
-                    # proxy nunca debe quedar colgado en "procesando".
-                    STATUS[proxy["endpoint"]] = "disponible"
+            # Log aca adentro, no despues (2026-10-12, a pedido del usuario
+            # antes de una prueba de 300 audios): en cancelacion/desconexion
+            # el codigo despues de este finally nunca se alcanza (la
+            # CancelledError sigue propagandose), asi que CUALQUIER log
+            # puesto ahi se pierde justo para ese caso -- el que mas
+            # interesa diagnosticar. Puesto aca, con el "flush=True" de
+            # siempre, queda registrado pase lo que pase.
+            if wav_bytes is not None:
+                STATUS[proxy["endpoint"]] = "disponible"
+            elif rate_limited:
+                BLOCKED[proxy["endpoint"]] = {"blocked_at": time.time(), "reason": error}
+                STATUS[proxy["endpoint"]] = "bloqueado"
+                print(f"FAIL via {proxy['endpoint']}: {error} -- proxy bloqueado (429 confirmado)", flush=True)
+            else:
+                # Cubre fallos normales Y cancelacion/desconexion: el
+                # proxy nunca debe quedar colgado en "procesando".
+                STATUS[proxy["endpoint"]] = "disponible"
+                reason = error or "conexion cancelada/cliente desconectado"
+                print(f"FAIL via {proxy['endpoint']}: {reason} -- no bloqueado (fallo transitorio)", flush=True)
 
         if wav_bytes is None:
-            tag = "proxy bloqueado (429 confirmado)" if rate_limited else "no bloqueado (fallo transitorio)"
-            print(f"FAIL via {proxy['endpoint']}: {error} -- {tag}", flush=True)
-            await websocket.send(json.dumps({"ok": False, "error": error}))
+            await websocket.send(json.dumps({"ok": False, "error": error or "conexion cancelada"}))
             continue
 
         print(f"OK via {proxy['endpoint']} ({len(wav_bytes)} bytes) texto={text[:40]!r}", flush=True)
