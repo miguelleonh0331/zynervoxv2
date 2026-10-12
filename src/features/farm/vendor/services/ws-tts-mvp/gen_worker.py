@@ -7,15 +7,29 @@ igual que pc_tts_worker_proxy.py en el Farm grande.
 
 Protocolo: recibe {"text","lang","speed"} por stdin (JSON, utf-8). El padre
 ya dejo HTTP_PROXY/HTTPS_PROXY seteadas al lanzar este proceso. Escribe el
-WAV resultante a stdout (binario). Error -> stderr + exit 1.
+WAV resultante a stdout (binario). Error -> stderr + exit code:
+  exit 2 -> Google confirmo 429 (Too Many Requests) para este proxy: el
+            padre SI debe bloquearlo, es la unica senal confiable de que
+            el proxy esta quemado de verdad.
+  exit 1 -> cualquier otro fallo (conexion, timeout, ffmpeg/sox, payload):
+            puede ser transitorio (saturacion momentanea, blip de red) --
+            el padre NO bloquea, solo reporta el error y deja el proxy
+            disponible para el siguiente intento.
 
 Timeout propio (2026-10-12): gTTS no trae timeout -- si el proxy conecta
 pero nunca responde (proxy lento, no roto), la llamada se puede colgar
 varias decenas de segundos. Sin esto, un proxy asi queda "disponible" para
 siempre (nunca lanza excepcion) y arrastra cualquier lote que lo elija.
 Mismo patron que pc_tts_worker_proxy.py del Farm grande: hilo aparte +
-future.result(timeout=...); si se pasa, se reporta como fallo normal (el
-padre bloquea el proxy) y este proceso de todos modos termina solo.
+future.result(timeout=...). Un timeout NO es 429 -> exit 1, no bloquea.
+
+Distincion 429 vs otros fallos (2026-10-12, a pedido del usuario): antes
+cualquier excepcion bloqueaba el proxy para siempre (ver nota en server.py
+"un solo strike, sin umbral"). En la practica eso bloqueaba proxies sanos
+que solo tuvieron un fallo transitorio (confirmado probando 3 "bloqueados"
+a mano: los 3 funcionaban bien). gTTSError trae el status HTTP real en
+`exc.rsp.status_code` cuando Google respondio algo; si `rsp` es None fue
+un fallo de conexion (no confirma nada sobre el proxy en si).
 """
 import json
 import os
@@ -67,6 +81,7 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except Exception as exc:  # reportado tal cual al padre via stderr, el mismo contrato de error que ya usa server.py
+    except Exception as exc:  # reportado tal cual al padre via stderr; exit code le dice si bloquear
+        status_code = getattr(getattr(exc, "rsp", None), "status_code", None)
         print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(2 if status_code == 429 else 1)

@@ -215,6 +215,11 @@ def list_account_entries() -> list[dict]:
     return entries
 
 
+class ProxyRateLimited(RuntimeError):
+    """Google confirmo 429 para este proxy (gen_worker.py exit 2) -- unico
+    caso donde se justifica bloquearlo (ver nota de bloqueo en handle())."""
+
+
 async def generate_wav_subprocess(text: str, lang: str, speed: float, proxy_url: str) -> bytes:
     """Un proceso por job (ver nota de concurrencia arriba): el proxy va en
     el os.environ de ESTE subproceso nada mas, asi que N jobs concurrentes
@@ -235,9 +240,13 @@ async def generate_wav_subprocess(text: str, lang: str, speed: float, proxy_url:
     except asyncio.TimeoutError:
         proc.kill()
         await proc.wait()
+        # No confirma 429 -- no bloquea (ver ProxyRateLimited arriba).
         raise RuntimeError(f"timeout generando ({GTTS_TIMEOUT + 30}s)")
     if proc.returncode != 0:
-        raise RuntimeError(stderr.decode("utf-8", "replace").strip() or f"gen_worker exit {proc.returncode}")
+        message = stderr.decode("utf-8", "replace").strip() or f"gen_worker exit {proc.returncode}"
+        if proc.returncode == 2:
+            raise ProxyRateLimited(message)
+        raise RuntimeError(message)
     return stdout
 
 
@@ -327,10 +336,18 @@ async def handle(websocket):
             wav_bytes = await generate_wav_subprocess(text, lang, speed, proxy["url"])
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
+            # Solo bloquea si Google confirmo 429 (ProxyRateLimited). Cualquier
+            # otro fallo (conexion, timeout) puede ser transitorio -- se
+            # reporta pero el proxy queda disponible para el siguiente intento
+            # (antes "un solo strike" bloqueaba proxies sanos de por vida).
             async with _lock:
-                BLOCKED[proxy["endpoint"]] = {"blocked_at": time.time(), "reason": error}
-                STATUS[proxy["endpoint"]] = "bloqueado"
-            print(f"FAIL via {proxy['endpoint']}: {error} -- proxy bloqueado", flush=True)
+                if isinstance(exc, ProxyRateLimited):
+                    BLOCKED[proxy["endpoint"]] = {"blocked_at": time.time(), "reason": error}
+                    STATUS[proxy["endpoint"]] = "bloqueado"
+                else:
+                    STATUS[proxy["endpoint"]] = "disponible"
+            tag = "proxy bloqueado (429 confirmado)" if isinstance(exc, ProxyRateLimited) else "no bloqueado (fallo transitorio)"
+            print(f"FAIL via {proxy['endpoint']}: {error} -- {tag}", flush=True)
             await websocket.send(json.dumps({"ok": False, "error": error}))
             continue
 
