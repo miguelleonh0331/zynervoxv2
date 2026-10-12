@@ -1079,3 +1079,7 @@ Por instrucción del usuario y aprobación arquitectónica se importan únicamen
 ## 2026-10-12 - Recuperación automática temporal macelioai
 
 Usuario autorizó con procede buscar hash antiguo antes de crear audio y publicar copia con hash nuevo/SQLite. ARCHITECT_AGENT aprobó dependencia opcional de archivos legacy, exclusivamente en ensure_audio compartido y mediante configuración privada de perfiles equivalentes exactos. Se habilita TTS_26/ws:5 y endpoint actual, sin asumir que cualquier WebSocket tiene la misma voz. Configuración ausente conserva operación previa; no cambiar hashes ni extender catálogo SQL/UI. Fuentes no se modifican, copia atómica bajo lock y publicación en SQLite posterior. Se conserva validación habitual WAV en recuperación automática; la omisión solicitada anteriormente correspondió a la importación puntual. Recuperados cuentan como reused y fuentes ausentes/corruptas siguen proveedor seleccionado.
+
+## 2026-10-12 - Conservar selección de concurrencia
+
+Usuario pidió corregir vuelta a25x y escalas de5en5. ARCHITECT_AGENT aprobó estado público aditivo workers y preferencias locales por cuenta/campaña/lista. Conservar1y3, añadir5..100 cada5, sin persistenciaSQL ni cambio de identidad de audios. PHP usa helper común opciones/validación; Python mantiene lista equivalente. Restaurar selección del navegador válida al recargar/cambiar proveedor, fallback último job o25. Durante ejecución mostrar workers real y bloquear selector, sin modificar job activo.

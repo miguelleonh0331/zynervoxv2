@@ -47,6 +47,11 @@ audio_verify($payload['signature'] === bot_list_audio_payload($simple, [$lead], 
 $changed = $lead; $changed['customer_name'] = 'Pedro';
 audio_verify($payload['signature'] !== bot_list_audio_payload($simple, [$changed], 3, 1, 25)['signature'], 'Changed lead must invalidate list manifest');
 audio_reject(static function () use ($simple, $lead) { bot_list_audio_payload($simple, [$lead], 3, 1, 2); }, 'Invalid concurrency accepted');
+foreach (array_merge([1,3], range(5,100,5)) as $workers) {
+    $scaled = bot_list_audio_payload($simple, [$lead], 3, 1, $workers);
+    audio_verify($scaled['workers'] === $workers && $scaled['signature'] === $payload['signature'], 'Worker scale or audio identity changed');
+}
+foreach ([0,4,7,101] as $workers) audio_reject(static function () use ($simple,$lead,$workers) { bot_list_audio_payload($simple,[$lead],3,1,$workers); }, 'Invalid worker scale accepted');
 audio_reject(static function () use ($flow, $lead) { bot_list_audio_payload($flow, [$lead], 3, 1, 25); }, 'Composite flow falsely marked fully generated');
 audio_reject(static function () use ($flow) { bot_list_audio_preflight($flow, [], 3, 1); }, 'Empty list accepted');
 $flow['nodes']['a']['next'] = 'missing';

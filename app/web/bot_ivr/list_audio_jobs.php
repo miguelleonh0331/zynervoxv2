@@ -4,6 +4,10 @@ require_once __DIR__.'/../config/Config.php';
 require_once __DIR__.'/list_audio_service.php';
 require_once __DIR__.'/tts_service.php';
 
+function bot_list_audio_worker_options(): array {
+    return array_merge([1,3], range(5,100,5));
+}
+
 function bot_list_audio_providers(array $providers = []): array {
     $options = ['gtts'=>'gTTS (gratis, voz básica)'];
     foreach ($providers as $provider) $options['ws:'.$provider['provider_id']] = $provider['name'].' (WebSocket)';
@@ -37,7 +41,7 @@ function bot_list_audio_job_status(int $listId): ?array {
     }
     // Never return texts, absolute paths or the full lead/audio mapping to the UI.
     $status['active'] = bot_list_audio_active($listId);
-    return array_intersect_key($status, array_flip(['state','signature','job_id','active','generated','reused','failed','completed','total','errors']));
+    return array_intersect_key($status, array_flip(['state','signature','job_id','active','workers','generated','reused','failed','completed','total','errors']));
 }
 
 
@@ -85,7 +89,7 @@ function bot_list_audio_ready(?array $job, ?array $payload): bool {
 function bot_list_audio_payload(array $flow, array $leads, int $listId, int $campaignId, int $workers, ?array $tts = null): array {
     $tts = $tts ?? bot_tts_snapshot(bot_list_audio_root(), $listId, $campaignId);
     bot_tts_profile($tts);
-    if (!in_array($workers, [1,3,10,25,60,100], true)) throw new RuntimeException('Velocidad de generación inválida.');
+    if (!in_array($workers, bot_list_audio_worker_options(), true)) throw new RuntimeException('Velocidad de generación inválida.');
     $check = bot_list_audio_preflight($flow, $leads, $listId, $campaignId);
     if ($check['rejected']) throw new RuntimeException('Corrige las variables de los leads antes de generar. '.implode(' ', $check['errors']));
     $templates = bot_list_audio_templates($flow,true);

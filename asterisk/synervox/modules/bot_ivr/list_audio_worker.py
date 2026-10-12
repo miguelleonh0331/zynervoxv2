@@ -22,7 +22,7 @@ from urllib.parse import urlsplit
 
 PROFILE = {'provider': 'gtts', 'voice': 'google-es-com', 'language': 'es',
            'speed': '1.3', 'format': 'pcm_s16le-mono-8000', 'pipeline': 'v1'}
-WORKERS = (1, 3, 10, 25, 60, 100)
+WORKERS = (1, 3) + tuple(range(5, 101, 5))
 
 
 def remove_file(path):
@@ -443,7 +443,7 @@ def launch_locked(root, path, job):
                         stdin=stdin, stdout=output, stderr=output, start_new_session=True,
                         pass_fds=(lock.fileno(), gate_read))
         atomic_json(paths(root, job['list_id']), {'state': 'starting', 'list_id': job['list_id'],
-                    'campaign_id': job['campaign_id'], 'job_id': path.name.split('.')[0],
+                    'campaign_id': job['campaign_id'], 'job_id': path.name.split('.')[0], 'workers': job['workers'],
                     'signature': job['signature'], 'tts': job.get('tts', {'key': 'gtts'}), 'pid': process.pid,
                     'starttime': process_identity(process.pid)['starttime'], 'updated_at': int(time.time())})
         os.write(gate_write, b'1')

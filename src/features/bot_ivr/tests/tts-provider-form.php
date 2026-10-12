@@ -10,7 +10,7 @@ file_put_contents($root.'/bot_ivr/list_call_service.php','<?php function bot_lis
 file_put_contents($root.'/bot_ivr/list_service.php','<?php function bot_list_get($db,$id,$campaign) {if($id!==56 || $campaign!==50) throw new RuntimeException("Scope rejected");return ["id_flujo"=>2,"name"=>"Fixture","campaign_name"=>"Fixture","active"=>1,"created_at"=>"2026-10-12","dial_prefix"=>""]; }');
 file_put_contents($root.'/bot_ivr/campaigns_page.php', <<<'PHP'
 <?php
-$message='';$error='';$_SESSION=['bot_campaign_csrf'=>'valid'];
+$message='';$error='';$_SESSION=['user'=>'fixture-admin','bot_campaign_csrf'=>'valid'];
 function h($text) {return htmlspecialchars((string)$text,ENT_QUOTES,'UTF-8');}
 function bot_campaign_csrf() {if(!hash_equals('valid',(string)($_POST['csrf'] ?? ''))) throw new RuntimeException('CSRF rejected');}
 function bot_campaign_token() {echo '<input name="csrf" value="valid">';}
@@ -34,7 +34,15 @@ function formRequest($root,array $request): string {
 }
 function formCheck($ok,$why) {if(!$ok)throw new RuntimeException($why);}
 try {
+ mkdir($root.'/runtime/bot_ivr/audio_jobs',0700,true);
+ file_put_contents($root.'/runtime/bot_ivr/audio_jobs/list_56.json',json_encode(['list_id'=>56,'campaign_id'=>50,'state'=>'stopped','workers'=>15]));
  $html=formRequest($root,[]);
+ preg_match('/<select id="list_audio_workers"[^>]*>(.*?)<\/select>/s',$html,$speed);
+ preg_match_all('/<option value="(\d+)"/',$speed[1],$options);
+ formCheck(array_map('intval',$options[1])===array_merge([1,3],range(5,100,5)),'Worker scales incomplete');
+ formCheck(strpos($speed[1],'value="15" selected')!==false,'Last job workers reset to 25');
+ formCheck(strpos($html,'"workers":15')!==false,'Public status workers absent');
+ if(isset($argv[2])) file_put_contents($argv[2],$html);
  formCheck(strpos($html,'Fixture &lt;TTS&gt;')!==false && strpos($html,'value="ws:7"')!==false,'Provider rendering/escaping');
  formCheck(strpos($html,'id="tts-provider-dialog"')!==false && strpos($html,'name="tts_endpoint"')!==false,'Registration modal missing');
  $post=['action'=>'add_tts_provider','csrf'=>'valid','tts_name'=>'Internal server','tts_endpoint'=>'ws://172.16.10.26:8900'];

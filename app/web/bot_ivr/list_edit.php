@@ -23,6 +23,7 @@ $audioActive = false;
 $audioReady = false;
 $ttsProviders = [];
 $selectedTts = ['key'=>'gtts'];
+$selectedWorkers = 25;
 try {
     if (!$listId || !$campaignId) throw new RuntimeException('ID de lista o campaña inválido.');
     $db = bot_ivr_repository();
@@ -90,6 +91,7 @@ try {
     } catch (Throwable $e) { $audioCheckError = $e->getMessage(); }
     try {
         $audioJob = bot_list_audio_job_status($listId);
+        if (in_array($audioJob['workers'] ?? null, bot_list_audio_worker_options(), true)) $selectedWorkers = $audioJob['workers'];
         $audioActive = bot_list_audio_active($listId);
         $audioReady = bot_list_audio_ready($audioJob, $audioPayload);
     } catch (Throwable $e) { $audioCheckError = 'No se pudo leer el estado de generación.'; }
@@ -170,8 +172,8 @@ if ($list): ?>
 </select><button type="button" id="list-tts-provider-add" class="carsa-btn secondary">Agregar</button></div></div>
 <div id="list-audio-speed-control" class="carsa-field list-audio-speed"<?php echo $audioReady ? ' hidden' : ''; ?>><label for="list_audio_workers">Velocidad de generación</label>
 <select id="list_audio_workers" name="audio_workers">
-<?php foreach ([1, 3, 10, 25, 60, 100] as $workers): ?>
-<option value="<?php echo $workers; ?>"<?php echo $workers === 25 ? ' selected' : ''; ?>><?php echo $workers; ?>x</option>
+<?php foreach (bot_list_audio_worker_options() as $workers): ?>
+<option value="<?php echo $workers; ?>"<?php echo $workers === $selectedWorkers ? ' selected' : ''; ?>><?php echo $workers; ?>x</option>
 <?php endforeach; ?>
 </select></div>
 <button type="submit" id="list-audio-generate" class="carsa-btn"<?php echo $audioReady ? ' hidden' : ''; ?><?php echo $audioPayload === null || $audioActive || $audioReady ? ' disabled' : ''; ?> aria-describedby="list-audio-availability">Generar</button>
@@ -236,6 +238,16 @@ if ($list): ?>
     const valid = <?php echo $audioPayload !== null ? 'true' : 'false'; ?>;
     const signature = <?php echo json_encode($audioPayload['signature'] ?? ''); ?>;
     const providerSelect = document.getElementById('list_audio_provider');
+    const workersSelect = document.getElementById('list_audio_workers');
+    const workersPreference = <?php echo json_encode('zynervox:audio-workers:'.($_SESSION['user'] ?? '').':'.(int)$campaignId.':'.(int)$listId); ?>;
+    const validWorkers = value => Array.from(workersSelect.options).some(option => option.value === String(value));
+    try {
+        const savedWorkers = localStorage.getItem(workersPreference);
+        if (validWorkers(savedWorkers)) workersSelect.value = savedWorkers;
+    } catch (error) { /* Browser storage may be unavailable. */ }
+    workersSelect.addEventListener('change', () => {
+        try { localStorage.setItem(workersPreference, workersSelect.value); } catch (error) {}
+    });
     const providerDialog = document.getElementById('tts-provider-dialog');
     document.getElementById('list-tts-provider-add').addEventListener('click', () => providerDialog.showModal());
     document.getElementById('tts-provider-cancel').addEventListener('click', () => providerDialog.close());
@@ -335,6 +347,8 @@ if ($list): ?>
         clearTimeout(timer);
         audioJob = job;
         const active = audioStopping || job && (job.active || ['starting','running','stopping'].includes(job.state));
+        workersSelect.disabled = !!active;
+        if (active && validWorkers(job && job.workers)) workersSelect.value = String(job.workers);
         audioStop.hidden = !active;
         audioStop.disabled = audioStopping || !job || !job.job_id;
         const stale = job && valid && job.signature !== signature;

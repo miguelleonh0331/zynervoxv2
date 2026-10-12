@@ -94,5 +94,19 @@ class WebsocketTest(unittest.TestCase):
         for endpoint in ['http://host', 'ws://user:secret@host', 'ws://host?x=y', 'ws://host#x']:
             with self.assertRaises(ValueError): worker.tts_profile(dict(tts, endpoint=endpoint))
 
+    def test_worker_scales_accept_supported_jobs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'job.json'
+            job = {'provider': 'websocket', 'tts': self.tts(), 'list_id': 56,
+                   'prompts': [{'text': 'Hola', 'lead_id': 1, 'node': 'a'}]}
+            for count in [1, 3] + list(range(5, 101, 5)):
+                job['workers'] = count
+                path.write_text(json.dumps(job))
+                self.assertEqual(worker.read_job(path)['workers'], count)
+            for count in [0, 2, 4, 7, 101]:
+                job['workers'] = count
+                path.write_text(json.dumps(job))
+                with self.assertRaises(ValueError): worker.read_job(path)
+
 
 if __name__ == '__main__': unittest.main()
