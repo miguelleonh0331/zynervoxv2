@@ -242,6 +242,16 @@ async def generate_wav_subprocess(text: str, lang: str, speed: float, proxy_url:
         await proc.wait()
         # No confirma 429 -- no bloquea (ver ProxyRateLimited arriba).
         raise RuntimeError(f"timeout generando ({GTTS_TIMEOUT + 30}s)")
+    except asyncio.CancelledError:
+        # Cliente se desconecto a medio camino: sin esto, gen_worker.py queda
+        # huerfano corriendo en background (desperdicia CPU y arrastra el
+        # throughput de los demas jobs). Se mata antes de propagar.
+        proc.kill()
+        try:
+            await proc.wait()
+        except Exception:
+            pass
+        raise
     if proc.returncode != 0:
         message = stderr.decode("utf-8", "replace").strip() or f"gen_worker exit {proc.returncode}"
         if proc.returncode == 2:
@@ -332,27 +342,41 @@ async def handle(websocket):
         # Fuera del lock: esto es lo que corre en paralelo entre jobs (ver
         # nota de concurrencia arriba). pick_proxy() ya garantizo que ningun
         # otro job en vuelo tiene este mismo proxy.
+        #
+        # try/finally (2026-10-12, bug real detectado en produccion): si el
+        # cliente corta la conexion a medio camino, esta coroutine se
+        # cancela -- CancelledError NO es Exception, "except Exception" no
+        # lo atrapaba, y STATUS se quedaba en "procesando" PARA SIEMPRE (el
+        # proxy desaparecia de rotacion sin haber fallado nunca). Con 25
+        # conexiones cortas en paralelo bastaban unas pocas canceladas para
+        # ir encogiendo el pool disponible y degradar el throughput. El
+        # finally corre siempre, incluso en cancelacion.
+        wav_bytes = None
+        error = None
+        rate_limited = False
         try:
             wav_bytes = await generate_wav_subprocess(text, lang, speed, proxy["url"])
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
-            # Solo bloquea si Google confirmo 429 (ProxyRateLimited). Cualquier
-            # otro fallo (conexion, timeout) puede ser transitorio -- se
-            # reporta pero el proxy queda disponible para el siguiente intento
-            # (antes "un solo strike" bloqueaba proxies sanos de por vida).
+            rate_limited = isinstance(exc, ProxyRateLimited)
+        finally:
             async with _lock:
-                if isinstance(exc, ProxyRateLimited):
+                if wav_bytes is not None:
+                    STATUS[proxy["endpoint"]] = "disponible"
+                elif rate_limited:
                     BLOCKED[proxy["endpoint"]] = {"blocked_at": time.time(), "reason": error}
                     STATUS[proxy["endpoint"]] = "bloqueado"
                 else:
+                    # Cubre fallos normales Y cancelacion/desconexion: el
+                    # proxy nunca debe quedar colgado en "procesando".
                     STATUS[proxy["endpoint"]] = "disponible"
-            tag = "proxy bloqueado (429 confirmado)" if isinstance(exc, ProxyRateLimited) else "no bloqueado (fallo transitorio)"
+
+        if wav_bytes is None:
+            tag = "proxy bloqueado (429 confirmado)" if rate_limited else "no bloqueado (fallo transitorio)"
             print(f"FAIL via {proxy['endpoint']}: {error} -- {tag}", flush=True)
             await websocket.send(json.dumps({"ok": False, "error": error}))
             continue
 
-        async with _lock:
-            STATUS[proxy["endpoint"]] = "disponible"
         print(f"OK via {proxy['endpoint']} ({len(wav_bytes)} bytes) texto={text[:40]!r}", flush=True)
         await websocket.send(wav_bytes)
 
