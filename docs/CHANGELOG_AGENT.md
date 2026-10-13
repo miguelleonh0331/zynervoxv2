@@ -2507,3 +2507,8 @@ User authorized procede. Deployed bot_ivr/list_edit.php from SMB, preserving own
 ## 2026-10-13 - Additional dialing channel choices
 
 Prepared locally: add 30,35,40 call channels to selector, Play API, persistent list save and run creation. Existing test exercises each new value at creation and during active runs, with rollback. Remote deployment pending explicit procede for this action.
+
+
+## 2026-10-13 - Additional channel choices deployed
+
+User authorized procede. Deployed four PHP files from SMB with owner/mode preserved, PHP lint and source/production equality. Backup /var/backups/zynervoxv2/channel-options-20261013-154300. Production MariaDB transaction fixture passed save/create/live changes for 30,35,40; all fixture data rolled back without workers or calls. Authenticated HTTPS page returned 200 with all three options and current selection 25 retained. QA session destroyed. No schema changes or service restarts.
