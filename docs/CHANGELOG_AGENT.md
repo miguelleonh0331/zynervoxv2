@@ -2482,3 +2482,8 @@ Validation: local SQLite repository suite verifies live increases/decreases, cla
 ## 2026-10-13 - Live channels deployed on mirmidon
 
 User authorized procede. Deployed four PHP files from SMB source, linted temporary copies and verified source/production equality; backup /var/backups/zynervoxv2/live-channels-20261013-143918. No migration or service restart. Native MariaDB transaction fixture with real production worker and mocked AMI passed 3 -> 5 -> 1 limits, refill/drain, completion and existing worker regressions; rollback removed fixture data. HTTPS authenticated API save and rendered selector verified, QA session destroyed. List 56 retained its current value 20; lists 57/58 retained 3. Zero active runs before/after; no actual calls originated. Added live-limit worker regression to existing test.
+
+
+## 2026-10-13 - SQL Server destination prepared
+
+User requested IVR SQL destination 172.16.10.19:1433, database BD_ANALISIS, table dbo.GESTIONES_BOT. Prepared private local configuration under app/web/.codex-temp/sqlserver (Git ignored), retaining existing IVR provider settings and switching result_destination to sqlserver. Credentials excluded from Git and logs. TCP connection verified. V2 Python 3.6.15 lacks pymssql; PyPI publishes compatible 2.2.11 CPython 3.6 Linux wheels. Remote plan: back up private configuration, install pymssql 2.2.11 in v2 gtts_env, validate supplied login/table/INSERT permission and atomically copy private configuration from SMB into /etc/zynervox/zynervoxv2/ivr_engine.json root:www 0640. Activation awaits explicit procede for SQL action. No remote writes or SQL inserts performed; no retroactive export.
