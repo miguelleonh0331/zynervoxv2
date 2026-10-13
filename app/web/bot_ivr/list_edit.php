@@ -180,7 +180,7 @@ if ($list): ?>
 <button type="button" id="list-audio-stop" class="carsa-btn" style="background:#b91c1c;color:#fff"<?php echo $audioActive ? '' : ' hidden'; ?>>■ Detener audios</button>
 <div class="carsa-field list-audio-speed"><label for="list_call_channels">Canales</label>
 <select id="list_call_channels" name="call_channels">
-<?php foreach ([1, 3, 5, 10, 20, 25, 50, 100] as $channels): ?>
+<?php foreach ([1, 3, 5, 10, 20, 25, 30, 35, 40, 50, 100] as $channels): ?>
 <option value="<?php echo $channels; ?>"<?php echo $channels === (int)$list['call_channels'] ? ' selected' : ''; ?>><?php echo $channels; ?></option>
 <?php endforeach; ?>
 </select></div>

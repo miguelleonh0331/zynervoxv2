@@ -1106,3 +1106,8 @@ Revision ARCHITECT_AGENT del agente principal: aprobada persistencia de call_cha
 ## 2026-10-13 - Live dialing channels
 
 ARCHITECT_AGENT review by primary agent: approve live list channels in bot_ivr and zynervox_queries. Allowed UI/list queries/dial claims/monitor/tests/contracts; no telephony/provider/other module changes. Keep list setting as authoritative active limit, original run channels as initial snapshot. Claims serialize with updates through list row lock; decreases never terminate calls. No new dependencies or schema.
+
+
+## 2026-10-13 - Additional dialing channel choices
+
+ARCHITECT_AGENT review by primary agent approves requested channel choices 30,35,40 in bot_ivr and zynervox_queries. Scope: selector/API/repository validation/contracts and existing repository test. No other modules, dependencies, schema or worker algorithm changes.

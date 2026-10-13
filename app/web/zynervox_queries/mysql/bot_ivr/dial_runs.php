@@ -14,7 +14,7 @@ trait DialRunQueries {
         return [$sql,array_merge([$run['list_id']],$statuses,[$run['run_id']])];
     }
     public function createDialRun(int $listId,int $campaignId,string $runId,int $channels,array $config,string $actor): void {
-        if(!preg_match('/^[a-f0-9]{32}$/D',$runId) || !in_array($channels,[1,3,5,10,20,25,50,100],true) || empty($config['statuses']) || count($config['statuses'])>64 || !in_array($config['order'],['UP','DOWN','RANDOM'],true) || !preg_match('/^[0-9]{1,20}$/D',$config['prefix']) || (int)$config['flow_id']<1)throw new \RuntimeException('Configuracion de marcacion invalida.');
+        if(!preg_match('/^[a-f0-9]{32}$/D',$runId) || !in_array($channels,[1,3,5,10,20,25,30,35,40,50,100],true) || empty($config['statuses']) || count($config['statuses'])>64 || !in_array($config['order'],['UP','DOWN','RANDOM'],true) || !preg_match('/^[0-9]{1,20}$/D',$config['prefix']) || (int)$config['flow_id']<1)throw new \RuntimeException('Configuracion de marcacion invalida.');
         foreach($config['statuses'] as $status)if(!preg_match('/^[A-Z0-9_]{1,80}$/D',$status) || $status==='CALL')throw new \RuntimeException('Estado de marcacion no disponible.');
         $this->callAtomic(function()use($listId,$campaignId,$runId,$channels,$config,$actor){
             $s=$this->db->prepare('SELECT l.active,l.id_flujo,l.dial_prefix,l.call_channels,c.active campaign_active FROM zynervox_bot_lists l JOIN zynervox_bot_campaigns c ON c.campaign_id=l.campaign_id WHERE l.list_id=? AND l.campaign_id=? FOR UPDATE');$s->execute([$listId,$campaignId]);$list=$s->fetch();

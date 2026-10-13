@@ -2502,3 +2502,8 @@ Prepared local bot_ivr/list_edit.php visual change: AGENDADO_VALIDAR and AGENDAD
 ## 2026-10-13 - Scheduled status highlight deployed
 
 User authorized procede. Deployed bot_ivr/list_edit.php from SMB, preserving owner/mode and validating PHP syntax and source/production equality. Backup /var/backups/zynervoxv2/green-statuses-20261013-153631. Authenticated production HTTPS page returned 200 and includes green row background/progress styling plus exact AGENDADO_VALIDAR/AGENDADO status condition in shared initial/polling renderer. Temporary QA session destroyed. No dialing or SQL configuration changes.
+
+
+## 2026-10-13 - Additional dialing channel choices
+
+Prepared locally: add 30,35,40 call channels to selector, Play API, persistent list save and run creation. Existing test exercises each new value at creation and during active runs, with rollback. Remote deployment pending explicit procede for this action.

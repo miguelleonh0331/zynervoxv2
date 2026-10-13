@@ -52,4 +52,15 @@ $db->exec("UPDATE zynervox_bot_dial_runs SET state='stopped'");
 $r->updateListCallChannels(56,50,25);
 channelsCheck((int)$r->list(56,50)['call_channels']===25,'Idle save failed');
 channelsCheck((int)$r->dialRun(56,50)['channels']===10,'Historical run snapshot changed');
+foreach([30,35,40] as $channels) {
+    $db->beginTransaction();
+    $r->updateListCallChannels(56,50,$channels);
+    $r->createDialRun(56,50,str_repeat('c',32),$channels,$cfg,'fixture');
+    channelsCheck($r->dialRun(56,50,str_repeat('c',32))['channels']===$channels,'New channel option rejected at Play');
+    $db->prepare("UPDATE zynervox_bot_dial_runs SET state='running' WHERE run_id=?")->execute([str_repeat('c',32)]);
+    $next=$channels===40?30:$channels+5;$r->updateListCallChannels(56,50,$next);
+    channelsCheck($r->dialRun(56,50,str_repeat('c',32))['channels']===$next,'New channel option rejected live');
+    $db->rollBack();
+}
+
 echo "LIST_CHANNELS_OK: persistence, scope, values, rollback, stale Play, live limits and active-call preservation\n";

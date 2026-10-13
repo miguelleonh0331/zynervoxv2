@@ -174,3 +174,8 @@ updateListCallChannels(listId,campaignId,channels): void valida opciones, bloque
 ## 2026-10-13 - Live dialing channels
 
 updateListCallChannels now permits active runs and locks only the scoped list. dialRun and campaignMonitor expose current list.call_channels for active runs; finished runs retain initial channels snapshot. claimDialLead checks current list.call_channels under its existing list lock, including already open calls. No run-lock update from the setting operation, avoiding reversed lock order.
+
+
+## 2026-10-13 - Additional dialing channel choices
+
+updateListCallChannels and createDialRun accept 30,35,40 in addition to prior channel options. Signatures, list scope, locking and live limits unchanged. Approved by ARCHITECT_AGENT review of primary agent.

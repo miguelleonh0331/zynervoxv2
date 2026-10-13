@@ -341,3 +341,8 @@ Migracion 014 agrega zynervox_bot_lists.call_channels con default 3; inicializa 
 ## 2026-10-13 - Live dialing channels
 
 list_call_api save_channels now accepts changes during dialing. UI enables channels in starting/running; stopping keeps selector disabled. Increases refill next worker cycle; decreases drain existing calls without hangup. Existing admin/CSRF/options/persistence unchanged. No worker restart or schema migration.
+
+
+## 2026-10-13 - Additional dialing channel choices
+
+Channel options add 30,35,40 between 25 and 50 in list selector and Play validation. Existing save/live behavior retained. No schema changes. Approved by ARCHITECT_AGENT review of primary agent.

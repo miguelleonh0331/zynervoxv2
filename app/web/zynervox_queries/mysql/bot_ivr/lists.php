@@ -12,7 +12,7 @@ trait ListQueries {
         $s->execute([$listId]);$stats['errors']=$s->fetchAll(\PDO::FETCH_ASSOC);return $stats;
     }
     public function updateListCallChannels(int $listId,int $campaignId,int $channels): void {
-        if (!in_array($channels,[1,3,5,10,20,25,50,100],true)) throw new \RuntimeException('Cantidad de canales invalida.');
+        if (!in_array($channels,[1,3,5,10,20,25,30,35,40,50,100],true)) throw new \RuntimeException('Cantidad de canales invalida.');
         $this->callAtomic(function() use($listId,$campaignId,$channels) {
             $s=$this->db->prepare('SELECT list_id FROM zynervox_bot_lists WHERE list_id=? AND campaign_id=? FOR UPDATE');
             $s->execute([$listId,$campaignId]);
