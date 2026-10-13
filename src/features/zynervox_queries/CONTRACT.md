@@ -179,3 +179,8 @@ updateListCallChannels now permits active runs and locks only the scoped list. d
 ## 2026-10-13 - Additional dialing channel choices
 
 updateListCallChannels and createDialRun accept 30,35,40 in addition to prior channel options. Signatures, list scope, locking and live limits unchanged. Approved by ARCHITECT_AGENT review of primary agent.
+
+
+## 2026-10-13 - Preanswer tracking contract
+
+preanswerCall(callId) returns scoped origin-7307 attempt including last capture byte cursor. pendingPreanswerCalls(limit) selects recent unanswered tracked captures fairly, including just-closed attempts, excluding done/results/recovery. savePreanswerResult locks attempt, rejects answered/non-7307/recovered, persists one category/text evidence and returns true only for an open call eligible for a guarded AMI hangup; late closed result updates only latest lead. Event types PREANSWER_START/CAPTURE/RESULT/DONE added. finishCall preserves preanswer classification when never answered, with original dial_status/cause unchanged. No new table/database. Approved by primary ARCHITECT_AGENT review.

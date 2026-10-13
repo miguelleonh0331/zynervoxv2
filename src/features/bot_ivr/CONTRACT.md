@@ -346,3 +346,8 @@ list_call_api save_channels now accepts changes during dialing. UI enables chann
 ## 2026-10-13 - Additional dialing channel choices
 
 Channel options add 30,35,40 between 25 and 50 in list selector and Play validation. Existing save/live behavior retained. No schema changes. Approved by ARCHITECT_AGENT review of primary agent.
+
+
+## 2026-10-13 - Isolated preanswer detection
+
+7307 gains receive-only preanswer recording in outbound predial helper and an isolated CLI watcher. Uses Vosk settings from private ivr_engine config. Captures/classifications persist solely through zynervox_queries in zynervox_core; result never creates an IVR node. Answer cancels preanswer processing; actual answer and hangup cause retain their meaning. CLI endpoints deny HTTP. Files remain private runtime, no new database/table.

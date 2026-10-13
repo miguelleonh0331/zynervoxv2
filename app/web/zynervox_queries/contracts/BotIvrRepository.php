@@ -12,6 +12,9 @@ interface BotIvrRepository {
     public function saveIvrResult(string $callId, string $nodeId, array $fields): void;
     public function ivrCallContext(int $listId, int $leadId, string $callId): array;
     public function recordCallEvent(string $callId, string $type, string $eventId, int $epoch, array $data): void;
+    public function preanswerCall(string $callId): ?array;
+    public function pendingPreanswerCalls(int $limit=200): array;
+    public function savePreanswerResult(string $callId,string $eventId,int $epoch,array $data): bool;
     public function openCallsForRecovery(): array;
     public function observeCallPresence(string $callId, bool $active, int $epoch): bool;
     public function startCall(int $listId, string $phone, string $callId): int;

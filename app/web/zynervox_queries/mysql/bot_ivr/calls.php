@@ -53,7 +53,7 @@ trait CallQueries {
         }
     }
     public function recordCallEvent(string $callId, string $type, string $eventId, int $epoch, array $data): void {
-        if (!in_array($type,['START','OUTBOUND','ANSWER','AMD','FINISH','RECOVERY','IVR_START','IVR_NODE','IVR_END','DIAL_REJECTED'],true) || !preg_match('/^[a-f0-9]{64}$/D',$eventId) || $epoch<1) throw new \RuntimeException('Invalid event');
+        if (!in_array($type,['START','OUTBOUND','ANSWER','AMD','FINISH','RECOVERY','IVR_START','IVR_NODE','IVR_END','DIAL_REJECTED','PREANSWER_START','PREANSWER_CAPTURE','PREANSWER_RESULT','PREANSWER_DONE'],true) || !preg_match('/^[a-f0-9]{64}$/D',$eventId) || $epoch<1) throw new \RuntimeException('Invalid event');
         $this->callAtomic(function() use($callId,$type,$eventId,$epoch,$data) {
             $s=$this->db->prepare('SELECT call_id FROM zynervox_bot_call_attempts WHERE call_id=? FOR UPDATE'); $s->execute([$callId]);
             if (!$s->fetchColumn()) throw new \RuntimeException('Attempt not found');
@@ -73,6 +73,9 @@ trait CallQueries {
                 $this->db->prepare('UPDATE zynervox_bot_call_attempts SET callee_channel=?,callee_unique_id=? WHERE call_id=?')->execute([substr($data['channel']??'',0,160),substr($data['unique_id']??'',0,80),$callId]);
             } elseif ($type==='ANSWER') {
                 $this->db->prepare('UPDATE zynervox_bot_call_attempts SET answered_at=COALESCE(answered_at,?) WHERE call_id=?')->execute([$at,$callId]);
+                $s=$this->db->prepare('SELECT status FROM zynervox_bot_call_attempts WHERE call_id=?');$s->execute([$callId]);
+                if(strpos((string)$s->fetchColumn(),'PREANSWER_')===0)$this->ivrLeadStatus($callId,'ANSWER');
+
             } elseif ($type==='AMD') {
                 $this->db->prepare('UPDATE zynervox_bot_call_attempts SET amd_status=?,amd_cause=? WHERE call_id=?')->execute([substr($data['amd_status']??'',0,20),substr($data['amd_cause']??'',0,160),$callId]);
             } elseif ($type==='FINISH') {
@@ -129,8 +132,12 @@ trait CallQueries {
             if (!$call) throw new \RuntimeException('Attempt not found');
             if ($call['finished_at']!==null) return;
             if ($amdStatus==='') { $amdStatus=$call['amd_status']; $amdCause=$call['amd_cause']; }
-            $answered=$answered || $call['answered_at']!==null;
+            $answered=$answered || $call['answered_at']!==null || $dialStatus==='ANSWER';
             $status=$amdStatus==='MACHINE' ? 'AA' : (($answered || $dialStatus==='ANSWER') ? 'ANSWER' : (['BUSY'=>'B','NOANSWER'=>'NA','CHANUNAVAIL'=>'UNAV','CONGESTION'=>'CONG','CANCEL'=>'CANCEL'][ $dialStatus ] ?? 'FAIL'));
+            if (!$answered && $call['origin_prefix']==='7307') {
+                $s=$this->db->prepare("SELECT JSON_UNQUOTE(JSON_EXTRACT(payload_json,'$.category')) FROM zynervox_bot_call_events WHERE call_id=? AND event_type='PREANSWER_RESULT' ORDER BY occurred_at DESC LIMIT 1");$s->execute([$callId]);$category=$s->fetchColumn();
+                $status=['casilla'=>'PREANSWER_CASILLA','numero_no_existe'=>'PREANSWER_NUMERO_NO_EXISTE','fuera_servicio'=>'PREANSWER_FUERA_SERVICIO'][$category]??$status;
+            }
             if (!in_array($call['status'],['CALL','LOST'],true)) $status=$call['status'];
             $this->db->prepare('UPDATE zynervox_bot_call_attempts SET status=?,dial_status=?,amd_status=?,amd_cause=?,hangup_cause=?,finished_at=UTC_TIMESTAMP() WHERE call_id=?')->execute([$status,substr($dialStatus,0,20),substr($amdStatus,0,20),substr($amdCause,0,160),$hangupCause,$callId]);
             // A late callback cannot overwrite a newer attempt for this lead.

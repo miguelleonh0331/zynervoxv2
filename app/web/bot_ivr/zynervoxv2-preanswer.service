@@ -1,0 +1,19 @@
+[Unit]
+Description=Zynervox v2 isolated preanswer detection (zynervox_core)
+After=network-online.target mariadb.service asterisk.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=www
+UMask=0077
+ExecStart=/usr/bin/php /srv/www/htdocs/zynervoxv2/bot_ivr/preanswer_worker.php
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=45
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

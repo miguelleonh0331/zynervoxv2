@@ -8,8 +8,9 @@ require_once __DIR__.'/leads.php';
 require_once __DIR__.'/calls.php';
 require_once __DIR__.'/dial_runs.php';
 require_once __DIR__.'/tts.php';
+require_once __DIR__.'/preanswer.php';
 final class Repository implements \ZynervoxQueries\BotIvrRepository {
-    use CampaignQueries, ListQueries, LeadQueries, CallQueries, DialRunQueries, TtsQueries;
+    use CampaignQueries, ListQueries, LeadQueries, CallQueries, DialRunQueries, TtsQueries, PreanswerQueries;
     private $db;
     public function __construct(\PDO $db) { $this->db = $db; }
 }

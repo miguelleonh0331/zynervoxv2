@@ -17,7 +17,7 @@ exten => s,1,Set(AGISIGHUP=no)
 
 [zynervoxv2-bot-ivr-sin-amd]
 exten => s,1,Set(AGISIGHUP=no)
- same => n,MixMonitor(/var/lib/zynervoxv2/asterisk/recordings/bot_ivr/${FILTER(0-9A-Za-z._-,${ZV2_CALL_ID})}.wav)
+ same => n,ExecIf($["${ZV2_PREANSWER_MONITOR}" = ""]?MixMonitor(/var/lib/zynervoxv2/asterisk/recordings/bot_ivr/${FILTER(0-9A-Za-z._-,${ZV2_CALL_ID})}.wav))
  same => n,Set(MASTER_CHANNEL(ZV2_ANSWERED)=1)
  same => n,AGI(/srv/www/htdocs/zynervoxv2/bot_ivr/call_tracking_agi.php,event,${ZV2_CALL_ID},ANSWER)
  same => n,AGI(/srv/www/htdocs/zynervoxv2/bot_ivr/ivr_engine_agi.php,${ZV2_LIST_ID},${ZV2_LEAD_ID},${ZV2_CALL_ID})
@@ -44,6 +44,7 @@ exten => s,1,AGI(/srv/www/htdocs/zynervoxv2/bot_ivr/call_tracking_agi.php,finish
 
 [zynervoxv2-outbound]
 exten => s,1,AGI(/srv/www/htdocs/zynervoxv2/bot_ivr/call_tracking_agi.php,event,${ZV2_CALL_ID},OUTBOUND)
+ same => n,AGI(/usr/bin/php,/srv/www/htdocs/zynervoxv2/bot_ivr/preanswer_agi.php,${ZV2_CALL_ID})
  same => n,Return()
 ASTERISK;
 
@@ -52,7 +53,8 @@ ASTERISK;
     }
 
     private static function commonContexts(): array {
-        preg_match_all('/^\s*\[([^\]\n]+)\][^\n]*\n?(.*?)(?=^\s*\[|\z)/ms',self::COMMON,$matches,PREG_SET_ORDER);
+        $common=str_replace(["\r\n","\r"],"\n",self::COMMON);
+        preg_match_all('/^\s*\[([^\]\n]+)\][^\n]*\n?(.*?)(?=^\s*\[|\z)/ms',$common,$matches,PREG_SET_ORDER);
         $contexts=[];
         foreach ($matches as $match) $contexts[$match[1]]=trim($match[2]);
         return $contexts;

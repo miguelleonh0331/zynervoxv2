@@ -140,3 +140,8 @@ revoca acceso web al siguiente request, sin retirar membresías SIP/Queue.
 Nivel 1 aislado redirige a modules/admin/dialer_agent.php; legacy conserva
 modules/agente/index.php. IsolatedGate habilita únicamente users.php; la vista
 users_isolated.php sigue bloqueada por HTTP directo.
+
+
+## 2026-10-13 - Isolated preanswer detection
+
+Common DialplanOrigins outbound helper invokes preanswer capture AGI, which scopes itself to tracked origin 7307. No-AMD answered helper reuses existing MixMonitor when preanswer monitor exists, avoiding truncation of early media. Generated carrier routes unchanged. Approved by primary ARCHITECT_AGENT review.

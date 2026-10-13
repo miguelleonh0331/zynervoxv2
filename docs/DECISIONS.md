@@ -1111,3 +1111,8 @@ ARCHITECT_AGENT review by primary agent: approve live list channels in bot_ivr a
 ## 2026-10-13 - Additional dialing channel choices
 
 ARCHITECT_AGENT review by primary agent approves requested channel choices 30,35,40 in bot_ivr and zynervox_queries. Scope: selector/API/repository validation/contracts and existing repository test. No other modules, dependencies, schema or worker algorithm changes.
+
+
+## 2026-10-13 - Isolated preanswer detection
+
+ARCHITECT_AGENT review by primary agent: approve preanswer integration across bot_ivr, zynervox_queries and core shared DialplanOrigins. Allowed: CLI capture/worker/service deployment files, public repository contract/adapter, call closure/ANSWER reconciliation, common outbound helper and its recording reuse, scoped tests and documentation. No legacy watcher/database edits, no new database/table, no SQL Server behavior change. Use core events keyed by call_id and explicit PREANSWER_* statuses; preserve telephony results. Changes authorized by user procede.
