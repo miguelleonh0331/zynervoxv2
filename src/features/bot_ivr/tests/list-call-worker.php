@@ -22,6 +22,21 @@ try{
  bot_list_call_loop($list,$campaign,$run,$repo,$ami,$wait);$state=$repo->dialRun($list,$campaign,$run);
  dialCheck($state['state']==='completed' && $state['launched']===7 && $state['completed']===7 && $ami->max===3,'concurrency/refill/completion');
  $s=$db->prepare('SELECT COUNT(DISTINCT a.lead_id),MAX(c.called_count) FROM zynervox_bot_call_attempts a JOIN zynervox_bot_list c ON c.lead_id=a.lead_id WHERE dial_run_id=?');$s->execute([$run]);$row=$s->fetch(PDO::FETCH_NUM);dialCheck((int)$row[0]===7 && (int)$row[1]===1,'lead or audit duplicated');
+ // Live limits refill upward and drain downward without interrupting calls.
+ $liveConfig=$config;$liveConfig['statuses']=['RESPONDE_F1'];$liveRun=bin2hex(random_bytes(16));$repo->createDialRun($list,$campaign,$liveRun,3,$liveConfig,'fixture');
+ $liveAmi=new FixtureAmi($repo,$db,$liveRun);$ticks=0;
+ $liveWait=function()use($repo,$db,$list,$campaign,$liveRun,$liveAmi,&$ticks){
+  ++$ticks;
+  if($ticks===1){dialCheck(count($liveAmi->sent)===3,'initial live limit');$repo->updateListCallChannels($list,$campaign,5);return;}
+  if($ticks===2){dialCheck(count($liveAmi->sent)===5,'raised limit not refilled');$repo->updateListCallChannels($list,$campaign,1);return;}
+  if($ticks===3)dialCheck(count($liveAmi->sent)===5 && $repo->dialRun($list,$campaign,$liveRun)['active']===5,'lowering interrupted or originated calls');
+  $q=$db->prepare('SELECT call_id FROM zynervox_bot_call_attempts WHERE dial_run_id=? AND finished_at IS NULL ORDER BY attempt_id LIMIT 1');$q->execute([$liveRun]);
+  if($id=$q->fetchColumn()){$repo->recordCallEvent($id,'IVR_NODE',hash('sha256',$id.'stage'),time(),['action'=>'status','status'=>'RESPONDE_F1']);$repo->finishCall($id,'ANSWER','','',16,true);}
+  if($ticks>20)throw new RuntimeException('Live limit run did not complete');
+ };
+ bot_list_call_loop($list,$campaign,$liveRun,$repo,$liveAmi,$liveWait);
+ dialCheck($repo->dialRun($list,$campaign,$liveRun)['completed']===7 && $liveAmi->max===5,'live limit completion');
+ $repo->updateListCallChannels($list,$campaign,3);
  // Business status is selected here, while dial_status remains ANSWER: each lead still appears at most once in this run.
  $config['statuses']=['RESPONDE_F1'];$stopRun=bin2hex(random_bytes(16));$repo->createDialRun($list,$campaign,$stopRun,3,$config,'fixture');$ami2=new FixtureAmi($repo,$db,$stopRun);$ticks=0;
  $wait=function()use($repo,$db,$stopRun,&$ticks){if(++$ticks===1)$repo->transitionDialRun($stopRun,'stopping');$s=$db->prepare('SELECT call_id FROM zynervox_bot_call_attempts WHERE dial_run_id=? AND finished_at IS NULL LIMIT 1');$s->execute([$stopRun]);if($id=$s->fetchColumn())$repo->finishCall($id,'ANSWER','','',16,true);if($ticks>10)throw new RuntimeException('Stop did not drain');};
@@ -32,5 +47,5 @@ try{
  $lostRun=bin2hex(random_bytes(16));$repo->createDialRun($list,$campaign,$lostRun,1,$config,'fixture');$ami5=new FixtureAmi($repo,$db,$lostRun);$ami5->drop=true;try{bot_list_call_loop($list,$campaign,$lostRun,$repo,$ami5);}catch(RuntimeException $e){$repo->transitionDialRun($lostRun,'failed');}dialCheck($repo->dialRun($list,$campaign,$lostRun)['active']===1,'lost acknowledgement released ambiguous slot');
  // A new worker must account for the unresolved call from the prior run.
  $nextRun=bin2hex(random_bytes(16));$repo->createDialRun($list,$campaign,$nextRun,1,$config,'fixture');$repo->transitionDialRun($nextRun,'running');dialCheck($repo->claimDialLead($nextRun,'fixture-next')===null,'existing calls not included in channel limit');
- echo "LIST_CALL_WORKER_OK: 3 slots, refill, one attempt per lead/run, double Play, Stop drain, eligibility, rejection and ambiguous AMI acknowledgement\n";
+ echo "LIST_CALL_WORKER_OK: 3 slots, live increase/decrease, refill, one attempt per lead/run, double Play, Stop drain, eligibility, rejection and ambiguous AMI acknowledgement\n";
 }finally{$db->rollBack();}

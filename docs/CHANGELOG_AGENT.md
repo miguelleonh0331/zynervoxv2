@@ -2477,3 +2477,8 @@ Autorizacion procede recibida. Migracion 014 aplicada a zynervox_core con motore
 Prepared locally: live channel changes, persisted per list; active claim checks authoritative locked setting; UI preserves selected value during save; active monitor reports current limit. Production deployment pending explicit procede for this action.
 
 Validation: local SQLite repository suite verifies live increases/decreases, claim limit, preserved active attempts, scope/rollback/options/stale Play and historical snapshot. Four PHP lints, inline JavaScript syntax and selector pending-save regression passed. Long-lived PHP workers load code at startup: live behavior requires a run started after deployment. No production changes or calls made.
+
+
+## 2026-10-13 - Live channels deployed on mirmidon
+
+User authorized procede. Deployed four PHP files from SMB source, linted temporary copies and verified source/production equality; backup /var/backups/zynervoxv2/live-channels-20261013-143918. No migration or service restart. Native MariaDB transaction fixture with real production worker and mocked AMI passed 3 -> 5 -> 1 limits, refill/drain, completion and existing worker regressions; rollback removed fixture data. HTTPS authenticated API save and rendered selector verified, QA session destroyed. List 56 retained its current value 20; lists 57/58 retained 3. Zero active runs before/after; no actual calls originated. Added live-limit worker regression to existing test.
