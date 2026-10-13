@@ -331,3 +331,8 @@ list_recordings activa managedOnly=true para filas y total: muestra exclusivamen
 ## 2026-10-13 - Filtro de grabaciones por tipificacion
 
 list_recordings acepta status opcional (codigo A-Z0-9_ de hasta 80 caracteres); vacio muestra todas las tipificaciones con gestion. Opciones y conteos provienen de listStatistics para lista/campana validada. Filtro por estado actual, no dial_status del intento, antes de paginar. NEW sigue excluido. Seleccion preservada en navegacion; aplicar vuelve a pagina 1. Aprobado en revision ARCHITECT_AGENT del agente principal.
+
+
+## 2026-10-13 - Canales persistentes por lista
+
+Migracion 014 agrega zynervox_bot_lists.call_channels con default 3; inicializa una sola vez desde ultima ejecucion valida. list_call_api POST action=save_channels exige admin/CSRF/pertenencia y valores 1,3,5,10,20,25,50,100. No cambia runs activos ni origina llamadas. GET/POST exitoso agrega channels (configuracion de lista). list_edit guarda automaticamente al cambiar, lee BD al cargar, muestra run.channels durante ejecucion y bloquea Play hasta guardar. Play requiere canales enviados iguales a los guardados. Aprobado en revision ARCHITECT_AGENT del agente principal.

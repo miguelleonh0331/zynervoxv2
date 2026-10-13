@@ -27,6 +27,7 @@ $id = $repo->createCampaign('Active fixture', true);
 $other = $repo->createCampaign('Other fixture', true);
 $list = $repo->createList($id, 'Preserved list', true, 2);
 $repo->updateListDialPrefix($list, $id, '7307');
+$repo->updateListCallChannels($list,$id,1);
 $db->prepare("INSERT INTO zynervox_bot_list(list_id,phone,status) VALUES (?,?,'NEW')")->execute([$list,'999000001']);
 $run = str_repeat('a',32);
 $cfg = ['statuses'=>['NEW'],'order'=>'UP','prefix'=>'7307','flow_id'=>2];

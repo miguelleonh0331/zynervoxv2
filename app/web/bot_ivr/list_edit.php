@@ -180,7 +180,7 @@ if ($list): ?>
 <div class="carsa-field list-audio-speed"><label for="list_call_channels">Canales</label>
 <select id="list_call_channels" name="call_channels">
 <?php foreach ([1, 3, 5, 10, 20, 25, 50, 100] as $channels): ?>
-<option value="<?php echo $channels; ?>"<?php echo $channels === 3 ? ' selected' : ''; ?>><?php echo $channels; ?></option>
+<option value="<?php echo $channels; ?>"<?php echo $channels === (int)$list['call_channels'] ? ' selected' : ''; ?>><?php echo $channels; ?></option>
 <?php endforeach; ?>
 </select></div>
 <div class="carsa-field list-audio-speed"><label for="list_call_prefix">Origen</label>
@@ -257,6 +257,7 @@ if ($list): ?>
     let timer, callTimer, callRun = null, callBusy = false, lastAudioReady = false, audioJob = null, audioStopping = false;
     const stop = document.getElementById('list-call-stop');
     const channels = document.getElementById('list_call_channels');
+    let savedChannels = <?php echo (int)$list['call_channels']; ?>;
     const prefix = document.getElementById('list_call_prefix');
     const callsOutput = document.getElementById('list-call-status');
     const callsUrl = <?php echo json_encode('list_call_api.php?id='.(int)$listId.'&campaign_id='.(int)$campaignId); ?>;
@@ -281,9 +282,10 @@ if ($list): ?>
         callRun = run;
         const active = run && ['starting','running','stopping'].includes(run.state);
         play.hidden = !lastAudioReady;
-        play.disabled = !lastAudioReady || callBusy || !!active || !savedPrefix || prefix.value !== savedPrefix;
+        play.disabled = !lastAudioReady || callBusy || !!active || !savedPrefix || prefix.value !== savedPrefix || Number(channels.value) !== savedChannels;
         stop.hidden = !lastAudioReady && !active;
         stop.disabled = callBusy || !active || run.state === 'stopping';
+        if (active) channels.value = String(run.channels);
         channels.disabled = !!active || callBusy;
         prefix.disabled = !!active || callBusy;
         document.getElementById('list-save-prefix').disabled = !!active || callBusy;
@@ -299,6 +301,9 @@ if ($list): ?>
             const response = await fetch(callsUrl, {cache:'no-store', credentials:'same-origin'});
             const data = await response.json();
             if (!response.ok || !data.ok) throw new Error(data.error || 'No se pudo consultar la marcacion.');
+            if (callBusy) return;
+            savedChannels = data.channels;
+            channels.value = String(savedChannels);
             renderStatistics(data.statistics);
             renderCalls(data.run);
         } catch (error) {
@@ -312,21 +317,26 @@ if ($list): ?>
         if (callBusy) return;
         callBusy = true;
         renderCalls(callRun);
-        callsOutput.textContent = action === 'play' ? 'Iniciando llamadas...' : 'Solicitando detener...';
+        callsOutput.textContent = action === 'play' ? 'Iniciando llamadas...' : action === 'stop' ? 'Solicitando detener...' : 'Guardando canales...';
         try {
             const response = await fetch(callsUrl, {method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,csrf:callsCsrf,channels:Number(channels.value),run_id:callRun && callRun.run_id})});
             const data = await response.json();
             if (!response.ok || !data.ok) throw new Error(data.error || 'No se pudo completar la operacion.');
             callBusy = false;
+            savedChannels = data.channels;
+            channels.value = String(savedChannels);
             renderStatistics(data.statistics);
             renderCalls(data.run);
+            if (action === 'save_channels') callsOutput.textContent = 'Canales guardados: ' + savedChannels;
         } catch (error) {
             callBusy = false;
+            channels.value = String(savedChannels);
             renderCalls(callRun);
             callsOutput.textContent = error.message;
             callTimer = setTimeout(pollCalls, 5000);
         }
     }
+    channels.addEventListener('change', () => callAction('save_channels'));
     play.addEventListener('click', () => callAction('play'));
     stop.addEventListener('click', () => callAction('stop'));
     prefix.addEventListener('change', () => renderCalls(callRun));

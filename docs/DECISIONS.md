@@ -1096,3 +1096,8 @@ Revisión ARCHITECT_AGENT del agente principal: refinamiento del alcance Bot IVR
 ## 2026-10-13 - Filtro de grabaciones por tipificacion
 
 Revision ARCHITECT_AGENT por el agente principal: aprobada extension compatible de latestLeadCalls con septimo argumento status nullable, igualdad parametrizada antes de LIMIT. Alcance bot_ivr y zynervox_queries; sin cambios de esquema, motor, grabaciones o estados. La pagina reutiliza listStatistics para opciones y total filtrado, excluye NEW y conserva el filtro en navegacion. Implementacion continua en estos dos modulos; prohibido modificar modulos ajenos.
+
+
+## 2026-10-13 - Canales persistentes por lista
+
+Revision ARCHITECT_AGENT del agente principal: aprobada persistencia de call_channels por lista (no campaign.max_channels). Nueva columna y metodo updateListCallChannels, limitado a valores actuales. Guardado atomico bloquea el padre y rechaza run activo; createDialRun confirma bajo bloqueo que canales enviados coincidan con lo guardado. API admin/CSRF; selector guarda al cambiar. Migracion 014 inicializa desde ultima ejecucion valida (3 sin historial) y no sobrescribe ajustes al reejecutar. Alcance bot_ivr y zynervox_queries; sin cambios en workers, leads, audios ni otros modulos. Despliegue/migracion pendientes de procede para esta accion.

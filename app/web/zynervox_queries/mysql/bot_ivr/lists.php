@@ -11,6 +11,16 @@ trait ListQueries {
         $s=$this->db->prepare("SELECT call_id,phone,status,dial_status,hangup_cause,ivr_result,end_source FROM zynervox_bot_call_attempts WHERE list_id=? AND (status IN ('FAIL','UNAV','CONG','LOST') OR dial_status IN ('CHANUNAVAIL','CONGESTION') OR ivr_result='ERROR' OR end_source IN ('RECOVERY','AMI_REJECTED')) ORDER BY started_at DESC,attempt_id DESC LIMIT 30");
         $s->execute([$listId]);$stats['errors']=$s->fetchAll(\PDO::FETCH_ASSOC);return $stats;
     }
+    public function updateListCallChannels(int $listId,int $campaignId,int $channels): void {
+        if (!in_array($channels,[1,3,5,10,20,25,50,100],true)) throw new \RuntimeException('Cantidad de canales invalida.');
+        $this->callAtomic(function() use($listId,$campaignId,$channels) {
+            $s=$this->db->prepare('SELECT list_id FROM zynervox_bot_lists WHERE list_id=? AND campaign_id=? FOR UPDATE');
+            $s->execute([$listId,$campaignId]);
+            if (!$s->fetchColumn()) throw new \RuntimeException('La lista no pertenece a esta campana.');
+            $this->dialMutationGuard($listId);
+            $this->db->prepare('UPDATE zynervox_bot_lists SET call_channels=? WHERE list_id=? AND campaign_id=?')->execute([$channels,$listId,$campaignId]);
+        });
+    }
     public function updateListDialPrefix(int $listId, int $campaignId, string $prefix): void {
         if (!preg_match('/^[0-9]{0,20}$/D', $prefix)) throw new \RuntimeException('Prefijo invalido.');
         $this->list($listId, $campaignId);

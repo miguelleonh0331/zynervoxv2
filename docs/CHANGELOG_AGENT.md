@@ -2460,3 +2460,8 @@ list_recordings agrega selector de tipificacion con conteos de estados actuales 
 ## 2026-10-13 - Retirar tabla de intentos con error
 
 list_edit.php elimina el bloque Ultimos 30 intentos con error y su renderizado JavaScript/estilos exclusivos. Conserva contadores, resumen de estados y avisos de fallo al actualizar estadisticas. No modifica datos ni contrato de listStatistics.
+
+
+## 2026-10-13 - Canales persistentes por lista
+
+Preparado guardado de canales por lista en BD, API save_channels y carga del selector desde call_channels. Bloqueo durante motor activo y guardado pendiente; revierte seleccion visual ante error, valida coincidencia de canales al iniciar. Migracion 014 pendiente de aplicar en produccion. No se originaron llamadas.

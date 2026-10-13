@@ -164,3 +164,8 @@ latestLeadCalls añade bool managedOnly=false como sexto argumento opcional; lea
 ## 2026-10-13 - Filtro de grabaciones por tipificacion
 
 latestLeadCalls agrega septimo argumento opcional ?string status=null: cuando esta presente aplica igualdad parametrizada sobre l.status antes de ORDER/LIMIT/OFFSET. Compatible con managedOnly y filtro de lead. null mantiene comportamiento anterior. Aprobado en revision ARCHITECT_AGENT del agente principal.
+
+
+## 2026-10-13 - Canales persistentes por lista
+
+updateListCallChannels(listId,campaignId,channels): void valida opciones, bloquea lista perteneciente a campana en callAtomic, rechaza run starting/running/stopping y actualiza solo call_channels. list/lists exponen call_channels via campos existentes. createDialRun verifica canales contra call_channels bajo bloqueo del padre y rechaza configuracion desactualizada. Requiere migracion 014. Aprobado en revision ARCHITECT_AGENT del agente principal.
