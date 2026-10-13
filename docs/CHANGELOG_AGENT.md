@@ -2465,3 +2465,8 @@ list_edit.php elimina el bloque Ultimos 30 intentos con error y su renderizado J
 ## 2026-10-13 - Canales persistentes por lista
 
 Preparado guardado de canales por lista en BD, API save_channels y carga del selector desde call_channels. Bloqueo durante motor activo y guardado pendiente; revierte seleccion visual ante error, valida coincidencia de canales al iniciar. Migracion 014 pendiente de aplicar en produccion. No se originaron llamadas.
+
+
+## 2026-10-13 - Canales por lista desplegados en mirmidon
+
+Autorizacion procede recibida. Migracion 014 aplicada a zynervox_core con motores detenidos; archivos copiados desde SMB. Backup /var/backups/zynervoxv2/list-call-channels-20261013-142513 (archivos y tabla de listas). Lista 56 inicializada en 25 canales. Verificacion HTTP con sesion temporal: guardar 10, recargar API/pagina y seleccion 10; invalidos 400, CSRF 403; restaurar 25 y recargar. Prueba MariaDB en transaccion confirma bloqueo de guardado con run activo y rollback sin retener run. Hashes locales/productivos coinciden. Sin llamadas originadas ni cambios de campaign.max_channels; sesion QA destruida.
