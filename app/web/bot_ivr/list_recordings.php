@@ -10,10 +10,10 @@ try {
     if (!$listId || !$campaignId || !$page) throw new InvalidArgumentException('Lista, campaña o página inválida.');
     $repo=bot_ivr_repository();
     $list=$repo->list($listId,$campaignId);
-    $total=$repo->leadCount($listId);
+    $total=$repo->leadCount($listId,true);
     $pages=max(1,(int)ceil($total/50));
     $page=min($page,$pages);
-    $rows=$repo->latestLeadCalls($listId,$campaignId,50,($page-1)*50);
+    $rows=$repo->latestLeadCalls($listId,$campaignId,50,($page-1)*50,null,true);
 } catch (InvalidArgumentException $e) { http_response_code(400); $error=$e->getMessage(); }
 catch (Throwable $e) { http_response_code($list===null ? 404 : 500); $error='No se pudieron cargar las grabaciones de esta lista.'; }
 header('Cache-Control: private, no-store');
@@ -25,7 +25,7 @@ $query='id='.(int)$listId.'&campaign_id='.(int)$campaignId;
 <div class="lead-recording-actions"><a href="list_edit.php?<?php echo h($query); ?>">← Volver a la lista</a><a class="carsa-btn secondary" href="list_recordings.php?<?php echo h($query.'&page='.$page); ?>">Actualizar</a></div>
 <section class="carsa-card">
 <h2><?php echo h($list['name']); ?> — última llamada por lead</h2>
-<p class="lead-recording-note">Una fila por lead. Si su última llamada no tiene grabación, aparece «Sin audio».</p>
+<p class="lead-recording-note">Solo leads con gestión (estado distinto de NEW), una fila por lead. Si su última llamada no tiene grabación, aparece «Sin audio».</p>
 <div class="bot-table-wrap"><table class="carsa-table lead-recording-table"><thead><tr><th>Lead</th><th>Nombre</th><th>Número</th><th>Tipificación</th><th>Última llamada (UTC)</th><th>Audio</th></tr></thead><tbody>
 <?php foreach ($rows as $row): $audio=bot_lead_recording_path($row); ?>
 <tr><td><?php echo (int)$row['lead_id']; ?></td><td><?php echo h($row['customer_name']); ?></td><td><?php echo h($row['phone']); ?></td><td><?php echo h($row['status']); ?></td><td><?php echo h($row['started_at'] ?? 'Sin llamadas'); ?></td><td>
@@ -34,11 +34,11 @@ $query='id='.(int)$listId.'&campaign_id='.(int)$campaignId;
 <?php else: ?><span class="lead-recording-note"><?php echo $row['call_id']!==null && $row['finished_at']===null ? 'Llamada en curso' : 'Sin audio'; ?></span><?php endif; ?>
 </td></tr>
 <?php endforeach; ?>
-<?php if (!$rows): ?><tr><td colspan="6">Esta lista no tiene leads.</td></tr><?php endif; ?>
+<?php if (!$rows): ?><tr><td colspan="6">Esta lista no tiene leads con gestión.</td></tr><?php endif; ?>
 </tbody></table></div>
 <nav class="lead-recording-pages" aria-label="Páginas de leads">
 <?php if ($page>1): ?><a href="?<?php echo h($query.'&page='.($page-1)); ?>">← Anterior</a><?php endif; ?>
-<span>Página <?php echo (int)$page; ?> de <?php echo (int)$pages; ?> · <?php echo (int)$total; ?> leads</span>
+<span>Página <?php echo (int)$page; ?> de <?php echo (int)$pages; ?> · <?php echo (int)$total; ?> leads con gestión</span>
 <?php if ($page<$pages): ?><a href="?<?php echo h($query.'&page='.($page+1)); ?>">Siguiente →</a><?php endif; ?>
 </nav></section>
 <script>document.addEventListener('play',event=>{if(event.target.tagName==='AUDIO')document.querySelectorAll('audio').forEach(audio=>{if(audio!==event.target)audio.pause();});},true);</script>

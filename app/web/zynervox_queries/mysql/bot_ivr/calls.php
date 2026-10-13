@@ -2,11 +2,12 @@
 declare(strict_types=1);
 namespace ZynervoxQueries\Mysql\BotIvr;
 trait CallQueries {
-    public function latestLeadCalls(int $listId,int $campaignId,int $limit=50,int $offset=0,?int $leadId=null): array {
+    public function latestLeadCalls(int $listId,int $campaignId,int $limit=50,int $offset=0,?int $leadId=null,bool $managedOnly=false): array {
         if ($listId<1 || $campaignId<1 || $limit<1 || $limit>100 || $offset<0 || ($leadId!==null && $leadId<1)) throw new \InvalidArgumentException('Consulta de leads inválida.');
         $this->list($listId,$campaignId);
         $sql='SELECT l.lead_id,l.customer_name,l.phone,l.status,a.attempt_id,a.call_id,a.started_at,a.finished_at,a.dial_status FROM zynervox_bot_list l LEFT JOIN zynervox_bot_call_attempts a ON a.attempt_id=(SELECT MAX(last.attempt_id) FROM zynervox_bot_call_attempts last WHERE last.lead_id=l.lead_id AND last.list_id=l.list_id) WHERE l.list_id=?';
         $params=[$listId];
+        if ($managedOnly) $sql.=" AND l.status<>'NEW'";
         if ($leadId!==null) { $sql.=' AND l.lead_id=?'; $params[]=$leadId; }
         $stmt=$this->db->prepare($sql.' ORDER BY l.lead_id LIMIT '.$limit.' OFFSET '.$offset);
         $stmt->execute($params);

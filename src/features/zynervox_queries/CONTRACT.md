@@ -155,3 +155,7 @@ ivrCallContext añade dial_config_json (nullable), tomado del dial run de la lla
 ## 2026-10-13 - Lectura de última llamada por lead
 
 latestLeadCalls(int listId,int campaignId,int limit=50,int offset=0,?int leadId=null): array verifica lista/campaña y devuelve contactos actuales ordenados por lead_id con el intento de mayor attempt_id de esa misma lista/lead mediante LEFT JOIN. Incluye leads sin intentos; no filtra por disponibilidad de grabación ni recurre a intentos previos. Campos: lead_id/customer_name/phone/status y attempt_id/call_id/started_at/finished_at/dial_status nullable. limit 1..100 y offset no negativo; filtro opcional de lead conserva scope. Solo lectura, sin nueva tabla/índice ni cambios de llamadas. Extensión aprobada mediante revisión ARCHITECT_AGENT del agente principal.
+
+## 2026-10-13 - Filtro de leads con gestión
+
+latestLeadCalls añade bool managedOnly=false como sexto argumento opcional; leadCount añade el mismo argumento como segundo parámetro. true aplica status distinto de NEW antes de paginación/conteo. Defaults preservan firmas compatibles y resultados de otros consumidores. No exige intento ni WAV y no altera el criterio de último intento. Aprobado en revisión ARCHITECT_AGENT del agente principal.

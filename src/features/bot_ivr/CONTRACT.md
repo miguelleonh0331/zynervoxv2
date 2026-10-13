@@ -322,3 +322,7 @@ workers admite 1,3 y múltiplos de5 desde5 hasta100, con lista consistente en PH
 ## 2026-10-13 - Último audio por lead
 
 list_recordings.php?id=<lista>&campaign_id=<campaña> presenta una fila por contacto actual, 50 por página, con tipificación, última fecha y reproducción del WAV de su último intento. Listas y audios requieren sesión nivel 9. list_recording.php recibe lead_id/attempt_id además del scope; valida mediante latestLeadCalls que el intento siga siendo el último y esté finalizado. No expone rutas ni sustituye la última llamada sin audio por otra anterior; soporta HEAD/rangos y no-store. Archivos limitados por realpath al runtime/recordings/bot_ivr, sin symlinks. call_recordings.php resuelve IDs canónicos y nombres históricos sin guiones de Asterisk FILTER; call_recording_metadata reutiliza esa lectura para futuros cierres, sin reescribir historia. Sin AMI, cambios de prefijo/flujo ni llamadas. Extensión aprobada mediante revisión ARCHITECT_AGENT del agente principal.
+
+## 2026-10-13 - Escucha de contactos gestionados
+
+list_recordings activa managedOnly=true para filas y total: muestra exclusivamente lead.status distinto de NEW, manteniendo última llamada, paginación de 50 y Sin audio cuando corresponda. CALL y las demás tipificaciones se incluyen. La página vacía indica que no hay leads con gestión. Otros endpoints y consumidores conservan sus lecturas actuales. Aprobado en revisión ARCHITECT_AGENT del agente principal.

@@ -8,8 +8,8 @@ trait LeadQueries {
         $stmt->execute([':list'=>$listId, ':campaign'=>$campaignId]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
-    public function leadCount(int $listId): int {
-        $stmt = $this->db->prepare('SELECT COUNT(*) FROM zynervox_bot_list WHERE list_id=:id');
+    public function leadCount(int $listId,bool $managedOnly=false): int {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM zynervox_bot_list WHERE list_id=:id'.($managedOnly ? " AND status<>'NEW'" : ''));
         $stmt->execute([':id'=>$listId]);
         return (int)$stmt->fetchColumn();
     }
