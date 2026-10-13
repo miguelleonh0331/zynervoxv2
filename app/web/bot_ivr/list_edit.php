@@ -285,8 +285,8 @@ if ($list): ?>
         play.disabled = !lastAudioReady || callBusy || !!active || !savedPrefix || prefix.value !== savedPrefix || Number(channels.value) !== savedChannels;
         stop.hidden = !lastAudioReady && !active;
         stop.disabled = callBusy || !active || run.state === 'stopping';
-        if (active) channels.value = String(run.channels);
-        channels.disabled = !!active || callBusy;
+        if (active && !callBusy) channels.value = String(run.channels);
+        channels.disabled = callBusy || !!(run && run.state === 'stopping');
         prefix.disabled = !!active || callBusy;
         document.getElementById('list-save-prefix').disabled = !!active || callBusy;
         if (run) {

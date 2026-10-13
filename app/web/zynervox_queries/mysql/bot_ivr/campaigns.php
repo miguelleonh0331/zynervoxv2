@@ -3,7 +3,7 @@ declare(strict_types=1);
 namespace ZynervoxQueries\Mysql\BotIvr;
 trait CampaignQueries {
     public function campaignMonitor(): array {
-        $sql="SELECT c.campaign_id,c.name,c.active,l.list_id,l.name list_name,r.state,r.channels,r.error,
+        $sql="SELECT c.campaign_id,c.name,c.active,l.list_id,l.name list_name,r.state,CASE WHEN r.state IN ('starting','running','stopping') THEN l.call_channels ELSE r.channels END channels,r.error,
             COALESCE(p.total,0) total,COALESCE(p.calling,0) calling,COALESCE(p.finished,0) finished
             FROM zynervox_bot_campaigns c LEFT JOIN zynervox_bot_lists l ON l.campaign_id=c.campaign_id
             LEFT JOIN zynervox_bot_dial_runs r ON r.run_id=(SELECT x.run_id FROM zynervox_bot_dial_runs x WHERE x.list_id=l.list_id ORDER BY x.created_at DESC,x.run_id DESC LIMIT 1)

@@ -2470,3 +2470,10 @@ Preparado guardado de canales por lista en BD, API save_channels y carga del sel
 ## 2026-10-13 - Canales por lista desplegados en mirmidon
 
 Autorizacion procede recibida. Migracion 014 aplicada a zynervox_core con motores detenidos; archivos copiados desde SMB. Backup /var/backups/zynervoxv2/list-call-channels-20261013-142513 (archivos y tabla de listas). Lista 56 inicializada en 25 canales. Verificacion HTTP con sesion temporal: guardar 10, recargar API/pagina y seleccion 10; invalidos 400, CSRF 403; restaurar 25 y recargar. Prueba MariaDB en transaccion confirma bloqueo de guardado con run activo y rollback sin retener run. Hashes locales/productivos coinciden. Sin llamadas originadas ni cambios de campaign.max_channels; sesion QA destruida.
+
+
+## 2026-10-13 - Live dialing channels
+
+Prepared locally: live channel changes, persisted per list; active claim checks authoritative locked setting; UI preserves selected value during save; active monitor reports current limit. Production deployment pending explicit procede for this action.
+
+Validation: local SQLite repository suite verifies live increases/decreases, claim limit, preserved active attempts, scope/rollback/options/stale Play and historical snapshot. Four PHP lints, inline JavaScript syntax and selector pending-save regression passed. Long-lived PHP workers load code at startup: live behavior requires a run started after deployment. No production changes or calls made.

@@ -25,8 +25,9 @@ trait DialRunQueries {
         });
     }
     public function dialRun(int $listId,int $campaignId,?string $runId=null): ?array {
-        $this->list($listId,$campaignId);$sql='SELECT * FROM zynervox_bot_dial_runs WHERE list_id=? AND campaign_id=?';$args=[$listId,$campaignId];if($runId!==null){$sql.=' AND run_id=?';$args[]=$runId;}$sql.=' ORDER BY created_at DESC,run_id DESC LIMIT 1';
+        $list=$this->list($listId,$campaignId);$sql='SELECT * FROM zynervox_bot_dial_runs WHERE list_id=? AND campaign_id=?';$args=[$listId,$campaignId];if($runId!==null){$sql.=' AND run_id=?';$args[]=$runId;}$sql.=' ORDER BY created_at DESC,run_id DESC LIMIT 1';
         $s=$this->db->prepare($sql);$s->execute($args);$run=$s->fetch(\PDO::FETCH_ASSOC);if(!$run)return null;
+        if(in_array($run['state'],['starting','running','stopping'],true))$run['channels']=(int)$list['call_channels'];
         $s=$this->db->prepare("SELECT COUNT(*) launched,COALESCE(SUM(finished_at IS NOT NULL OR end_source='RECOVERY'),0) completed,COALESCE(SUM(finished_at IS NULL AND end_source<>'RECOVERY' AND status<>'LOST'),0) active,COALESCE(SUM(status IN ('FAIL','UNAV','CONG','LOST') OR end_source='RECOVERY'),0) failed FROM zynervox_bot_call_attempts WHERE dial_run_id=?");$s->execute([$run['run_id']]);foreach($s->fetch() as $k=>$v)if(is_string($k))$run[$k]=(int)$v;
         $s=$this->db->prepare("SELECT COUNT(*) FROM zynervox_bot_call_attempts WHERE list_id=? AND finished_at IS NULL AND end_source<>'RECOVERY' AND status<>'LOST'");$s->execute([$listId]);$run['active_list']=(int)$s->fetchColumn();
         [$sql,$args]=$this->dialCandidates($run,true);$s=$this->db->prepare($sql);$s->execute($args);$run['pending']=(int)$s->fetchColumn();
@@ -43,9 +44,9 @@ trait DialRunQueries {
     }
     public function claimDialLead(string $runId,string $callId): ?array {
         return $this->callAtomic(function()use($runId,$callId){$s=$this->db->prepare('SELECT * FROM zynervox_bot_dial_runs WHERE run_id=? FOR UPDATE');$s->execute([$runId]);$run=$s->fetch(\PDO::FETCH_ASSOC);if(!$run || $run['state']!=='running')return null;
-            $s=$this->db->prepare('SELECT l.id_flujo,l.dial_prefix,l.active,c.active campaign_active FROM zynervox_bot_lists l JOIN zynervox_bot_campaigns c ON c.campaign_id=l.campaign_id WHERE l.list_id=? AND l.campaign_id=? FOR UPDATE');$s->execute([$run['list_id'],$run['campaign_id']]);$list=$s->fetch();
+            $s=$this->db->prepare('SELECT l.id_flujo,l.dial_prefix,l.active,l.call_channels,c.active campaign_active FROM zynervox_bot_lists l JOIN zynervox_bot_campaigns c ON c.campaign_id=l.campaign_id WHERE l.list_id=? AND l.campaign_id=? FOR UPDATE');$s->execute([$run['list_id'],$run['campaign_id']]);$list=$s->fetch();
             if(!$list || !$list['active'] || !$list['campaign_active'] || (int)$list['id_flujo']!==(int)$run['flow_id'] || $list['dial_prefix']!==$run['dial_prefix'])throw new \RuntimeException('Configuracion cambiada durante la marcacion.');
-            $s=$this->db->prepare("SELECT COUNT(*) FROM zynervox_bot_call_attempts WHERE list_id=? AND finished_at IS NULL AND end_source<>'RECOVERY' AND status<>'LOST'");$s->execute([$run['list_id']]);if((int)$s->fetchColumn()>=(int)$run['channels'])return null;
+            $s=$this->db->prepare("SELECT COUNT(*) FROM zynervox_bot_call_attempts WHERE list_id=? AND finished_at IS NULL AND end_source<>'RECOVERY' AND status<>'LOST'");$s->execute([$run['list_id']]);if((int)$s->fetchColumn()>=(int)$list['call_channels'])return null;
             [$sql,$args]=$this->dialCandidates($run);$s=$this->db->prepare($sql);$s->execute($args);$lead=$s->fetch(\PDO::FETCH_ASSOC);if(!$lead)return null;
             $id=$this->startCall((int)$run['list_id'],$lead['phone'],$callId);if($id!==(int)$lead['lead_id'])throw new \RuntimeException('Identidad de lead ambigua.');
             $this->db->prepare('UPDATE zynervox_bot_call_attempts SET dial_run_id=?,origin_prefix=? WHERE call_id=?')->execute([$runId,$run['dial_prefix'],$callId]);

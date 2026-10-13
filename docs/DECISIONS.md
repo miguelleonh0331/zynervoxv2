@@ -1101,3 +1101,8 @@ Revision ARCHITECT_AGENT por el agente principal: aprobada extension compatible 
 ## 2026-10-13 - Canales persistentes por lista
 
 Revision ARCHITECT_AGENT del agente principal: aprobada persistencia de call_channels por lista (no campaign.max_channels). Nueva columna y metodo updateListCallChannels, limitado a valores actuales. Guardado atomico bloquea el padre y rechaza run activo; createDialRun confirma bajo bloqueo que canales enviados coincidan con lo guardado. API admin/CSRF; selector guarda al cambiar. Migracion 014 inicializa desde ultima ejecucion valida (3 sin historial) y no sobrescribe ajustes al reejecutar. Alcance bot_ivr y zynervox_queries; sin cambios en workers, leads, audios ni otros modulos. Despliegue/migracion pendientes de procede para esta accion.
+
+
+## 2026-10-13 - Live dialing channels
+
+ARCHITECT_AGENT review by primary agent: approve live list channels in bot_ivr and zynervox_queries. Allowed UI/list queries/dial claims/monitor/tests/contracts; no telephony/provider/other module changes. Keep list setting as authoritative active limit, original run channels as initial snapshot. Claims serialize with updates through list row lock; decreases never terminate calls. No new dependencies or schema.

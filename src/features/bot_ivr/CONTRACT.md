@@ -336,3 +336,8 @@ list_recordings acepta status opcional (codigo A-Z0-9_ de hasta 80 caracteres); 
 ## 2026-10-13 - Canales persistentes por lista
 
 Migracion 014 agrega zynervox_bot_lists.call_channels con default 3; inicializa una sola vez desde ultima ejecucion valida. list_call_api POST action=save_channels exige admin/CSRF/pertenencia y valores 1,3,5,10,20,25,50,100. No cambia runs activos ni origina llamadas. GET/POST exitoso agrega channels (configuracion de lista). list_edit guarda automaticamente al cambiar, lee BD al cargar, muestra run.channels durante ejecucion y bloquea Play hasta guardar. Play requiere canales enviados iguales a los guardados. Aprobado en revision ARCHITECT_AGENT del agente principal.
+
+
+## 2026-10-13 - Live dialing channels
+
+list_call_api save_channels now accepts changes during dialing. UI enables channels in starting/running; stopping keeps selector disabled. Increases refill next worker cycle; decreases drain existing calls without hangup. Existing admin/CSRF/options/persistence unchanged. No worker restart or schema migration.

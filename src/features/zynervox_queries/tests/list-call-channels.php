@@ -37,12 +37,19 @@ $cfg=['statuses'=>['NEW'],'order'=>'UP','prefix'=>'7307','flow_id'=>2];
 channelsReject(fn()=>$r->createDialRun(56,50,str_repeat('a',32),25,$cfg,'fixture'));
 channelsCheck((int)$db->query('SELECT COUNT(*) FROM zynervox_bot_dial_runs')->fetchColumn()===0,'Stale selection created run');
 $r->createDialRun(56,50,str_repeat('b',32),10,$cfg,'fixture');
+$db->exec("CREATE TABLE zynervox_bot_list(lead_id INTEGER,list_id INTEGER,phone TEXT,status TEXT,next_call_at TEXT); CREATE TABLE zynervox_bot_call_attempts(attempt_id INTEGER,lead_id INTEGER,list_id INTEGER,dial_run_id TEXT,finished_at TEXT,end_source TEXT,status TEXT); INSERT INTO zynervox_bot_call_attempts VALUES(1,1,56,'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',NULL,'','CALL'),(2,2,56,'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',NULL,'','CALL')");
 foreach(['starting','running','stopping'] as $state) {
     $db->prepare('UPDATE zynervox_bot_dial_runs SET state=?')->execute([$state]);
-    channelsReject(fn()=>$r->updateListCallChannels(56,50,25));
-    channelsCheck((int)$r->list(56,50)['call_channels']===10,'Active run altered setting');
+    $r->updateListCallChannels(56,50,25);
+    channelsCheck($r->dialRun(56,50)['channels']===25,'Active run did not expose raised limit');
+    $r->updateListCallChannels(56,50,1);
+    channelsCheck($r->dialRun(56,50)['channels']===1,'Active run did not expose lowered limit');
+    channelsCheck($r->claimDialLead(str_repeat('b',32),'no-new-call')===null,'Lowered limit allowed a claim');
+    channelsCheck((int)$db->query('SELECT COUNT(*) FROM zynervox_bot_call_attempts WHERE finished_at IS NULL')->fetchColumn()===2,'Lowering closed active calls');
 }
+channelsCheck((int)$r->list(57,50)['call_channels']===3,'Live update changed another list');
 $db->exec("UPDATE zynervox_bot_dial_runs SET state='stopped'");
 $r->updateListCallChannels(56,50,25);
 channelsCheck((int)$r->list(56,50)['call_channels']===25,'Idle save failed');
-echo "LIST_CHANNELS_OK: persistence, scope, values, rollback, stale Play, active runs\n";
+channelsCheck((int)$r->dialRun(56,50)['channels']===10,'Historical run snapshot changed');
+echo "LIST_CHANNELS_OK: persistence, scope, values, rollback, stale Play, live limits and active-call preservation\n";

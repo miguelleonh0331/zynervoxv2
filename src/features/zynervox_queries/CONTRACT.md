@@ -169,3 +169,8 @@ latestLeadCalls agrega septimo argumento opcional ?string status=null: cuando es
 ## 2026-10-13 - Canales persistentes por lista
 
 updateListCallChannels(listId,campaignId,channels): void valida opciones, bloquea lista perteneciente a campana en callAtomic, rechaza run starting/running/stopping y actualiza solo call_channels. list/lists exponen call_channels via campos existentes. createDialRun verifica canales contra call_channels bajo bloqueo del padre y rechaza configuracion desactualizada. Requiere migracion 014. Aprobado en revision ARCHITECT_AGENT del agente principal.
+
+
+## 2026-10-13 - Live dialing channels
+
+updateListCallChannels now permits active runs and locks only the scoped list. dialRun and campaignMonitor expose current list.call_channels for active runs; finished runs retain initial channels snapshot. claimDialLead checks current list.call_channels under its existing list lock, including already open calls. No run-lock update from the setting operation, avoiding reversed lock order.

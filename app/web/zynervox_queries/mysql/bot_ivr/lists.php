@@ -17,7 +17,6 @@ trait ListQueries {
             $s=$this->db->prepare('SELECT list_id FROM zynervox_bot_lists WHERE list_id=? AND campaign_id=? FOR UPDATE');
             $s->execute([$listId,$campaignId]);
             if (!$s->fetchColumn()) throw new \RuntimeException('La lista no pertenece a esta campana.');
-            $this->dialMutationGuard($listId);
             $this->db->prepare('UPDATE zynervox_bot_lists SET call_channels=? WHERE list_id=? AND campaign_id=?')->execute([$channels,$listId,$campaignId]);
         });
     }
