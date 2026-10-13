@@ -2455,3 +2455,8 @@ Validación: fixture SQLite verifica exclusión de NEW aunque tenga historia, to
 ## 2026-10-13 - Filtro de grabaciones por tipificacion
 
 list_recordings agrega selector de tipificacion con conteos de estados actuales excepto NEW. Filtra por lead.status antes de paginar, conserva seleccion al actualizar/navegar y restablece pagina al aplicar. Mantiene una ultima llamada por lead y Sin audio. Consultas preparadas; firma previa compatible.
+
+
+## 2026-10-13 - Retirar tabla de intentos con error
+
+list_edit.php elimina el bloque Ultimos 30 intentos con error y su renderizado JavaScript/estilos exclusivos. Conserva contadores, resumen de estados y avisos de fallo al actualizar estadisticas. No modifica datos ni contrato de listStatistics.

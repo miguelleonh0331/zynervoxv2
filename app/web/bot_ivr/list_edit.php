@@ -119,7 +119,7 @@ if ($list): ?>
 .audio-progress-label{display:flex;justify-content:space-between;gap:12px;margin:22px 0 8px;font-size:13px}.audio-progress{display:block;width:100%;height:14px;accent-color:#f58220}.audio-dialog-note{color:var(--text-muted);margin:10px 0}.audio-dialog-errors{white-space:pre-line;color:#a12532;font-size:13px}.audio-dialog-errors:empty{display:none}
 @media(max-width:650px){.audio-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.audio-stat strong{font-size:26px}}
 @media(max-width:1000px){.list-layout{grid-template-columns:minmax(0,1fr)}}
-.call-stats{margin-top:16px}.call-stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.call-stats-grid div{padding:16px;border:1px solid var(--border);border-radius:8px;background:var(--glass);text-align:center}.call-stats-grid strong{display:block;font-size:28px}.call-stats-grid span{font-size:12px;color:var(--text-muted)}.call-state{margin-top:12px}.call-state-label{display:flex;justify-content:space-between;gap:12px;font-size:12px}.call-state progress{display:block;width:100%;height:10px;accent-color:#347cc5}.call-errors{overflow-x:auto;margin-top:18px}.call-errors h3{font-size:13px}.call-errors code{display:block;font-size:10px;overflow-wrap:anywhere}.call-stats-error{color:#c74451}
+.call-stats{margin-top:16px}.call-stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.call-stats-grid div{padding:16px;border:1px solid var(--border);border-radius:8px;background:var(--glass);text-align:center}.call-stats-grid strong{display:block;font-size:28px}.call-stats-grid span{font-size:12px;color:var(--text-muted)}.call-state{margin-top:12px}.call-state-label{display:flex;justify-content:space-between;gap:12px;font-size:12px}.call-state progress{display:block;width:100%;height:10px;accent-color:#347cc5}.call-stats-error{color:#c74451}
 .list-accordion{align-self:start}.list-accordion summary{cursor:pointer;font-size:13px;font-weight:bold}.list-accordion[open] summary{margin-bottom:12px}
 </style>
 <a class="list-back" href="campaign_edit.php?id=<?php echo (int)$campaignId; ?>">← Volver a campaña #<?php echo (int)$campaignId; ?></a>
@@ -133,9 +133,7 @@ if ($list): ?>
 </div>
 <h3 style="font-size:13px;margin-top:18px">Resumen por estado del lead</h3>
 <div id="call-state-summary"></div>
-<div class="call-errors"><h3>Ultimos 30 intentos con error</h3>
-<table class="carsa-table"><thead><tr><th>Numero / llamada</th><th>Estado</th><th>Causa</th></tr></thead><tbody id="call-error-rows"></tbody></table>
-</div><p id="call-stats-error" class="call-stats-error" role="status"></p>
+<p id="call-stats-error" class="call-stats-error" role="status"></p>
 </section>
 <div class="list-layout">
 <details class="carsa-card list-card list-accordion"><summary>Datos de la lista</summary>
@@ -276,17 +274,6 @@ if ($list): ?>
             const bar = document.createElement('progress'); bar.max = Math.max(1,stats.total); bar.value = row.count; bar.setAttribute('aria-label',row.status);
             item.append(label,bar); summary.append(item);
         }
-        const errors = document.getElementById('call-error-rows'); errors.replaceChildren();
-        for (const row of stats.errors) {
-            const tr = document.createElement('tr');
-            const phone = document.createElement('td'); phone.textContent = row.phone;
-            const id = document.createElement('code'); id.textContent = row.call_id; phone.append(id);
-            const state = document.createElement('td'); state.textContent = row.status; state.className = 'call-stats-error';
-            const cause = document.createElement('td');
-            cause.textContent = [row.ivr_result === 'ERROR' ? 'Error IVR' : '',row.dial_status,row.end_source === 'RECOVERY' ? 'Cierre recuperado' : row.end_source === 'AMI_REJECTED' ? 'Rechazado por AMI' : '',Number(row.hangup_cause) ? 'Causa Asterisk: ' + row.hangup_cause : ''].filter(Boolean).join(' | ') || row.status;
-            tr.append(phone,state,cause); errors.append(tr);
-        }
-        if (!stats.errors.length) { const tr = document.createElement('tr'); const cell = document.createElement('td'); cell.colSpan = 3; cell.textContent = 'Sin errores registrados.'; tr.append(cell); errors.append(tr); }
         document.getElementById('call-stats-error').textContent = '';
     }
     renderStatistics(<?php echo json_encode($statistics, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>);
