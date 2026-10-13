@@ -2497,3 +2497,8 @@ User authorized procede. Installed binary pymssql 2.2.11 in v2 Python 3.6 gtts_e
 ## 2026-10-13 - Scheduled lead statuses highlighted
 
 Prepared local bot_ivr/list_edit.php visual change: AGENDADO_VALIDAR and AGENDADO rows in lead status summary receive soft green background, green left marker and green progress bar. Shared statistics rendering applies highlight both initially and on polling. No data, status or dialing behavior changes. Production deployment pending explicit procede for this action.
+
+
+## 2026-10-13 - Scheduled status highlight deployed
+
+User authorized procede. Deployed bot_ivr/list_edit.php from SMB, preserving owner/mode and validating PHP syntax and source/production equality. Backup /var/backups/zynervoxv2/green-statuses-20261013-153631. Authenticated production HTTPS page returned 200 and includes green row background/progress styling plus exact AGENDADO_VALIDAR/AGENDADO status condition in shared initial/polling renderer. Temporary QA session destroyed. No dialing or SQL configuration changes.
