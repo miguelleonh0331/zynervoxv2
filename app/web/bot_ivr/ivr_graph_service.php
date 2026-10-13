@@ -199,7 +199,7 @@ final class BotIvrGraphRunner {
             ($this->event)('IVR_NODE',['node'=>$id,'node_type'=>$type]);
             // CARSA response stages and terminal dispositions segment the uploaded base.
             $stages=['interesado'=>'RESPONDE_F1','interesado_nivel2'=>'RESPONDE_F2','nointeresado'=>'NO_INTERESADO_F1','nointeresado_nivel2'=>'NO_INTERESADO_F2'];
-            $status=$stages[$id] ?? ($type==='hangup' && !in_array(strtolower($id),['amd_hangup','hangup','fin','final'],true) ? strtoupper($id) : null);
+            $status=$stages[$id] ?? ($type==='hangup' && !in_array(strtolower($id),['hangup','fin','final'],true) ? strtoupper($id) : null);
             if ($status!==null && preg_match('/^[A-Z][A-Z0-9_]{0,79}$/D',$status)) ($this->event)('IVR_NODE',['node'=>$id,'action'=>'status','status'=>$status]);
 
             if (in_array($type,['create_audio','create_audio_dynamic','playback','hangup'],true)) {
