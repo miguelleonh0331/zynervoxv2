@@ -2450,3 +2450,8 @@ Validación: sintaxis PHP de siete archivos, fixture SQLite de último intento/l
 Baseline 6f68566. list_recordings activa managedOnly en latestLeadCalls y leadCount; ambas consultas filtran status distinto de NEW antes de paginación/conteo. Interfaz indica leads con gestión y adapta el estado vacío. Parámetro opcional false conserva consumidores, selección del último intento y endpoint privado de audio. Revisión ARCHITECT_AGENT y contratos registrados. Sin cambios de estados/esquema ni llamadas.
 
 Validación: fixture SQLite verifica exclusión de NEW aunque tenga historia, total filtrado, paginación, último intento y compatibilidad de lecturas sin filtro. Lint local/producción de cuatro archivos; MariaDB y render PHP real como wwwrun muestran 96 gestionados de 3000, 50 filas en primera página y ningún NEW. Sesiones temporales de render eliminadas. Despliegue desde SMB, respaldo /var/backups/zynervoxv2/managed-recordings-20261013-183827. Rollback: revert y restaurar los cuatro archivos respaldados; no modificar la base ni las grabaciones.
+
+
+## 2026-10-13 - Filtro de grabaciones por tipificacion
+
+list_recordings agrega selector de tipificacion con conteos de estados actuales excepto NEW. Filtra por lead.status antes de paginar, conserva seleccion al actualizar/navegar y restablece pagina al aplicar. Mantiene una ultima llamada por lead y Sin audio. Consultas preparadas; firma previa compatible.

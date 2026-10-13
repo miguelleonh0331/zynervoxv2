@@ -1091,3 +1091,8 @@ Revisión de arquitectura por el agente principal en rol ARCHITECT_AGENT: alcanc
 ## 2026-10-13 - Mostrar grabaciones solo de leads con gestión
 
 Revisión ARCHITECT_AGENT del agente principal: refinamiento del alcance Bot IVR/consultas aprobado para excluir status NEW en la página de últimas grabaciones. latestLeadCalls y leadCount añaden managedOnly=false como último parámetro opcional, conservando los consumidores actuales. La página activa el filtro tanto en filas como en conteo, antes de LIMIT/OFFSET. No filtrar por existencia de WAV: una gestión CONG/UNAV sin audio debe seguir visible. Sin cambios de BD, estados, llamadas ni endpoint de reproducción.
+
+
+## 2026-10-13 - Filtro de grabaciones por tipificacion
+
+Revision ARCHITECT_AGENT por el agente principal: aprobada extension compatible de latestLeadCalls con septimo argumento status nullable, igualdad parametrizada antes de LIMIT. Alcance bot_ivr y zynervox_queries; sin cambios de esquema, motor, grabaciones o estados. La pagina reutiliza listStatistics para opciones y total filtrado, excluye NEW y conserva el filtro en navegacion. Implementacion continua en estos dos modulos; prohibido modificar modulos ajenos.

@@ -326,3 +326,8 @@ list_recordings.php?id=<lista>&campaign_id=<campaña> presenta una fila por cont
 ## 2026-10-13 - Escucha de contactos gestionados
 
 list_recordings activa managedOnly=true para filas y total: muestra exclusivamente lead.status distinto de NEW, manteniendo última llamada, paginación de 50 y Sin audio cuando corresponda. CALL y las demás tipificaciones se incluyen. La página vacía indica que no hay leads con gestión. Otros endpoints y consumidores conservan sus lecturas actuales. Aprobado en revisión ARCHITECT_AGENT del agente principal.
+
+
+## 2026-10-13 - Filtro de grabaciones por tipificacion
+
+list_recordings acepta status opcional (codigo A-Z0-9_ de hasta 80 caracteres); vacio muestra todas las tipificaciones con gestion. Opciones y conteos provienen de listStatistics para lista/campana validada. Filtro por estado actual, no dial_status del intento, antes de paginar. NEW sigue excluido. Seleccion preservada en navegacion; aplicar vuelve a pagina 1. Aprobado en revision ARCHITECT_AGENT del agente principal.

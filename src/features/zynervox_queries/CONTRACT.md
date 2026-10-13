@@ -159,3 +159,8 @@ latestLeadCalls(int listId,int campaignId,int limit=50,int offset=0,?int leadId=
 ## 2026-10-13 - Filtro de leads con gestión
 
 latestLeadCalls añade bool managedOnly=false como sexto argumento opcional; leadCount añade el mismo argumento como segundo parámetro. true aplica status distinto de NEW antes de paginación/conteo. Defaults preservan firmas compatibles y resultados de otros consumidores. No exige intento ni WAV y no altera el criterio de último intento. Aprobado en revisión ARCHITECT_AGENT del agente principal.
+
+
+## 2026-10-13 - Filtro de grabaciones por tipificacion
+
+latestLeadCalls agrega septimo argumento opcional ?string status=null: cuando esta presente aplica igualdad parametrizada sobre l.status antes de ORDER/LIMIT/OFFSET. Compatible con managedOnly y filtro de lead. null mantiene comportamiento anterior. Aprobado en revision ARCHITECT_AGENT del agente principal.
