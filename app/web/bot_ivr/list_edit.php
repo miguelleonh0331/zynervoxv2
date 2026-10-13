@@ -120,6 +120,7 @@ if ($list): ?>
 @media(max-width:650px){.audio-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.audio-stat strong{font-size:26px}}
 @media(max-width:1000px){.list-layout{grid-template-columns:minmax(0,1fr)}}
 .call-stats{margin-top:16px}.call-stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.call-stats-grid div{padding:16px;border:1px solid var(--border);border-radius:8px;background:var(--glass);text-align:center}.call-stats-grid strong{display:block;font-size:28px}.call-stats-grid span{font-size:12px;color:var(--text-muted)}.call-state{margin-top:12px}.call-state-label{display:flex;justify-content:space-between;gap:12px;font-size:12px}.call-state progress{display:block;width:100%;height:10px;accent-color:#347cc5}.call-stats-error{color:#c74451}
+.call-state-scheduled{padding:8px 10px;border-radius:6px;background:rgba(34,197,94,.14);box-shadow:inset 3px 0 #22a447}.call-state-scheduled progress{accent-color:#22a447}
 .list-accordion{align-self:start}.list-accordion summary{cursor:pointer;font-size:13px;font-weight:bold}.list-accordion[open] summary{margin-bottom:12px}
 </style>
 <a class="list-back" href="campaign_edit.php?id=<?php echo (int)$campaignId; ?>">← Volver a campaña #<?php echo (int)$campaignId; ?></a>
@@ -268,6 +269,7 @@ if ($list): ?>
         const summary = document.getElementById('call-state-summary'); summary.replaceChildren();
         for (const row of stats.states) {
             const item = document.createElement('div'); item.className = 'call-state';
+            if (['AGENDADO_VALIDAR','AGENDADO'].includes(row.status)) item.classList.add('call-state-scheduled');
             const label = document.createElement('div'); label.className = 'call-state-label';
             const name = document.createElement('span'); name.textContent = row.status;
             const count = document.createElement('strong'); count.textContent = row.count;

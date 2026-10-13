@@ -2492,3 +2492,8 @@ User requested IVR SQL destination 172.16.10.19:1433, database BD_ANALISIS, tabl
 ## 2026-10-13 - SQL Server IVR destination activated
 
 User authorized procede. Installed binary pymssql 2.2.11 in v2 Python 3.6 gtts_env. Validated supplied login to BD_ANALISIS, dbo.GESTIONES_BOT existence, INSERT permission and all 16 flow columns. Synthetic real INSERT and SELECT passed within a transaction, then rollback confirmed zero retained test rows. Backed up private IVR settings at /var/backups/zynervoxv2/sqlserver-20261013-152012; copied prepared configuration from SMB and published atomically to /etc/zynervox/zynervoxv2/ivr_engine.json root:www 0640. PHP runtime confirms sqlserver destination enabled; wwwrun Python login and INSERT permission confirmed. No active dial runs at validation, so live-call export remains to be observed on next call reaching inject_sql. Existing IVR provider configuration preserved. Removed local private staging file. Credentials never committed. No historical result export performed.
+
+
+## 2026-10-13 - Scheduled lead statuses highlighted
+
+Prepared local bot_ivr/list_edit.php visual change: AGENDADO_VALIDAR and AGENDADO rows in lead status summary receive soft green background, green left marker and green progress bar. Shared statistics rendering applies highlight both initially and on polling. No data, status or dialing behavior changes. Production deployment pending explicit procede for this action.
