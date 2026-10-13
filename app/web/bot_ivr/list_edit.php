@@ -125,6 +125,7 @@ if ($list): ?>
 <a class="list-back" href="campaign_edit.php?id=<?php echo (int)$campaignId; ?>">← Volver a campaña #<?php echo (int)$campaignId; ?></a>
 <section class="carsa-card list-card call-stats" aria-label="Estadisticas de llamadas">
 <h2>Estadisticas de la lista</h2>
+<p><a class="carsa-btn secondary" href="list_recordings.php?id=<?php echo (int)$listId; ?>&amp;campaign_id=<?php echo (int)$campaignId; ?>">Escuchar últimas llamadas</a></p>
 <div class="call-stats-grid">
 <div><strong id="call-stat-total">0</strong><span>Total leads</span></div>
 <div><strong id="call-stat-calling">0</strong><span>Llamando</span></div>

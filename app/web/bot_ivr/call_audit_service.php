@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/../config/Config.php';
+require_once __DIR__.'/call_recordings.php';
 function call_audit_directory(): string {
     if (!\Config\Config::deployment('isolated',false)) throw new RuntimeException('Isolated runtime required');
     $dir=rtrim((string)\Config\Config::deployment('runtime'),'/').'/bot_ivr/call_audit_pending';
@@ -9,10 +10,8 @@ function call_audit_directory(): string {
 }
 function call_recording_metadata(string $callId): array {
     if (!preg_match('/^[A-Za-z0-9_.-]{1,80}$/D',$callId)) throw new RuntimeException('Invalid call ID');
-    $root=rtrim((string)\Config\Config::deployment('runtime'),'/');
-    $path=$root.'/recordings/bot_ivr/'.$callId.'.wav';
-    clearstatcache(true,$path);
-    $bytes=!is_link($path) && is_file($path) ? filesize($path) : false;
+    $path=bot_call_recording_path($callId);
+    $bytes=$path!==null ? filesize($path) : false;
     return ['recording_path'=>$bytes!==false?$path:null,'recording_status'=>$bytes===false?'none':($bytes>44?'ready':'empty'),'recording_bytes'=>$bytes===false?null:$bytes];
 }
 function call_audit_write(array &$entry): string {

@@ -151,3 +151,7 @@ deactivateCampaign(id): void sets only campaign.active=0 (plus automatic updated
 BotIvrRepository añade ttsProviders(): array de provider_id/name/endpoint ordenado por nombre/ID, y createTtsProvider(name,endpoint): int. Datos en zynervox_bot_tts_providers, esquema aislado de Bot IVR. Consumidor valida nombre/URL/protocolo y exige admin+CSRF; SQL parametrizado y URL duplicada produce RuntimeException sin detalles SQL. No actualizar ni eliminar proveedores.
 
 ivrCallContext añade dial_config_json (nullable), tomado del dial run de la llamada mediante LEFT JOIN run_id/list_id. El consumidor captura proveedor por ejecución y conserva gTTS para runs históricos sin snapshot TTS. Métodos existentes mantienen firmas y campos previos.
+
+## 2026-10-13 - Lectura de última llamada por lead
+
+latestLeadCalls(int listId,int campaignId,int limit=50,int offset=0,?int leadId=null): array verifica lista/campaña y devuelve contactos actuales ordenados por lead_id con el intento de mayor attempt_id de esa misma lista/lead mediante LEFT JOIN. Incluye leads sin intentos; no filtra por disponibilidad de grabación ni recurre a intentos previos. Campos: lead_id/customer_name/phone/status y attempt_id/call_id/started_at/finished_at/dial_status nullable. limit 1..100 y offset no negativo; filtro opcional de lead conserva scope. Solo lectura, sin nueva tabla/índice ni cambios de llamadas. Extensión aprobada mediante revisión ARCHITECT_AGENT del agente principal.
