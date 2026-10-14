@@ -8,6 +8,8 @@ $monitorError='';$snapshot=[];
 try{$snapshot=bot_ivr_repository()->campaignMonitor();}catch(Throwable $e){$monitorError='No se pudo consultar las campanas de bot IVR.';}
 try{$snapshot=array_merge($snapshot,Dialer::campaignMonitor());}catch(Throwable $e){$monitorError=trim($monitorError.' No se pudo consultar las campanas de agentes.');}
 $monitorTitle=$monitorTitle??'Monitor de campanas';
+$canPlay=(int)($_SESSION['user_level']??0)===9;
+if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_monitor_csrf']=bin2hex(random_bytes(32));
 ?>
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><?php echo htmlspecialchars($monitorTitle,ENT_QUOTES,'UTF-8'); ?> - Zynervox</title>
 <link rel="stylesheet" href="layout.css">
@@ -40,9 +42,15 @@ $monitorTitle=$monitorTitle??'Monitor de campanas';
 .kpi-row .stat-value{display:block;font-size:24px;font-weight:700;color:var(--text)}
 .kpi-row .stat-label{font-size:11px;color:var(--text-muted)}
 .donut-row{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
-.donut-row svg{flex:0 0 auto;width:110px;height:110px}
-.donut-center-pct{font-size:20px;font-weight:700;fill:var(--text)}
-.donut-center-label{font-size:8px;fill:var(--text-muted);text-transform:uppercase;letter-spacing:.3px}
+.donut-chart{margin:0;flex:0 0 110px;text-align:center}
+.donut-control{position:relative;width:110px;height:110px}
+.donut-control svg{display:block;width:110px;height:110px}
+.donut-caption{margin-top:8px;font-size:11px;color:var(--text-muted)}
+.donut-caption strong{font-size:16px;color:var(--text)}
+.campaign-play{position:absolute;inset:30px;border:0;border-radius:50%;background:var(--series-1);color:#fff;font-size:23px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0 0 0 3px}
+.campaign-play:hover:not(:disabled){filter:brightness(.9)}
+.campaign-play:focus-visible{outline:3px solid var(--text);outline-offset:3px}
+.campaign-play:disabled{background:var(--glass);color:var(--text-muted);cursor:default}
 .legend{list-style:none;margin:0;padding:0;font-size:12px;flex:1;min-width:160px}
 .legend li{display:flex;align-items:center;gap:7px;padding:2px 0;color:var(--text)}
 .legend .swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0}
@@ -55,10 +63,12 @@ $monitorTitle=$monitorTitle??'Monitor de campanas';
 <main class="main-content"><h1><?php echo htmlspecialchars($monitorTitle,ENT_QUOTES,'UTF-8'); ?></h1>
 <p class="monitor-note">Estado de las campanas activas &middot; actualizacion cada 5 segundos</p>
 <p id="monitor-error" class="monitor-error" role="status"><?php echo htmlspecialchars($monitorError,ENT_QUOTES,'UTF-8'); ?></p>
+<p id="monitor-action" class="monitor-note" role="status" aria-live="polite"></p>
 <div id="monitor-campaigns" class="monitor-grid"></div>
 </main><script>
 (() => {
- const grid=document.getElementById('monitor-campaigns'),error=document.getElementById('monitor-error');let timer;
+ const grid=document.getElementById('monitor-campaigns'),error=document.getElementById('monitor-error'),actionStatus=document.getElementById('monitor-action');let timer;
+ const csrf=<?php echo json_encode($canPlay?$_SESSION['campaign_monitor_csrf']:null); ?>,pending=new Set();
  const labels={idle:'Sin marcacion',starting:'Iniciando',running:'Discando',stopping:'Deteniendo',stopped:'Detenida',completed:'Finalizada',failed:'Error'};
  // Resueltos una vez a hex real: un atributo SVG via setAttribute no siempre
  // interpreta var(--x), a diferencia de una propiedad CSS normal.
@@ -77,7 +87,7 @@ $monitorTitle=$monitorTitle??'Monitor de campanas';
  }
  const SVGNS='http://www.w3.org/2000/svg';
  function svgEl(tag,attrs){const e=document.createElementNS(SVGNS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
- function buildDonut(states,total,finished){
+ function buildDonut(states,total){
   const r=42,cx=50,cy=50,strokeWidth=16,C=2*Math.PI*r,GAP=3;
   const top=topStates(states,5);
   const svg=svgEl('svg',{viewBox:'0 0 100 100',role:'img','aria-label':'Distribucion de leads por estado'});
@@ -94,10 +104,6 @@ $monitorTitle=$monitorTitle??'Monitor de campanas';
    offset+=len;
   });
   svg.append(group);
-  const pct=total>0 ? Math.round(finished/total*100) : 0;
-  const pctText=svgEl('text',{x:cx,y:cy-2,'text-anchor':'middle',class:'donut-center-pct'});pctText.textContent=pct+'%';
-  const labelText=svgEl('text',{x:cx,y:cy+10,'text-anchor':'middle',class:'donut-center-label'});labelText.textContent='Terminados';
-  svg.append(pctText,labelText);
   return {svg,top};
  }
  function render(rows){grid.replaceChildren();
@@ -117,7 +123,19 @@ $monitorTitle=$monitorTitle??'Monitor de campanas';
    card.append(kpi);
    const row=el('div','donut-row');
    if(!c.states.length){row.append(text('p','Sin leads cargados.'));card.append(row);grid.append(card);continue;}
-   const {svg,top}=buildDonut(c.states,c.total,c.finished);row.append(svg);
+   const {svg,top}=buildDonut(c.states,c.total);
+   const chart=el('figure','donut-chart'),control=el('div','donut-control');control.append(svg);
+   if(csrf){
+    const button=text('button','\u25B6','campaign-play');button.type='button';
+    const busy=['starting','running','stopping'].includes(c.state);
+    button.disabled=busy||pending.has(c.origin+':'+c.campaign_id);
+    button.title=busy?'La campana esta en marcha':'Iniciar campana';
+    button.setAttribute('aria-label','Iniciar campana '+c.name);
+    button.addEventListener('click',()=>play(c,button));control.append(button);
+   }
+   const caption=el('figcaption','donut-caption');
+   caption.append(text('strong',(c.total>0?Math.round(c.finished/c.total*100):0)+'%'),document.createTextNode(' Terminados'));
+   chart.append(control,caption);row.append(chart);
    const legend=el('ul','legend');
    top.forEach((s,i)=>{
     const li=el('li');
@@ -128,6 +146,16 @@ $monitorTitle=$monitorTitle??'Monitor de campanas';
    row.append(legend);card.append(row);
    grid.append(card);
   }
+ }
+ async function play(c,button){
+  const key=c.origin+':'+c.campaign_id;if(pending.has(key))return;
+  pending.add(key);button.disabled=true;actionStatus.textContent='Iniciando '+c.name+'...';
+  try{
+   const response=await fetch('campaign_monitor_api.php',{method:'POST',credentials:'same-origin',body:new URLSearchParams({action:'play',csrf,origin:c.origin,campaign_id:String(c.campaign_id)})});
+   const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'No se pudo iniciar la campana.');
+   actionStatus.textContent=data.message;
+  }catch(e){actionStatus.textContent=e.message;}
+  finally{pending.delete(key);await poll();}
  }
  async function poll(){clearTimeout(timer);if(document.hidden)return;try{const response=await fetch('campaign_monitor_api.php',{cache:'no-store',credentials:'same-origin'});const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'No se pudo actualizar el monitor.');render(data.campaigns);error.textContent='';}catch(e){error.textContent=e.message;}timer=setTimeout(poll,5000);}
  render(<?php echo json_encode($snapshot,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT); ?>);timer=setTimeout(poll,5000);

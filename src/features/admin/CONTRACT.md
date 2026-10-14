@@ -45,3 +45,8 @@ login inmutable, contraseñas jamás devueltas en HTML, nombres escapados. Para
 operar: crear anexo SIP con igual login desde Phones, registrar MicroSIP y
 asignar desde Campañas. Desactivar cuenta web requiere salir primero de colas;
 no cambia configuración SIP ni asignaciones. Sin integración VICIdial habilitada.
+
+
+## 2026-10-14 - Dashboard campaign Play (architect approved)
+
+The shared monitor places percentage and Terminados below each donut and exposes center Play only to level 9. campaign_monitor_api.php GET remains read-only for levels 7/8/9; POST action=play requires administrator session, dedicated campaign_monitor_csrf, positive campaign_id and origin bot_ivr|agents. Bot campaigns must be active: start each active idle list through existing bot_list_call_start, using stored call_channels. Skip starting/running/stopping runs and report per-list failures, including partial starts. Agents use Dialer::setEngineState(RUNNING). No new repository API or direct SQL. Existing validations, audio readiness, ownership, run leases and claim concurrency continue to apply.

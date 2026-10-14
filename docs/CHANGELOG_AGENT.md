@@ -2538,3 +2538,10 @@ Verified eight isolated broker scenarios, generated dialplan/roundtrip and origi
 ## 2026-10-14 - Remove accidental test contact from list56
 
 User explicitly requested deletion of test lead3150. Verified its one finished manual test call1791992778.8130, empty customer_name/extra_json, exact list56/campaign50 scope and no active run. Backed up the row privately to /var/backups/zynervoxv2/lead-3150-cleanup/lead-3150.json; deleted only that lead transactionally. Original call attempt/events remain unchanged. List returns to3000 contacts. Actual configuration validation as wwwrun now passes with original ready audio signature and origin7307: no regeneration or page code change required. Generate was disabled because unresolved nombre prevents constructing audio text; Play was hidden because that made readiness false.
+
+
+## 2026-10-14 - Campaign Play inside dashboard donut
+
+Moved completion percentage/Terminados below each donut. Administrator-only center Play starts Bot IVR active lists with saved channels, skips busy lists and reports per-list validation errors; agent campaigns reuse engine start. Running/stopping/pending buttons disabled; accessible labels and keyboard focus retained. Existing monitor endpoint accepts POST with admin session, CSRF, strict origin/action/ID; GET unchanged. Isolated fixture tests passed for auth, CSRF, inputs, read-only GET, stored list scope/channels, busy/inactive skipping, partial errors and agent routing; PHP syntax checks passed. Tests never start real workers or calls.
+
+Deployment: updated only the shared monitor view and existing admin monitor endpoint on mirmidon after confirming both matched repository HEAD. Private SFTP backups retained; restored root:www 0644. Remote PHP lint, source SHA256 equality and unauthenticated POST rejection passed. Browser fixture verified caption outside donut, Play click feedback and disabled running state. No production campaign or call was launched for validation.
