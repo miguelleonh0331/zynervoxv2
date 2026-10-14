@@ -1,12 +1,9 @@
 <?php
-require_once __DIR__.'/db.php';
-require_once __DIR__.'/../includes/Dialer.php';
-use Includes\Dialer;
+require_once __DIR__.'/../modules/admin/campaign_monitor_cache.php';
 if(session_status()===PHP_SESSION_NONE)session_start();
 if(empty($_SESSION['user']) || !in_array((int)($_SESSION['user_level']??0),[7,8,9],true)){http_response_code(403);exit;}
-$monitorError='';$snapshot=[];
-try{$snapshot=bot_ivr_repository()->campaignMonitor();}catch(Throwable $e){$monitorError='No se pudo consultar las campanas de bot IVR.';}
-try{$snapshot=array_merge($snapshot,Dialer::campaignMonitor());}catch(Throwable $e){$monitorError=trim($monitorError.' No se pudo consultar las campanas de agentes.');}
+$monitorError='';$snapshot=[];$snapshotMeta=null;
+try{$snapshotMeta=campaign_monitor_cache_read();$snapshot=$snapshotMeta['campaigns'];}catch(Throwable $e){$monitorError='El monitor esta esperando una actualizacion del servicio.';}
 $monitorTitle=$monitorTitle??'Monitor de campanas';
 $canPlay=(int)($_SESSION['user_level']??0)===9;
 if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_monitor_csrf']=bin2hex(random_bytes(32));
@@ -68,6 +65,7 @@ if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_mon
 <?php if((int)($_SESSION['user_level']??0)===9){require_once __DIR__.'/../modules/admin/sidebar.php';renderSidebar($monitorTitle==='Dashboard'?'home':'campaign_monitor');}else{require_once __DIR__.'/../modules/sup/sidebar.php';renderSupSidebar('campaign_monitor');} ?>
 <main class="main-content"><h1><?php echo htmlspecialchars($monitorTitle,ENT_QUOTES,'UTF-8'); ?></h1>
 <p class="monitor-note">Estado de las campanas activas &middot; actualizacion cada 5 segundos</p>
+<p id="monitor-freshness" class="monitor-note" role="status"></p>
 <p id="monitor-error" class="monitor-error" role="status"><?php echo htmlspecialchars($monitorError,ENT_QUOTES,'UTF-8'); ?></p>
 <p id="monitor-action" class="monitor-note" role="status" aria-live="polite"></p>
 <div id="monitor-campaigns" class="monitor-grid"></div>
@@ -75,6 +73,12 @@ if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_mon
 (() => {
  const grid=document.getElementById('monitor-campaigns'),error=document.getElementById('monitor-error'),actionStatus=document.getElementById('monitor-action');let timer;
  const csrf=<?php echo json_encode($canPlay?$_SESSION['campaign_monitor_csrf']:null); ?>,pending=new Set();
+ function freshness(data){
+  const note=document.getElementById('monitor-freshness');
+  if(!data){note.textContent='Esperando datos del monitor.';return;}
+  const age=Math.max(data.age_seconds||0,(Date.now()-Date.parse(data.updated_at))/1000);
+  note.textContent=(data.stale||age>15?'Datos desactualizados. ':'')+'Ultima actualizacion: '+new Date(data.updated_at).toLocaleTimeString();
+ }
  const labels={idle:'Sin marcacion',starting:'Iniciando',running:'Discando',stopping:'Deteniendo',stopped:'Detenida',completed:'Finalizada',failed:'Error'};
  // Resueltos una vez a hex real: un atributo SVG via setAttribute no siempre
  // interpreta var(--x), a diferencia de una propiedad CSS normal.
@@ -166,7 +170,9 @@ if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_mon
   }catch(e){actionStatus.textContent=e.message;}
   finally{pending.delete(key);await poll();}
  }
- async function poll(){clearTimeout(timer);if(document.hidden)return;try{const response=await fetch('campaign_monitor_api.php',{cache:'no-store',credentials:'same-origin'});const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'No se pudo actualizar el monitor.');render(data.campaigns);error.textContent='';}catch(e){error.textContent=e.message;}timer=setTimeout(poll,5000);}
+ let lastSnapshot=<?php echo json_encode($snapshotMeta,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT); ?>;
+ async function poll(){clearTimeout(timer);if(document.hidden)return;try{const response=await fetch('campaign_monitor_api.php',{cache:'no-store',credentials:'same-origin'});const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'No se pudo actualizar el monitor.');render(data.campaigns);lastSnapshot=data;error.textContent='';}catch(e){error.textContent=e.message;}freshness(lastSnapshot);timer=setTimeout(poll,5000);}
+ freshness(lastSnapshot);
  render(<?php echo json_encode($snapshot,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT); ?>);timer=setTimeout(poll,5000);
  document.addEventListener('visibilitychange',()=>{clearTimeout(timer);if(!document.hidden)poll();});
 })();

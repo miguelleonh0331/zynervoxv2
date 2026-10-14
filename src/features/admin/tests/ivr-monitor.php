@@ -2,7 +2,7 @@
 $web=$argv[1];
 function renderRoute($web,$route,$logged=true){
  $code='$_SERVER["REQUEST_METHOD"]="GET";require $argv[1]."/includes/Auth.php";session_start();';
- if($logged)$code.='$_SESSION["user"]="monitor-fixture";$_SESSION["user_level"]=9;';
+ if($logged)$code.='$_SESSION["user"]='.var_export(getenv('ZYNERVOX_MONITOR_TEST_USER')?:'monitor-fixture',true).';$_SESSION["user_level"]=9;';
  $code.='$_SERVER["SCRIPT_FILENAME"]=$argv[1]."/".$argv[2];require $argv[1]."/includes/IsolatedGate.php";require $_SERVER["SCRIPT_FILENAME"];';
  $p=proc_open(['/usr/bin/php','-r',$code,$web,$route],[0=>['file','/dev/null','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
  $out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);$status=proc_close($p);

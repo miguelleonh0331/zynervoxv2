@@ -5,12 +5,13 @@ $root=sys_get_temp_dir().'/campaign-play-'.bin2hex(random_bytes(6));
 mkdir($root.'/modules/admin',0777,true);mkdir($root.'/includes',0777,true);mkdir($root.'/bot_ivr',0777,true);
 copy(__DIR__.'/../../../../app/web/modules/admin/campaign_monitor_api.php',$root.'/modules/admin/campaign_monitor_api.php');
 file_put_contents($root.'/includes/Auth.php','<?php');
+file_put_contents($root.'/modules/admin/campaign_monitor_cache.php','<?php function campaign_monitor_cache_read(){return ["campaigns"=>[],"updated_at"=>gmdate("c"),"age_seconds"=>0,"stale"=>false];}');
 file_put_contents($root.'/includes/Dialer.php', <<<'PHP'
 <?php
 namespace Includes;
 class Dialer {
  public static function setEngineState($id,$state){file_put_contents($GLOBALS['log'],json_encode(['agent',$id,$state])."\n",FILE_APPEND);}
- public static function campaignMonitor(){return [];}
+ public static function campaignMonitor(){throw new \RuntimeException('Web must not query agent statistics');}
 }
 PHP
 );
@@ -19,7 +20,7 @@ file_put_contents($root.'/bot_ivr/db.php', <<<'PHP'
 function bot_ivr_repository(){return new class {
  public function campaign($id){return ['active'=>$GLOBALS['scenario']!=='inactive'];}
  public function lists($id){return $GLOBALS['scenario']==='empty'?[]:[['list_id'=>56,'active'=>1,'call_channels'=>25],['list_id'=>57,'active'=>0,'call_channels'=>3],['list_id'=>58,'active'=>1,'call_channels'=>10],['list_id'=>59,'active'=>1,'call_channels'=>5]];}
- public function campaignMonitor(){return [];}
+ public function campaignMonitor(){throw new RuntimeException('Web must not query Bot IVR statistics');}
 };}
 PHP
 );

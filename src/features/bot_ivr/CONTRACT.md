@@ -369,3 +369,8 @@ Admin monitor may invoke existing list call services for each active list of an 
 ## 2026-10-14 - Dashboard Stop consumer (architect approved)
 
 Admin monitor may stop exact current starting/running/stopping list runs using existing bot_list_call_stop. Include busy inactive lists so deactivation cannot hide a live worker. Retain drain semantics, scoped run-token validation and existing call lifecycle; no forced hangup or transport change.
+
+
+## 2026-10-14 - Shared monitor snapshot consumer (architect approved)
+
+Shared monitor view no longer queries campaignMonitor on initial render. Admin cache helper supplies the same published snapshot as HTTP polling, with explicit freshness. Statistics are generated only by the admin singleton CLI worker through existing repository and Dialer APIs; dialing, list services, lead states and query signatures are unchanged.

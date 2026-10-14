@@ -47,8 +47,7 @@ if(($_SERVER['REQUEST_METHOD']??'')==='POST'){
 }
 if(($_SERVER['REQUEST_METHOD']??'')!=='GET'){http_response_code(405);echo json_encode(['ok'=>false]);exit;}
 try{
-    $campaigns=bot_ivr_repository()->campaignMonitor();
-    try{$campaigns=array_merge($campaigns,Dialer::campaignMonitor());}catch(Throwable $e){}
-    echo json_encode(['ok'=>true,'campaigns'=>$campaigns],JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE);
+    require_once __DIR__.'/campaign_monitor_cache.php';
+    echo json_encode(['ok'=>true]+campaign_monitor_cache_read(),JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE);
 }
 catch(Throwable $e){http_response_code(503);echo json_encode(['ok'=>false,'error'=>'No se pudo consultar las campanas.']);}

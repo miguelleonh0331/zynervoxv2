@@ -2560,3 +2560,10 @@ Replaced font-dependent Play/Stop glyphs with fixed-viewBox SVG icons centered i
 ## 2026-10-14 - Compact dashboard status legend
 
 Moved right-aligned counts before their color swatches and status labels. Removed stretched legend columns so count/color/status remain grouped beside each donut and leave room to the right. Presentation only; state calculations and campaign controls unchanged.
+
+
+## 2026-10-14 - Shared statistics snapshot for all dashboard readers
+
+Added a singleton CLI worker and systemd service to publish both Bot IVR and agent statistics every five seconds into runtime/campaign_monitor/snapshot.json. Dashboard initial rendering and GET now consume the same private atomic snapshot with update time, age and stale-after-15s metadata. Missing cache returns unavailability rather than direct SQL; publication failure preserves previous data. Play/Stop remain live commands. Cache fixtures verify shared reads, stale detection and failed-publication preservation; controller fixtures forbid statistics SQL on web reads and preserve action coverage.
+
+Deployed on mirmidon with root-owned sources and wwwrun:www0750/0640 cache. Native fixtures and real dashboard/monitor route smoke tests passed; updated obsolete smoke-test fixture to accept an existing administrator through environment, since current Auth revalidates account activity. Verified second worker exclusion, continuously fresh two-campaign snapshot, zero service restarts, source SHA256 match and unchanged IsolatedGate. No production campaigns or external calls were started. Operations/rollback documented in docs/operations/campaign-monitor-cache.md.

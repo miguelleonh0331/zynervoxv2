@@ -1,0 +1,17 @@
+[Unit]
+Description=Zynervox v2 shared campaign monitor cache
+After=network.target
+
+[Service]
+Type=simple
+User=wwwrun
+Group=www
+UMask=0027
+ExecStart=/usr/bin/php /srv/www/htdocs/zynervoxv2/modules/admin/campaign_monitor_worker.php
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

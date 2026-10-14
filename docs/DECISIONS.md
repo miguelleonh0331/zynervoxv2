@@ -1130,3 +1130,8 @@ Primary agent approves scoped admin/Bot IVR monitor changes: move donut completi
 ## 2026-10-14 - Dashboard Stop control (architect review)
 
 Primary agent approves play|stop actions on existing admin monitor POST with the same level-9 and CSRF checks. Starting/running campaigns display Stop; stopping disables control. Bot IVR stops exact current active runs via bot_list_call_stop, including busy inactive lists, without terminating calls. Agent campaigns use setEngineState(STOPPED). Empty stop is idempotent and partial failures are visible. Scope remains monitor view/API, existing fixture and contracts; no worker, SQL, PBX or IsolatedGate changes.
+
+
+## 2026-10-14 - Shared campaign monitor cache (architect review)
+
+Primary agent approves admin cache helper, CLI-only singleton worker, systemd unit, installer and shared Bot IVR view/API consumers. Existing statistics APIs remain the sole data source; only the worker invokes them every five seconds, with no overlapping refreshes. HTTP GET and initial rendering only read the published private JSON and never fall back to database aggregation. Whole-snapshot atomic publication prevents partial reads; failure retains the last good snapshot and systemd restarts the worker. Freshness metadata marks data stale after 15 seconds. Play/Stop validations continue against live services. Scope excludes query SQL, dialing workers, lead mutations, schema and preexisting IsolatedGate changes. No Redis dependency.

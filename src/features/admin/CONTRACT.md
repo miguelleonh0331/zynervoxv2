@@ -55,3 +55,8 @@ The shared monitor places percentage and Terminados below each donut and exposes
 ## 2026-10-14 - Dashboard Stop (architect approved)
 
 Monitor POST also accepts action=stop with unchanged role/CSRF/origin/ID validation. Starting/running shows Stop, stopping disables the button. Bot IVR invokes bot_list_call_stop for each starting/running/stopping run with its exact current run_id, including runs on inactive lists/campaigns; finished runs are untouched. No active runs is a successful no-op; per-list errors remain visible. Agents use setEngineState(STOPPED). Neither path terminates ongoing calls.
+
+
+## 2026-10-14 - Shared campaign monitor cache (architect approved)
+
+Initial dashboard/monitor rendering and authenticated campaign_monitor_api GET read only the shared runtime/campaign_monitor/snapshot.json. Response keeps campaigns and adds updated_at (UTC ISO8601), age_seconds and stale (>15 seconds). No cache or invalid cache yields unavailability; no direct statistics-query fallback. A CLI-only worker holds an exclusive flock, calls existing Bot IVR and Dialer monitor APIs, and atomically renames one complete JSON every five seconds (long cycles never overlap). Any failed source/publication preserves the last good file and restarts via systemd. POST Play/Stop continues to validate current live services and does not rebuild the cache. Runtime/cache directory wwwrun:www0750, snapshot0640; worker/source root-owned.
