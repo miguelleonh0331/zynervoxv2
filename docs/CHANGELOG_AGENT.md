@@ -2555,3 +2555,8 @@ Donut center now shows a red square Stop during starting/running, disabled while
 ## 2026-10-14 - Centered animated dashboard controls
 
 Replaced font-dependent Play/Stop glyphs with fixed-viewBox SVG icons centered in flex buttons. Added hover/press transitions and a soft running Stop pulse, disabled for reduced-motion users and during stopping. Presentation only; campaign control API and call behavior unchanged.
+
+
+## 2026-10-14 - Compact dashboard status legend
+
+Moved right-aligned counts before their color swatches and status labels. Removed stretched legend columns so count/color/status remain grouped beside each donut and leave room to the right. Presentation only; state calculations and campaign controls unchanged.

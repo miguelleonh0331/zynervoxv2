@@ -57,11 +57,11 @@ if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_mon
 .campaign-play[data-action="stop"]:disabled{background:var(--glass);color:var(--text-muted);animation:none}
 @keyframes campaign-pulse{0%{box-shadow:0 0 0 0 #c7445140}70%,100%{box-shadow:0 0 0 7px #c7445100}}
 @media(prefers-reduced-motion:reduce){.campaign-play{transition:none}.campaign-play[data-action="stop"]{animation:none}}
-.legend{list-style:none;margin:0;padding:0;font-size:12px;flex:1;min-width:160px}
+.legend{list-style:none;margin:0;padding:0;font-size:12px;max-width:100%}
 .legend li{display:flex;align-items:center;gap:7px;padding:2px 0;color:var(--text)}
 .legend .swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0}
-.legend .legend-label{flex:1;overflow-wrap:anywhere}
-.legend .legend-value{font-variant-numeric:tabular-nums;font-weight:700;color:var(--text-muted)}
+.legend .legend-label{overflow-wrap:anywhere;min-width:0}
+.legend .legend-value{min-width:5ch;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums;font-weight:700;color:var(--text-muted)}
 .monitor-error{color:#c74451;font-size:13px}
 .monitor-note{color:var(--text-muted);font-size:12px;margin:10px 0 20px}
 </style></head><body>
@@ -149,7 +149,7 @@ if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_mon
    top.forEach((s,i)=>{
     const li=el('li');
     const swatch=el('span','swatch');swatch.style.background=s.other?OTHER:SERIES[i];
-    li.append(swatch,text('span',s.status,'legend-label'),text('span',String(s.count),'legend-value'));
+    li.append(text('span',String(s.count),'legend-value'),swatch,text('span',s.status,'legend-label'));
     legend.append(li);
    });
    row.append(legend);card.append(row);
