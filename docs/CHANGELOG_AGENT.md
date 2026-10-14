@@ -2550,3 +2550,8 @@ Deployment: updated only the shared monitor view and existing admin monitor endp
 ## 2026-10-14 - Replace running dashboard Play with Stop
 
 Donut center now shows a red square Stop during starting/running, disabled while stopping. Stops new calls through existing list stop service or agent engine STOPPED, allowing live calls to finish. Tests passed for both controls including authorization/CSRF, exact run IDs, active runs of inactive lists, completed-run exclusion, partial errors and idempotent empty stop.
+
+
+## 2026-10-14 - Centered animated dashboard controls
+
+Replaced font-dependent Play/Stop glyphs with fixed-viewBox SVG icons centered in flex buttons. Added hover/press transitions and a soft running Stop pulse, disabled for reduced-motion users and during stopping. Presentation only; campaign control API and call behavior unchanged.

@@ -47,12 +47,16 @@ if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_mon
 .donut-control svg{display:block;width:110px;height:110px}
 .donut-caption{margin-top:8px;font-size:11px;color:var(--text-muted)}
 .donut-caption strong{font-size:16px;color:var(--text)}
-.campaign-play{position:absolute;inset:30px;border:0;border-radius:50%;background:var(--series-1);color:#fff;font-size:23px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0 0 0 3px}
-.campaign-play:hover:not(:disabled){filter:brightness(.9)}
+.campaign-play{position:absolute;inset:30px;border:0;border-radius:50%;background:var(--series-1);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease}
+.campaign-play svg{width:24px;height:24px;fill:currentColor;pointer-events:none}
+.campaign-play:hover:not(:disabled){filter:brightness(1.08);transform:scale(1.08);box-shadow:0 3px 10px #0002}
+.campaign-play:active:not(:disabled){transform:scale(.94)}
 .campaign-play:focus-visible{outline:3px solid var(--text);outline-offset:3px}
 .campaign-play:disabled{background:var(--glass);color:var(--text-muted);cursor:default}
-.campaign-play[data-action="stop"]{background:#c74451;padding:0}
-.campaign-play[data-action="stop"]:disabled{background:var(--glass);color:var(--text-muted)}
+.campaign-play[data-action="stop"]{background:#c74451;animation:campaign-pulse 2s ease-out infinite}
+.campaign-play[data-action="stop"]:disabled{background:var(--glass);color:var(--text-muted);animation:none}
+@keyframes campaign-pulse{0%{box-shadow:0 0 0 0 #c7445140}70%,100%{box-shadow:0 0 0 7px #c7445100}}
+@media(prefers-reduced-motion:reduce){.campaign-play{transition:none}.campaign-play[data-action="stop"]{animation:none}}
 .legend{list-style:none;margin:0;padding:0;font-size:12px;flex:1;min-width:160px}
 .legend li{display:flex;align-items:center;gap:7px;padding:2px 0;color:var(--text)}
 .legend .swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0}
@@ -130,7 +134,9 @@ if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_mon
    if(csrf){
     const busy=['starting','running','stopping'].includes(c.state);
     const action=busy?'stop':'play';
-    const button=text('button',busy?'\u25A0':'\u25B6','campaign-play');button.type='button';button.dataset.action=action;
+    const button=el('button','campaign-play');button.type='button';button.dataset.action=action;
+    const icon=svgEl('svg',{viewBox:'0 0 24 24','aria-hidden':'true',focusable:'false'});
+    icon.append(busy?svgEl('rect',{x:6,y:6,width:12,height:12,rx:2}):svgEl('path',{d:'M9 6 L18 12 L9 18 Z'}));button.append(icon);
     button.disabled=c.state==='stopping'||pending.has(c.origin+':'+c.campaign_id);
     button.title=c.state==='stopping'?'Deteniendo campana':busy?'Parar nuevas llamadas':'Iniciar campana';
     button.setAttribute('aria-label',(busy?'Parar campana ':'Iniciar campana ')+c.name);
