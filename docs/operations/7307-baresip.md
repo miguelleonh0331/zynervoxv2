@@ -137,3 +137,13 @@ Para retirar todo, tras drenar y recuperar leases, restaurar los respaldos
 del PHP/dialplan de esta migración y recargar dialplan. No restaurar versiones
 de otras tareas ni sobrescribir modificaciones posteriores. Revertir el commit
 de esta migración conserva el historial local; no cambia producción por sí solo.
+
+## Actualización: contacto de prueba retirado
+
+El 2026-10-14, por petición explícita del usuario, se retiró únicamente el lead
+3150 de la lista56. La auditoría de su llamada se conserva y el registro original
+queda respaldado de forma privada en /var/backups/zynervoxv2/lead-3150-cleanup.
+La lista vuelve a tener3000 contactos. La validación real como wwwrun confirma
+audios listos y origen7307: ya no existe el bloqueo de nombre descrito arriba y
+no hace falta regenerar. Recargar la página recupera Play. Generar permanecía
+deshabilitado porque no puede resolver texto TTS con una variable obligatoria vacía.
