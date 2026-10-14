@@ -5,7 +5,7 @@ trait CampaignQueries {
     public function campaignMonitor(): array {
         $sql="SELECT c.campaign_id,c.name,c.active,l.list_id,l.name list_name,r.state,CASE WHEN r.state IN ('starting','running','stopping') THEN l.call_channels ELSE r.channels END channels,r.error,
             COALESCE(p.total,0) total,COALESCE(p.calling,0) calling,COALESCE(p.finished,0) finished
-            FROM zynervox_bot_campaigns c LEFT JOIN zynervox_bot_lists l ON l.campaign_id=c.campaign_id
+            FROM zynervox_bot_campaigns c LEFT JOIN zynervox_bot_lists l ON l.campaign_id=c.campaign_id AND l.active=1
             LEFT JOIN zynervox_bot_dial_runs r ON r.run_id=(SELECT x.run_id FROM zynervox_bot_dial_runs x WHERE x.list_id=l.list_id ORDER BY x.created_at DESC,x.run_id DESC LIMIT 1)
             LEFT JOIN (SELECT d.list_id,COUNT(*) total,
                 SUM(a.attempt_id IS NOT NULL AND a.finished_at IS NULL AND a.end_source<>'RECOVERY' AND a.status<>'LOST') calling,
@@ -20,7 +20,7 @@ trait CampaignQueries {
             foreach(['total','calling','finished'] as $key)$out[$id][$key]+=(int)$row[$key];
             $out[$id]['lists'][]=['list_id'=>(int)$row['list_id'],'name'=>$row['list_name'],'state'=>$state,'channels'=>(int)$row['channels'],'total'=>(int)$row['total'],'calling'=>(int)$row['calling'],'finished'=>(int)$row['finished'],'error'=>$row['error']??''];
         }
-        $states=$this->db->query("SELECT l.campaign_id,d.status,COUNT(*) count FROM zynervox_bot_list d JOIN zynervox_bot_lists l ON l.list_id=d.list_id JOIN zynervox_bot_campaigns c ON c.campaign_id=l.campaign_id WHERE c.active=1 GROUP BY l.campaign_id,d.status ORDER BY count DESC,d.status");
+        $states=$this->db->query("SELECT l.campaign_id,d.status,COUNT(*) count FROM zynervox_bot_list d JOIN zynervox_bot_lists l ON l.list_id=d.list_id JOIN zynervox_bot_campaigns c ON c.campaign_id=l.campaign_id WHERE c.active=1 AND l.active=1 GROUP BY l.campaign_id,d.status ORDER BY count DESC,d.status");
         foreach($states->fetchAll(\PDO::FETCH_ASSOC) as $row){$id=(int)$row['campaign_id'];if(isset($out[$id]))$out[$id]['states'][]=['status'=>$row['status'],'count'=>(int)$row['count']];}
         return array_values($out);
     }

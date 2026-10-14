@@ -68,7 +68,7 @@ class Dialer {
     public static function campaignMonitor(): array {
         $db = self::database();
         $campaigns = $db->query('SELECT campaign_id,name,engine_state FROM v2_dialer_campaigns WHERE active=1 ORDER BY campaign_id')->fetchAll(PDO::FETCH_ASSOC);
-        $totalStmt = $db->prepare('SELECT COUNT(*) FROM v2_dialer_leads d JOIN v2_dialer_lists l ON l.list_id=d.list_id WHERE l.campaign_id=:c');
+        $totalStmt = $db->prepare('SELECT COUNT(*) FROM v2_dialer_leads d JOIN v2_dialer_lists l ON l.list_id=d.list_id WHERE l.campaign_id=:c AND l.active=1');
         $callingStmt = $db->prepare('SELECT COUNT(*) FROM v2_dialer_call_log WHERE campaign_id=:c AND ended_at IS NULL');
         $stateStmt = $db->prepare("SELECT CASE WHEN ended_at IS NULL THEN 'EN_CURSO' ELSE COALESCE(termination_reason,'SIN_RESULTADO') END estado,COUNT(*) total FROM v2_dialer_call_log WHERE campaign_id=:c GROUP BY estado ORDER BY total DESC");
         $out = [];
