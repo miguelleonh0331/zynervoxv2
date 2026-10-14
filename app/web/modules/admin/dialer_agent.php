@@ -71,17 +71,16 @@ if (in_array($_POST['action'] ?? '',['bootstrap','select_campaign'],true) && ($_
 
 try {
     $campaigns = Dialer::campaignsForAgent($user);
-    $pending = Dialer::pendingDispositionForAgent($user);
-    $dispositions = $pending ? Dialer::dispositions((int) $pending['campaign_id']) : [];
+    $lead = Dialer::agentCurrentLead($user);
+    $dispositions = $lead ? Dialer::dispositions((int) $lead['campaign_id']) : [];
     $pauseTypes=Dialer::pauseTypes((int)$_SESSION['user_level']===9);
     $pause=Dialer::agentPause($user);
-    $lead=Dialer::agentCurrentLead($user);
     $autodial=Dialer::agentAutodialState($user);
 } catch (Throwable $e) {
     $campaigns = [];
-    $pending = null;
+    $lead=null;
     $dispositions = [];
-    $pauseTypes=[]; $pause=null; $lead=null; $autodial=[];
+    $pauseTypes=[]; $pause=null; $autodial=[];
     $error = $error ?: $e->getMessage();
 }
 ?>
@@ -234,14 +233,14 @@ try {
         </div>
 
 
-        <?php if ($pending): ?>
-        <div class="card disposition-card">
-            <h2>Tipificar llamada pendiente</h2>
-            <p>Intento #<?php echo (int)$pending['call_id']; ?> · <?php echo h($pending['termination_reason']); ?> · Campaña <strong><?php echo h($pending['campaign_name']); ?></strong> · Teléfono <?php echo h($pending['phone_number']); ?> · <?php echo h($pending['originated_at']); ?></p>
-            <form method="POST" class="disposition-form">
+        <div class="card disposition-card" id="disposition-card" <?php echo $lead ? '' : 'hidden'; ?>>
+            <h2>Tipificar llamada</h2>
+            <p id="disposition-summary"><?php if ($lead): ?>Intento #<?php echo (int)$lead['call_id']; ?> · Campaña <strong><?php echo h($lead['campaign_name']); ?></strong> · Teléfono <?php echo h($lead['phone_number']); ?> · <?php echo h($lead['originated_at']); ?><?php endif; ?></p>
+            <p id="disposition-done-note" <?php echo ($lead && $lead['disposition_code'] !== null) ? '' : 'hidden'; ?>>Tipificación guardada. Cuelga para continuar con la siguiente llamada.</p>
+            <form method="POST" class="disposition-form" id="disposition-form" data-call-id="<?php echo (int) ($lead['call_id'] ?? 0); ?>" <?php echo ($lead && $lead['disposition_code'] !== null) ? 'hidden' : ''; ?>>
                 <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>">
                 <input type="hidden" name="action" value="dispose">
-                <input type="hidden" name="call_id" value="<?php echo (int) $pending['call_id']; ?>">
+                <input type="hidden" name="call_id" value="<?php echo (int) ($lead['call_id'] ?? 0); ?>">
                 <select name="code" aria-label="Resultado de la llamada" required>
                     <option value="">Selecciona disposición...</option>
                     <?php foreach ($dispositions as $d): ?>
@@ -251,7 +250,6 @@ try {
                 <button type="submit" class="btn-primary">Guardar</button>
             </form>
         </div>
-        <?php endif; ?>
 
         <div class="card">
             <h2>Mis campañas</h2>
@@ -277,7 +275,6 @@ try {
         <?php endif; ?>
     </main>
     <script>
-    const pendingAtRender = <?php echo json_encode($pending['call_id'] ?? null); ?>;
     const connectionStatus=document.getElementById('connection-status');
     fetch('dialer_agent.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({action:'bootstrap',ajax:'1',csrf_token:<?php echo json_encode($_SESSION['dialer_csrf']); ?>})}).then(async response=>{const result=await response.json();connectionStatus.textContent=result.error || result.message;connectionStatus.dataset.error=String(!!result.error);}).catch(()=>{connectionStatus.dataset.error='true';connectionStatus.textContent='No se pudo conectar a las campañas. Recarga para reintentar.';});
     const manualForm=document.getElementById('manual-form');
@@ -346,7 +343,25 @@ try {
                 const element=document.getElementById('agent-state-'+session.campaign_id);
                 if (element) element.textContent=session.state==='ACTIVE' ? 'en cola' : session.state==='WRAPUP' ? 'tipificación pendiente' : 'pausado';
             }
-            if ((state.pending?.call_id ?? null) !== pendingAtRender && !document.querySelector('select[name="code"]')?.value && !document.querySelector('.disposition-form input:focus,.disposition-form select:focus,.disposition-form textarea:focus')) location.reload();
+            const dispositionCard=document.getElementById('disposition-card');
+            const dispositionForm=document.getElementById('disposition-form');
+            const dispositionFocused=dispositionForm.contains(document.activeElement);
+            dispositionCard.hidden=!lead;
+            if (lead && !dispositionFocused) {
+                document.getElementById('disposition-summary').textContent='Intento #'+lead.call_id+' · Campaña '+(lead.campaign_name||'—')+' · Teléfono '+(lead.phone_number||'—')+' · '+(lead.originated_at||'');
+                dispositionForm.elements.call_id.value=lead.call_id;
+                const callIdStr=String(lead.call_id);
+                if (dispositionForm.dataset.callId!==callIdStr) {
+                    dispositionForm.dataset.callId=callIdStr;
+                    const select=dispositionForm.elements.code;
+                    select.replaceChildren(new Option('Selecciona disposición...',''));
+                    for (const d of (state.dispositions||[])) select.add(new Option(d.code+' — '+d.label,d.code));
+                    select.value='';
+                }
+                const alreadyDisposed=!!lead.disposition_code;
+                dispositionForm.hidden=alreadyDisposed;
+                document.getElementById('disposition-done-note').hidden=!alreadyDisposed;
+            }
         } catch (_) { /* Next poll retries a temporary connection failure. */ }
     },3000);
     </script>
