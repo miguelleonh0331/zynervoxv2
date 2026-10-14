@@ -1,0 +1,10 @@
+[Unit]
+Description=Reconcile ZynerVox Baresip origin reservations
+
+[Timer]
+OnBootSec=60
+OnUnitActiveSec=30
+Unit=zynervoxv2-baresip-sweep.service
+
+[Install]
+WantedBy=timers.target

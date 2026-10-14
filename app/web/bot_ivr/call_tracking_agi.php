@@ -39,7 +39,7 @@ try {
     $journal=call_audit_write($entry);
     $lead=call_audit_apply($entry);
     unlink($journal);
-    if($action==='start'){agi_set('ZV2_LEAD_ID',(string)$lead);agi_set('ZV2_TRACK_OK','1');}
+    if($action==='start'){agi_set('__ZV2_LEAD_ID',(string)$lead);agi_set('ZV2_TRACK_OK','1');}
     if($action==='finish')agi_set('ZV2_FINISH_OK','1');
 } catch(Throwable $e) {
     fwrite(STDERR,'ZV2 audit pending/failure: '.get_class($e)."\n");exit(1);

@@ -327,3 +327,16 @@ preanswer_agi.php runs on the outbound SIP channel before dialing, scopes itself
 Deploy PHP through shared source, update generated common DialplanOrigins helpers and reload dialplan (no Asterisk restart). Install bot_ivr/zynervoxv2-preanswer.service to /etc/systemd/system, daemon-reload and enable/start it. Service uses root for private recording access and PBX, but all database access uses the existing scoped Bot IVR account and verifies zynervox_core. Vosk connection remains in private ivr_engine.json. Supervisor and per-call file leases prevent duplicate work. Stop the preanswer service to disable analysis without terminating calls. Full recordings remain compatible with latest-lead audio page.
 
 Checks: tests/preanswer.php, tests/preanswer-db.php (native MariaDB with rolled-back fixtures), tests/preanswer-sip.py (controlled localhost SIP/RTP peer, Python 3.6 stdlib), existing list-call-worker and core dial-origins. SIP fixture must bind only localhost and never uses carrier/customer destinations. No historical backfill or automatic SQL Server insertion for preanswer classifications.
+
+## 2026-10-14 - Origen Baresip 7307
+
+7307 puede usar el pool Baresip existente en lugar del canal Local de AMI.
+Reserva un anexo registrado antes de consumir el lead, valida el claim con un
+token de uso único y separa origen/cliente al contestar, como 3006. El broker
+root-owned es el único acceso a la reserva legacy: la cuenta PHP mantiene su
+aislamiento. La identidad del lead permanece heredada después del tracking START.
+Sin anexo libre espera; Stop devuelve reservas no utilizadas; recuperación
+periódica conserva las inciertas hasta verificar vida remota y ausencia en PBX.
+
+Operación, instalación, dependencias de mirmidon, evidencias y rollback:
+[7307-baresip.md](../../../docs/operations/7307-baresip.md).

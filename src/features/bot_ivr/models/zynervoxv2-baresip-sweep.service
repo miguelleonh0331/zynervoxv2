@@ -1,0 +1,9 @@
+[Unit]
+Description=Recover ZynerVox Baresip origin leases
+After=asterisk.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/python3.11 /usr/local/libexec/zynervoxv2-baresip-origin.py --sweep
+User=root
+UMask=0077

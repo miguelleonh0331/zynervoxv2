@@ -351,3 +351,11 @@ Channel options add 30,35,40 between 25 and 50 in list selector and Play validat
 ## 2026-10-13 - Isolated preanswer detection
 
 7307 gains receive-only preanswer recording in outbound predial helper and an isolated CLI watcher. Uses Vosk settings from private ivr_engine config. Captures/classifications persist solely through zynervox_queries in zynervox_core; result never creates an IVR node. Answer cancels preanswer processing; actual answer and hangup cause retain their meaning. CLI endpoints deny HTTP. Files remain private runtime, no new database/table.
+
+## 2026-10-14 - Baresip origin for 7307 (architect approved)
+
+When private /etc/zynervoxv2/baresip-origin.json enables the transport, Play's 7307 worker reserves a registered SIP annex before claiming any lead. No available annex means wait, with no lead consumed. Stop racing with a claim returns an unused slot. Other prefixes and deployments without this configuration retain AMI Local origination. No public repository signature changes.
+
+The root-owned compatibility broker validates an active v2 dial run and its claimed call before dialing. Its only legacy database mutation is an atomic reservation/release in dynamic_ivr_pilot_annexes with external sentinel 18446744073709551615 and matching per-call owner; the isolated PHP account receives no legacy grant. Existing 3006 reservations and persistent SIP services are preserved. SIP dial string carries a random call token; one-use bind validates the reserved annex's authenticated channel, destination and caller uniqueid. Campaign/list/lead and CID come from the claim, not SIP-supplied metadata.
+
+An outbound G() answer split releases the origin separately from the IVR callee, which owns post-answer finish tracking. Preanswer capture/classification, carrier1/881851, current graph and result schema stay unchanged. SSH acknowledgement loss is not retried. Uncertain remote processes retain the lease for the bounded remote lifetime; timer recovery additionally checks PBX channel absence before releasing the matching owner. Broker files/config must be root-owned, never web-writable. This compatibility adapter requires the existing mirmidon pool, registered Baresip dial profiles, privileged status helper and SSH identity; it is not a standalone generic installer.

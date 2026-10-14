@@ -34,6 +34,8 @@ function bot_list_call_start(int $listId,int $campaignId,int $channels,string $a
     $repo=bot_ivr_repository();$current=bot_list_call_status($listId,$campaignId);
     if($current && in_array($current['state'],['starting','running','stopping'],true))throw new RuntimeException('La lista ya tiene una marcacion activa.');
     $config=bot_list_call_configuration($listId,$campaignId);\Includes\PbxAmi::test(\Includes\PbxAmi::load());
+    require_once __DIR__.'/baresip_origin.php';
+    if(bot_baresip_enabled($config['prefix'])){$check=bot_baresip_request(['action'=>'check']);if(!$check['enabled'] || !$check['registered'])throw new RuntimeException('No hay anexos Baresip registrados para marcar.');}
     $run=bin2hex(random_bytes(16));$repo->createDialRun($listId,$campaignId,$run,$channels,$config,$actor);
     try {
         $state=$repo->dialRun($listId,$campaignId,$run);if(!$state['pending'])throw new RuntimeException('No hay leads pendientes en los estados a marcar de esta campana.');

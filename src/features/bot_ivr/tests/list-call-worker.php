@@ -42,6 +42,28 @@ try{
  $wait=function()use($repo,$db,$stopRun,&$ticks){if(++$ticks===1)$repo->transitionDialRun($stopRun,'stopping');$s=$db->prepare('SELECT call_id FROM zynervox_bot_call_attempts WHERE dial_run_id=? AND finished_at IS NULL LIMIT 1');$s->execute([$stopRun]);if($id=$s->fetchColumn())$repo->finishCall($id,'ANSWER','','',16,true);if($ticks>10)throw new RuntimeException('Stop did not drain');};
  bot_list_call_loop($list,$campaign,$stopRun,$repo,$ami2,$wait);$state=$repo->dialRun($list,$campaign,$stopRun);dialCheck($state['state']==='stopped' && count($ami2->sent)===3 && $state['active']===0 && $state['pending']===4,'Stop launched more leads or hung up active calls');
  $repo->updateListCallChannels($list,$campaign,1);
+ // No free SIP annex must not consume a lead; Stop can race with a slot reservation.
+ $poolRun=bin2hex(random_bytes(16));$repo->createDialRun($list,$campaign,$poolRun,1,$config,'fixture');
+ $poolAmi=new class($repo,$db,$poolRun) extends FixtureAmi {
+  public $reserved=0;public $released=0;
+  public function reserveSlot($id){++$this->reserved;return false;}
+  public function releaseSlot($id){++$this->released;}
+ };
+ $poolTicks=0;
+ $poolWait=function()use($repo,$list,$campaign,$poolRun,$poolAmi,&$poolTicks){
+  if(++$poolTicks>2)throw new RuntimeException('Pool wait did not stop');
+  dialCheck(!$poolAmi->sent && $repo->dialRun($list,$campaign,$poolRun)['launched']===0,'empty pool consumed lead');
+  $repo->transitionDialRun($poolRun,'stopping');
+ };
+ bot_list_call_loop($list,$campaign,$poolRun,$repo,$poolAmi,$poolWait);
+ $raceRun=bin2hex(random_bytes(16));$repo->createDialRun($list,$campaign,$raceRun,1,$config,'fixture');
+ $raceAmi=new class($repo,$db,$raceRun) extends FixtureAmi {
+  public $released=0;
+  public function reserveSlot($id){$this->repo->transitionDialRun($this->run,'stopping');return true;}
+  public function releaseSlot($id){++$this->released;}
+ };
+ bot_list_call_loop($list,$campaign,$raceRun,$repo,$raceAmi,static function(){});
+ dialCheck($raceAmi->released===1 && !$raceAmi->sent && $repo->dialRun($list,$campaign,$raceRun)['launched']===0,'Stop race leaked annex or consumed lead');
  $noRun=bin2hex(random_bytes(16));$cfg=$config;$cfg['statuses']=['NEW'];$repo->createDialRun($list,$campaign,$noRun,1,$cfg,'fixture');$ami3=new FixtureAmi($repo,$db,$noRun);bot_list_call_loop($list,$campaign,$noRun,$repo,$ami3,static function(){});dialCheck(!$ami3->sent,'finalized leads redialed implicitly');
  $rejectRun=bin2hex(random_bytes(16));$repo->createDialRun($list,$campaign,$rejectRun,1,$config,'fixture');$ami4=new FixtureAmi($repo,$db,$rejectRun);$ami4->reject=true;$failed=false;try{bot_list_call_loop($list,$campaign,$rejectRun,$repo,$ami4);}catch(RuntimeException $e){$failed=true;$repo->transitionDialRun($rejectRun,'failed');}dialCheck($failed && count($ami4->sent)===1 && $repo->dialRun($list,$campaign,$rejectRun)['active']===0,'AMI rejection handling');
  $lostRun=bin2hex(random_bytes(16));$repo->createDialRun($list,$campaign,$lostRun,1,$config,'fixture');$ami5=new FixtureAmi($repo,$db,$lostRun);$ami5->drop=true;try{bot_list_call_loop($list,$campaign,$lostRun,$repo,$ami5);}catch(RuntimeException $e){$repo->transitionDialRun($lostRun,'failed');}dialCheck($repo->dialRun($list,$campaign,$lostRun)['active']===1,'lost acknowledgement released ambiguous slot');

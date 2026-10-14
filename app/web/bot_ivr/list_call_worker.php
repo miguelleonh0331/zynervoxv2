@@ -3,6 +3,7 @@ declare(strict_types=1);
 if(PHP_SAPI!=='cli'){http_response_code(404);exit;}
 require_once __DIR__.'/list_call_service.php';
 require_once __DIR__.'/../includes/AmiClient.php';
+require_once __DIR__.'/baresip_origin.php';
 function bot_list_call_loop(int $listId,int $campaignId,string $runId,\ZynervoxQueries\BotIvrRepository $repo,$ami,?callable $wait=null): void {
     $wait=$wait??static function(){sleep(1);};$lastPing=time();
     while(true){
@@ -15,7 +16,10 @@ function bot_list_call_loop(int $listId,int $campaignId,string $runId,\ZynervoxQ
             $cfg=json_decode($run['config_json'],true,512,JSON_THROW_ON_ERROR);
             if(isset($cfg['flow_sha256'])){ $flow=ivr_builder_published_flow((int)$run['flow_id']);if(hash('sha256',json_encode($flow,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES))!==$cfg['flow_sha256'])throw new RuntimeException('El flujo cambio. Genera sus audios antes de volver a marcar.'); }
             for($slot=$run['active_list'];$slot<(int)$run['channels'];$slot++){
-                $lead=$repo->claimDialLead($runId,'zv2-'.bin2hex(random_bytes(12)));if(!$lead)break;
+                $callId='zv2-'.bin2hex(random_bytes(12));
+                if(method_exists($ami,'reserveSlot') && !$ami->reserveSlot($callId))break;
+                try {$lead=$repo->claimDialLead($runId,$callId);}catch(Throwable $e){if(method_exists($ami,'releaseSlot'))$ami->releaseSlot($callId);throw $e;}
+                if(!$lead){if(method_exists($ami,'releaseSlot'))$ami->releaseSlot($callId);break;}
                 // Never retry a lost/ambiguous AMI acknowledgement: the claim remains auditable.
                 if(!$ami->originate($lead,$run['dial_prefix'],$cfg['caller_id'])){$repo->rejectDialClaim($runId,$lead['call_id']);throw new RuntimeException('AMI rechazo iniciar la llamada. Revisa los permisos del usuario.');}
             }
@@ -32,7 +36,9 @@ try {
     $lease=fopen('php://fd/'.$fd,'r+');if(!$lease || !flock($lease,LOCK_EX|LOCK_NB))throw new RuntimeException('Worker duplicado.');
     $repo=bot_ivr_repository();$state=$repo->dialRun($list,$campaign,$run);if(!$state)throw new RuntimeException('Marcacion no encontrada.');
     $expected=json_decode($state['config_json'],true,512,JSON_THROW_ON_ERROR);$current=bot_list_call_configuration($list,$campaign);if($expected!==$current)throw new RuntimeException('La lista o campana cambiaron antes de iniciar.');
-    $ami=new \Includes\AmiClient(\Includes\PbxAmi::load());bot_list_call_loop($list,$campaign,$run,$repo,$ami);
+    $ami=new \Includes\AmiClient(\Includes\PbxAmi::load());
+    if(bot_baresip_enabled((string)$state['dial_prefix']))$ami=new BotBaresipOrigin($repo,$ami,$run);
+    bot_list_call_loop($list,$campaign,$run,$repo,$ami);
 }catch(Throwable $e){
     if($repo && isset($run)){try{$repo->transitionDialRun($run,'failed',$e instanceof RuntimeException?$e->getMessage():'No se pudo continuar la marcacion.');}catch(Throwable $ignored){}}
     fwrite(STDERR,'ZV2 call worker failed: '.get_class($e)."\n");exit(1);

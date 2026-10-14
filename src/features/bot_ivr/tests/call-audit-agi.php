@@ -13,6 +13,7 @@ function audit_run(array $args,string $channel,string $unique): void {
     fwrite($pipes[0],"agi_channel: $channel\nagi_uniqueid: $unique\n\n".str_repeat("200 result=1\n",10));fclose($pipes[0]);
     $out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
     if(proc_close($p)!==0)throw new RuntimeException('AGI failed: '.$err);
+    if(($args[0]??'')==='start' && !preg_match('/SET VARIABLE __ZV2_LEAD_ID "[0-9]+"/',$out))throw new RuntimeException('Lead ID must remain inheritable by the outgoing SIP leg');
 }
 try {
     audit_run(['start',(string)$list,'999000123',$id,'7306','carrier1',$id],'SIP/test-caller',$id);
