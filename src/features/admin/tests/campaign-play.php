@@ -25,7 +25,14 @@ PHP
 );
 file_put_contents($root.'/bot_ivr/list_call_service.php', <<<'PHP'
 <?php
-function bot_list_call_status($list,$campaign){return $list===58?['state'=>'running']:null;}
+function bot_list_call_status($list,$campaign){
+ if(in_array($GLOBALS['scenario'],['stop','stop-error'],true))return $list===59?['state'=>'completed','run_id'=>'finished']:['state'=>$list===58?'stopping':($list===57?'starting':'running'),'run_id'=>str_repeat((string)($list-50),32)];
+ return $list===58?['state'=>'running','run_id'=>str_repeat('a',32)]:null;
+}
+function bot_list_call_stop($list,$campaign,$run){
+ if($GLOBALS['scenario']==='stop-error' && $list===58)throw new RuntimeException('La marcacion cambio.');
+ file_put_contents($GLOBALS['log'],json_encode(['stop',$list,$campaign,$run])."\n",FILE_APPEND);
+}
 function bot_list_call_start($list,$campaign,$channels,$actor){
  if($list===59 || $GLOBALS['scenario']==='failed')throw new RuntimeException('Los audios de la lista deben estar listos.');
  file_put_contents($GLOBALS['log'],json_encode(['bot',$list,$campaign,$channels,$actor])."\n",FILE_APPEND);
@@ -48,7 +55,7 @@ try{
  foreach([[],array_replace($session,['user_level'=>8]),array_replace($session,['user_level'=>7])] as $denied){
   [$data,$calls]=requestFixture($post,$denied);checkFixture(!$data['ok'] && $calls==='','Authorization must prevent calls');
  }
- foreach([['csrf'=>'wrong'],['origin'=>'legacy'],['campaign_id'=>'0'],['campaign_id'=>['50']],['action'=>'stop']] as $invalid){
+ foreach([['csrf'=>'wrong'],['origin'=>'legacy'],['campaign_id'=>'0'],['campaign_id'=>['50']],['action'=>'delete']] as $invalid){
   [$data,$calls]=requestFixture(array_replace($post,$invalid),$session);checkFixture(!$data['ok'] && $calls==='','Invalid input must prevent calls');
  }
  [$data,$calls]=requestFixture($post,$session,'GET');checkFixture($data['ok'] && $calls==='','GET must remain read only');
@@ -59,7 +66,16 @@ try{
  foreach(['inactive','empty'] as $scenario){[$data,$calls]=requestFixture($post,$session,'POST',$scenario);checkFixture(!$data['ok'] && $calls==='','Inactive/empty campaigns must not start');}
  [$data,$calls]=requestFixture(array_replace($post,['origin'=>'agents']),$session);
  checkFixture($data['ok'] && $calls===json_encode(['agent',50,'RUNNING'])."\n",'Agents must use existing engine control, never Bot IVR');
- echo "CAMPAIGN_PLAY_OK: authorization, CSRF, input, read-only GET, list scope/channels, inactive/running skip, partial errors, agents\n";
+ $stop=array_replace($post,['action'=>'stop']);
+ foreach([[],array_replace($session,['user_level'=>8]),array_replace($session,['user_level'=>7])] as $denied){[$data,$calls]=requestFixture($stop,$denied);checkFixture(!$data['ok'] && $calls==='','Stop authorization must prevent mutations');}
+ [$data,$calls]=requestFixture(array_replace($stop,['csrf'=>'bad']),$session);checkFixture(!$data['ok'] && $calls==='','Stop CSRF must prevent mutations');
+ [$data,$calls]=requestFixture($stop,$session,'POST','stop');
+ $expected='';foreach([56,57,58] as $list)$expected.=json_encode(['stop',$list,50,str_repeat((string)($list-50),32)])."\n";
+ checkFixture($data['ok'] && $calls===$expected,'Stop must target exact current run of all busy lists, including inactive lists, and skip finished runs');
+ [$data,$calls]=requestFixture($stop,$session,'POST','stop-error');checkFixture($data['ok'] && strpos($data['message'],'Lista #58: La marcacion cambio.')!==false,'Stop partial failures must be visible');
+ [$data,$calls]=requestFixture($stop,$session,'POST','empty');checkFixture($data['ok'] && $calls==='','Stop with no runs must be idempotent');
+ [$data,$calls]=requestFixture(array_replace($stop,['origin'=>'agents']),$session);checkFixture($data['ok'] && $calls===json_encode(['agent',50,'STOPPED'])."\n",'Agent Stop must use existing engine drain');
+ echo "CAMPAIGN_CONTROLS_OK: play/stop auth, CSRF, scope, channels, current runs, inactive lists, partial errors, agents, idempotent stop\n";
 }finally{
  foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root,FilesystemIterator::SKIP_DOTS),RecursiveIteratorIterator::CHILD_FIRST) as $file){if($file->isDir())rmdir($file->getPathname());else unlink($file->getPathname());}rmdir($root);
 }

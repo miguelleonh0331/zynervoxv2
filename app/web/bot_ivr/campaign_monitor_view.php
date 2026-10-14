@@ -51,6 +51,8 @@ if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_mon
 .campaign-play:hover:not(:disabled){filter:brightness(.9)}
 .campaign-play:focus-visible{outline:3px solid var(--text);outline-offset:3px}
 .campaign-play:disabled{background:var(--glass);color:var(--text-muted);cursor:default}
+.campaign-play[data-action="stop"]{background:#c74451;padding:0}
+.campaign-play[data-action="stop"]:disabled{background:var(--glass);color:var(--text-muted)}
 .legend{list-style:none;margin:0;padding:0;font-size:12px;flex:1;min-width:160px}
 .legend li{display:flex;align-items:center;gap:7px;padding:2px 0;color:var(--text)}
 .legend .swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0}
@@ -126,12 +128,13 @@ if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_mon
    const {svg,top}=buildDonut(c.states,c.total);
    const chart=el('figure','donut-chart'),control=el('div','donut-control');control.append(svg);
    if(csrf){
-    const button=text('button','\u25B6','campaign-play');button.type='button';
     const busy=['starting','running','stopping'].includes(c.state);
-    button.disabled=busy||pending.has(c.origin+':'+c.campaign_id);
-    button.title=busy?'La campana esta en marcha':'Iniciar campana';
-    button.setAttribute('aria-label','Iniciar campana '+c.name);
-    button.addEventListener('click',()=>play(c,button));control.append(button);
+    const action=busy?'stop':'play';
+    const button=text('button',busy?'\u25A0':'\u25B6','campaign-play');button.type='button';button.dataset.action=action;
+    button.disabled=c.state==='stopping'||pending.has(c.origin+':'+c.campaign_id);
+    button.title=c.state==='stopping'?'Deteniendo campana':busy?'Parar nuevas llamadas':'Iniciar campana';
+    button.setAttribute('aria-label',(busy?'Parar campana ':'Iniciar campana ')+c.name);
+    button.addEventListener('click',()=>controlCampaign(c,button,action));control.append(button);
    }
    const caption=el('figcaption','donut-caption');
    caption.append(text('strong',(c.total>0?Math.round(c.finished/c.total*100):0)+'%'),document.createTextNode(' Terminados'));
@@ -147,12 +150,12 @@ if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_mon
    grid.append(card);
   }
  }
- async function play(c,button){
+ async function controlCampaign(c,button,action){
   const key=c.origin+':'+c.campaign_id;if(pending.has(key))return;
-  pending.add(key);button.disabled=true;actionStatus.textContent='Iniciando '+c.name+'...';
+  pending.add(key);button.disabled=true;actionStatus.textContent=(action==='stop'?'Deteniendo ':'Iniciando ')+c.name+'...';
   try{
-   const response=await fetch('campaign_monitor_api.php',{method:'POST',credentials:'same-origin',body:new URLSearchParams({action:'play',csrf,origin:c.origin,campaign_id:String(c.campaign_id)})});
-   const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'No se pudo iniciar la campana.');
+   const response=await fetch('campaign_monitor_api.php',{method:'POST',credentials:'same-origin',body:new URLSearchParams({action,csrf,origin:c.origin,campaign_id:String(c.campaign_id)})});
+   const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'No se pudo controlar la campana.');
    actionStatus.textContent=data.message;
   }catch(e){actionStatus.textContent=e.message;}
   finally{pending.delete(key);await poll();}

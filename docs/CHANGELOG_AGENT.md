@@ -2545,3 +2545,8 @@ User explicitly requested deletion of test lead3150. Verified its one finished m
 Moved completion percentage/Terminados below each donut. Administrator-only center Play starts Bot IVR active lists with saved channels, skips busy lists and reports per-list validation errors; agent campaigns reuse engine start. Running/stopping/pending buttons disabled; accessible labels and keyboard focus retained. Existing monitor endpoint accepts POST with admin session, CSRF, strict origin/action/ID; GET unchanged. Isolated fixture tests passed for auth, CSRF, inputs, read-only GET, stored list scope/channels, busy/inactive skipping, partial errors and agent routing; PHP syntax checks passed. Tests never start real workers or calls.
 
 Deployment: updated only the shared monitor view and existing admin monitor endpoint on mirmidon after confirming both matched repository HEAD. Private SFTP backups retained; restored root:www 0644. Remote PHP lint, source SHA256 equality and unauthenticated POST rejection passed. Browser fixture verified caption outside donut, Play click feedback and disabled running state. No production campaign or call was launched for validation.
+
+
+## 2026-10-14 - Replace running dashboard Play with Stop
+
+Donut center now shows a red square Stop during starting/running, disabled while stopping. Stops new calls through existing list stop service or agent engine STOPPED, allowing live calls to finish. Tests passed for both controls including authorization/CSRF, exact run IDs, active runs of inactive lists, completed-run exclusion, partial errors and idempotent empty stop.

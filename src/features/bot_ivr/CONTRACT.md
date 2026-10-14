@@ -364,3 +364,8 @@ An outbound G() answer split releases the origin separately from the IVR callee,
 ## 2026-10-14 - Dashboard Play consumer (architect approved)
 
 Admin monitor may invoke existing list call services for each active list of an active Bot IVR campaign, with saved call_channels and authenticated actor. Existing runs are skipped; service failures are reported by list without retrying or rolling back already launched lists. Monitor remains read-only for nonadministrator roles. This adds no list service/repository signature, dialing transport or audio mutation.
+
+
+## 2026-10-14 - Dashboard Stop consumer (architect approved)
+
+Admin monitor may stop exact current starting/running/stopping list runs using existing bot_list_call_stop. Include busy inactive lists so deactivation cannot hide a live worker. Retain drain semantics, scoped run-token validation and existing call lifecycle; no forced hangup or transport change.

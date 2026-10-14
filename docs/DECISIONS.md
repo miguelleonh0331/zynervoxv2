@@ -1125,3 +1125,8 @@ Primary agent approves bot_ivr worker transport, telephony inbound/answer-split 
 ## 2026-10-14 - Dashboard campaign Play (ARCHITECT_AGENT review)
 
 Primary agent approves scoped admin/Bot IVR monitor changes: move donut completion caption below the chart and reuse existing campaign_monitor_api POST for level-9 Play with dedicated session CSRF. GET remains read-only for levels 7/8/9. Bot campaigns start active idle lists through bot_list_call_start with each stored call_channels; busy lists are skipped and individual failures remain visible even after partial success. Agent campaigns call Dialer::setEngineState(RUNNING). No new repository API, SQL, dependencies, telephony, lead/audio changes or IsolatedGate edits. Existing service validations and lease/claim protections remain authoritative.
+
+
+## 2026-10-14 - Dashboard Stop control (architect review)
+
+Primary agent approves play|stop actions on existing admin monitor POST with the same level-9 and CSRF checks. Starting/running campaigns display Stop; stopping disables control. Bot IVR stops exact current active runs via bot_list_call_stop, including busy inactive lists, without terminating calls. Agent campaigns use setEngineState(STOPPED). Empty stop is idempotent and partial failures are visible. Scope remains monitor view/API, existing fixture and contracts; no worker, SQL, PBX or IsolatedGate changes.

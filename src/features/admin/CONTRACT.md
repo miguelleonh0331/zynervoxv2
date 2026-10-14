@@ -50,3 +50,8 @@ no cambia configuración SIP ni asignaciones. Sin integración VICIdial habilita
 ## 2026-10-14 - Dashboard campaign Play (architect approved)
 
 The shared monitor places percentage and Terminados below each donut and exposes center Play only to level 9. campaign_monitor_api.php GET remains read-only for levels 7/8/9; POST action=play requires administrator session, dedicated campaign_monitor_csrf, positive campaign_id and origin bot_ivr|agents. Bot campaigns must be active: start each active idle list through existing bot_list_call_start, using stored call_channels. Skip starting/running/stopping runs and report per-list failures, including partial starts. Agents use Dialer::setEngineState(RUNNING). No new repository API or direct SQL. Existing validations, audio readiness, ownership, run leases and claim concurrency continue to apply.
+
+
+## 2026-10-14 - Dashboard Stop (architect approved)
+
+Monitor POST also accepts action=stop with unchanged role/CSRF/origin/ID validation. Starting/running shows Stop, stopping disables the button. Bot IVR invokes bot_list_call_stop for each starting/running/stopping run with its exact current run_id, including runs on inactive lists/campaigns; finished runs are untouched. No active runs is a successful no-op; per-list errors remain visible. Agents use setEngineState(STOPPED). Neither path terminates ongoing calls.
