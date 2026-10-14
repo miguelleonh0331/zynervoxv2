@@ -1,9 +1,12 @@
 <?php
 require_once __DIR__.'/db.php';
+require_once __DIR__.'/../includes/Dialer.php';
+use Includes\Dialer;
 if(session_status()===PHP_SESSION_NONE)session_start();
 if(empty($_SESSION['user']) || !in_array((int)($_SESSION['user_level']??0),[7,8,9],true)){http_response_code(403);exit;}
 $monitorError='';$snapshot=[];
-try{$snapshot=bot_ivr_repository()->campaignMonitor();}catch(Throwable $e){$monitorError='No se pudo consultar las campanas.';}
+try{$snapshot=bot_ivr_repository()->campaignMonitor();}catch(Throwable $e){$monitorError='No se pudo consultar las campanas de bot IVR.';}
+try{$snapshot=array_merge($snapshot,Dialer::campaignMonitor());}catch(Throwable $e){$monitorError=trim($monitorError.' No se pudo consultar las campanas de agentes.');}
 $monitorTitle=$monitorTitle??'Monitor de campanas';
 ?>
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><?php echo htmlspecialchars($monitorTitle,ENT_QUOTES,'UTF-8'); ?> - Zynervox</title>
@@ -25,6 +28,9 @@ $monitorTitle=$monitorTitle??'Monitor de campanas';
 .campaign-card[data-state="failed"]{border-top-color:#ef4444}
 .campaign-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}
 .campaign-head a{color:var(--text);font-weight:bold;text-decoration:none}
+.head-badges{display:flex;gap:6px;align-items:center}
+.origin-badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;color:#fff;white-space:nowrap;background:#2a78d6}
+.origin-badge[data-origin="agents"]{background:#eb6834}
 .state-badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;color:#fff;background:#6b7280;white-space:nowrap}
 .state-badge[data-state="running"],.state-badge[data-state="starting"]{background:#10b981}
 .state-badge[data-state="stopping"]{background:#f59e0b}
@@ -98,8 +104,12 @@ $monitorTitle=$monitorTitle??'Monitor de campanas';
   if(!rows.length){grid.append(text('p','No hay campanas activas.'));return;}
   for(const c of rows){
    const card=el('section','campaign-card');card.dataset.state=c.state;
-   const head=el('div','campaign-head');const link=text('a','#'+c.campaign_id+' - '+c.name);link.href='../../bot_ivr/campaign_edit.php?id='+c.campaign_id;
-   head.append(link,text('span',labels[c.state]||c.state,'state-badge'));head.lastChild.dataset.state=c.state;card.append(head);
+   const head=el('div','campaign-head');const link=text('a','#'+c.campaign_id+' - '+c.name);
+   link.href=c.origin==='agents' ? '../../modules/admin/dialer_campaign_edit.php?id='+c.campaign_id : '../../bot_ivr/campaign_edit.php?id='+c.campaign_id;
+   const badges=el('div','head-badges');
+   badges.append(text('span',c.origin==='agents'?'Agentes':'Bot IVR','origin-badge'));badges.lastChild.dataset.origin=c.origin;
+   badges.append(text('span',labels[c.state]||c.state,'state-badge'));badges.lastChild.dataset.state=c.state;
+   head.append(link,badges);card.append(head);
    const kpi=el('div','kpi-row');
    for(const [value,label] of [[c.total,'Total leads'],[c.calling,'Llamando'],[c.finished,'Terminados']]){
     const tile=el('div','stat-tile');tile.append(text('span',String(value),'stat-value'),text('span',label,'stat-label'));kpi.append(tile);

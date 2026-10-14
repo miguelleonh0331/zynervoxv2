@@ -14,7 +14,7 @@ trait CampaignQueries {
                 GROUP BY d.list_id) p ON p.list_id=l.list_id WHERE c.active=1 ORDER BY c.campaign_id,l.list_id";
         $out=[];$priority=['idle'=>0,'completed'=>1,'stopped'=>2,'failed'=>3,'stopping'=>4,'starting'=>5,'running'=>6];
         foreach($this->db->query($sql)->fetchAll(\PDO::FETCH_ASSOC) as $row){
-            $id=(int)$row['campaign_id'];if(!isset($out[$id]))$out[$id]=['campaign_id'=>$id,'name'=>$row['name'],'active'=>(bool)$row['active'],'state'=>'idle','total'=>0,'calling'=>0,'finished'=>0,'lists'=>[],'states'=>[]];
+            $id=(int)$row['campaign_id'];if(!isset($out[$id]))$out[$id]=['campaign_id'=>$id,'name'=>$row['name'],'origin'=>'bot_ivr','active'=>(bool)$row['active'],'state'=>'idle','total'=>0,'calling'=>0,'finished'=>0,'lists'=>[],'states'=>[]];
             if($row['list_id']===null)continue;
             $state=$row['state']??'idle';if(($priority[$state]??0)>$priority[$out[$id]['state']])$out[$id]['state']=$state;
             foreach(['total','calling','finished'] as $key)$out[$id][$key]+=(int)$row[$key];
