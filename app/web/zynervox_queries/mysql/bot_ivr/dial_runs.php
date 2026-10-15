@@ -32,8 +32,8 @@ trait DialRunQueries {
     // priorizan los reintentos, nunca debe bloquear la marcación inicial de
     // leads nuevos solo porque el admin no creó una fila de regla para ellos.
     // Una regla explícita con enabled=0 o weight=0 sí excluye ese estado.
-    private const DEFAULT_STATUS_WEIGHT = 50;
     private function selectWeightedStatus(int $campaignId,int $listId,array $statuses): ?string {
+        $defaultStatusWeight=50; // PHP 7.4: traits no admiten const, usar variable local.
         $rules=[];foreach($this->retryRules($campaignId) as $r)$rules[$r['status']]=$r;
         $candidates=[];
         foreach($statuses as $status){
@@ -41,7 +41,7 @@ trait DialRunQueries {
                 if(!$rules[$status]['enabled'])continue;
                 $weight=(int)$rules[$status]['weight'];if($weight<=0)continue;
             } else {
-                $weight=self::DEFAULT_STATUS_WEIGHT;
+                $weight=$defaultStatusWeight;
             }
             $s=$this->db->prepare("SELECT 1 FROM zynervox_bot_list WHERE list_id=? AND status=? AND retry_excluded_at IS NULL AND (next_call_at IS NULL OR next_call_at<=UTC_TIMESTAMP(6)) LIMIT 1");
             $s->execute([$listId,$status]);

@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS `zynervox_bot_retry_rules` (
   PRIMARY KEY (`campaign_id`, `status`),
   CONSTRAINT `fk_retry_rules_campaign` FOREIGN KEY (`campaign_id`)
     REFERENCES `zynervox_bot_campaigns` (`campaign_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 4) Catálogo de exclusiones de conteo (errores técnicos que no deben
 -- agotar el límite de intentos del cliente). Carga inicial de códigos sin
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS `zynervox_bot_retry_exclusions` (
   `code` VARCHAR(40) NOT NULL PRIMARY KEY,
   `description` VARCHAR(255) NOT NULL,
   `counts_as_attempt` TINYINT(1) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 INSERT IGNORE INTO `zynervox_bot_retry_exclusions` (`code`,`description`,`counts_as_attempt`) VALUES
   ('TECH_ERROR_AMI','Fallo de confirmación AMI al originar',0),
   ('TECH_ERROR_SSH','Fallo de confirmación SSH/broker al originar',0),

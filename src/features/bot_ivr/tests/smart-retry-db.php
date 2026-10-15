@@ -17,6 +17,7 @@ try {
     $campaignOff = $repo->createCampaign('Retry off fixture', true);
     $listOff = $repo->createList($campaignOff, 'Retry off list', true, 2);
     $repo->updateListDialPrefix($listOff, $campaignOff, '7307');
+    $db->prepare("INSERT INTO zynervox_bot_list(list_id,phone,status) VALUES (?,?,'NEW')")->execute([$listOff,'999100001']);
     $campaignRow = $repo->campaign($campaignOff);
     retryCheck((int)$campaignRow['retry_policy_enabled'] === 0, 'retry_policy_enabled debe ser 0 por defecto');
     $runOff = bin2hex(random_bytes(16));
@@ -38,6 +39,7 @@ try {
     $campaignOn = $repo->createCampaign('Retry on fixture', true);
     $listOn = $repo->createList($campaignOn, 'Retry on list', true, 2);
     $repo->updateListDialPrefix($listOn, $campaignOn, '7307');
+    $db->prepare("INSERT INTO zynervox_bot_list(list_id,phone,status) VALUES (?,?,'NEW')")->execute([$listOn,'999100001']);
     $existing = $repo->campaign($campaignOn);
     bot_campaign_update($repo, $campaignOn, array_merge($existing, [
         'start_time' => substr($existing['start_time'], 0, 5),
@@ -92,8 +94,6 @@ try {
     $repo->startCall($listOn, '999100002', $callC);
     $repo->recordCallEvent($callC, 'IVR_NODE', hash('sha256', $callC . 'status'), time(), ['action'=>'status', 'status'=>'NO_INTERESADO']);
     $repo->finishCall($callC, 'ANSWER', '', '', 16, true);
-    $stmt2 = $db->prepare('SELECT status,next_call_at,retry_excluded_at FROM zynervox_bot_call_attempts WHERE call_id=?');
-    $stmt2->execute([$callC]);
     $leadCPhone = $db->prepare('SELECT lead_id FROM zynervox_bot_list WHERE list_id=? AND phone=?');
     $leadCPhone->execute([$listOn, '999100002']);
     $leadCId = $leadCPhone->fetchColumn();
