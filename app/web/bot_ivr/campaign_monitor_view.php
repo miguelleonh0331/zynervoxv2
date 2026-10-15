@@ -34,7 +34,7 @@ if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_mon
 .state-badge[data-state="running"],.state-badge[data-state="starting"]{background:#10b981}
 .state-badge[data-state="stopping"]{background:#f59e0b}
 .state-badge[data-state="failed"]{background:#ef4444}
-.kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
 .kpi-row .stat-tile{text-align:center;background:var(--glass);padding:10px 6px;border-radius:6px}
 .kpi-row .stat-value{display:block;font-size:24px;font-weight:700;color:var(--text)}
 .kpi-row .stat-label{font-size:11px;color:var(--text-muted)}
@@ -127,7 +127,7 @@ if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_mon
    badges.append(text('span',labels[c.state]||c.state,'state-badge'));badges.lastChild.dataset.state=c.state;
    head.append(link,badges);card.append(head);
    const kpi=el('div','kpi-row');
-   for(const [value,label] of [[c.total,'Total leads'],[c.calling,'Llamando'],[c.finished,'Terminados']]){
+   for(const [value,label] of [[c.total,'Total leads'],[c.calling,'Llamando'],[c.finished,'Terminados'],[c.waiting||0,'En espera']]){
     const tile=el('div','stat-tile');tile.append(text('span',String(value),'stat-value'),text('span',label,'stat-label'));kpi.append(tile);
    }
    card.append(kpi);

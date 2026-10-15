@@ -4,6 +4,7 @@ require __DIR__ . '/campaigns_page.php';
 $campaignId = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
 $campaign = null;
 $lists = [];
+$retryRules = [];
 try {
     if ($campaignId === false || $campaignId === null) throw new RuntimeException('ID de campaña inválido.');
     $db = bot_ivr_repository();
@@ -18,6 +19,8 @@ try {
                 bot_campaign_list_create($db, $campaignId, (string)($_POST['list_name'] ?? ''), isset($_POST['active']), array_key_exists('id_flujo', $_POST) ? $_POST['id_flujo'] : null);
             } elseif ($action === 'update_list') {
                 bot_campaign_list_update($db, $campaignId, (int)($_POST['list_id'] ?? 0), (string)($_POST['list_name'] ?? ''), isset($_POST['active']), array_key_exists('id_flujo', $_POST) ? $_POST['id_flujo'] : null);
+            } elseif ($action === 'save_retry_rule') {
+                bot_campaign_retry_rule_save($db, $campaignId, $_POST);
             } else {
                 throw new RuntimeException('Acción inválida.');
             }
@@ -26,6 +29,7 @@ try {
     }
     $campaign = bot_campaign_get($db, $campaignId);
     $lists = $db->lists($campaignId);
+    $retryRules = $db->retryRules($campaignId);
 } catch (Throwable $e) {
     http_response_code($campaignId ? 404 : 400);
     $error = $e->getMessage();
@@ -123,10 +127,51 @@ if ($campaign): ?>
 </tbody></table></div>
 <div class="campaign-group"><h3>Leads</h3><table class="campaign-fields"><tbody>
 <?php bot_campaign_field_row('dial_statuses', $campaign); ?>
-</tbody></table></div></div>
+</tbody></table></div>
+<div class="campaign-group"><h3>Reintentos inteligentes</h3><table class="campaign-fields"><tbody>
+<input type="hidden" name="retry_policy_present" value="1">
+<tr><th scope="row"><label for="retry_policy_enabled">Habilitar política de reintentos:</label></th><td><select id="retry_policy_enabled" name="retry_policy_enabled"><option value="1" <?php echo !empty($campaign['retry_policy_enabled']) ? 'selected' : ''; ?>>Sí</option><option value="0" <?php echo empty($campaign['retry_policy_enabled']) ? 'selected' : ''; ?>>No</option></select></td></tr>
+<tr><th scope="row"><label for="max_attempts_global">Máximo de intentos (total, lead):</label></th><td><input id="max_attempts_global" type="number" name="max_attempts_global" min="0" max="1000000" value="<?php echo h((string)($campaign['max_attempts_global'] ?? '')); ?>" placeholder="Sin límite"></td></tr>
+<tr><th scope="row"><label for="max_attempts_window_days">Ventana (días):</label></th><td><input id="max_attempts_window_days" type="number" name="max_attempts_window_days" min="0" max="3650" value="<?php echo h((string)($campaign['max_attempts_window_days'] ?? '')); ?>" placeholder="Sin límite"></td></tr>
+<tr><th scope="row"><label for="max_attempts_window_count">Máximo de intentos por teléfono en la ventana:</label></th><td><input id="max_attempts_window_count" type="number" name="max_attempts_window_count" min="0" max="1000000" value="<?php echo h((string)($campaign['max_attempts_window_count'] ?? '')); ?>" placeholder="Sin límite"></td></tr>
+</tbody></table><p style="font-size:11px;color:var(--text-muted);margin:6px 2px 0">Dejar vacío o en 0 significa "sin límite". El límite por teléfono agrega intentos entre todas las listas/campañas donde aparezca ese número. Pesos, espera y estado terminal/contacto efectivo se configuran por estado más abajo.</p></div>
+</div>
 </div>
 <div class="campaign-save"><button class="carsa-btn compact-submit">Guardar campaña</button></div>
 </form>
+</section>
+<section class="carsa-card">
+<div class="list-head"><h2>Reglas de reintento por estado<span class="list-summary">Reglas: <?php echo count($retryRules); ?></span></h2></div>
+<p style="font-size:11px;color:var(--text-muted);margin:0 0 10px">Peso 0 excluye el estado de la selección ponderada. "Contacto efectivo" y "Terminal" son configurables por campaña (no hay catálogo fijo): marca aquí qué significa cada uno para este flujo (ej. <code>AGENDADO</code>/<code>NO_INTERESADO</code> como contacto efectivo, <code>NO_INTERESADO</code> como terminal).</p>
+<div class="bot-table-wrap"><table class="carsa-table"><thead><tr><th>Estado</th><th>Habilitado</th><th>Peso</th><th>Espera (min)</th><th>Máx. intentos</th><th>Contacto efectivo</th><th>Terminal</th><th>Guardar</th></tr></thead><tbody>
+<?php foreach ($retryRules as $i => $rule): $fid = 'retry_rule_form_' . $i; ?>
+<tr>
+<td><?php echo h($rule['status']); ?>
+<form id="<?php echo $fid; ?>" method="post"><input type="hidden" name="action" value="save_retry_rule"><input type="hidden" name="status" value="<?php echo h($rule['status']); ?>"><?php bot_campaign_token(); ?></form>
+</td>
+<td><input form="<?php echo $fid; ?>" type="checkbox" name="enabled" value="1" <?php echo $rule['enabled'] ? 'checked' : ''; ?>></td>
+<td><input form="<?php echo $fid; ?>" type="number" name="weight" min="0" max="100000" value="<?php echo (int)$rule['weight']; ?>" style="width:80px"></td>
+<td><input form="<?php echo $fid; ?>" type="number" name="wait_minutes" min="0" max="43200" value="<?php echo (int)$rule['wait_minutes']; ?>" style="width:80px"></td>
+<td><input form="<?php echo $fid; ?>" type="number" name="max_attempts" min="0" max="1000" value="<?php echo h((string)($rule['max_attempts'] ?? '')); ?>" placeholder="Sin límite" style="width:80px"></td>
+<td><input form="<?php echo $fid; ?>" type="checkbox" name="is_effective_contact" value="1" <?php echo $rule['is_effective_contact'] ? 'checked' : ''; ?>></td>
+<td><input form="<?php echo $fid; ?>" type="checkbox" name="is_terminal" value="1" <?php echo $rule['is_terminal'] ? 'checked' : ''; ?>></td>
+<td><button form="<?php echo $fid; ?>" class="carsa-btn secondary compact-submit">Guardar</button> <button form="<?php echo $fid; ?>" class="carsa-btn secondary compact-submit" name="delete" value="1" onclick="return confirm('¿Eliminar esta regla?')">Eliminar</button></td>
+</tr>
+<?php endforeach; ?>
+<?php if (!$retryRules): ?><tr><td colspan="8">Sin reglas configuradas todavía. Agrega una abajo.</td></tr><?php endif; ?>
+<tr>
+<td><input form="retry_rule_form_new" type="text" name="status" maxlength="80" placeholder="ESTADO_NUEVO" style="width:140px" required>
+<form id="retry_rule_form_new" method="post"><input type="hidden" name="action" value="save_retry_rule"><?php bot_campaign_token(); ?></form>
+</td>
+<td><input form="retry_rule_form_new" type="checkbox" name="enabled" value="1" checked></td>
+<td><input form="retry_rule_form_new" type="number" name="weight" min="0" max="100000" value="0" style="width:80px"></td>
+<td><input form="retry_rule_form_new" type="number" name="wait_minutes" min="0" max="43200" value="0" style="width:80px"></td>
+<td><input form="retry_rule_form_new" type="number" name="max_attempts" min="0" max="1000" placeholder="Sin límite" style="width:80px"></td>
+<td><input form="retry_rule_form_new" type="checkbox" name="is_effective_contact" value="1"></td>
+<td><input form="retry_rule_form_new" type="checkbox" name="is_terminal" value="1"></td>
+<td><button form="retry_rule_form_new" class="carsa-btn compact-submit">Agregar</button></td>
+</tr>
+</tbody></table></div>
 </section>
 <section class="carsa-card">
 <div class="list-head"><h2>Listas de la campaña<span class="list-summary">Listas: <?php echo count($lists); ?> · Leads: <?php echo (int)array_sum(array_column($lists,'leads_count')); ?></span></h2><button type="button" class="carsa-btn compact-submit" onclick="document.getElementById('createListModal').showModal()">Crear lista</button></div>

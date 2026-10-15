@@ -60,6 +60,17 @@ function bot_campaign_time(string $value): string {
     return $value . ':00';
 }
 
+// Entero positivo opcional: cadena vacía o "0" significa "sin límite" (NULL).
+// Usado por los límites globales/por ventana del motor de reintentos.
+function bot_campaign_optional_limit($value, string $label, int $max = 1000000): ?int {
+    if (!is_scalar($value)) throw new RuntimeException($label . ': valor inválido.');
+    $value = trim((string)$value);
+    if ($value === '' || $value === '0') return null;
+    $parsed = filter_var($value, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1, 'max_range'=>$max]]);
+    if ($parsed === false) throw new RuntimeException($label . ': debe ser un entero positivo o vacío para "sin límite".');
+    return $parsed;
+}
+
 function bot_campaign_create(\ZynervoxQueries\BotIvrRepository $db, string $name, bool $active): int {
     return $db->createCampaign(bot_campaign_name($name), $active);
 }
@@ -78,7 +89,42 @@ function bot_campaign_update(\ZynervoxQueries\BotIvrRepository $db, int $id, arr
     foreach (BOT_CAMPAIGN_FIELDS as $key=>$field) {
         $values[$key] = bot_campaign_field_value($key, $input[$key] ?? $existing[$key]);
     }
+    // Motor de reintentos inteligentes: deshabilitado por defecto (opt-in
+    // explícito). Si el formulario no envía el checkbox, se interpreta como
+    // "no tocar" solo cuando no viene ninguna clave del bloque; si viene el
+    // bloque (identificado por 'retry_policy_present'), ausencia de
+    // 'retry_policy_enabled' significa apagarla explícitamente.
+    if (array_key_exists('retry_policy_present', $input)) {
+        $values['retry_policy_enabled'] = (string)($input['retry_policy_enabled'] ?? '') === '1' ? 1 : 0;
+        $values['max_attempts_global'] = bot_campaign_optional_limit($input['max_attempts_global'] ?? '', 'Máximo de intentos global');
+        $values['max_attempts_window_days'] = bot_campaign_optional_limit($input['max_attempts_window_days'] ?? '', 'Ventana de días', 3650);
+        $values['max_attempts_window_count'] = bot_campaign_optional_limit($input['max_attempts_window_count'] ?? '', 'Máximo de intentos en la ventana');
+    } else {
+        foreach (['retry_policy_enabled','max_attempts_global','max_attempts_window_days','max_attempts_window_count'] as $key) {
+            $values[$key] = $existing[$key];
+        }
+    }
     $db->updateCampaign($id, $values);
+}
+
+// Valida y guarda una regla de reintento por estado (peso/espera/máximo/
+// contacto efectivo/terminal). La habilitación real de la política vive en
+// retry_policy_enabled de la campaña; una regla sin esa bandera activa no
+// participa en la selección (ver dial_runs.php::selectWeightedStatus).
+function bot_campaign_retry_rule_save(\ZynervoxQueries\BotIvrRepository $db, int $campaignId, array $input): void {
+    $status = strtoupper(trim((string)($input['status'] ?? '')));
+    if (!preg_match('/^[A-Z0-9_]{1,80}$/D', $status) || $status === 'CALL') {
+        throw new RuntimeException('Estado de regla de reintento inválido.');
+    }
+    if (!empty($input['delete'])) { $db->deleteRetryRule($campaignId, $status); return; }
+    $db->upsertRetryRule($campaignId, $status, [
+        'enabled' => (string)($input['enabled'] ?? '') === '1',
+        'weight' => bot_campaign_optional_limit($input['weight'] ?? '0', 'Peso', 100000) ?? 0,
+        'wait_minutes' => bot_campaign_optional_limit($input['wait_minutes'] ?? '0', 'Espera en minutos', 43200) ?? 0,
+        'max_attempts' => bot_campaign_optional_limit($input['max_attempts'] ?? '', 'Máximo de intentos por estado', 1000),
+        'is_effective_contact' => (string)($input['is_effective_contact'] ?? '') === '1',
+        'is_terminal' => (string)($input['is_terminal'] ?? '') === '1',
+    ]);
 }
 function bot_list_flow_id($value): int {
     if (!is_scalar($value) || !preg_match('/^[1-9][0-9]*$/', (string)$value)) throw new RuntimeException('El ID de flujo debe ser un entero positivo.');

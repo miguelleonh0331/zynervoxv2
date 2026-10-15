@@ -26,6 +26,10 @@ trait PreanswerQueries {
             if ($call['finished_at']!==null) {
                 $this->db->prepare('UPDATE zynervox_bot_call_attempts SET status=? WHERE call_id=?')->execute([$statuses[$category],$callId]);
                 $this->db->prepare('UPDATE zynervox_bot_list SET status=? WHERE lead_id=? AND NOT EXISTS(SELECT 1 FROM zynervox_bot_call_attempts newer WHERE newer.lead_id=? AND newer.attempt_id>?)')->execute([$statuses[$category],$call['lead_id'],$call['lead_id'],$call['attempt_id']]);
+                // Clasificación tardía (post-FINISH): recalcula la próxima
+                // fecha de reintento desde aquí, porque finishCall() ya
+                // decidió con el estado anterior y no volverá a ejecutarse.
+                $this->applyRetryDecision((int)$call['lead_id'],(int)$call['attempt_id'],$statuses[$category]);
             }
             return $call['finished_at']===null;
         });

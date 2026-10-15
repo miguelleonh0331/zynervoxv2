@@ -142,6 +142,7 @@ trait CallQueries {
             $this->db->prepare('UPDATE zynervox_bot_call_attempts SET status=?,dial_status=?,amd_status=?,amd_cause=?,hangup_cause=?,finished_at=UTC_TIMESTAMP() WHERE call_id=?')->execute([$status,substr($dialStatus,0,20),substr($amdStatus,0,20),substr($amdCause,0,160),$hangupCause,$callId]);
             // A late callback cannot overwrite a newer attempt for this lead.
             $this->db->prepare('UPDATE zynervox_bot_list l SET status=? WHERE lead_id=? AND NOT EXISTS (SELECT 1 FROM zynervox_bot_call_attempts a WHERE a.lead_id=l.lead_id AND a.attempt_id>?)')->execute([$status,$call['lead_id'],$call['attempt_id']]);
+            $this->applyRetryDecision((int)$call['lead_id'],(int)$call['attempt_id'],$status);
         });
     }
 }

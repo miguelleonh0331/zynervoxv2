@@ -14,7 +14,7 @@ trait CampaignQueries {
                 GROUP BY d.list_id) p ON p.list_id=l.list_id WHERE c.active=1 ORDER BY c.campaign_id,l.list_id";
         $out=[];$priority=['idle'=>0,'completed'=>1,'stopped'=>2,'failed'=>3,'stopping'=>4,'starting'=>5,'running'=>6];
         foreach($this->db->query($sql)->fetchAll(\PDO::FETCH_ASSOC) as $row){
-            $id=(int)$row['campaign_id'];if(!isset($out[$id]))$out[$id]=['campaign_id'=>$id,'name'=>$row['name'],'origin'=>'bot_ivr','active'=>(bool)$row['active'],'state'=>'idle','total'=>0,'calling'=>0,'finished'=>0,'lists'=>[],'states'=>[]];
+            $id=(int)$row['campaign_id'];if(!isset($out[$id]))$out[$id]=['campaign_id'=>$id,'name'=>$row['name'],'origin'=>'bot_ivr','active'=>(bool)$row['active'],'state'=>'idle','total'=>0,'calling'=>0,'finished'=>0,'lists'=>[],'states'=>[],'waiting'=>0,'next_retry_at'=>null,'cumulative_attempts'=>0,'effective_contacts'=>0,'excluded_limit_reached'=>0];
             if($row['list_id']===null)continue;
             $state=$row['state']??'idle';if(($priority[$state]??0)>$priority[$out[$id]['state']])$out[$id]['state']=$state;
             foreach(['total','calling','finished'] as $key)$out[$id][$key]+=(int)$row[$key];
@@ -22,6 +22,31 @@ trait CampaignQueries {
         }
         $states=$this->db->query("SELECT l.campaign_id,d.status,COUNT(*) count FROM zynervox_bot_list d JOIN zynervox_bot_lists l ON l.list_id=d.list_id JOIN zynervox_bot_campaigns c ON c.campaign_id=l.campaign_id WHERE c.active=1 AND l.active=1 GROUP BY l.campaign_id,d.status ORDER BY count DESC,d.status");
         foreach($states->fetchAll(\PDO::FETCH_ASSOC) as $row){$id=(int)$row['campaign_id'];if(isset($out[$id]))$out[$id]['states'][]=['status'=>$row['status'],'count'=>(int)$row['count']];}
+        // Métricas del motor de reintentos inteligentes (aditivo): espera,
+        // próxima fecha, acumulados vs. únicos (ya cubierto por 'total'
+        // arriba) y contactos efectivos configurables por campaña. Campañas
+        // sin ninguna regla simplemente devuelven ceros/NULL, sin cambiar
+        // la lectura de caché del Dashboard (sigue siendo GET sin SQL desde
+        // el navegador).
+        $retry=$this->db->query("SELECT l.campaign_id,
+                SUM(d.next_call_at IS NOT NULL AND d.next_call_at>UTC_TIMESTAMP(6) AND d.retry_excluded_at IS NULL) waiting,
+                MIN(CASE WHEN d.next_call_at IS NOT NULL AND d.next_call_at>UTC_TIMESTAMP(6) AND d.retry_excluded_at IS NULL THEN d.next_call_at END) next_retry_at,
+                COALESCE(SUM(d.called_count),0) cumulative_attempts,
+                SUM(d.retry_excluded_at IS NOT NULL) excluded_limit_reached,
+                SUM(COALESCE(rr.is_effective_contact,0)=1) effective_contacts
+            FROM zynervox_bot_list d
+            JOIN zynervox_bot_lists l ON l.list_id=d.list_id
+            JOIN zynervox_bot_campaigns c ON c.campaign_id=l.campaign_id
+            LEFT JOIN zynervox_bot_retry_rules rr ON rr.campaign_id=l.campaign_id AND rr.status=d.status
+            WHERE c.active=1 AND l.active=1 GROUP BY l.campaign_id");
+        foreach($retry->fetchAll(\PDO::FETCH_ASSOC) as $row){
+            $id=(int)$row['campaign_id'];if(!isset($out[$id]))continue;
+            $out[$id]['waiting']=(int)$row['waiting'];
+            $out[$id]['next_retry_at']=$row['next_retry_at'];
+            $out[$id]['cumulative_attempts']=(int)$row['cumulative_attempts'];
+            $out[$id]['excluded_limit_reached']=(int)$row['excluded_limit_reached'];
+            $out[$id]['effective_contacts']=(int)$row['effective_contacts'];
+        }
         return array_values($out);
     }
     public function campaigns(): array {
@@ -58,7 +83,7 @@ trait CampaignQueries {
     }
     public function updateCampaign(int $id, array $values): void {
         // Fixed allowlist: identifiers never come from a request.
-        $columns = ['name','active','scheduled','start_time','end_time','campaign_description','user_group','dial_method','lead_order','dial_statuses','hopper_level','auto_dial_level','dial_timeout','dial_prefix','campaign_cid','campaign_recording','max_channels'];
+        $columns = ['name','active','scheduled','start_time','end_time','campaign_description','user_group','dial_method','lead_order','dial_statuses','hopper_level','auto_dial_level','dial_timeout','dial_prefix','campaign_cid','campaign_recording','max_channels','retry_policy_enabled','max_attempts_global','max_attempts_window_days','max_attempts_window_count'];
         $assignments = [];
         $bindings = [':id'=>$id];
         foreach ($columns as $key) {
