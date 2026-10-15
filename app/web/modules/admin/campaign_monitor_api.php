@@ -13,11 +13,26 @@ if(($_SERVER['REQUEST_METHOD']??'')==='POST'){
     try{
         $id=filter_var($_POST['campaign_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
         $action=$_POST['action']??null;
-        if(!$id || !in_array($action,['play','stop'],true) || !in_array($_POST['origin']??null,['bot_ivr','agents'],true))throw new RuntimeException('Campana o accion invalida.');
+        if(!$id || !in_array($action,['play','stop','channels'],true) || !in_array($_POST['origin']??null,['bot_ivr','agents'],true))throw new RuntimeException('Campana o accion invalida.');
         $actor=(string)$_SESSION['user'];session_write_close();
         if($_POST['origin']==='agents'){
+            if($action==='channels')throw new RuntimeException('Las campanas de agentes no usan canales por lista.');
             Dialer::setEngineState($id,$action==='stop'?'STOPPED':'RUNNING');
             $message=$action==='stop'?'Nuevas llamadas detenidas; las conversaciones actuales continuan.':'Motor de la campana iniciado.';
+        }elseif($action==='channels'){
+            require_once __DIR__.'/../../bot_ivr/list_call_service.php';
+            $repo=bot_ivr_repository();$repo->campaign($id);
+            $channels=filter_var($_POST['channels']??null,FILTER_VALIDATE_INT);
+            if($channels===false || !in_array($channels,[1,3,5,10,20,25,30,35,40,50,100],true))throw new RuntimeException('Cantidad de canales invalida.');
+            $updated=0;$errors=[];
+            foreach($repo->lists($id) as $list){
+                if(!$list['active'])continue;
+                try{$repo->updateListCallChannels((int)$list['list_id'],$id,$channels);$updated++;}
+                catch(Throwable $e){$errors[]='Lista #'.(int)$list['list_id'].': '.($e instanceof RuntimeException?$e->getMessage():'No se pudo actualizar.');}
+            }
+            if(!$updated)throw new RuntimeException($errors?implode(' ',$errors):'La campana no tiene listas activas.');
+            $message='Canales actualizados a '.$channels.' en '.$updated.' lista(s).';
+            if($errors)$message.=' '.implode(' ',$errors);
         }else{
             require_once __DIR__.'/../../bot_ivr/list_call_service.php';
             $repo=bot_ivr_repository();$campaign=$repo->campaign($id);
