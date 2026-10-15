@@ -43,7 +43,7 @@ trait DialRunQueries {
             } else {
                 $weight=$defaultStatusWeight;
             }
-            $s=$this->db->prepare("SELECT 1 FROM zynervox_bot_list WHERE list_id=? AND status=? AND retry_excluded_at IS NULL AND (next_call_at IS NULL OR next_call_at<=UTC_TIMESTAMP(6)) LIMIT 1");
+            $s=$this->db->prepare("SELECT 1 FROM zynervox_bot_list l WHERE l.list_id=? AND l.status=? AND l.retry_excluded_at IS NULL AND (l.next_call_at IS NULL OR l.next_call_at<=UTC_TIMESTAMP(6)) AND NOT EXISTS (SELECT 1 FROM zynervox_bot_call_attempts a WHERE a.lead_id=l.lead_id AND a.finished_at IS NULL AND a.end_source<>'RECOVERY' AND a.status<>'LOST') LIMIT 1");
             $s->execute([$listId,$status]);
             if($s->fetchColumn())$candidates[$status]=$weight;
         }
@@ -110,6 +110,9 @@ trait DialRunQueries {
             if(!$list || !$list['active'] || !$list['campaign_active'] || (int)$list['id_flujo']!==(int)$config['flow_id'] || $list['dial_prefix']!==$config['prefix'])throw new \RuntimeException('La lista o su origen cambiaron. Recarga la pagina.');
             if ((int)$list['call_channels']!==$channels) throw new \RuntimeException('Los canales cambiaron. Recarga la pagina.');
             $s=$this->db->prepare("SELECT run_id FROM zynervox_bot_dial_runs WHERE list_id=? AND state IN ('starting','running','stopping')");$s->execute([$listId]);if($s->fetchColumn())throw new \RuntimeException('La lista ya tiene una marcacion activa.');
+            // NOTA DE SINCRONIA: esta misma clave debe calcularse igual en
+            // bot_list_call_configuration() (list_call_service.php), porque
+            // list_call_worker.php compara ambos configs con !== al arrancar.
             // retry_policy_enabled nunca viene del cliente: se toma en vivo de
             // la campaña para que no pueda falsificarse desde el POST de Play.
             $config['retry_policy_enabled']=(bool)$list['retry_policy_enabled'];
