@@ -124,8 +124,8 @@ if ($list): ?>
 .list-accordion{align-self:start}.list-accordion summary{cursor:pointer;font-size:13px;font-weight:bold}.list-accordion[open] summary{margin-bottom:12px}
 </style>
 <a class="list-back" href="campaign_edit.php?id=<?php echo (int)$campaignId; ?>">← Volver a campaña #<?php echo (int)$campaignId; ?></a>
-<section class="carsa-card list-card call-stats" aria-label="Estadisticas de llamadas">
-<h2>Estadisticas de la lista</h2>
+<details class="carsa-card list-card call-stats list-accordion" aria-label="Estadisticas de llamadas">
+<summary>Estadisticas de la lista</summary>
 <p><a class="carsa-btn secondary" href="list_recordings.php?id=<?php echo (int)$listId; ?>&amp;campaign_id=<?php echo (int)$campaignId; ?>">Escuchar últimas llamadas</a></p>
 <div class="call-stats-grid">
 <div><strong id="call-stat-total">0</strong><span>Total leads</span></div>
@@ -135,7 +135,7 @@ if ($list): ?>
 <h3 style="font-size:13px;margin-top:18px">Resumen por estado del lead</h3>
 <div id="call-state-summary"></div>
 <p id="call-stats-error" class="call-stats-error" role="status"></p>
-</section>
+</details>
 <div class="list-layout">
 <details class="carsa-card list-card list-accordion"><summary>Datos de la lista</summary>
 <table class="carsa-table list-meta"><tbody>
