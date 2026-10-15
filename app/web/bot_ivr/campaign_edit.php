@@ -98,6 +98,10 @@ if ($campaign): ?>
 .status-tags-add{display:flex;gap:6px}
 .status-tags-add input{flex:1;min-width:0}
 .status-tags-btn{padding:4px 12px}
+.retry-rules-accordion>summary{cursor:pointer;list-style:none}
+.retry-rules-accordion>summary::-webkit-details-marker{display:none}
+.retry-rules-accordion>summary h2::before{content:'▸ ';display:inline-block;color:var(--text-muted)}
+.retry-rules-accordion[open]>summary h2::before{content:'▾ '}
 .list-tabs{display:flex;gap:4px;margin-bottom:10px}
 .list-tabs button{border:1px solid var(--border);background:var(--bg-card);color:var(--text-muted);padding:5px 14px;font-size:12px;border-radius:14px;cursor:pointer}
 .list-tabs button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
@@ -109,7 +113,8 @@ if ($campaign): ?>
 </style>
 <div class="campaign-detail">
 <section class="carsa-card">
-<h2>Configuración de campaña</h2>
+<details class="retry-rules-accordion">
+<summary><h2>Configuración de campaña</h2></summary>
 <form method="post">
 <input type="hidden" name="action" value="update_campaign"><?php bot_campaign_token(); ?>
 <div class="campaign-columns">
@@ -145,9 +150,11 @@ if ($campaign): ?>
 </div>
 <div class="campaign-save"><button class="carsa-btn compact-submit">Guardar campaña</button></div>
 </form>
+</details>
 </section>
 <section class="carsa-card">
-<div class="list-head"><h2>Reglas de reintento por estado<span class="list-summary">Reglas: <?php echo count($retryRules); ?></span></h2></div>
+<details class="retry-rules-accordion">
+<summary class="list-head"><h2>Reglas de reintento por estado<span class="list-summary">Reglas: <?php echo count($retryRules); ?></span></h2></summary>
 <p style="font-size:11px;color:var(--text-muted);margin:0 0 10px">Peso 0 excluye el estado de la selección ponderada. "Contacto efectivo" y "Terminal" son configurables por campaña (no hay catálogo fijo): marca aquí qué significa cada uno para este flujo (ej. <code>AGENDADO</code>/<code>NO_INTERESADO</code> como contacto efectivo, <code>NO_INTERESADO</code> como terminal).</p>
 <div class="bot-table-wrap"><table class="carsa-table"><thead><tr><th>Estado</th><th>Habilitado</th><th>Peso</th><th>Espera (min)</th><th>Máx. intentos</th><th>Contacto efectivo</th><th>Terminal</th><th>Guardar</th></tr></thead><tbody>
 <?php foreach ($retryRules as $i => $rule): $fid = 'retry_rule_form_' . $i; ?>
@@ -178,6 +185,7 @@ if ($campaign): ?>
 <td><button form="retry_rule_form_new" class="carsa-btn compact-submit">Agregar</button></td>
 </tr>
 </tbody></table></div>
+</details>
 </section>
 <section class="carsa-card">
 <div class="list-head"><h2>Listas de la campaña<span class="list-summary">Listas: <?php echo count($lists); ?> · Leads: <?php echo (int)array_sum(array_column($lists,'leads_count')); ?></span></h2><button type="button" class="carsa-btn compact-submit" onclick="document.getElementById('createListModal').showModal()">Crear lista</button></div>
