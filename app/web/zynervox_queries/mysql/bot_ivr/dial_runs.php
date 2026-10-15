@@ -9,15 +9,32 @@ trait DialRunQueries {
         $cfg=json_decode($run['config_json'],true,512,JSON_THROW_ON_ERROR);$statuses=$cfg['statuses'];
         // Política apagada (default) o conteo agregado de "pending": camino
         // idéntico al existente antes del motor de reintentos, sin tocarlo.
+        $chosen=null;
         if(!$count && !empty($cfg['retry_policy_enabled'])){
             $chosen=$this->selectWeightedStatus((int)$run['campaign_id'],(int)$run['list_id'],$statuses);
-            if($chosen!==null)$statuses=[$chosen];
         }
         $in=implode(',',array_fill(0,count($statuses),'?'));
         $select=$count?'COUNT(*)':'l.lead_id,l.phone';
         $sql="SELECT $select FROM zynervox_bot_list l WHERE l.list_id=? AND l.status IN ($in) AND l.retry_excluded_at IS NULL AND (l.next_call_at IS NULL OR l.next_call_at<=UTC_TIMESTAMP(6)) AND NOT EXISTS (SELECT 1 FROM zynervox_bot_call_attempts a WHERE a.lead_id=l.lead_id AND (a.dial_run_id=? OR (a.finished_at IS NULL AND a.end_source<>'RECOVERY' AND a.status<>'LOST')))";
-        if(!$count)$sql.=' ORDER BY '.($cfg['order']==='RANDOM'?'RAND()':('l.lead_id '.($cfg['order']==='DOWN'?'DESC':'ASC'))).' LIMIT 1 FOR UPDATE';
-        return [$sql,array_merge([$run['list_id']],$statuses,[$run['run_id']])];
+        $args=array_merge([$run['list_id']],$statuses,[$run['run_id']]);
+        if(!$count){
+            if(!empty($cfg['retry_policy_enabled'])){
+                // El fallback conserva las exclusiones explicitas de la politica.
+                $sql.=' AND NOT EXISTS (SELECT 1 FROM zynervox_bot_retry_rules r WHERE r.campaign_id=? AND r.status=l.status AND (r.enabled=0 OR r.weight<=0))';
+                $args[]=(int)$run['campaign_id'];
+            }
+            $order=($cfg['order']==='RANDOM'?'RAND()':('l.lead_id '.($cfg['order']==='DOWN'?'DESC':'ASC')));
+            // El estado ponderado-elegido es una PREFERENCIA de orden, no un
+            // filtro excluyente: si ya no tiene candidatos disponibles (se
+            // agotó por carrera entre canales concurrentes), la consulta cae
+            // de forma atómica a cualquier otro estado elegible en la misma
+            // query, en vez de devolver null y desperdiciar el canal aunque
+            // sobren leads en otros estados (ej. NEW).
+            if($chosen!==null){$sql.=' ORDER BY (l.status=?) DESC,'.$order;$args[]=$chosen;}
+            else $sql.=' ORDER BY '.$order;
+            $sql.=' LIMIT 1 FOR UPDATE';
+        }
+        return [$sql,$args];
     }
     // Selección ponderada (weighted round-robin) entre los estados con regla
     // habilitada y candidatos vencidos. Es una PROBE de elegibilidad, no la
@@ -43,7 +60,7 @@ trait DialRunQueries {
             } else {
                 $weight=$defaultStatusWeight;
             }
-            $s=$this->db->prepare("SELECT 1 FROM zynervox_bot_list l WHERE l.list_id=? AND l.status=? AND l.retry_excluded_at IS NULL AND (l.next_call_at IS NULL OR l.next_call_at<=UTC_TIMESTAMP(6)) AND NOT EXISTS (SELECT 1 FROM zynervox_bot_call_attempts a WHERE a.lead_id=l.lead_id AND a.finished_at IS NULL AND a.end_source<>'RECOVERY' AND a.status<>'LOST') LIMIT 1");
+            $s=$this->db->prepare("SELECT 1 FROM zynervox_bot_list WHERE list_id=? AND status=? AND retry_excluded_at IS NULL AND (next_call_at IS NULL OR next_call_at<=UTC_TIMESTAMP(6)) LIMIT 1");
             $s->execute([$listId,$status]);
             if($s->fetchColumn())$candidates[$status]=$weight;
         }
