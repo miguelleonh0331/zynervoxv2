@@ -98,6 +98,12 @@ if ($campaign): ?>
 .status-tags-add{display:flex;gap:6px}
 .status-tags-add input{flex:1;min-width:0}
 .status-tags-btn{padding:4px 12px}
+.list-tabs{display:flex;gap:4px;margin-bottom:10px}
+.list-tabs button{border:1px solid var(--border);background:var(--bg-card);color:var(--text-muted);padding:5px 14px;font-size:12px;border-radius:14px;cursor:pointer}
+.list-tabs button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.campaign-detail tr[data-list-active="0"]{display:none}
+.campaign-detail.show-inactive tr[data-list-active="0"]{display:table-row}
+.campaign-detail.show-inactive tr[data-list-active="1"]{display:none}
 @media(max-width:1050px){.campaign-columns{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:600px){.campaign-fields th{width:42%;padding:5px}.campaign-fields td{padding:5px}.campaign-detail .list-head{align-items:flex-start;flex-wrap:wrap}.campaign-detail .list-summary{display:block;margin:4px 0 0}}
 </style>
@@ -175,9 +181,10 @@ if ($campaign): ?>
 </section>
 <section class="carsa-card">
 <div class="list-head"><h2>Listas de la campaña<span class="list-summary">Listas: <?php echo count($lists); ?> · Leads: <?php echo (int)array_sum(array_column($lists,'leads_count')); ?></span></h2><button type="button" class="carsa-btn compact-submit" onclick="document.getElementById('createListModal').showModal()">Crear lista</button></div>
+<div class="list-tabs"><button type="button" class="active" data-list-tab="active">Activas</button><button type="button" data-list-tab="inactive">Ver listas inactivas</button></div>
 <div class="bot-table-wrap"><table class="carsa-table"><thead><tr><th>List ID</th><th>Campaign ID</th><th>Nombre</th><th>ID flujo</th><th>Leads</th><th>Activo</th><th>Fecha de creación</th><th>Abrir</th><th>Modificar</th></tr></thead><tbody>
 <?php foreach ($lists as $list): ?>
-<tr><td><?php echo (int)$list['list_id']; ?></td><td><?php echo (int)$list['campaign_id']; ?></td><td><?php echo h($list['name']); ?></td><td><?php echo $list['id_flujo'] === null ? 'Sin asignar' : h($list['id_flujo']); ?></td><td><?php echo (int)$list['leads_count']; ?></td><td><?php echo $list['active'] ? 'Sí' : 'No'; ?></td><td><?php echo h($list['created_at']); ?></td><td><a class="carsa-btn secondary compact-submit" href="list_edit.php?id=<?php echo (int)$list['list_id']; ?>&amp;campaign_id=<?php echo (int)$campaignId; ?>">Abrir lista</a></td><td>
+<tr data-list-active="<?php echo $list['active'] ? '1' : '0'; ?>"><td><?php echo (int)$list['list_id']; ?></td><td><?php echo (int)$list['campaign_id']; ?></td><td><?php echo h($list['name']); ?></td><td><?php echo $list['id_flujo'] === null ? 'Sin asignar' : h($list['id_flujo']); ?></td><td><?php echo (int)$list['leads_count']; ?></td><td><?php echo $list['active'] ? 'Sí' : 'No'; ?></td><td><?php echo h($list['created_at']); ?></td><td><a class="carsa-btn secondary compact-submit" href="list_edit.php?id=<?php echo (int)$list['list_id']; ?>&amp;campaign_id=<?php echo (int)$campaignId; ?>">Abrir lista</a></td><td>
 <details><summary>Modificar</summary><form method="post" class="carsa-form">
 <input type="hidden" name="action" value="update_list"><input type="hidden" name="list_id" value="<?php echo (int)$list['list_id']; ?>"><?php bot_campaign_token(); ?>
 <input aria-label="Nombre de lista <?php echo (int)$list['list_id']; ?>" name="list_name" maxlength="120" value="<?php echo h($list['name']); ?>" required>
@@ -201,6 +208,14 @@ if ($campaign): ?>
 
 <script>
 (function () {
+    const detail = document.querySelector('.campaign-detail');
+    document.querySelectorAll('[data-list-tab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-list-tab]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            detail.classList.toggle('show-inactive', btn.dataset.listTab === 'inactive');
+        });
+    });
     document.querySelectorAll('.status-tags').forEach(box => {
         const hidden = document.getElementById(box.dataset.input);
         const list = box.querySelector('.status-tags-list');
