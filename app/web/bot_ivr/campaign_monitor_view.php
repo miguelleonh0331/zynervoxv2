@@ -59,6 +59,10 @@ if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_mon
 .legend .swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0}
 .legend .legend-label{overflow-wrap:anywhere;min-width:0}
 .legend .legend-value{min-width:5ch;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums;font-weight:700;color:var(--text-muted)}
+.channels-control{display:flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;color:var(--text-muted)}
+.channels-control select{font-size:12px;padding:2px 4px}
+.channels-control button{font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--glass);cursor:pointer;color:var(--text)}
+.channels-control button:disabled{cursor:default;opacity:.6}
 .monitor-error{color:#c74451;font-size:13px}
 .monitor-note{color:var(--text-muted);font-size:12px;margin:10px 0 20px}
 </style></head><body>
@@ -73,6 +77,7 @@ if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_mon
 (() => {
  const grid=document.getElementById('monitor-campaigns'),error=document.getElementById('monitor-error'),actionStatus=document.getElementById('monitor-action');let timer;
  const csrf=<?php echo json_encode($canPlay?$_SESSION['campaign_monitor_csrf']:null); ?>,pending=new Set();
+ const CHANNEL_OPTIONS=[1,3,5,10,20,25,30,35,40,50,100];
  function freshness(data){
   const note=document.getElementById('monitor-freshness');
   if(!data){note.textContent='Esperando datos del monitor.';return;}
@@ -131,6 +136,18 @@ if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_mon
     const tile=el('div','stat-tile');tile.append(text('span',String(value),'stat-value'),text('span',label,'stat-label'));kpi.append(tile);
    }
    card.append(kpi);
+   if(csrf && c.origin==='bot_ivr'){
+    const current=c.lists && c.lists.length ? c.lists[0].channels : null;
+    const ctrl=el('div','channels-control');
+    const select=el('select');select.setAttribute('aria-label','Canales de '+c.name);
+    for(const opt of CHANNEL_OPTIONS){const o=el('option');o.value=String(opt);o.textContent=String(opt);if(opt===current)o.selected=true;select.append(o);}
+    const saveBtn=text('button','Guardar canales');saveBtn.type='button';
+    const key='channels:'+c.campaign_id;
+    saveBtn.disabled=pending.has(key);
+    saveBtn.addEventListener('click',()=>controlChannels(c,select,saveBtn));
+    ctrl.append(text('span','Canales:'),select,saveBtn);
+    card.append(ctrl);
+   }
    const row=el('div','donut-row');
    if(!c.states.length){row.append(text('p','Sin leads cargados.'));card.append(row);grid.append(card);continue;}
    const {svg,top}=buildDonut(c.states,c.total);
@@ -166,6 +183,16 @@ if($canPlay && empty($_SESSION['campaign_monitor_csrf']))$_SESSION['campaign_mon
   try{
    const response=await fetch('campaign_monitor_api.php',{method:'POST',credentials:'same-origin',body:new URLSearchParams({action,csrf,origin:c.origin,campaign_id:String(c.campaign_id)})});
    const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'No se pudo controlar la campana.');
+   actionStatus.textContent=data.message;
+  }catch(e){actionStatus.textContent=e.message;}
+  finally{pending.delete(key);await poll();}
+ }
+ async function controlChannels(c,select,button){
+  const key='channels:'+c.campaign_id;if(pending.has(key))return;
+  pending.add(key);button.disabled=true;actionStatus.textContent='Actualizando canales de '+c.name+'...';
+  try{
+   const response=await fetch('campaign_monitor_api.php',{method:'POST',credentials:'same-origin',body:new URLSearchParams({action:'channels',csrf,origin:'bot_ivr',campaign_id:String(c.campaign_id),channels:select.value})});
+   const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'No se pudo actualizar los canales.');
    actionStatus.textContent=data.message;
   }catch(e){actionStatus.textContent=e.message;}
   finally{pending.delete(key);await poll();}
