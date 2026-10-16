@@ -2605,3 +2605,10 @@ Graph runner keeps id_contacto from imported contact variables instead of replac
 Added Buscar por teléfono next to Prueba de audios in list_edit navigation, preserving the open list/campaign. New list_search.php form performs exact full-phone lookup (formatting separators ignored) and shows uploaded contact fields plus status, including unmanaged contacts. Administrator-only, scoped, parameterized and read-only; empty/malformed input and missing results handled, imported output escaped. Query regression uses temporary tables only.
 
 Validation: PHP 7.4 source/deployed lint, matching deployed checksums and root:www0640; temporary-table exact/missing/leading-zero/scope/invalid-input/read-only checks passed. Production list 82 lookup/render and navigation verified inside a read-only transaction without printing contact data; anonymous HTTP redirects to login. No calls started or list data changed.
+
+
+## 2026-10-16 - Restore Zynerdesk access in isolated deployment
+
+Added the exact modules/admin/zynerdesk.php entrypoint to IsolatedGate. Previously HTTP 403 prevented the existing installed integration from loading. Existing administrator authorization, view allowlist, SSO, backend and proxy remain unchanged. No service restart or reinstall.
+
+Validation: PHP 7.4 lint and matching source/deployment checksum, root:www0640, anonymous HTTPS redirects to login, unrelated service-control route remains HTTP403. Existing active administrator panel renders, SSO exchange through HTTPS proxy succeeds, and authenticated backend /api/auth/me confirms admin role. No remote desktop session was opened; live agent supervision/WebSocket interaction remains a browser check.

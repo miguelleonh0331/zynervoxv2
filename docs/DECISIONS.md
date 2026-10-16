@@ -1154,3 +1154,8 @@ Approved scope: administrative presentation in admin, shared sidebar entry immed
 ## 2026-10-16 - List phone lookup (primary-agent architecture review)
 
 Approved scope: Bot IVR list navigation and a read-only level-9 search page, plus the public searchLeadsByPhone(listId,campaignId,phone): array query operation. Exact normalized full phone lookup preserves leading zeros, validates 1–20 digits and returns up to 100 matching current contacts with lead_id, phone, customer_name, status and extra_json. Repository validates list/campaign ownership and uses bound SQL; page escapes all imported names/variables and sends private,no-store. No wildcard/partial search, mutations, schema, dialing, TTS or new dependencies. Existing header callers remain compatible through optional scope arguments. Temporary-table regression never touches production campaigns/leads.
+
+
+## 2026-10-16 - Zynerdesk isolated entrypoint (primary-agent architecture review)
+
+Approve exact modules/admin/zynerdesk.php in Core IsolatedGate, consuming the existing Zynerdesk contract and level-9 Auth. Existing native backend, proxy and matching SSO configuration are healthy; no reinstall, service restart, database, proxy, credentials or remote-agent changes. Do not allow the separate service-control endpoints or any wildcard.

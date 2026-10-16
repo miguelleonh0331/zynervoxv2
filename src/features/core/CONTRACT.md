@@ -150,3 +150,8 @@ Common DialplanOrigins outbound helper invokes preanswer capture AGI, which scop
 ## 2026-10-16 - Meet demo entrypoint (architect approved)
 
 IsolatedGate allows exactly modules/admin/meet.php. The page enforces administrator level 9 through Auth; no wildcard permissions or legacy integrations are enabled.
+
+
+## 2026-10-16 - Zynerdesk isolated entrypoint (architect approved)
+
+IsolatedGate permits exactly modules/admin/zynerdesk.php. The existing page retains Auth::checkAccess(9), fixed view selection and signed short-lived SSO; backend/proxy configuration is unchanged. Service-control routes remain blocked.
