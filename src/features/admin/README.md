@@ -18,3 +18,8 @@ Editar conserva contraseña si se deja vacía. Salir de colas antes de desactiva
 cuenta: el bloqueo web no elimina la configuración de telefonía.
 Validación: bash src/features/core/tests/run-users.sh, fixtures TEMPORARY y
 servidor HTTP de staging. No origina llamadas ni modifica usuarios persistentes.
+
+
+## Meet (demostración)
+
+`modules/admin/meet.php` muestra tres grabaciones ficticias con metadatos y resúmenes desplegables. Acceso administrativo nivel 9; menú Meet debajo de Zynerdesk. No conecta Google ni reproduce videos reales.

@@ -145,3 +145,8 @@ users_isolated.php sigue bloqueada por HTTP directo.
 ## 2026-10-13 - Isolated preanswer detection
 
 Common DialplanOrigins outbound helper invokes preanswer capture AGI, which scopes itself to tracked origin 7307. No-AMD answered helper reuses existing MixMonitor when preanswer monitor exists, avoiding truncation of early media. Generated carrier routes unchanged. Approved by primary ARCHITECT_AGENT review.
+
+
+## 2026-10-16 - Meet demo entrypoint (architect approved)
+
+IsolatedGate allows exactly modules/admin/meet.php. The page enforces administrator level 9 through Auth; no wildcard permissions or legacy integrations are enabled.

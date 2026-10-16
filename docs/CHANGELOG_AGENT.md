@@ -2588,3 +2588,8 @@ Play rejects starts outside the enabled daily window in America/Lima. List worke
 ## 2026-10-16 - Automatic daily Bot IVR engine start/stop
 
 A dedicated systemd timer runs the public Bot IVR list services every 15 seconds. Active scheduled campaigns start active lists once per daily Lima window; the latest run timestamp prevents repeated launches after completion or manual Stop. At closing, workers enter stopping and drain calls before exiting; the timer also stops older workers through the public service. No real calls used for validation. Reproducible deployment: installer/campaign-scheduler.sh.
+
+
+## 2026-10-16 - Meet demo library
+
+Added Meet below Zynerdesk in the shared sidebar with a video-camera icon and active state. New level-9 page modules/admin/meet.php displays three clearly fictitious Google Meet recording examples with dates, durations, participant counts and expandable summaries. No real videos or Google connection are claimed. Exact isolated deployment allowlist added; existing authorization remains enforced.
