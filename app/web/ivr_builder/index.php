@@ -9,7 +9,7 @@ ivr_builder_require_login();
 <link rel="stylesheet" href="assets/css/ivr-builder.css"></head><body>
 <?php require_once __DIR__ . '/../modules/admin/sidebar.php'; renderSidebar('ivr_builder', '../'); ?>
 <div class="ivr-shell">
-<header class="builder-toolbar"><label class="toolbar-field flow-picker">IVR <select id="flowCode" onchange="openFlow(this.value)"></select></label><button onclick="newFlow()">Nuevo</button><button onclick="cloneFlow()">Clonar</button><button class="danger" onclick="deleteFlow()">Eliminar</button><input id="flowName" placeholder="Nombre flujo"><label class="toolbar-field list-picker">Lista <select id="flowList" onchange="onListChange()"><option value="">(ninguna)</option></select></label><label class="toolbar-field start-picker">Inicio <select id="start"></select></label><button onclick="save()">Guardar y publicar</button><button onclick="openTemplatePicker()">Cargar plantilla</button><input id="templateFile" type="file" accept=".txt,text/plain" hidden><button onclick="location.href='results.php'">Resultados</button><input id="testPhone" placeholder="Telefono prueba" maxlength="11"><button onclick="launchCall()">Lanzar 2006</button><button onclick="openConfigPanel()" title="Configuración de servidores">⚙️</button><span id="status"></span></header>
+<header class="builder-toolbar"><label class="toolbar-field flow-picker">IVR <select id="flowCode" onchange="openFlow(this.value)"></select></label><button onclick="newFlow()">Nuevo</button><button onclick="cloneFlow()">Clonar</button><button class="danger" onclick="deleteFlow()">Eliminar</button><input id="flowName" placeholder="Nombre flujo"><label class="toolbar-field list-picker">Lista <select id="flowList" onchange="onListChange()"><option value="">(ninguna)</option></select></label><label class="toolbar-field start-picker">Inicio <select id="start"></select></label><button onclick="save()">Guardar y publicar</button><button onclick="openTemplatePicker()">Cargar plantilla</button><input id="templateFile" type="file" accept=".txt,text/plain" hidden><button onclick="location.href='results.php'">Resultados</button><button onclick="exportFlowMarkdown()">Exportar</button><input id="testPhone" placeholder="Telefono prueba" maxlength="11"><button onclick="launchCall()">Lanzar 2006</button><button onclick="openConfigPanel()" title="Configuración de servidores">⚙️</button><span id="status"></span></header>
 <div id="configOverlay" class="config-overlay" hidden onclick="if(event.target===this)closeConfigPanel()">
 <div class="config-panel">
 <header><strong>Configuración de servidores</strong><button class="config-close" onclick="closeConfigPanel()">✕</button></header>
@@ -34,6 +34,7 @@ ivr_builder_require_login();
 <script src="assets/js/nodes/forwarding.js?v=sip1"></script>
 <script src="assets/js/editor/core.js?v=forwarding1"></script>
 <script src="assets/js/api/client.js"></script>
+<script src="assets/js/editor/export-markdown.js"></script>
 <script src="assets/js/nodes/media.js"></script>
 <script src="assets/js/nodes/inject-sql.js"></script>
 <script src="assets/js/nodes/capture-stt.js"></script>

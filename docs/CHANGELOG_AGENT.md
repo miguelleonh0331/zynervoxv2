@@ -2612,3 +2612,8 @@ Validation: PHP 7.4 source/deployed lint, matching deployed checksums and root:w
 Added the exact modules/admin/zynerdesk.php entrypoint to IsolatedGate. Previously HTTP 403 prevented the existing installed integration from loading. Existing administrator authorization, view allowlist, SSO, backend and proxy remain unchanged. No service restart or reinstall.
 
 Validation: PHP 7.4 lint and matching source/deployment checksum, root:www0640, anonymous HTTPS redirects to login, unrelated service-control route remains HTTP403. Existing active administrator panel renders, SSO exchange through HTTPS proxy succeeds, and authenticated backend /api/auth/me confirms admin role. No remote desktop session was opened; live agent supervision/WebSocket interaction remains a browser check.
+
+
+## 2026-10-16 - Export IVR editor flow as Markdown
+
+Added Exportar beside Resultados. Browser downloads current editor state as Markdown with Mermaid diagram and complete node configuration, including unpublished edits. No API, database or publication changes.
