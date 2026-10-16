@@ -1,5 +1,10 @@
 # Roadmap
 
+- CRM: hoy es solo la maqueta de interfaz del escritorio de ventas
+  (`modules/admin/crm_app.php` y `crm-assets/`), portada desde el proyecto
+  independiente `crm-escritorio`. Mantiene los 14 formularios y su geometría,
+  pero el estado vive en memoria: no hay base de datos, ni persistencia, ni
+  usuarios propios. Falta definir e implementar su backend.
 - Zynerdesk: descargar/publicar el agente Windows
   (`miguelleonh0331/synervox-remoteo-agent`) y conectar el flujo de alta de
   equipos. Expresamente pendiente, no implementado en esta etapa.

@@ -55,7 +55,7 @@ function renderSidebar($activePage = 'home', $rootPrefix = '../../') {
         ['key' => 'users',       'href' => 'modules/admin/users.php',        'icon' => 'users',      'label' => 'Users (Usuarios)',   'built' => true],
         ['key' => 'campaigns',   'href' => 'modules/admin/campaigns.php',    'icon' => 'campaigns',  'label' => 'Campaigns (Campañas)', 'built' => true],
         ['key' => 'dialer_agent','href' => 'modules/admin/dialer_agent.php', 'icon' => 'phones',     'label' => 'Panel de agente',    'built' => true],
-        ['key' => 'crm',         'href' => 'modules/admin/crm.php',          'icon' => 'crm',        'label' => 'CRM',                'built' => false],
+        ['key' => 'crm',         'href' => 'modules/admin/crm.php',          'icon' => 'crm',        'label' => 'CRM',                'built' => true],
         ['key' => 'lists',       'href' => 'modules/admin/lists.php',        'icon' => 'lists',      'label' => 'Lists (Bases de Datos)', 'built' => true],
         ['key' => 'quality',     'href' => 'modules/admin/quality.php',      'icon' => 'quality',    'label' => 'Quality Control (Calidad)', 'built' => false],
         ['key' => 'scripts',     'href' => 'modules/admin/scripts.php',      'icon' => 'scripts',    'label' => 'Scripts (Guiones)',  'built' => false],
