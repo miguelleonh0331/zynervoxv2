@@ -104,8 +104,9 @@ final class BotIvrGraphRunner {
         $this->flow=$flow;$this->runtime=$runtime;$this->published=$published;$this->command=$command;$this->event=$event;$this->io=$io;$this->result=$result;$this->options=$options;
         $this->tts=bot_tts_call_snapshot($lead,$runtime);
         $this->vars=bot_list_audio_variables($lead,(int)$lead['list_id'],(int)$lead['campaign_id']);
+        $contactId=$this->vars['id_contacto'] ?? '';
         $this->vars=array_merge($this->vars,$options['variables'] ?? []);
-        $this->vars=array_merge($this->vars,['call_id'=>$call,'id_contacto'=>(string)$lead['lead_id'],'queue_id'=>'','numero'=>(string)$lead['phone'],'lead_id'=>(string)$lead['lead_id'],'list_id'=>(string)$lead['list_id'],'campaign_id'=>(string)$lead['campaign_id']]);
+        $this->vars=array_merge($this->vars,['call_id'=>$call,'id_contacto'=>$contactId,'queue_id'=>'','numero'=>(string)$lead['phone'],'lead_id'=>(string)$lead['lead_id'],'list_id'=>(string)$lead['list_id'],'campaign_id'=>(string)$lead['campaign_id']]);
         foreach ($flow['nodes'] as $node) if (($node['type'] ?? '')==='capture_stt' && in_array($node['variable'],array_merge(['call_id','id_contacto','queue_id','numero','lead_id','list_id','campaign_id','nombre'],array_keys($options['variables'] ?? [])),true)) throw new RuntimeException('IVR capture cannot overwrite system variables');
         // System/captured values cannot originate from an uploaded contact.
         foreach (bot_list_audio_response_variables($flow) as $key) $this->vars[$key]='';

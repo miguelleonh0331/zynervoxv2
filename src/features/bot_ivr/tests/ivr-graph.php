@@ -3,7 +3,7 @@ require $argv[1].'/ivr_graph_service.php';
 $fixture=json_decode(file_get_contents(__DIR__.'/fixtures/carsa3.json'),true,512,JSON_THROW_ON_ERROR);
 function graphCheck($ok,$message) {if (!$ok) throw new RuntimeException($message);}
 function runGraphCase(array $flow,array $replies,bool $sqlOk=true,bool $urlOk=true,?string $interrupt=null): array {
-    $lead=['lead_id'=>49,'list_id'=>1,'campaign_id'=>1,'phone'=>'13119898','customer_name'=>'Prueba','extra_json'=>'{"monto":"500","local":"Carsa Lima","direccion":"Av. Lima 123"}'];
+    $lead=['lead_id'=>49,'list_id'=>1,'campaign_id'=>1,'phone'=>'13119898','customer_name'=>'Prueba','extra_json'=>'{"id_contacto":"001453707","monto":"500","local":"Carsa Lima","direccion":"Av. Lima 123"}'];
     $events=[];$results=[];$commands=[];$generated=[];
     $io=function($action,$data) use(&$replies,&$generated,$urlOk) {
         if ($action==='transcribe') { if (!$replies) throw new RuntimeException('Unexpected STT request');$text=array_shift($replies);return ['ok'=>$text!=='','text'=>$text,'provider'=>$data['provider']]; }
@@ -18,7 +18,7 @@ function runGraphCase(array $flow,array $replies,bool $sqlOk=true,bool $urlOk=tr
     $command=function($command) use(&$commands,$interrupt) {$commands[]=$command;if ($interrupt!==null && strpos($command,$interrupt)!==false) return '200 result=-1';if(strpos($command,'GET VARIABLE')===0)return '200 result=1 (capture-1)';return '200 result=0 endpos=8000';};
     $event=function($type,$data) use(&$events) {$events[]=$data;};
     $save=function($node,$fields) use(&$results,$sqlOk) {$results[$node]=$fields;return $sqlOk;};
-    $runner=new BotIvrGraphRunner($flow,$lead,'fixture-call','/runtime',$published,$command,$event,$io,$save,['execute_allowlist'=>['http://172.16.10.18/send_sms/send.php'],'variables'=>['sms_key'=>'fixture']]);
+    $runner=new BotIvrGraphRunner($flow,$lead,'fixture-call','/runtime',$published,$command,$event,$io,$save,['execute_allowlist'=>['http://172.16.10.18/send_sms/send.php'],'variables'=>['sms_key'=>'fixture','id_contacto'=>'wrong-internal-id']]);
     return ['result'=>$runner->run(),'events'=>$events,'results'=>$results,'commands'=>$commands,'generated'=>$generated];
 }
 bot_ivr_validate_graph($fixture);
@@ -26,6 +26,7 @@ graphCheck(count($fixture['nodes'])===27,'CARSA reference node count');
 $out=runGraphCase($fixture,['','sí','sí','mañana']);
 graphCheck($out['result']==='COMPLETED' && $out['results']['injectando1']['RESULTADO']==='AGENDADO','appointment path');
 graphCheck($out['results']['injectando1']['FECHA_AGENDADA']==='2026-10-11' && $out['results']['injectando1']['RESPUESTA_REGISTRADA']==='mañana','capture variables and raw speech');
+graphCheck($out['results']['injectando1']['ID_CONTACTO']==='001453707','SQL preserves uploaded contact ID and leading zeros despite runtime overrides');
 graphCheck(count($out['generated'])===1,'captured-date audio publication');
 graphCheck(count(array_filter($out['events'],fn($e)=>($e['action'] ?? '')==='execute' && $e['ok']))===1,'execute after SQL');
 foreach ([['','no'],['','sí','no']] as $answers) {$out=runGraphCase($fixture,$answers);graphCheck($out['result']==='COMPLETED' && !$out['results'],'negative path');}

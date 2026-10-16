@@ -2593,3 +2593,8 @@ A dedicated systemd timer runs the public Bot IVR list services every 15 seconds
 ## 2026-10-16 - Meet demo library
 
 Added Meet below Zynerdesk in the shared sidebar with a video-camera icon and active state. New level-9 page modules/admin/meet.php displays three clearly fictitious Google Meet recording examples with dates, durations, participant counts and expandable summaries. No real videos or Google connection are claimed. Exact isolated deployment allowlist added; existing authorization remains enforced.
+
+
+## 2026-10-16 - Preserve uploaded Bot IVR contact IDs
+
+Graph runner keeps id_contacto from imported contact variables instead of replacing it with the internal lead_id. Internal identifiers remain separate; absent contact IDs render as null in SQL. Regression test checks SQL output, leading zeros and runtime override protection. Validated all 1,967 current campaign 50/list 82 contacts against published flow 02 without real calls or database writes. Historical results are unchanged.
