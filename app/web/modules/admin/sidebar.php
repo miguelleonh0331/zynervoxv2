@@ -29,6 +29,7 @@ function _svgIcon($name) {
         'farm'      => '<path d="M3 21V10l9-7 9 7v11"></path><path d="M7 21v-7h10v7"></path><path d="M7 10h10"></path>',
         'stt'       => '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line>',
         'services'  => '<rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>',
+        'crm'       => '<rect x="2" y="4" width="20" height="16" rx="2"></rect><circle cx="8" cy="10" r="2"></circle><path d="M5 16c0-1.7 1.3-3 3-3s3 1.3 3 3"></path><line x1="14" y1="9" x2="19" y2="9"></line><line x1="14" y1="13" x2="19" y2="13"></line>',
     ];
     $body = $icons[$name] ?? '';
     return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' . $body . '</svg>';
@@ -54,6 +55,7 @@ function renderSidebar($activePage = 'home', $rootPrefix = '../../') {
         ['key' => 'users',       'href' => 'modules/admin/users.php',        'icon' => 'users',      'label' => 'Users (Usuarios)',   'built' => true],
         ['key' => 'campaigns',   'href' => 'modules/admin/campaigns.php',    'icon' => 'campaigns',  'label' => 'Campaigns (Campañas)', 'built' => true],
         ['key' => 'dialer_agent','href' => 'modules/admin/dialer_agent.php', 'icon' => 'phones',     'label' => 'Panel de agente',    'built' => true],
+        ['key' => 'crm',         'href' => 'modules/admin/crm.php',          'icon' => 'crm',        'label' => 'CRM',                'built' => false],
         ['key' => 'lists',       'href' => 'modules/admin/lists.php',        'icon' => 'lists',      'label' => 'Lists (Bases de Datos)', 'built' => true],
         ['key' => 'quality',     'href' => 'modules/admin/quality.php',      'icon' => 'quality',    'label' => 'Quality Control (Calidad)', 'built' => false],
         ['key' => 'scripts',     'href' => 'modules/admin/scripts.php',      'icon' => 'scripts',    'label' => 'Scripts (Guiones)',  'built' => false],
