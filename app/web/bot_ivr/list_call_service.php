@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/db.php';
+require_once __DIR__.'/campaign_schedule.php';
 require_once __DIR__.'/list_audio_jobs.php';
 require_once __DIR__.'/../ivr_builder/published_flow.php';
 require_once __DIR__.'/../includes/Carriers.php';
@@ -22,6 +23,7 @@ function bot_list_call_status(int $listId,int $campaignId): ?array {
 function bot_list_call_public(?array $run): ?array {return $run?array_intersect_key($run,array_flip(['run_id','state','channels','launched','completed','active','active_list','pending','failed','error'])):null;}
 function bot_list_call_configuration(int $listId,int $campaignId): array {
     $repo=bot_ivr_repository();$list=$repo->list($listId,$campaignId);$campaign=$repo->campaign($campaignId);
+    if(!bot_campaign_schedule_open($campaign))throw new RuntimeException('Fuera del horario de marcacion de la campana (America/Lima).');
     if(!$list['active'] || !$campaign['active'] || empty($list['id_flujo']))throw new RuntimeException('Activa la lista y la campana y asigna su flujo.');
     $prefix=(string)$list['dial_prefix'];if($prefix==='' || !in_array($prefix,array_column(\Includes\Carriers::dialOrigins(),'dial_prefix'),true))throw new RuntimeException('Guarda un origen de llamada disponible.');
     $flow=ivr_builder_published_flow((int)$list['id_flujo']);

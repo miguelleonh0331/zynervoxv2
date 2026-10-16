@@ -22,6 +22,22 @@ try{
  bot_list_call_loop($list,$campaign,$run,$repo,$ami,$wait);$state=$repo->dialRun($list,$campaign,$run);
  dialCheck($state['state']==='completed' && $state['launched']===7 && $state['completed']===7 && $ami->max===3,'concurrency/refill/completion');
  $s=$db->prepare('SELECT COUNT(DISTINCT a.lead_id),MAX(c.called_count) FROM zynervox_bot_call_attempts a JOIN zynervox_bot_list c ON c.lead_id=a.lead_id WHERE dial_run_id=?');$s->execute([$run]);$row=$s->fetch(PDO::FETCH_NUM);dialCheck((int)$row[0]===7 && (int)$row[1]===1,'lead or audit duplicated');
+ // Closed daily window must release slots without claiming leads; Stop still drains.
+ $db->prepare("UPDATE zynervox_bot_campaigns SET scheduled=1,start_time='00:00:00',end_time='00:00:00' WHERE campaign_id=?")->execute([$campaign]);
+ $closedConfig=$config;$closedConfig['statuses']=['RESPONDE_F1'];$closedRun=bin2hex(random_bytes(16));$repo->createDialRun($list,$campaign,$closedRun,3,$closedConfig,'fixture');
+ $closedAmi=new class($repo,$db,$closedRun) extends FixtureAmi {
+  public $reserved=0;public $released=0;
+  public function reserveSlot($id){++$this->reserved;return true;}
+  public function releaseSlot($id){++$this->released;}
+ };
+ $closedWait=function()use($repo,$list,$campaign,$closedRun,$closedAmi){
+  dialCheck(!$closedAmi->sent && $repo->dialRun($list,$campaign,$closedRun)['launched']===0,'closed schedule consumed lead');
+  dialCheck($closedAmi->reserved===0 && $closedAmi->released===0,'closed schedule reserved a slot');
+  $repo->transitionDialRun($closedRun,'stopping');
+ };
+ bot_list_call_loop($list,$campaign,$closedRun,$repo,$closedAmi,$closedWait);
+ dialCheck($repo->dialRun($list,$campaign,$closedRun)['state']==='stopped','closed schedule blocked Stop');
+ $db->prepare('UPDATE zynervox_bot_campaigns SET scheduled=0 WHERE campaign_id=?')->execute([$campaign]);
  // Live limits refill upward and drain downward without interrupting calls.
  $liveConfig=$config;$liveConfig['statuses']=['RESPONDE_F1'];$liveRun=bin2hex(random_bytes(16));$repo->createDialRun($list,$campaign,$liveRun,3,$liveConfig,'fixture');
  $liveAmi=new FixtureAmi($repo,$db,$liveRun);$ticks=0;

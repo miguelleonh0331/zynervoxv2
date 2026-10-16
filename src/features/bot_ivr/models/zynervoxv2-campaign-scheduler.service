@@ -1,0 +1,13 @@
+[Unit]
+Description=ZynervoxV2 daily campaign start/stop
+After=network.target
+
+[Service]
+Type=oneshot
+User=wwwrun
+Group=www
+UMask=0027
+ExecStart=/usr/bin/php /srv/www/htdocs/zynervoxv2/bot_ivr/campaign_scheduler.php
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=120

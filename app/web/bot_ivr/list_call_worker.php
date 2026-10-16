@@ -12,12 +12,15 @@ function bot_list_call_loop(int $listId,int $campaignId,string $runId,\ZynervoxQ
         if(!in_array($run['state'],['running','stopping'],true))return;
         if(!$run['active'] && ($run['state']==='stopping' || !$run['pending'])){$repo->transitionDialRun($runId,$run['state']==='stopping'?'stopped':'completed');return;}
         if(time()-$lastPing>=15){$ami->ping();$lastPing=time();}
+        if($run['state']==='running' && !bot_campaign_schedule_open($repo->campaign($campaignId))){$repo->transitionDialRun($runId,'stopping');$wait();continue;}
         if($run['state']==='running'){
             $cfg=json_decode($run['config_json'],true,512,JSON_THROW_ON_ERROR);
             if(isset($cfg['flow_sha256'])){ $flow=ivr_builder_published_flow((int)$run['flow_id']);if(hash('sha256',json_encode($flow,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES))!==$cfg['flow_sha256'])throw new RuntimeException('El flujo cambio. Genera sus audios antes de volver a marcar.'); }
             for($slot=$run['active_list'];$slot<(int)$run['channels'];$slot++){
                 $callId='zv2-'.bin2hex(random_bytes(12));
                 if(method_exists($ami,'reserveSlot') && !$ami->reserveSlot($callId))break;
+                // Re-read the live window after reserving a slot; never consume a lead while closed.
+                if(!bot_campaign_schedule_open($repo->campaign($campaignId))){if(method_exists($ami,'releaseSlot'))$ami->releaseSlot($callId);$repo->transitionDialRun($runId,'stopping');break;}
                 try {$lead=$repo->claimDialLead($runId,$callId);}catch(Throwable $e){if(method_exists($ami,'releaseSlot'))$ami->releaseSlot($callId);throw $e;}
                 if(!$lead){if(method_exists($ami,'releaseSlot'))$ami->releaseSlot($callId);break;}
                 // Never retry a lost/ambiguous AMI acknowledgement: the claim remains auditable.

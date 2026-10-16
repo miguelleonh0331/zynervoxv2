@@ -2578,3 +2578,13 @@ Created docs/research/REINTENTOS_INTELIGENTES_BOT_IVR.md for the next investigat
 Resumed the interrupted dial_runs.php change: prefer the weighted status in ORDER BY while retaining other available statuses. Added exclusion of disabled/zero-weight rules to prevent fallback from selecting them. Existing current-run/open-call barriers, cooldowns and retry exclusions are unchanged. Regression uses three connection-local temporary tables shadowing production names, with no production rows or telephone calls. On mirmidon PHP 7.4/MariaDB, the regression fails against old production code and passes against the candidate: 30 unique selections after the preferred status is exhausted, disabled/zero-weight rules, cooldown/exclusion, open/current-run attempts, policy off and count shape. Deployment uses the existing CIFS source mount, per-file backup, lint and SHA256 verification; runtime call workers load the change on the next start (no active runs at preflight).
 
 Deployment verified 2026-10-15T21:24:39Z on mirmidon: `/srv/www/htdocs/zynervoxv2/zynervox_queries/mysql/bot_ivr/dial_runs.php`, root:www 0640; source/deployed SHA256 `5a44796fbaced77befad1734e219c8aca408dacabc8163d8f1e49ac3d4b3cc58`. PHP 7.4 lint and temporary-table regression passed on the deployed file. Backup: same path plus `.bak.20261015T212439Z`; safe rollback while idle: copy that backup over the deployed file, then lint/verify. No active runs at deployment; no services restarted or real calls initiated. Live 30-channel occupancy remains to be observed on the next operator-started run. Code commit: 5103e64.
+
+
+## 2026-10-16 - Enforce Bot IVR campaign dialing window
+
+Play rejects starts outside the enabled daily window in America/Lima. List workers re-read campaign scheduling before each lead claim, release reserved slots while closed, and resume on the next opening without hanging up existing calls. Disabled scheduling preserves unrestricted dialing. Overnight windows supported; closing boundary is exclusive. No repository contract or schema changes.
+
+
+## 2026-10-16 - Automatic daily Bot IVR engine start/stop
+
+A dedicated systemd timer runs the public Bot IVR list services every 15 seconds. Active scheduled campaigns start active lists once per daily Lima window; the latest run timestamp prevents repeated launches after completion or manual Stop. At closing, workers enter stopping and drain calls before exiting; the timer also stops older workers through the public service. No real calls used for validation. Reproducible deployment: installer/campaign-scheduler.sh.

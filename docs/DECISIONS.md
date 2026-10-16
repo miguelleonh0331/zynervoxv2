@@ -1139,3 +1139,8 @@ Primary agent approves admin cache helper, CLI-only singleton worker, systemd un
 ## 2026-10-15 - Retry candidate fallback (ARCHITECT_AGENT review)
 
 Primary agent approves the scoped zynervox_queries fix consumed by bot_ivr: dialCandidates keeps all configured statuses and prefers the weighted choice through ORDER BY instead of excluding other candidates. Explicit disabled/zero-weight rules remain excluded from fallback; due dates, retry exclusions, current-run/open-attempt barriers and claim locks remain intact. Policy-off and aggregate-count paths retain existing behavior. No public API, contract, schema, transport or campaign configuration changes. Allowed files: query trait, isolated temporary-table regression, append-only documentation. User authorized deployment to mirmidon with procede; no production campaign/test calls will be started.
+
+
+## 2026-10-16 - Bot IVR daily scheduler (primary-agent architecture review)
+
+Scope: Bot IVR worker, pure schedule helper, CLI scheduler, installer and two new systemd units. Reuse published BotIvrRepository/list call services; no cross-module internals, contract or schema changes. A separate oneshot timer avoids coupling scheduling to the read-only monitor and requires no restart of existing shared daemons. One launch per list/window uses existing UTC run creation times; manual stops remain stopped until the next window. Scheduled engine start/stop is explicitly requested by the user.
