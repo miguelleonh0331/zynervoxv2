@@ -1135,3 +1135,8 @@ Primary agent approves play|stop actions on existing admin monitor POST with the
 ## 2026-10-14 - Shared campaign monitor cache (architect review)
 
 Primary agent approves admin cache helper, CLI-only singleton worker, systemd unit, installer and shared Bot IVR view/API consumers. Existing statistics APIs remain the sole data source; only the worker invokes them every five seconds, with no overlapping refreshes. HTTP GET and initial rendering only read the published private JSON and never fall back to database aggregation. Whole-snapshot atomic publication prevents partial reads; failure retains the last good snapshot and systemd restarts the worker. Freshness metadata marks data stale after 15 seconds. Play/Stop validations continue against live services. Scope excludes query SQL, dialing workers, lead mutations, schema and preexisting IsolatedGate changes. No Redis dependency.
+
+
+## 2026-10-16 - Bot IVR daily scheduler (primary-agent architecture review)
+
+Scope: Bot IVR worker, pure schedule helper, CLI scheduler, installer and two new systemd units. Reuse published BotIvrRepository/list call services; no cross-module internals, contract or schema changes. A separate oneshot timer avoids coupling scheduling to the read-only monitor and requires no restart of existing shared daemons. One launch per list/window uses existing UTC run creation times; manual stops remain stopped until the next window. Scheduled engine start/stop is explicitly requested by the user.

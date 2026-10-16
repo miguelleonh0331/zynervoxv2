@@ -2572,3 +2572,13 @@ Deployed on mirmidon with root-owned sources and wwwrun:www0750/0640 cache. Nati
 ## 2026-10-14 - Smart retry investigation handoff
 
 Created docs/research/REINTENTOS_INTELIGENTES_BOT_IVR.md for the next investigator/developer: verified 63 local source/document/test paths; mapped campaign UI, list claims, run lifecycle, late preanswer results, migrations, Baresip pool, shared cache and deployment. Separates current behavior from proposed weights/waits/caps and unresolved policy. Documents compatibility gates, isolated acceptance scenarios, expected analysis deliverable and staged rollout/rollback. Documentation only; no production changes or retry activation.
+
+
+## 2026-10-16 - Enforce Bot IVR campaign dialing window
+
+Play rejects starts outside the enabled daily window in America/Lima. List workers re-read campaign scheduling before each lead claim, release reserved slots while closed, and resume on the next opening without hanging up existing calls. Disabled scheduling preserves unrestricted dialing. Overnight windows supported; closing boundary is exclusive. No repository contract or schema changes.
+
+
+## 2026-10-16 - Automatic daily Bot IVR engine start/stop
+
+A dedicated systemd timer runs the public Bot IVR list services every 15 seconds. Active scheduled campaigns start active lists once per daily Lima window; the latest run timestamp prevents repeated launches after completion or manual Stop. At closing, workers enter stopping and drain calls before exiting; the timer also stops older workers through the public service. No real calls used for validation. Reproducible deployment: installer/campaign-scheduler.sh.

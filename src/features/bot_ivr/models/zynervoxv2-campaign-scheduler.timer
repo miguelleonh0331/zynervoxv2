@@ -1,0 +1,11 @@
+[Unit]
+Description=Check ZynervoxV2 campaign schedules every 15 seconds
+
+[Timer]
+OnBootSec=15s
+OnUnitActiveSec=15s
+AccuracySec=1s
+Unit=zynervoxv2-campaign-scheduler.service
+
+[Install]
+WantedBy=timers.target
