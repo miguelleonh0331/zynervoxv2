@@ -2598,3 +2598,10 @@ Added Meet below Zynerdesk in the shared sidebar with a video-camera icon and ac
 ## 2026-10-16 - Preserve uploaded Bot IVR contact IDs
 
 Graph runner keeps id_contacto from imported contact variables instead of replacing it with the internal lead_id. Internal identifiers remain separate; absent contact IDs render as null in SQL. Regression test checks SQL output, leading zeros and runtime override protection. Validated all 1,967 current campaign 50/list 82 contacts against published flow 02 without real calls or database writes. Historical results are unchanged.
+
+
+## 2026-10-16 - Search uploaded list data by phone
+
+Added Buscar por teléfono next to Prueba de audios in list_edit navigation, preserving the open list/campaign. New list_search.php form performs exact full-phone lookup (formatting separators ignored) and shows uploaded contact fields plus status, including unmanaged contacts. Administrator-only, scoped, parameterized and read-only; empty/malformed input and missing results handled, imported output escaped. Query regression uses temporary tables only.
+
+Validation: PHP 7.4 source/deployed lint, matching deployed checksums and root:www0640; temporary-table exact/missing/leading-zero/scope/invalid-input/read-only checks passed. Production list 82 lookup/render and navigation verified inside a read-only transaction without printing contact data; anonymous HTTP redirects to login. No calls started or list data changed.

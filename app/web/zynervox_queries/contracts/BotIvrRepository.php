@@ -34,6 +34,7 @@ interface BotIvrRepository {
     public function listStatistics(int $listId,int $campaignId): array;
     public function latestLeadCalls(int $listId,int $campaignId,int $limit=50,int $offset=0,?int $leadId=null,bool $managedOnly=false,?string $status=null): array;
     public function leadCount(int $listId,bool $managedOnly=false): int;
+    public function searchLeadsByPhone(int $listId, int $campaignId, string $phone): array;
     public function audioLeads(int $listId, int $campaignId): array;
     public function importLeads(int $listId, int $campaignId, array $parsed): array;
     public function retryRules(int $campaignId): array;

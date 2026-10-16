@@ -184,3 +184,8 @@ updateListCallChannels and createDialRun accept 30,35,40 in addition to prior ch
 ## 2026-10-13 - Preanswer tracking contract
 
 preanswerCall(callId) returns scoped origin-7307 attempt including last capture byte cursor. pendingPreanswerCalls(limit) selects recent unanswered tracked captures fairly, including just-closed attempts, excluding done/results/recovery. savePreanswerResult locks attempt, rejects answered/non-7307/recovered, persists one category/text evidence and returns true only for an open call eligible for a guarded AMI hangup; late closed result updates only latest lead. Event types PREANSWER_START/CAPTURE/RESULT/DONE added. finishCall preserves preanswer classification when never answered, with original dial_status/cause unchanged. No new table/database. Approved by primary ARCHITECT_AGENT review.
+
+
+## 2026-10-16 - Exact phone search (architect approved)
+
+searchLeadsByPhone(int listId,int campaignId,string phone): array validates 1–20 decimal digits and list/campaign ownership. Bound equality on current lead phone, scoped list/campaign join, ordered lead_id, maximum 100 rows. Returns lead_id, phone, customer_name, status and extra_json, including NEW contacts; empty array for no match. Read-only, preserves leading zeros and rejects wildcards.

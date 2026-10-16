@@ -374,3 +374,8 @@ Admin monitor may stop exact current starting/running/stopping list runs using e
 ## 2026-10-14 - Shared monitor snapshot consumer (architect approved)
 
 Shared monitor view no longer queries campaignMonitor on initial render. Admin cache helper supplies the same published snapshot as HTTP polling, with explicit freshness. Statistics are generated only by the admin singleton CLI worker through existing repository and Dialer APIs; dialing, list services, lead states and query signatures are unchanged.
+
+
+## 2026-10-16 - Phone lookup (architect approved)
+
+list_search.php?id=<list>&campaign_id=<campaign>&phone=<full-number> requires existing administrator session. Buscar por teléfono appears beside Prueba de audios when viewing a valid list. GET lookup strips common phone formatting, preserves leading zeros, rejects malformed/overlong values, searches exact phone within verified list/campaign through searchLeadsByPhone and renders escaped contact metadata and uploaded variables. private,no-store; no mutations or calling actions.

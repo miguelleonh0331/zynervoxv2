@@ -2,6 +2,13 @@
 declare(strict_types=1);
 namespace ZynervoxQueries\Mysql\BotIvr;
 trait LeadQueries {
+    public function searchLeadsByPhone(int $listId, int $campaignId, string $phone): array {
+        if (!preg_match('/^[0-9]{1,20}$/D', $phone)) throw new \InvalidArgumentException('Teléfono inválido.');
+        $this->list($listId, $campaignId);
+        $stmt = $this->db->prepare('SELECT l.lead_id,l.phone,l.customer_name,l.status,l.extra_json FROM zynervox_bot_list l JOIN zynervox_bot_lists p ON p.list_id=l.list_id WHERE l.list_id=:list AND p.campaign_id=:campaign AND l.phone=:phone ORDER BY l.lead_id LIMIT 100');
+        $stmt->execute([':list'=>$listId, ':campaign'=>$campaignId, ':phone'=>$phone]);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
     public function audioLeads(int $listId, int $campaignId): array {
         $this->list($listId, $campaignId);
         $stmt = $this->db->prepare('SELECT l.lead_id,l.list_id,l.phone,l.customer_name,l.extra_json FROM zynervox_bot_list l JOIN zynervox_bot_lists p ON p.list_id=l.list_id WHERE l.list_id=:list AND p.campaign_id=:campaign ORDER BY l.lead_id');

@@ -99,7 +99,7 @@ try {
     http_response_code($listId && $campaignId ? 404 : 400);
     $error = $e->getMessage();
 }
-bot_campaign_header($list ? 'Lista #'.$listId.' — '.$list['name'] : 'Lista');
+bot_campaign_header($list ? 'Lista #'.$listId.' — '.$list['name'] : 'Lista', $list ? (int)$listId : null, $list ? (int)$campaignId : null);
 if ($list): ?>
 <style>
 .main-content{min-width:0}.list-layout{display:grid;grid-template-columns:minmax(240px,1fr) minmax(0,2fr);gap:16px;margin-top:12px}

@@ -1149,3 +1149,8 @@ Scope: Bot IVR worker, pure schedule helper, CLI scheduler, installer and two ne
 ## 2026-10-16 - Meet demo (primary-agent architecture review)
 
 Approved scope: administrative presentation in admin, shared sidebar entry immediately after Zynerdesk, and exact modules/admin/meet.php allowlist entry in Core IsolatedGate. Reuse public Auth::checkAccess(9); no wildcard permissions, Google credentials, external requests, database changes or telephony changes. This first Meet area is a static demo within admin, not a new backend feature. Fictitious recording metadata and expandable summaries are explicitly labeled; real playback requires actual recordings and a separate integration. No new dependencies.
+
+
+## 2026-10-16 - List phone lookup (primary-agent architecture review)
+
+Approved scope: Bot IVR list navigation and a read-only level-9 search page, plus the public searchLeadsByPhone(listId,campaignId,phone): array query operation. Exact normalized full phone lookup preserves leading zeros, validates 1–20 digits and returns up to 100 matching current contacts with lead_id, phone, customer_name, status and extra_json. Repository validates list/campaign ownership and uses bound SQL; page escapes all imported names/variables and sends private,no-store. No wildcard/partial search, mutations, schema, dialing, TTS or new dependencies. Existing header callers remain compatible through optional scope arguments. Temporary-table regression never touches production campaigns/leads.

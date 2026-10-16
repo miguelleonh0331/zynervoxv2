@@ -30,7 +30,7 @@ $error = '';
 // panel de engranaje de IVR Builder (tabla ivr_deploy_config). Solo se
 // valida que exista, para avisar si falta configurarla.
 try { bot_ivr_db_config(); } catch (Throwable $e) { $error = $e->getMessage(); }
-function bot_campaign_header(string $title): void {
+function bot_campaign_header(string $title, ?int $searchListId = null, ?int $searchCampaignId = null): void {
     global $message, $error;
     initial_survey_page_start($title);
     echo <<<'CSS'
@@ -42,7 +42,9 @@ function bot_campaign_header(string $title): void {
 </style>
 CSS;
 
-    echo '<nav class="bot-nav"><a href="index.php">Mostrar campañas</a><a href="index.php?view=create">Crear campaña</a><a href="audio_lab.php">Prueba de audios</a></nav>';
+    echo '<nav class="bot-nav"><a href="index.php">Mostrar campañas</a><a href="index.php?view=create">Crear campaña</a><a href="audio_lab.php">Prueba de audios</a>';
+    if ($searchListId && $searchCampaignId) echo '<a href="list_search.php?id='.$searchListId.'&amp;campaign_id='.$searchCampaignId.'">Buscar por teléfono</a>';
+    echo '</nav>';
     if ($message !== '') echo '<div class="carsa-msg">'.h($message).'</div>';
     if ($error !== '') echo '<div class="carsa-err">'.h($error).'</div>';
 }
