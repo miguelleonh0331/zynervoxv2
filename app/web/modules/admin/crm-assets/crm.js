@@ -473,11 +473,9 @@ function pintarDetalle() {
     body.replaceChildren(
       el('div', {cls:'duo' + (S.chat ? ' duo--chat' : '')},
         S.chat ? panelChat(c) : panelInfo(c), panelNotas(c)),
-      botoneraCanales(c),
-      panel('Historial de interacciones',
-        listaTimeline(interaccionesDe(c).slice(0, 6), 'Sin interacciones registradas.'),
-        [el('button', {cls:'btn-sm btn-sm--ghost', type:'button', txt:'Ver todas',
-          onclick:() => { S.tabDetalle = 'interacciones'; pintarTabsDetalle(); pintarDetalle(); }})]));
+      botoneraCanales(c));
+    // El historial no se repite aquí: vive completo en la pestaña
+    // "Interacciones", con sus filtros por canal.
   } else if (S.tabDetalle === 'interacciones') {
     const chips = ['todas', 'llamada', 'whatsapp', 'email', 'sms', 'nota', 'gestion'];
     body.replaceChildren(

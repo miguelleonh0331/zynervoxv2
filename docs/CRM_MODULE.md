@@ -73,8 +73,8 @@ sin sombras, sin degradados, sin esquinas redondeadas, sin imágenes.
 │ 2 filtros  │                                 │  nivel 3 ▾            │
 │            │                                 │  desenlace            │
 │ tarjetas   │  5 pestañas ───────────────────│  trámite pendiente    │
-│ de cliente │  Resumen: info (o chat) + notas,│  nota                 │
-│ (avatar,   │   canales, últimas interacciones│  [grabar] [terminar]  │
+│ de cliente │  Resumen: info (o chat) + notas │  nota                 │
+│ (avatar,   │   y botonera de canales         │  [grabar] [terminar]  │
 │  prioridad,│  Interacciones: timeline+chips  ├───────────────────────┤
 │  producto, │  Transacciones · Documentos     │ TU PERFORMANCE HOY    │
 │  cuándo)   │  Notas                          │  anillo + 4 métricas  │
@@ -122,7 +122,7 @@ Equivalencias con el escritorio WinForms del que partió el módulo:
 | `GroupBox` "Datos del Contacto" | Cabecera + panel "Información del cliente" (15 pares, incluidos producto de interés, monto estimado y origen) |
 | `lvw_Telefonos` + menú contextual | Hoja "Gestionar teléfonos", desde la fila Teléfono de la ficha o desde Más acciones |
 | `GboDatosGestiones` | Columna **Tipificar gestión**, fija a la derecha |
-| `lvw_Historial` | Timeline de interacciones, con la gestión como un evento más |
+| `lvw_Historial` | Timeline en la pestaña **Interacciones**, con la gestión como un evento más (no se repite en Resumen) |
 | Modal `Frm_Venta` (96 controles) | Hoja **Propuesta de venta**: 44 campos en rejilla de 4 columnas por secciones |
 | Modal `Frm_Rellamado` | Hoja **Agendar rellamada** |
 | Barra de menús y panel "Segmentador" | Eliminados |
