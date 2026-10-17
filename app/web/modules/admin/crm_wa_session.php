@@ -78,10 +78,54 @@ if ($estado !== 200) {
     crm_wa_fail(502, 'El servicio de WhatsApp rechazó el inicio de sesión (HTTP ' . $estado . ').');
 }
 
+$cabeceras = substr($respuesta, 0, $tamCabeceras);
+
+// Modo consulta: devuelve sólo los números que ya tienen conversación, para
+// que el CRM sepa a qué clientes puede ofrecer el chat. No entrega nombres,
+// mensajes ni ningún otro dato, y no toca la sesión del navegador.
+if (isset($_GET['contacts'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, private');
+
+    $galleta = [];
+    foreach (preg_split('/\r\n|\n/', $cabeceras) as $linea) {
+        if (stripos($linea, 'Set-Cookie:') !== 0) continue;
+        $galleta[] = trim(explode(';', substr($linea, strlen('Set-Cookie:')), 2)[0]);
+    }
+
+    $ch = curl_init($base . '/api/contacts');
+    curl_setopt_array($ch, [
+        CURLOPT_HTTPHEADER => ['Accept: application/json', 'Cookie: ' . implode('; ', $galleta)],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_CONNECTTIMEOUT => 5,
+    ]);
+    $lista = curl_exec($ch);
+    $estadoLista = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    curl_close($ch);
+
+    if ($lista === false || $estadoLista !== 200) {
+        // Sin dato fiable se responde 'desconocido': el CRM deja el botón
+        // disponible en lugar de bloquear por un fallo temporal.
+        http_response_code(502);
+        echo json_encode(['error' => 'No se pudo consultar las conversaciones.']);
+        exit;
+    }
+    $datos = json_decode($lista, true);
+    $numeros = [];
+    if (is_array($datos)) {
+        foreach ($datos as $fila) {
+            $n = preg_replace('/\D/', '', (string)($fila['phone'] ?? ''));
+            if ($n !== '') $numeros[] = $n;
+        }
+    }
+    echo json_encode(['phones' => array_values(array_unique($numeros))]);
+    exit;
+}
+
 // Reemitir al navegador la cookie de sesión que devolvió Zynerwaba. Se
 // conservan sus atributos (Path, HttpOnly, SameSite) y se añade Secure
 // cuando la petición llega por HTTPS.
-$cabeceras = substr($respuesta, 0, $tamCabeceras);
 $entregadas = 0;
 $https = (($_SERVER['HTTPS'] ?? '') !== '' && ($_SERVER['HTTPS'] ?? '') !== 'off')
       || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');

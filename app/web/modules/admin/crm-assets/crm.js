@@ -144,6 +144,7 @@ const S = {
   busqueda: '',
   chip: 'todas',
   chat: null,                // 'whatsapp' mientras la ventana de chat esté abierta
+  waPhones: null,            // números con conversación; null = sin dato fiable
   actual: 0,
   tip: [null, null, null],
   propuesta: null,
@@ -329,6 +330,17 @@ function aviso(titulo, texto, acciones) {
   capa.querySelector('button')?.focus();
 }
 const estado = t => { $('msg').textContent = t; };
+
+// Zynerwaba empareja por número en dígitos, admitiendo que uno sea sufijo
+// del otro (prefijo de país). Se replica ese criterio para saber de antemano
+// si el cliente tiene conversación.
+function numeroDe(c) { return ((c.telefonos[0] || {}).n || '').replace(/\D/g, ''); }
+function tieneChat(c) {
+  if (S.waPhones === null) return true;   // sin dato: no se bloquea
+  const n = numeroDe(c);
+  if (!n) return false;
+  return S.waPhones.some(p => p === n || p.endsWith(n) || n.endsWith(p));
+}
 
 /* --------------------------------------------- columna 1: cartera */
 
@@ -562,6 +574,10 @@ function panelChat(c) {
 }
 
 function abrirChat() {
+  if (!tieneChat(cli())) {
+    aviso('WhatsApp', 'Este cliente todavía no tiene una conversación de WhatsApp abierta.');
+    return;
+  }
   S.chat = 'whatsapp';
   if (S.tabDetalle !== 'resumen') { S.tabDetalle = 'resumen'; pintarTabsDetalle(); }
   pintarDetalle();
@@ -606,8 +622,14 @@ function botoneraCanales(c) {
   return el('div', {cls:'channels'},
     el('button', {cls:'ch ch--call', type:'button', disabled:enLlamada && !propio,
       onclick:() => propio ? colgar() : llamar()}, svg('tel'), propio ? 'Colgar' : 'Llamar'),
-    el('button', {cls:'ch ch--wa' + (S.chat ? ' is-on' : ''), type:'button',
-      onclick:() => S.chat ? cerrarChat() : abrirChat()}, svg('wa'), S.chat ? 'Cerrar chat' : 'WhatsApp'),
+    (() => {
+      const hay = tieneChat(c);
+      return el('button', {cls:'ch ch--wa' + (S.chat ? ' is-on' : ''), type:'button',
+        disabled:!hay && !S.chat,
+        title:hay ? 'Abrir la conversación de WhatsApp'
+                  : 'Este cliente todavía no tiene conversación de WhatsApp',
+        onclick:() => S.chat ? cerrarChat() : abrirChat()}, svg('wa'), S.chat ? 'Cerrar chat' : 'WhatsApp');
+    })(),
     el('button', {cls:'ch ch--mail', type:'button', onclick:() => enviarPor('email')}, svg('mail'), 'Email'),
     el('button', {cls:'ch ch--sms', type:'button', onclick:() => enviarPor('sms')}, svg('sms'), 'SMS'),
     el('button', {cls:'ch ch--more', type:'button', onclick:menuCliente}, svg('mas'), 'Más acciones'));
@@ -1043,6 +1065,14 @@ function init() {
       e.preventDefault(); $('search').focus();
     }
   });
+
+  // Qué clientes tienen conversación, para habilitar o no el botón. Si la
+  // consulta falla se deja el botón disponible: vale más intentar abrir el
+  // chat que bloquearlo por un fallo pasajero del servicio.
+  fetch('crm_wa_session.php?contacts=1', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : null)
+    .then(d => { if (d && Array.isArray(d.phones)) { S.waPhones = d.phones; pintarDetalle(); } })
+    .catch(() => {});
 
   pintarFiltroProducto();
   pintarLlamada();

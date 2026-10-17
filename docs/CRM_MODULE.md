@@ -147,10 +147,20 @@ El `src` del marco lleva un parámetro de tiempo para forzar una sesión nueva
 en cada apertura, y la cabecera del panel ofrece "Abrir aparte" para usar la
 bandeja completa en otra pestaña.
 
-El cliente de ejemplo del CRM usa el número `+51 957 741 704`, que
-corresponde a una conversación real en Zynerwaba, para que el panel abra con
-contenido. Los demás contactos de la maqueta no tienen hilo asociado: en
-ellos `chat.html` avisa de que no existe.
+**El botón sólo se habilita si el cliente tiene conversación.** Al cargar, el
+CRM consulta `crm_wa_session.php?contacts=1`, que inicia sesión contra
+Zynerwaba y devuelve únicamente los números con hilo abierto (`{"phones":[…]}`;
+ni nombres ni mensajes). Con esa lista el botón WhatsApp queda deshabilitado
+para los clientes sin conversación, explicando el motivo en el tooltip. El
+emparejamiento replica el de Zynerwaba: dígitos, admitiendo que un número sea
+sufijo del otro por el prefijo de país.
+
+Si la consulta falla, `S.waPhones` queda en `null` y **no se bloquea nada**:
+vale más intentar abrir el chat que impedirlo por un fallo pasajero del
+servicio.
+
+El cliente de ejemplo usa `+51 957 741 704`, que corresponde a una
+conversación real, para que el panel abra con contenido.
 
 Equivalencias con el escritorio WinForms del que partió el módulo:
 
