@@ -167,6 +167,34 @@ está en `reserved_agent_user`—, por eso no basta el índice
 recorre el índice primario sin coste apreciable; **si crece mucho, conviene
 un índice sobre `reserved_agent_user`**.
 
+### Resumen del turno (panel "Tipificación de hoy")
+
+El bloque del pie de la columna derecha dejó de ser la maqueta con la meta de
+ventas inventada: ahora sale **de las llamadas reales del agente**.
+
+Se calcula entero en el navegador cruzando dos cosas que ya estaban en
+memoria —la cartera y el árbol de la campaña—, así que **no añade ni una
+consulta**:
+
+| Dato | De dónde sale |
+|---|---|
+| Llamadas | filas de la cartera (las de hoy) |
+| Contactados | tipificaciones con `is_contact` |
+| Ventas | tipificaciones con `is_sale` |
+| Sin tipificar | llamadas sin `disposition_code` |
+| Anillo | contactados ÷ llamadas, en % |
+
+Debajo va el **desglose**: cuántas veces usó el agente cada tipificación hoy,
+con el nombre del árbol y ordenado de mayor a menor. Un código que el árbol no
+reconoce —las tipificaciones antiguas, no jerárquicas— se muestra tal cual en
+vez de desaparecer de la cuenta.
+
+El anillo mide **contactabilidad medida**, no avance contra una meta: la meta
+diaria no existe en la base y no se inventa. Para que esto funcione,
+`agc_fijo()` envía también `is_contact` en cada nodo del árbol, y el navegador
+indexa los códigos de **todas** las campañas del agente (`CODIGOS`), porque la
+cartera puede traer llamadas de una campaña distinta a la seleccionada.
+
 ### Volver a llamar a un cliente
 
 El botón **Llamar** del expediente marca de verdad: si la llamada se corta o
@@ -299,7 +327,7 @@ sin sombras, sin degradados, sin esquinas redondeadas, sin imágenes.
 │ de cliente │  Resumen: info (o chat) + notas │  nota                 │
 │ (avatar,   │   y botonera de canales         │  [grabar] [terminar]  │
 │  prioridad,│  Interacciones: timeline+chips  ├───────────────────────┤
-│  producto, │  Transacciones · Documentos     │ TU PERFORMANCE HOY    │
+│  producto, │  Transacciones · Documentos     │ TIPIFICACIÓN DE HOY   │
 │  cuándo)   │  Notas                          │  anillo + 4 métricas  │
 ├────────────┴─────────────────────────────────┴───────────────────────┤
 │ barra de estado                                                      │
@@ -310,8 +338,8 @@ Decisiones al adoptar la estructura de referencia:
 
 - **La columna de navegación del modelo no se replica**: Zynervox ya aporta su
   sidebar y el módulo vive embebido en él; dos menús en pantalla sobraban. Lo
-  que sí se trajo de esa columna es el bloque **"Tu performance hoy"**, que
-  ocupa el pie del panel derecho.
+  que sí se trajo de esa columna es el bloque del pie del panel derecho, hoy
+  **"Tipificación de hoy"** y alimentado con datos reales.
 - **El panel de asistente del modelo se usa para la tipificación.** Es el
   núcleo del flujo de televentas y necesita un lugar fijo; si en el futuro se
   suma un asistente, convive en esa misma columna.

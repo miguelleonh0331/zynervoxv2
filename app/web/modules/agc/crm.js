@@ -26,6 +26,18 @@
 // lo dice, en vez de ofrecer niveles que el discador no aceptaría.
 let TIPIFICACION = [];
 
+// Índice plano de todos los códigos de todas las campañas del agente. La
+// cartera puede traer llamadas de una campaña distinta a la seleccionada, y el
+// resumen del turno necesita saber qué significa cada código: con esto lo
+// resuelve sin una sola consulta extra.
+let CODIGOS = new Map();
+function indexarCodigos(arboles) {
+  CODIGOS = new Map();
+  for (const id in (arboles || {})) {
+    for (const n of (arboles[id] || [])) if (!CODIGOS.has(n.code)) CODIGOS.set(n.code, n);
+  }
+}
+
 // Reconstruye el árbol desde la lista plana que envía la campaña.
 function armarArbol(nodos) {
   const porCodigo = new Map();
@@ -144,8 +156,6 @@ const CANALES = {
 /* ----------------------------------------------------------------- estado */
 
 const hoyISO = () => new Date().toLocaleDateString('en-CA');
-const haceMin = m => new Date(Date.now() - m * 60000).toISOString();
-const META_VENTAS = 10;   // meta diaria del asesor, para el anillo de avance
 
 const S = {
   operador: document.body.dataset.crmUser || 'OPERADOR',
@@ -227,7 +237,6 @@ const corto = iso => {
   if (dia(d) === dia(ahora)) return 'Hoy ' + d.toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit'});
   return d.toLocaleDateString('es-PE', {day:'2-digit', month:'short'});
 };
-const esHoy = iso => new Date(iso).toLocaleDateString('en-CA') === hoyISO();
 
 function tabla(cols, filas, vacio) {
   if (!filas.length) return el('div', {cls:'empty', txt:vacio || 'Sin registros.'});
@@ -360,6 +369,7 @@ function marcarTipificada(callId, codigo) {
   S.contactos[i].disposition = codigo;
   pintarTabsLista();
   pintarCartera();
+  pintarPerformance();
 }
 
 // Suma o actualiza la llamada en la cartera sin consultar la base.
@@ -1154,6 +1164,9 @@ function aplicarPuesto() {
   if (lead) {
     const nuevo = !S.contactos.some(c => c.id === lead.call_id);
     anotarLlamada(lead);
+    // Aunque la llamada ya estuviera en la cartera, sus datos cambiaron: el
+    // resumen se recalcula para no quedar mostrando el conteo anterior.
+    if (!nuevo) pintarPerformance();
     if (nuevo) { S.actual = S.contactos.findIndex(c => c.id === lead.call_id); pintarTodo(); }
     else { pintarTabsLista(); pintarCartera(); }
   }
@@ -1187,6 +1200,7 @@ function tipificacionPendiente() { return !!(PUESTO && PUESTO.pending); }
 // Carga el árbol de la campaña seleccionada (o de la única manual que haya).
 function elegirArbol() {
   const arboles = (FIJO && FIJO.trees) || {};
+  indexarCodigos(arboles);
   const elegida = (PUESTO && PUESTO.selectedCampaign)
     || (FIJO.campaigns && FIJO.campaigns.length === 1 ? FIJO.campaigns[0].id : 0);
   const nodos = arboles[String(elegida)] || [];
@@ -1371,15 +1385,37 @@ function refrescarCrono() {
   $('callTimer').textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
 }
 
+// Resumen del turno. Sale entero de la cartera, que son las llamadas reales
+// del agente, cruzada con el árbol de la campaña: ninguna consulta propia.
 function pintarPerformance() {
   if (!$('perfKpis')) return;
-  const llamadasHoy = S.interacciones.filter(i => i.tipo === 'llamada' && esHoy(i.f)).length;
-  const ventasHoy = S.ventas.filter(v => v.f === hoyISO()).length;
-  const reunionesHoy = S.agendas.filter(a => a.fecha === hoyISO()).length;
-  const datos = [['Contactos', S.contactos.length], ['Llamadas', llamadasHoy], ['Reuniones', reunionesHoy], ['Ventas', ventasHoy]];
-  $('perfRatio').textContent = ventasHoy + '/' + META_VENTAS;
-  $('perfDonut').style.setProperty('--p', Math.min(100, Math.round(ventasHoy / META_VENTAS * 100)));
+  const total = S.contactos.length;
+  let tipificadas = 0, contactados = 0, ventas = 0;
+  const porEtiqueta = new Map();
+  for (const c of S.contactos) {
+    if (!c.disposition) continue;
+    tipificadas++;
+    const n = CODIGOS.get(c.disposition);
+    if (n && n.contact) contactados++;
+    if (n && n.sale) ventas++;
+    // Un código que el árbol no reconoce (tipificaciones antiguas, no
+    // jerárquicas) se muestra tal cual en vez de desaparecer de la cuenta.
+    const et = n ? n.label : c.disposition;
+    porEtiqueta.set(et, (porEtiqueta.get(et) || 0) + 1);
+  }
+  // El anillo marca contactabilidad: llamadas con contacto efectivo sobre el
+  // total marcado. Es un dato medido, no una meta inventada.
+  const pct = total ? Math.round(contactados / total * 100) : 0;
+  $('perfRatio').textContent = pct + '%';
+  $('perfDonut').style.setProperty('--p', pct);
+
+  const datos = [['Llamadas', total], ['Contactados', contactados], ['Ventas', ventas], ['Sin tipificar', total - tipificadas]];
   $('perfKpis').replaceChildren(...datos.flatMap(([k, v]) => [el('dt', {txt:k}), el('dd', {txt:String(v)})]));
+
+  const filas = [...porEtiqueta.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  $('perfTip').replaceChildren(...(filas.length
+    ? filas.map(([et, n]) => el('div', {cls:'perf-row'}, el('span', {txt:et, title:et}), el('b', {txt:String(n)})))
+    : [el('div', {cls:'perf-row perf-row--vacio', txt:'Todavía no tipificaste llamadas hoy.'})]));
 }
 
 /* ------------------------------------------------------------- arranque */

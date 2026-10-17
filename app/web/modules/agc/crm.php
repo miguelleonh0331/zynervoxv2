@@ -154,6 +154,7 @@ function agc_fijo(string $u): array {
                 'label' => (string)$d['label'],
                 'level' => $nivel,
                 'parent' => Dialer::dispositionParent($code),
+                'contact' => (bool)$d['is_contact'],
                 'sale' => (bool)$d['is_sale'],
                 'retry' => (bool)$d['retryable'],
             ];
@@ -494,19 +495,20 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
       </div>
     </div>
 
-    <!-- Rendimiento del día, traído de la columna de navegación del modelo. -->
+    <!-- Resumen del turno: sale de las llamadas que el agente ya tipificó. -->
     <div class="perf">
-      <h2>Tu performance hoy</h2>
+      <h2>Tipificación de hoy</h2>
       <div class="perf-body">
-        <div class="donut" id="perfDonut"><span id="perfRatio">0/0</span><em>Ventas</em></div>
+        <div class="donut" id="perfDonut"><span id="perfRatio">0%</span><em>Contacto</em></div>
         <dl class="perf-kpis" id="perfKpis"></dl>
       </div>
+      <div class="perf-tip" id="perfTip"></div>
     </div>
   </aside>
 
   <footer class="statusbar">
     <span id="msg">Cargando…</span>
-    <span style="margin-left:auto">Maqueta · datos ficticios, sin base de datos</span>
+    <span style="margin-left:auto">Llamadas y tipificación en vivo · el resto de la ficha es maqueta</span>
   </footer>
 
 </div>
