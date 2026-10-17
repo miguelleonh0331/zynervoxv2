@@ -70,8 +70,8 @@ sin sombras, sin degradados, sin esquinas redondeadas, sin imágenes.
 │ CARTERA    │ EXPEDIENTE DEL CLIENTE          │ TIPIFICAR GESTIÓN     │
 │            │  cabecera: avatar, prioridad,   │  nivel 1 ▾            │
 │ 3 pestañas │  contacto, Editar/Más           │  nivel 2 ▾            │
-│ 2 filtros  │  3 tarjetas: producto, monto,   │  nivel 3 ▾            │
-│            │  origen                         │  desenlace            │
+│ 2 filtros  │                                 │  nivel 3 ▾            │
+│            │                                 │  desenlace            │
 │ tarjetas   │  5 pestañas ───────────────────│  trámite pendiente    │
 │ de cliente │  Resumen: info (o chat) + notas,│  nota                 │
 │ (avatar,   │   canales, últimas interacciones│  [grabar] [terminar]  │
@@ -119,7 +119,7 @@ Equivalencias con el escritorio WinForms del que partió el módulo:
 | Botón campana → modal `Frm_LeadsAsignados` | La cartera *es* la lista de asignados; el total va en la barra de performance |
 | "Buscar Agendados" y "Buscar Rellamados" | Pestaña **Seguimientos** (en el original mostraban la misma entidad) |
 | "Buscar Ventas Agentes" | Pestaña **Transacciones** del expediente |
-| `GroupBox` "Datos del Contacto" | Cabecera + tarjetas KPI + panel "Información del cliente" |
+| `GroupBox` "Datos del Contacto" | Cabecera + panel "Información del cliente" (15 pares, incluidos producto de interés, monto estimado y origen) |
 | `lvw_Telefonos` + menú contextual | Hoja "Gestionar teléfonos", desde la fila Teléfono de la ficha o desde Más acciones |
 | `GboDatosGestiones` | Columna **Tipificar gestión**, fija a la derecha |
 | `lvw_Historial` | Timeline de interacciones, con la gestión como un evento más |

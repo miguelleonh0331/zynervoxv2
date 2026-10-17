@@ -117,8 +117,6 @@ const ICO = {
   nota:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
   gestion:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
   prod:'<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
-  money:'<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
-  origen:'<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
   pin:'<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
   doc:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/>',
   mas:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>'
@@ -430,14 +428,6 @@ function pintarCabecera() {
       el('span', null, svg('tel'), el('b', {txt:c.telefonos[0] ? c.telefonos[0].n : '—'})),
       el('span', null, svg('mail'), el('b', {txt:c.correo})),
       el('span', null, svg('pin'), el('b', {txt:c.ubicacion}))));
-
-  $('kpis').replaceChildren(
-    kpi('prod', 'Producto de interés', c.producto),
-    kpi('money', 'Monto estimado', money(c.monto, c.moneda), true),
-    kpi('origen', 'Origen', c.origen));
-}
-function kpi(ico, et, valor, esMoneda) {
-  return el('dl', {cls:'kpi'}, svg(ico), el('dt', {txt:et}), el('dd', {cls:esMoneda ? 'money' : null, txt:valor, title:valor}));
 }
 
 function menuCliente() {
@@ -528,8 +518,9 @@ function panelInfo(c) {
     ['Teléfono', null], ['Correo', c.correo],
     ['Profesión', c.profesion], ['Empresa', c.empresa],
     ['Ubicación', c.ubicacion], ['Dirección', c.direccion],
-    ['Campaña', c.campania], ['Base', c.base],
-    ['Póliza', c.poliza], ['Vigencia', c.vigencia]
+    ['Producto de interés', c.producto], ['Monto estimado', money(c.monto, c.moneda)],
+    ['Origen', c.origen], ['Campaña', c.campania],
+    ['Base', c.base], ['Póliza', c.poliza], ['Vigencia', c.vigencia]
   ];
   const dl = el('dl', {cls:'kv'});
   for (const [k, v] of datos) {

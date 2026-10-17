@@ -69,7 +69,6 @@ function crm_h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UT
   <!-- Columna 2: expediente del cliente. -->
   <section class="col col--detail">
     <header class="det-head" id="detHead"></header>
-    <div class="kpis" id="kpis"></div>
     <nav class="det-tabs" id="detTabs"></nav>
     <div class="det-body" id="detBody"></div>
   </section>
