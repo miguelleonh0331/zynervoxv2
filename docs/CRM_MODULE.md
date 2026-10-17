@@ -147,6 +147,23 @@ El sondeo es por agente y corre todo el turno, así que se cuida lo que pide:
   (`history`) y después se mantiene sola: el lead ya viaja en cada sondeo, así
   que la lista se actualiza en el navegador sin pedir nada más.
 
+### Al entrar: bienvenida, no la última llamada
+
+Conectado el turno, **no se abre ninguna ficha**: la columna central saluda al
+agente, resume el día (llamadas y cuántas quedan sin tipificar) y enumera cómo
+empezar. Abrir la última llamada —ya cerrada— daba a entender que quedaba
+trabajo pendiente en ella.
+
+Va de la mano con la regla del panel de tipificación: **la cascada sólo está
+viva cuando el discador tiene algo abierto**, sea una llamada en curso o una
+recién colgada. Sin eso los tres niveles quedan deshabilitados y el panel dice
+*"Sin llamada que tipificar"*, en vez de aparentar que espera trabajo. Al
+cerrarse el ciclo la cascada se limpia sola: lo elegido pertenecía a la llamada
+que acaba de cerrarse.
+
+Para retomar a un cliente hay que abrirlo en la cartera y pulsar **Llamar**:
+la tipificación pertenece a una llamada, no a una ficha.
+
 ### Cartera de llamadas
 
 La columna izquierda son **las llamadas que el agente trabajó hoy**, no una

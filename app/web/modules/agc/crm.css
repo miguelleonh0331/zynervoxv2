@@ -204,6 +204,11 @@ button{cursor:pointer}
 .btn--primary:hover{background:var(--primary-hover)}
 .btn--primary:disabled{background:#D9D5CE;color:#8A8A8A;cursor:default}
 
+/* Bienvenida: sin ficha abierta */
+.pasos{margin:0;padding:6px 8px 6px 26px;font-size:12px;line-height:1.7}
+.pasos li{padding:1px 0;border-bottom:1px solid var(--rule)}
+.pasos li:last-child{border-bottom:0}
+
 /* Transcripción en vivo (área de pruebas del motor de voz) */
 .trx{flex:none;display:flex;flex-direction:column;height:150px;background:var(--bg-card);border-top:1px solid var(--border)}
 .trx--plegado{height:auto}

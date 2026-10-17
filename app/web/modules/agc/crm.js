@@ -168,7 +168,7 @@ const S = {
   chip: 'todas',
   chat: null,                // 'whatsapp' mientras la ventana de chat esté abierta
   waPhones: null,            // números con conversación; null = sin dato fiable
-  actual: 0,
+  actual: -1,            // ninguna ficha abierta al entrar
   tip: [null, null, null],
   propuesta: null,
   agenda: null,
@@ -187,7 +187,8 @@ const S = {
 };
 let seq = {gestion:2, venta:2, agenda:3, interaccion:9, doc:4};
 
-const cli = () => S.contactos[S.actual] || S.contactos[0] || null;
+// -1 = ninguna ficha abierta (pantalla de bienvenida).
+const cli = () => (S.actual >= 0 ? S.contactos[S.actual] : null) || null;
 
 /* -------------------------------------------------------------- utilidades */
 
@@ -408,12 +409,22 @@ const nombreDe = id => (S.contactos.find(c => c.id === id) || {}).nombre || '—
 
 // Al empezar el turno la cartera está vacía: no hay expediente que mostrar.
 function pintarSinCliente() {
+  const n = S.contactos.length;
+  const pendientes = S.contactos.filter(c => !c.disposition).length;
   $('detHead').replaceChildren(
-    el('div', {cls:'det-title'}, el('h1', {txt:'Sin llamada en curso'})),
-    el('div', {cls:'det-contact'}, el('span', {txt:'La ficha del cliente aparece al marcar el siguiente lead.'})));
+    el('div', {cls:'det-title'}, el('h1', {txt:'Hola, ' + S.operador})),
+    el('div', {cls:'det-contact'},
+      el('span', {txt:n ? (n + (n === 1 ? ' llamada' : ' llamadas') + ' hoy') : 'Todavía sin llamadas hoy'}),
+      pendientes ? el('span', {txt:pendientes + ' sin tipificar'}) : null,
+      el('span', {txt:'Ninguna ficha abierta'})));
   $('detTabs').replaceChildren();
-  $('detBody').replaceChildren(el('div', {cls:'empty',
-    txt:'Elige una campaña y pulsa «Marcar siguiente lead» para comenzar.'}));
+  $('detBody').replaceChildren(panel('Para empezar', el('ol', {cls:'pasos'},
+    el('li', null, 'Elige la campaña en ', el('b', {txt:'Control de llamada'}), ' y pulsa ',
+      el('b', {txt:'Marcar siguiente lead'}), '.'),
+    el('li', null, 'Atiende en el softphone: la ficha del cliente se abre sola cuando entra la llamada.'),
+    el('li', null, 'Al colgar, tipifica los tres niveles y graba. Recién entonces sale la siguiente llamada.'),
+    el('li', null, 'Para retomar a alguien, ábrelo en la lista de la izquierda y pulsa ',
+      el('b', {txt:'Llamar'}), '.'))));
 }
 
 function pintarCabecera() {
@@ -899,22 +910,37 @@ function nivel(i) {
 }
 const hoja = () => (S.tip[2] !== null ? nivel(2)[S.tip[2]] : null);
 
+// Sólo se tipifica lo que el discador tiene abierto: una llamada en curso o
+// una recién colgada. Fuera de eso la cascada queda inerte, porque dejarla
+// viva daba a entender que quedaba trabajo pendiente de la llamada anterior.
+function hayQueTipificar() { return leadVivo() || tipificacionPendiente(); }
+
 function pintarGestion() {
+  const activa = hayQueTipificar();
   for (let i = 0; i < 3; i++) {
     const sel = $('tip' + i), ops = nivel(i);
     sel.replaceChildren(
       el('option', {value:'', txt:i === 0 ? '— Seleccionar —' : (ops.length ? '— Seleccionar —' : 'Depende del nivel anterior')}),
       ...ops.map((o, k) => el('option', {value:String(k), txt:o.label, selected:S.tip[i] === k})));
-    sel.disabled = i > 0 && !ops.length;
-    sel.closest('.field').classList.toggle('field--on', S.tip[i] !== null);
+    sel.disabled = !activa || (i > 0 && !ops.length);
+    sel.closest('.field').classList.toggle('field--on', activa && S.tip[i] !== null);
   }
   const h = hoja(), out = $('tipOut');
+  const pend = $('tipPend'), btn = $('tipPendBtn');
+
+  if (!activa) {
+    out.textContent = 'Sin llamada que tipificar.';
+    delete out.dataset.kind;
+    pend.hidden = true; btn.hidden = true;
+    $('btnGrabar').disabled = true;
+    return;
+  }
+
   out.textContent = h ? DESENLACE[h.kind]
     : (TIPIFICACION.length ? 'Elige los tres niveles para habilitar el registro.'
                            : 'La campaña no tiene árbol de tipificación cargado.');
   if (h) out.dataset.kind = h.kind; else delete out.dataset.kind;
 
-  const pend = $('tipPend'), btn = $('tipPendBtn');
   if (h && h.kind === 'sale') {
     pend.hidden = false;
     pend.innerHTML = S.propuesta ? 'Propuesta <b>preparada</b>. Se adjunta al grabar.' : 'Falta la <b>propuesta de venta</b>.';
@@ -983,7 +1009,7 @@ function grabarGestion() {
       .then(({ok, d}) => {
         if (!ok || d.error) { aviso('Tipificar', d.error || 'El discador rechazó la tipificación.'); return; }
         marcarTipificada(idLlamada, codigo);
-        registrarGestionLocal(h);
+        registrarGestionLocal(h, idLlamada);
         estado(d.message + ' ' + (PUESTO && PUESTO.autodial && PUESTO.autodial.waiting
           ? 'Preparando la siguiente llamada…' : ''));
       })
@@ -999,8 +1025,11 @@ function grabarGestion() {
 
 // Deja la gestión en el expediente del cliente. Por ahora sólo vive en
 // memoria: la cascada todavía no se persiste en base.
-function registrarGestionLocal(h) {
-  const c = cli();
+function registrarGestionLocal(h, callId) {
+  // La gestión pertenece a la llamada tipificada, no a la ficha que el agente
+  // tenga abierta en ese momento: pueden no ser la misma.
+  const c = (callId ? S.contactos.find(x => x.id === callId) : null) || cli();
+  if (!c) return;
   const n1 = nivel(0)[S.tip[0]].label, n2 = nivel(1)[S.tip[1]].label;
   const nota = $('tipNota').value.trim();
   S.gestiones.push({id:seq.gestion++, contacto:c.id, f:new Date().toISOString(), asesor:S.operador, n1, n2, n3:h.label, nota});
@@ -1149,14 +1178,15 @@ let PUESTO = null;
 let FIJO = {campaigns:[], pauseTypes:[]};   // llega una vez, al conectar
 let sondeo = null;
 let ritmo = 0;                              // cadencia actual del sondeo, en ms
+let ultimoCiclo = null;                     // 'L'/'P'/'' — en qué punto del ciclo quedó
 
 // Carga inicial de la cartera: las llamadas de hoy, en una sola consulta.
 function sembrarCartera(historial) {
   S.contactos = historial.map(deLlamada);
-  S.actual = 0;
-  pintarTabsLista();
-  pintarCartera();
-  if (S.contactos.length) pintarTodo();
+  // Al entrar no se abre ninguna ficha: la última llamada del día ya está
+  // cerrada y abrirla hacía parecer que quedaba trabajo pendiente en ella.
+  S.actual = -1;
+  pintarTodo();
 }
 
 // Tras cada sondeo: la llamada viva (o la que falta tipificar) entra en la
@@ -1176,6 +1206,17 @@ function aplicarPuesto() {
   }
   elegirArbol();
   pintarControl();
+
+  // La cascada se repinta sólo cuando el ciclo cambia de estado, no en cada
+  // sondeo: repintar un <select> mientras el agente lo tiene abierto molesta.
+  // Al cerrarse el ciclo se limpia, porque lo elegido era de la llamada que
+  // acaba de cerrarse.
+  const ciclo = (leadVivo() ? 'L' : '') + (tipificacionPendiente() ? 'P' : '');
+  if (ciclo !== ultimoCiclo) {
+    ultimoCiclo = ciclo;
+    if (!ciclo) limpiarGestion();
+    pintarGestion();
+  }
   ajustarRitmo();
 }
 
