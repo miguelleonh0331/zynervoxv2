@@ -39,16 +39,19 @@ try {
             Dialer::createList($campaignId, (string) ($_POST['list_name'] ?? ''));
             $msg = 'Lista creada.';
         } elseif ($action === 'create_disposition') {
-            Dialer::createDisposition(
+            // El código es jerárquico y lo calcula el sistema a partir del
+            // padre elegido: evita que alguien rompa el formato de seis
+            // dígitos del que depende la lectura del árbol.
+            $codigo = Dialer::createChildDisposition(
                 $campaignId,
-                (string) ($_POST['code'] ?? ''),
+                (string) ($_POST['parent_code'] ?? ''),
                 (string) ($_POST['label'] ?? ''),
                 isset($_POST['is_contact']),
                 isset($_POST['is_sale']),
                 isset($_POST['retryable']),
                 (int) ($_POST['retry_delay_minutes'] ?? 60)
             );
-            $msg = 'Disposición agregada.';
+            $msg = 'Tipificación ' . $codigo . ' creada.';
         } elseif ($action === 'delete_disposition') {
             Dialer::deleteDisposition((int) ($_POST['disposition_id'] ?? 0), $campaignId);
             $msg = 'Disposición eliminada.';
@@ -266,9 +269,10 @@ if ($campaignId) {
                 <thead><tr><th>Código</th><th>Etiqueta</th><th>Contacto</th><th>Venta</th><th>Reintenta</th><th>Espera (min)</th><th></th></tr></thead>
                 <tbody>
                 <?php foreach ($dispositions as $d): ?>
+                    <?php $nivel = Dialer::dispositionLevel((string)$d['code']); ?>
                     <tr>
-                        <td><?php echo h($d['code']); ?></td>
-                        <td><?php echo h($d['label']); ?></td>
+                        <td style="font-variant-numeric:tabular-nums"><?php echo h($d['code']); ?></td>
+                        <td><?php echo $nivel > 1 ? str_repeat('&nbsp;&nbsp;&nbsp;&nbsp;', $nivel - 1) . '↳ ' : ''; ?><?php echo h($d['label']); ?></td>
                         <td><?php echo $d['is_contact'] ? 'Sí' : 'No'; ?></td>
                         <td><?php echo $d['is_sale'] ? 'Sí' : 'No'; ?></td>
                         <td><?php echo $d['retryable'] ? 'Sí' : 'No'; ?></td>
@@ -289,7 +293,17 @@ if ($campaignId) {
             <form method="POST" class="disposition-form">
                 <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>">
                 <input type="hidden" name="action" value="create_disposition">
-                <div class="field"><label>Código</label><input type="text" name="code" maxlength="20" required style="text-transform:uppercase"></div>
+                <div class="field"><label>Depende de</label>
+                    <select name="parent_code">
+                        <option value="">— Nivel 1 (raíz) —</option>
+                        <?php foreach ($dispositions as $d):
+                            $nv = Dialer::dispositionLevel((string)$d['code']);
+                            if ($nv < 1 || $nv >= 3) continue;   // el nivel 3 no admite hijos
+                        ?>
+                        <option value="<?php echo h($d['code']); ?>"><?php echo str_repeat('— ', $nv) . h($d['code'] . ' · ' . $d['label']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
                 <div class="field"><label>Etiqueta</label><input type="text" name="label" maxlength="80" required></div>
                 <div class="field"><label>Espera reintento (min)</label><input type="number" name="retry_delay_minutes" value="60" min="0" max="100000"></div>
                 <label style="display:flex;align-items:center;gap:4px;"><input type="checkbox" name="is_contact" style="width:auto"> Contacto</label>

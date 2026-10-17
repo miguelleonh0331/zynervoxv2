@@ -467,6 +467,49 @@ teléfonos, cola, terminar atención) de punta a punta. El arnés es
 desechable: se escribe en `/tmp` al momento de verificar, no vive en el
 repositorio. Lo importante es qué cubrir, no el archivo.
 
+## Tipificaciones jerárquicas
+
+Las tipificaciones se administran donde ya se administraban: **Campañas →
+[campaña] → Disposiciones**. No hay módulo ni tablas nuevas; se reutiliza
+`v2_dialer_dispositions`, que ya existía.
+
+La jerarquía vive en el propio código, de **ancho fijo: seis dígitos en tres
+tramos de dos**. Los tramos no usados van en `00`, así que el código dice por
+sí solo en qué nivel está y de quién cuelga:
+
+```
+010000   CONTACTADO
+010100     SEGUIMIENTO
+010101       INTERESADO
+010102       VOLVER A LLAMAR
+010200     VENTA
+010201       VENTA CONFIRMADA
+020000   NO CONTACTADO
+020100     NO CONTESTA
+020101       REINTENTAR
+```
+
+Ventajas de resolverlo con el código y no con una tabla de relaciones: el
+nivel y el padre se calculan sin consultar nada (`dispositionLevel()`,
+`dispositionParent()`), y como el orden alfabético coincide con el del árbol,
+basta `ORDER BY code` para listarlo ya jerarquizado.
+
+En el alta **no se escribe el código**: se elige "Depende de" y
+`createChildDisposition()` calcula el siguiente libre bajo ese padre. Eso
+impide romper el formato del que depende toda la lectura. La tabla se muestra
+indentada según el nivel.
+
+Protecciones: `00` es reservado y ningún tramo propio puede valerlo; un
+código con hueco (`010001`) se considera inválido; no se admite un cuarto
+nivel; y una tipificación con subtipificaciones no se puede borrar sin
+eliminar antes sus hijas.
+
+Como la hoja (`010101`) es una disposición real de la campaña, ese mismo
+código sirve para las dos cosas: cerrar la llamada en el discador y quedar en
+el lead como ruta completa. Ya no hace falta traducir la cascada a un código
+aparte. Y los campos que la tabla ya tenía siguen valiendo: **Venta** marca
+la hoja que abre la propuesta, **Reintenta** devuelve el lead a la cola.
+
 ## Qué falta para que deje de ser maqueta
 
 1. **Persistencia.** Hoy todo vive en el objeto `S` de `crm.js`. Hace falta

@@ -1271,7 +1271,104 @@ class Dialer {
         self::audit('DISPOSITION_CREATE', $campaignId . ':' . $code);
     }
 
+    // ---- Tipificaciones jerárquicas -------------------------------------
+    //
+    // El código es de ancho fijo: seis dígitos, tres tramos de dos. Los
+    // tramos no usados van en 00, de modo que el propio código dice en qué
+    // nivel está y de quién cuelga, sin tabla de relaciones:
+    //
+    //   010000  nivel 1          padre: —
+    //   010100  nivel 2          padre: 010000
+    //   010101  nivel 3          padre: 010100
+    //
+    // Como el orden alfabético coincide con el del árbol, basta ORDER BY code
+    // para listarlo ya jerarquizado. `00` queda reservado y ningún tramo
+    // propio puede valer 00.
+    const DISPOSITION_TRAMOS = 3;
+
+    /** Nivel (1..3) de un código jerárquico, o 0 si no sigue el formato. */
+    public static function dispositionLevel(string $code): int {
+        if (!preg_match('/^\d{6}$/D', $code)) return 0;
+        $tramos = str_split($code, 2);
+        $nivel = 0;
+        foreach ($tramos as $i => $t) {
+            if ($t === '00') break;          // a partir de aquí no se usa
+            $nivel = $i + 1;
+        }
+        // Un hueco en medio (0100 01) no describe ningún árbol válido.
+        for ($i = $nivel; $i < self::DISPOSITION_TRAMOS; $i++) {
+            if ($tramos[$i] !== '00') return 0;
+        }
+        return $nivel;
+    }
+
+    /** Código del padre, o '' si es raíz o el código no es jerárquico. */
+    public static function dispositionParent(string $code): string {
+        $nivel = self::dispositionLevel($code);
+        if ($nivel < 2) return '';
+        $tramos = str_split($code, 2);
+        $tramos[$nivel - 1] = '00';
+        return implode('', $tramos);
+    }
+
+    /**
+     * Siguiente código libre bajo un padre. Con $parent vacío devuelve la
+     * siguiente raíz. Lanza si el padre no existe o ya está en el último
+     * nivel, para no inventar un cuarto tramo.
+     */
+    public static function nextDispositionCode(int $campaignId, string $parent = ''): string {
+        $parent = trim($parent);
+        $nivelPadre = 0;
+        if ($parent !== '') {
+            $nivelPadre = self::dispositionLevel($parent);
+            if ($nivelPadre === 0) throw new \RuntimeException('La tipificación padre no es jerárquica.');
+            // Se comprueba la existencia antes que el nivel: así el motivo
+            // del rechazo es el real y no uno derivado del formato.
+            $existe = self::database()->prepare('SELECT 1 FROM v2_dialer_dispositions WHERE campaign_id=? AND code=?');
+            $existe->execute([$campaignId, $parent]);
+            if (!$existe->fetchColumn()) throw new \RuntimeException('La tipificación padre no existe en esta campaña.');
+            if ($nivelPadre >= self::DISPOSITION_TRAMOS) throw new \RuntimeException('El tercer nivel no admite subtipificaciones.');
+        }
+        $nivel = $nivelPadre + 1;
+
+        // Hermanos: comparten los tramos anteriores y usan el propio.
+        $prefijo = $parent === '' ? '' : substr($parent, 0, ($nivel - 1) * 2);
+        $q = self::database()->prepare('SELECT code FROM v2_dialer_dispositions WHERE campaign_id=? AND code LIKE ?');
+        $q->execute([$campaignId, $prefijo . '%']);
+        $usados = [];
+        foreach ($q->fetchAll(PDO::FETCH_COLUMN) as $code) {
+            if (self::dispositionLevel((string)$code) !== $nivel) continue;
+            $usados[] = (int)substr((string)$code, ($nivel - 1) * 2, 2);
+        }
+        for ($n = 1; $n <= 99; $n++) {
+            if (!in_array($n, $usados, true)) {
+                $tramos = $parent === '' ? ['00','00','00'] : str_split($parent, 2);
+                $tramos[$nivel - 1] = str_pad((string)$n, 2, '0', STR_PAD_LEFT);
+                return implode('', $tramos);
+            }
+        }
+        throw new \RuntimeException('No quedan códigos libres en este nivel (máximo 99).');
+    }
+
+    /** Alta indicando el padre; el código lo calcula el sistema. */
+    public static function createChildDisposition(int $campaignId, string $parent, string $label, bool $isContact, bool $isSale, bool $retryable, int $retryDelayMinutes): string {
+        self::campaign($campaignId);
+        $code = self::nextDispositionCode($campaignId, $parent);
+        self::createDisposition($campaignId, $code, $label, $isContact, $isSale, $retryable, $retryDelayMinutes);
+        return $code;
+    }
+
     public static function deleteDisposition(int $dispositionId, int $campaignId): void {
+        // Una tipificación con hijos no se borra sola: dejaría ramas sueltas.
+        $q = self::database()->prepare('SELECT code FROM v2_dialer_dispositions WHERE disposition_id=? AND campaign_id=?');
+        $q->execute([$dispositionId, $campaignId]);
+        $code = (string)$q->fetchColumn();
+        if ($code !== '' && self::dispositionLevel($code) > 0) {
+            $nivel = self::dispositionLevel($code);
+            $hijos = self::database()->prepare('SELECT COUNT(*) FROM v2_dialer_dispositions WHERE campaign_id=? AND code LIKE ? AND code<>?');
+            $hijos->execute([$campaignId, substr($code, 0, $nivel * 2) . '%', $code]);
+            if ((int)$hijos->fetchColumn() > 0) throw new \RuntimeException('Esta tipificación tiene subtipificaciones: elimínalas primero.');
+        }
         self::database()->prepare('DELETE FROM v2_dialer_dispositions WHERE disposition_id=:id AND campaign_id=:c')
             ->execute(['id' => $dispositionId, 'c' => $campaignId]);
         self::audit('DISPOSITION_DELETE', (string) $dispositionId);
