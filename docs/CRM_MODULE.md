@@ -167,6 +167,30 @@ está en `reserved_agent_user`—, por eso no basta el índice
 recorre el índice primario sin coste apreciable; **si crece mucho, conviene
 un índice sobre `reserved_agent_user`**.
 
+### Volver a llamar a un cliente
+
+El botón **Llamar** del expediente marca de verdad: si la llamada se corta o
+el cliente pide que lo vuelvan a llamar, el agente puede rellamarlo sin
+esperar a que la cola lo entregue.
+
+Hasta aquí el discador sólo sabía marcar *el siguiente* lead elegible
+(`originateNext`), lo que hacía imposible volver sobre uno concreto —y un
+lead cerrado como `CONTACTED` ya no vuelve a salir por la cola—. Se añadió
+`Dialer::redialLead(campaña, agente, lead)`, que reutiliza el mismo camino
+de marcado pasando el lead por parámetro (`claimLead(..., $onlyLeadId)`).
+
+Qué **sí** se salta la rellamada, por ser una decisión deliberada del agente:
+el estado del lead y la ventana de reintento. Qué **no** se salta: campaña
+activa y motor en marcha, agente asignado y sin pausa, cupo de llamadas
+simultáneas, anexo SIP válido, horario permitido de la campaña y lista de no
+llamar. Queda auditada como `ORIGINATE_REDIAL` para distinguirla del
+marcado normal.
+
+Genera **un intento nuevo**, tipificable por separado: no toca la llamada
+anterior ni su tipificación. En la consola el botón se bloquea —diciendo por
+qué— si hay una tipificación pendiente o una llamada en curso, y pasa a
+"Colgar" mientras esa llamada está viva.
+
 ### Ciclo manual progresivo
 
 El encadenado de llamadas nace en la tipificación: `setDisposition()` llama a

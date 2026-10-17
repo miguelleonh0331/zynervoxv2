@@ -588,7 +588,7 @@ class Dialer {
     // null si no hay leads elegibles. Un solo proceso a la vez por
     // campaign_id (el CLI que llama a esto se invoca manualmente por ahora,
     // sin cron ni servicio).
-    public static function claimLead(int $campaignId, string $dialPrefix, ?int $capacity = null, ?string $reservedAgent = null, bool $requireRunning = false, ?array $expectedCampaign = null, ?int $autodialSource = null): ?array {
+    public static function claimLead(int $campaignId, string $dialPrefix, ?int $capacity = null, ?string $reservedAgent = null, bool $requireRunning = false, ?array $expectedCampaign = null, ?int $autodialSource = null, ?int $onlyLeadId = null): ?array {
         $db = self::database();
         $db->beginTransaction();
         try {
@@ -615,6 +615,39 @@ class Dialer {
             if ($autodialSource!==null && ($reservedAgent===null || !$requireRunning || $campaign['dial_method']!=='MANUAL' || !$campaign['manual_autodial_enabled'] || (int)$status['selected_campaign_id']!==$campaignId || (int)$status['autodial_source_call_id']!==$autodialSource || $status['due_age']===null || (int)$status['due_age']<0 || (int)$status['due_age']>30)) { $db->commit(); return null; }
             $cap = min((int) $campaign['max_concurrent_calls'], $capacity ?? (int) $campaign['max_concurrent_calls']);
             if (self::inFlightCount($campaignId) >= $cap) { $db->commit(); return null; }
+            // Rellamada dirigida: el agente pide ese lead concreto (se cortó la
+            // llamada, el cliente pidió que lo llamaran). Se saltan el estado
+            // y la ventana de reintento porque es una decisión deliberada,
+            // pero NO el resto: campaña, motor, agente, pausa, cupo, horario
+            // permitido y lista de no llamar siguen aplicando.
+            if ($onlyLeadId !== null) {
+                $uno = $db->prepare(
+                    'SELECT d.lead_id,d.phone_number FROM v2_dialer_leads d
+                     JOIN v2_dialer_lists l ON l.list_id=d.list_id
+                     WHERE d.lead_id=:lead AND l.campaign_id=:c AND l.active=1
+                     AND NOT EXISTS (SELECT 1 FROM v2_dialer_dnc n WHERE n.phone_number=d.phone_number AND (n.campaign_id IS NULL OR n.campaign_id=l.campaign_id))
+                     AND ((:start_time<=:end_time AND TIME(DATE_ADD(UTC_TIMESTAMP(),INTERVAL ROUND(d.gmt_offset*60) MINUTE)) BETWEEN :start1 AND :end1)
+                       OR (:start2>:end2 AND (TIME(DATE_ADD(UTC_TIMESTAMP(),INTERVAL ROUND(d.gmt_offset*60) MINUTE))>=:start3 OR TIME(DATE_ADD(UTC_TIMESTAMP(),INTERVAL ROUND(d.gmt_offset*60) MINUTE))<=:end3)))
+                     LIMIT 1 FOR UPDATE SKIP LOCKED'
+                );
+                $uno->execute(['lead' => $onlyLeadId, 'c' => $campaignId,
+                    'start_time' => $campaign['local_call_time_start'], 'end_time' => $campaign['local_call_time_end'],
+                    'start1' => $campaign['local_call_time_start'], 'end1' => $campaign['local_call_time_end'],
+                    'start2' => $campaign['local_call_time_start'], 'end2' => $campaign['local_call_time_end'],
+                    'start3' => $campaign['local_call_time_start'], 'end3' => $campaign['local_call_time_end']]);
+                $lead = $uno->fetch(PDO::FETCH_ASSOC);
+                if (!$lead) { $db->commit(); return null; }
+                $db->prepare('UPDATE v2_dialer_leads SET status=\'DIALING\',called_count=called_count+1,last_call_time=NOW() WHERE lead_id=:id')
+                    ->execute(['id' => $lead['lead_id']]);
+                $nivelUno = 1;
+                $db->prepare('INSERT INTO v2_dialer_call_log (campaign_id,lead_id,phone_number,originated_at,dial_level_at_origin,reserved_agent_user,agent_slot,disposition_agent_user) VALUES (:c,:l,:p,NOW(),:dl,:agent,:slot,:disposition_agent)')
+                    ->execute(['c' => $campaignId, 'l' => $lead['lead_id'], 'p' => $lead['phone_number'], 'dl' => $nivelUno, 'agent' => $reservedAgent, 'slot' => $reservedAgent, 'disposition_agent' => $campaign['dial_method'] === 'MANUAL' ? $reservedAgent : null]);
+                $callId = (int) $db->lastInsertId();
+                if ($reservedAgent !== null) $db->prepare('UPDATE v2_dialer_agent_status SET autodial_source_call_id=NULL,autodial_due_at=NULL WHERE agent_user=?')->execute([$reservedAgent]);
+                $db->prepare('UPDATE v2_dialer_call_log SET channel_uniqueid=:u WHERE call_id=:id')->execute(['u' => 'zv2dialer-' . $callId, 'id' => $callId]);
+                $db->commit();
+                return ['call_id' => $callId, 'lead_id' => (int) $lead['lead_id'], 'phone_number' => $lead['phone_number']];
+            }
             $order = ['OLDEST_FIRST' => 'd.created_at,d.lead_id', 'RANK_ASC' => 'd.lead_id', 'RANDOM' => 'RAND()', 'LAST_CALL_ASC' => 'd.last_call_time,d.lead_id'][$campaign['lead_order']] ?? 'd.lead_id';
             $stmt = $db->prepare(
                 'SELECT d.lead_id,d.phone_number FROM v2_dialer_leads d
@@ -717,7 +750,7 @@ class Dialer {
         return self::originateFields($campaign,$lead,['active'=>'Y','protocol'=>$route['protocol'],'endpoint'=>$route['endpoint']]);
     }
 
-    public static function originateNext(int $campaignId, ?string $agentUser = null, ?int $autodialSource = null): ?int {
+    public static function originateNext(int $campaignId, ?string $agentUser = null, ?int $autodialSource = null, ?int $onlyLeadId = null): ?int {
         $campaign = self::campaign($campaignId);
         if (!$campaign['active']) return null;
         if ($campaign['engine_state'] !== 'RUNNING') return null;
@@ -743,7 +776,7 @@ class Dialer {
             if ($reservedAgent === null) return null;
         }
         $capacity = $reservedAgent !== null ? (int) $campaign['max_concurrent_calls'] : (int) floor($count * $level);
-        $lead = self::claimLead($campaignId, $campaign['dial_prefix'], $capacity, $reservedAgent, true, $campaign, $autodialSource);
+        $lead = self::claimLead($campaignId, $campaign['dial_prefix'], $capacity, $reservedAgent, true, $campaign, $autodialSource, $onlyLeadId);
         if ($lead === null) return null;
         try {
             if ($reservedAgent !== null) self::suspendReservedAgent($reservedAgent);
@@ -759,8 +792,22 @@ class Dialer {
             self::audit('ORIGINATE_UNCONFIRMED', (string) $lead['call_id']);
             throw $error;
         }
-        self::audit('ORIGINATE', (string) $lead['call_id']);
+        self::audit($onlyLeadId !== null ? 'ORIGINATE_REDIAL' : 'ORIGINATE', (string) $lead['call_id']);
         return $lead['call_id'];
+    }
+
+    /**
+     * Rellamada dirigida a un lead concreto, para cuando la llamada se cortó
+     * o el cliente pidió que lo volvieran a llamar. Genera un intento nuevo,
+     * tipificable por separado: no altera el anterior ni su tipificación.
+     *
+     * Devuelve el call_id, o null si el discador no puede marcar ahora
+     * (sin cupo, agente ocupado o en pausa, fuera del horario permitido,
+     * número en la lista de no llamar).
+     */
+    public static function redialLead(int $campaignId, string $agentUser, int $leadId): ?int {
+        if ($leadId <= 0) throw new \RuntimeException('Lead inválido.');
+        return self::originateNext($campaignId, $agentUser, null, $leadId);
     }
 
     private static function agentWaiting(string $user, array $campaign): bool {

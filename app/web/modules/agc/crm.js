@@ -333,6 +333,7 @@ function pintarCartera() {
 function deLlamada(x) {
   return {
     id: x.call_id,
+    leadId: x.lead_id || 0,
     nombre: x.name || '',
     telefono: x.phone || '',
     campania: x.campaign || '',
@@ -675,11 +676,19 @@ function listaTimeline(items, vacio) {
 
 function botoneraCanales(c) {
   if (!c) return el('div');
-  const enLlamada = !!S.llamada;
-  const propio = enLlamada && S.llamada.contacto === c.id;
+  // El estado de la llamada lo manda el discador, no la maqueta.
+  const viva = !!(PUESTO && PUESTO.lead && !PUESTO.lead.ended);
+  const esEste = viva && PUESTO.lead.call_id === c.id;
+  const trabado = !!(PUESTO && PUESTO.pending);
+  const puedeMarcar = !!c.leadId && !viva && !trabado;
   return el('div', {cls:'channels'},
-    el('button', {cls:'ch ch--call', type:'button', disabled:enLlamada && !propio,
-      onclick:() => propio ? colgar() : llamar()}, svg('tel'), propio ? 'Colgar' : 'Llamar'),
+    el('button', {cls:'ch ch--call', type:'button',
+      disabled:!(esEste || puedeMarcar),
+      title:esEste ? 'Colgar la llamada en curso'
+            : (trabado ? 'Tipifica la llamada anterior antes de volver a marcar'
+            : (viva ? 'Hay una llamada en curso'
+            : (!c.leadId ? 'Este contacto no viene del discador' : 'Volver a llamar a este cliente'))),
+      onclick:() => esEste ? colgar() : llamar()}, svg('tel'), esEste ? 'Colgar' : 'Llamar'),
     (() => {
       const hay = tieneChat(c);
       return el('button', {cls:'ch ch--wa' + (S.chat ? ' is-on' : ''), type:'button',
@@ -702,14 +711,33 @@ function registrar(tipo, titulo, detalle, extra) {
 
 function llamar() {
   const c = cli();
-  if (!c.telefonos.length) { aviso('Llamar', 'El cliente no tiene teléfonos registrados.'); return; }
-  S.llamada = {contacto:c.id, desde:Date.now()};
-  pintarLlamada();
-  pintarDetalle();
-  estado('Llamando a ' + c.telefonos[0].n + '…');
+  if (!c) return;
+  if (!c.leadId || !c.campaignId) {
+    aviso('Llamar', 'Este contacto no viene del discador, así que no se le puede marcar desde aquí.');
+    return;
+  }
+  if (PUESTO && PUESTO.pending) {
+    aviso('Llamar', 'Tipifica la llamada anterior antes de volver a marcar.');
+    return;
+  }
+  if (PUESTO && PUESTO.lead && !PUESTO.lead.ended) {
+    aviso('Llamar', 'Ya hay una llamada en curso. Cuélgala antes de marcar de nuevo.');
+    return;
+  }
+  const boton = $('detBody').querySelector('.ch');
+  if (boton) boton.disabled = true;
+  estado('Rellamando a ' + (c.telefono || c.nombre) + '…');
+  accionDiscador('redial', {campaign_id:String(c.campaignId), lead_id:String(c.leadId)})
+    .then(({ok, d}) => {
+      if (!ok || d.error) { aviso('Llamar', d.error || 'El discador rechazó la rellamada.'); return; }
+      estado(d.message);
+    })
+    .catch(() => aviso('Llamar', 'No se pudo contactar el discador.'))
+    .finally(() => pintarDetalle());
 }
 
 function colgar() {
+  if (PUESTO && PUESTO.lead && !PUESTO.lead.ended) { colgarLlamada(); return; }
   if (!S.llamada) return;
   const seg = Math.round((Date.now() - S.llamada.desde) / 1000);
   const dur = String(Math.floor(seg / 60)).padStart(2, '0') + ':' + String(seg % 60).padStart(2, '0');

@@ -101,6 +101,7 @@ function agc_volatil(string $u): array {
         'pause' => $pausa ? ['label' => (string)$pausa['label'], 'seconds' => (int)$pausa['duration_seconds']] : null,
         'lead' => $lead ? [
             'call_id' => (int)$lead['call_id'],
+            'lead_id' => (int)($lead['lead_id'] ?? 0),
             'phone' => (string)($lead['phone_number'] ?? ''),
             'campaign' => (string)($lead['campaign_name'] ?? ''),
             'campaign_id' => (int)$lead['campaign_id'],
@@ -175,7 +176,7 @@ function agc_fijo(string $u): array {
  * `reserved_agent_user` / `disposition_agent_user`, de ahí el OR.
  */
 function agc_historial(string $u, int $limite = 50): array {
-    $sql = 'SELECT l.call_id,l.campaign_id,l.phone_number,l.originated_at,l.ended_at,l.disposition_code,
+    $sql = 'SELECT l.call_id,l.campaign_id,l.lead_id,l.phone_number,l.originated_at,l.ended_at,l.disposition_code,
                    c.name campaign_name,d.first_name,d.last_name,d.status
             FROM v2_dialer_call_log l
             JOIN v2_dialer_campaigns c ON c.campaign_id=l.campaign_id
@@ -189,6 +190,7 @@ function agc_historial(string $u, int $limite = 50): array {
     foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) {
         $filas[] = [
             'call_id' => (int)$r['call_id'],
+            'lead_id' => (int)$r['lead_id'],
             'campaign_id' => (int)$r['campaign_id'],
             'campaign' => (string)$r['campaign_name'],
             'phone' => (string)$r['phone_number'],
@@ -252,7 +254,7 @@ function agc_tipificar_lead(int $callId, string $agente, string $codigo, string 
     return $u->rowCount() > 0;
 }
 
-$accionesJson = ['bootstrap', 'state', 'manual', 'pause', 'unpause', 'hangup', 'dispose'];
+$accionesJson = ['bootstrap', 'state', 'manual', 'pause', 'unpause', 'hangup', 'dispose', 'redial'];
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && in_array($_POST['action'] ?? '', $accionesJson, true)) {
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
@@ -303,6 +305,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && in_array($_POST['action'
                 case 'hangup':
                     Dialer::agentHangup($usuario, (int)($_POST['call_id'] ?? 0));
                     $mensaje = 'Solicitud de colgar enviada.';
+                    break;
+
+                case 'redial':
+                    // Rellamada dirigida: el agente vuelve a marcar a un
+                    // cliente concreto (se cortó la llamada, pidió que lo
+                    // llamaran). Genera un intento nuevo y tipificable.
+                    $campanaRe = filter_var($_POST['campaign_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+                    $leadRe = filter_var($_POST['lead_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+                    if (!$campanaRe || !$leadRe) throw new RuntimeException('No se puede identificar a quién rellamar.');
+                    Dialer::selectManualCampaign($usuario, $campanaRe);
+                    $nuevo = Dialer::redialLead($campanaRe, $usuario, $leadRe);
+                    $mensaje = $nuevo === null
+                        ? 'No se pudo marcar ahora: revisa cupo, pausa u horario de la campaña.'
+                        : 'Rellamada #' . $nuevo . ' enviada. Contesta en tu softphone.';
                     break;
 
                 case 'dispose':
