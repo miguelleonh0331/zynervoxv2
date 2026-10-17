@@ -1062,6 +1062,42 @@ function guardarAgenda() {
   estado('Rellamada preparada para el ' + fecha + ' a las ' + hora + '.');
 }
 
+/* ------------------------------------------- conexión con el discador */
+
+// Sólo la consola del agente declara data-crm-dialer. Repite la acción
+// "bootstrap" de modules/admin/dialer_agent.php: Dialer::agentLogin comprueba
+// el anexo SIP, marca al agente conectado y lo suma a las colas de sus
+// campañas. Sin ese atributo (CRM del panel) no se hace nada.
+function conectarDiscador() {
+  const destino = document.body.dataset.crmDialer;
+  const caja = $('dialerState');
+  const etiqueta = $('dialerLabel');
+  if (!destino || !caja || !etiqueta) return;
+
+  etiqueta.textContent = 'Conectando…';
+  caja.dataset.on = 'wait';
+
+  fetch(destino, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({action:'bootstrap', ajax:'1', csrf_token:document.body.dataset.crmCsrf || ''})
+  })
+    .then(r => r.json().then(d => ({ok:r.ok, d})))
+    .then(({ok, d}) => {
+      const fallo = !ok || !!d.error;
+      etiqueta.textContent = d.error || d.message || 'Discador';
+      caja.dataset.on = fallo ? 'false' : 'true';
+      caja.title = fallo ? 'No fue posible conectar con el discador' : 'Conectado al discador';
+      estado(fallo ? ('Discador: ' + etiqueta.textContent) : etiqueta.textContent);
+    })
+    .catch(() => {
+      etiqueta.textContent = 'Discador no disponible';
+      caja.dataset.on = 'false';
+      caja.title = 'No se pudo contactar el discador; recarga para reintentar';
+    });
+}
+
 /* ----------------------------------------- llamada en curso y métricas */
 
 let tick = null;
@@ -1140,6 +1176,8 @@ function init() {
     .then(r => r.ok ? r.json() : null)
     .then(d => { if (d && Array.isArray(d.phones)) { S.waPhones = d.phones; pintarDetalle(); } })
     .catch(() => {});
+
+  conectarDiscador();
 
   pintarFiltroProducto();
   pintarLlamada();

@@ -6,9 +6,42 @@
 // Los recursos (crm.css, crm.js) y el puente de WhatsApp siguen viviendo en
 // modules/admin/: se referencian, no se duplican.
 require_once __DIR__ . '/../../includes/Auth.php';
+require_once __DIR__ . '/../../includes/Dialer.php';
 use Includes\Auth;
+use Includes\Dialer;
 
 Auth::checkAccess([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+$usuario = (string)($_SESSION['user'] ?? '');
+if (empty($_SESSION['dialer_csrf'])) $_SESSION['dialer_csrf'] = bin2hex(random_bytes(32));
+
+// Conexión al discador. Es la misma acción "bootstrap" de
+// modules/admin/dialer_agent.php: Dialer::agentLogin valida que el agente
+// tenga anexo SIP activo, lo marca conectado y lo suma a las colas de sus
+// campañas activas. La consola la invoca al abrir y muestra el resultado.
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '') === 'bootstrap') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    $mensaje = '';
+    $fallo = '';
+    if (!is_string($_POST['csrf_token'] ?? null) || !hash_equals($_SESSION['dialer_csrf'], $_POST['csrf_token'])) {
+        $fallo = 'Sesión inválida, recarga la página.';
+    } else {
+        try {
+            $_SESSION['dialer_entered'] = true;
+            Dialer::agentLogin($usuario);
+            $activas = array_filter(Dialer::campaignsForAgent($usuario), static function ($c) { return (bool)$c['active']; });
+            $mensaje = $activas
+                ? 'Conectado · ' . count($activas) . ' campaña' . (count($activas) === 1 ? '' : 's')
+                : 'Sin campañas activas asignadas';
+        } catch (Throwable $e) {
+            $fallo = $e->getMessage();
+        }
+    }
+    if ($fallo !== '') http_response_code(503);
+    echo json_encode(['message' => $mensaje, 'error' => $fallo], JSON_THROW_ON_ERROR);
+    exit;
+}
 
 $operador = (string)($_SESSION['full_name'] ?? $_SESSION['user'] ?? 'OPERADOR');
 $nivel = (int)($_SESSION['user_level'] ?? 1);
@@ -25,7 +58,8 @@ function crm_h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UT
 <link rel="stylesheet" href="../admin/crm-assets/crm.css">
 <script src="../admin/crm-assets/crm.js" defer></script>
 </head>
-<body data-crm-user="<?php echo crm_h($operador); ?>" data-crm-rol="<?php echo crm_h($rol); ?>" data-crm-exit="../../index.php" data-crm-wa="../admin/crm_wa_session.php">
+<body data-crm-user="<?php echo crm_h($operador); ?>" data-crm-rol="<?php echo crm_h($rol); ?>" data-crm-exit="../../index.php" data-crm-wa="../admin/crm_wa_session.php"
+      data-crm-dialer="crm.php" data-crm-csrf="<?php echo crm_h($_SESSION['dialer_csrf']); ?>">
 
 <div id="app">
 
@@ -38,6 +72,11 @@ function crm_h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UT
       <input id="search" type="search" autocomplete="off"
              placeholder="Buscar cliente por nombre, documento o teléfono…">
       <kbd>/</kbd>
+    </div>
+
+    <div class="call-state" id="dialerState" data-on="wait" title="Conexión con el discador">
+      <span class="dot"></span>
+      <span id="dialerLabel">Discador…</span>
     </div>
 
     <div class="call-state" id="callState" data-on="false">

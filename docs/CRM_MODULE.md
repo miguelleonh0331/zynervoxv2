@@ -58,7 +58,23 @@ modules/agc/
 ```
 
 `modules/agc/crm.php` es para quien sólo atiende llamadas: no muestra el menú
-de administración. **No duplica código**: referencia `crm.css`, `crm.js` y
+de administración y **conecta al agente con el discador** al abrirse.
+
+### Conexión con el discador
+
+La consola repite la acción `bootstrap` de `modules/admin/dialer_agent.php`,
+sin tocar ese archivo: al cargar, `crm.js` hace un POST a la propia página con
+`action=bootstrap` y el token CSRF, y ésta llama a `Dialer::agentLogin()`, que
+valida que el agente tenga anexo SIP activo, lo marca conectado en
+`v2_dialer_agent_status` y lo suma a las colas de sus campañas activas.
+
+El resultado se muestra en la barra superior junto al estado de llamada:
+verde con el número de campañas, gris mientras conecta, rojo con el motivo si
+falla (sin anexo asignado, anexo inactivo, discador caído). Un token inválido
+responde 503 y sin sesión de Zynervox se redirige al login.
+
+Sólo ocurre en esta consola: se activa por el atributo `data-crm-dialer` del
+`<body>`, que el CRM del panel no declara. **No duplica código**: referencia `crm.css`, `crm.js` y
 `crm_wa_session.php` de `modules/admin/`. Por eso `crm.js` toma el endpoint de
 WhatsApp del atributo `data-crm-wa` del `<body>` (con `crm_wa_session.php` por
 defecto, que es lo que usa admin) en lugar de llevarlo fijo, y el botón

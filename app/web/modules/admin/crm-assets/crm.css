@@ -41,6 +41,13 @@ button{cursor:pointer}
 .call-state b{color:#fff;font-variant-numeric:tabular-nums}
 .call-state[data-on=true]{border-color:var(--ok);background:rgba(21,128,61,.18);color:#D7F5E2}
 .call-state[data-on=true] .dot{background:#22C55E}
+/* Conexión con el discador: a la espera y en fallo. */
+.call-state[data-on=wait]{border-color:#6B7280;color:#9CA0AC}
+.call-state[data-on=wait] .dot{background:#9CA0AC}
+.call-state[data-on=false]#dialerState{border-color:var(--danger);background:rgba(185,28,28,.18);color:#FCA5A5}
+.call-state[data-on=false]#dialerState .dot{background:var(--danger)}
+#dialerState{margin-left:0;max-width:280px}
+#dialerLabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .who{display:flex;align-items:center;gap:7px;padding:0 10px 0 14px}
 .who-txt{display:flex;flex-direction:column;line-height:1.15}
 .who-txt b{font-size:11px;color:#fff}
