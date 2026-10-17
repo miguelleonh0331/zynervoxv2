@@ -134,16 +134,36 @@ function agc_volatil(string $u): array {
  */
 function agc_fijo(string $u): array {
     $manuales = [];
+    $arboles = [];
     foreach (Dialer::campaignsForAgent($u) as $c) {
-        if ($c['active'] && $c['dial_method'] === 'MANUAL') {
-            $manuales[] = ['id' => (int)$c['campaign_id'], 'name' => (string)$c['name']];
+        if (!$c['active'] || $c['dial_method'] !== 'MANUAL') continue;
+        $id = (int)$c['campaign_id'];
+        $manuales[] = ['id' => $id, 'name' => (string)$c['name']];
+
+        // Árbol de tipificación de la campaña. Las hojas y los nodos
+        // intermedios llegan planos; el nivel y el padre salen del código,
+        // así que el navegador reconstruye la cascada sin más consultas.
+        $nodos = [];
+        foreach (Dialer::dispositions($id) as $d) {
+            $code = (string)$d['code'];
+            $nivel = Dialer::dispositionLevel($code);
+            if ($nivel === 0) continue;   // códigos antiguos, no jerárquicos
+            $nodos[] = [
+                'code' => $code,
+                'label' => (string)$d['label'],
+                'level' => $nivel,
+                'parent' => Dialer::dispositionParent($code),
+                'sale' => (bool)$d['is_sale'],
+                'retry' => (bool)$d['retryable'],
+            ];
         }
+        $arboles[(string)$id] = $nodos;
     }
     $motivos = [];
     foreach (Dialer::pauseTypes() as $t) {
         if ($t['active']) $motivos[] = ['id' => (int)$t['pause_type_id'], 'label' => (string)$t['label']];
     }
-    return ['campaigns' => $manuales, 'pauseTypes' => $motivos];
+    return ['campaigns' => $manuales, 'pauseTypes' => $motivos, 'trees' => $arboles];
 }
 
 /**

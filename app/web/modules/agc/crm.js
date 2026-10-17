@@ -17,42 +17,37 @@
 
 /* --------------------------------------------------------------- catálogos */
 
-const TIPIFICACION = [
-  {label:'CONTACTADO', hijos:[
-    {label:'SEGUIMIENTO', hijos:[
-      {label:'INTERESADO', kind:'normal'},
-      {label:'VOLVER A LLAMAR', kind:'recall'}]},
-    {label:'VENTA', hijos:[
-      {label:'VENTA CONFIRMADA', kind:'sale'}]},
-    {label:'SIN INTERÉS', hijos:[
-      {label:'NO INTERESADO', kind:'normal'},
-      {label:'NO AUTORIZA DATOS', kind:'normal'}]}]},
-  {label:'NO CONTACTADO', hijos:[
-    {label:'NO CONTESTA', hijos:[
-      {label:'REINTENTAR', kind:'normal'},
-      {label:'AGENDAR LLAMADA', kind:'recall'}]},
-    {label:'NÚMERO ERRADO', hijos:[
-      {label:'NO CORRESPONDE', kind:'normal'}]}]}
-];
-// La consola tipifica con la cascada de tres niveles; el discador sólo
-// entiende sus códigos de disposición. El nivel 1 ya coincide con ellos, así
-// que basta traducir por ahí. Si una campaña usara otros códigos, aquí es
-// donde hay que ampliarlo.
-const CODIGO_DISCADOR = {
-  'CONTACTADO': ['01', 'contacto'],
-  'NO CONTACTADO': ['02', 'nocontacto']
-};
+// El árbol de tipificación lo define cada campaña en su pestaña de
+// Disposiciones y llega con el bootstrap. Los códigos son de seis dígitos en
+// tres tramos, así que la jerarquía se reconstruye sin consultar nada:
+// 010000 es nivel 1, 010100 cuelga de él y 010101 del anterior.
+//
+// Si la campaña no tiene árbol cargado, la cascada queda vacía y la consola
+// lo dice, en vez de ofrecer niveles que el discador no aceptaría.
+let TIPIFICACION = [];
 
-function codigoPara(nivel1, disponibles) {
-  const esperado = CODIGO_DISCADOR[String(nivel1 || '').toUpperCase()];
-  if (!esperado || !disponibles || !disponibles.length) return null;
-  // Primero por código exacto; si la campaña los nombró distinto, por etiqueta.
-  const porCodigo = disponibles.find(d => d.code === esperado[0]);
-  if (porCodigo) return porCodigo.code;
-  const porEtiqueta = disponibles.find(d => String(d.label || '').toLowerCase().replace(/\s+/g, '') === esperado[1]);
-  return porEtiqueta ? porEtiqueta.code : null;
+// Reconstruye el árbol desde la lista plana que envía la campaña.
+function armarArbol(nodos) {
+  const porCodigo = new Map();
+  for (const n of (nodos || [])) {
+    porCodigo.set(n.code, {code:n.code, label:n.label, kind:desenlaceDe(n), hijos:[]});
+  }
+  const raices = [];
+  for (const n of (nodos || [])) {
+    const nodo = porCodigo.get(n.code);
+    const padre = n.parent ? porCodigo.get(n.parent) : null;
+    if (padre) padre.hijos.push(nodo);
+    else if (n.level === 1) raices.push(nodo);
+  }
+  return raices;
 }
 
+// El desenlace sale de las marcas que la propia disposición ya tiene.
+function desenlaceDe(n) {
+  if (n.sale) return 'sale';
+  if (n.retry) return 'recall';
+  return 'normal';
+}
 const DESENLACE = {
   sale:'Requiere registrar la propuesta de venta.',
   recall:'Requiere agendar fecha y hora de rellamada.',
@@ -861,7 +856,9 @@ function pintarGestion() {
     sel.closest('.field').classList.toggle('field--on', S.tip[i] !== null);
   }
   const h = hoja(), out = $('tipOut');
-  out.textContent = h ? DESENLACE[h.kind] : 'Elige los tres niveles para habilitar el registro.';
+  out.textContent = h ? DESENLACE[h.kind]
+    : (TIPIFICACION.length ? 'Elige los tres niveles para habilitar el registro.'
+                           : 'La campaña no tiene árbol de tipificación cargado.');
   if (h) out.dataset.kind = h.kind; else delete out.dataset.kind;
 
   const pend = $('tipPend'), btn = $('tipPendBtn');
@@ -913,10 +910,11 @@ function grabarGestion() {
   const porCerrar = (PUESTO && (PUESTO.pending || PUESTO.lead)) || null;
   if (porCerrar) {
     const idLlamada = (PUESTO.pending ? PUESTO.pending.call_id : PUESTO.lead.call_id);
-    const nivel1 = nivel(0)[S.tip[0]].label;
-    const codigo = codigoPara(nivel1, PUESTO.dispositions);
+    // La hoja elegida ES la disposición de la campaña: su código cierra la
+    // llamada en el discador y es la ruta que queda en el lead.
+    const codigo = h.code || '';
     if (!codigo) {
-      aviso('Tipificar', 'La campaña no tiene un código equivalente a «' + nivel1 + '». Avisa a tu supervisor.');
+      aviso('Tipificar', 'Esta tipificación no tiene código de campaña. Revisa el árbol en Disposiciones.');
       return;
     }
     const boton = $('btnGrabar');
@@ -926,7 +924,7 @@ function grabarGestion() {
     // la cascada completa queda en el lead.
     accionDiscador('dispose', {
       call_id:String(idLlamada), code:codigo,
-      n1:nivel1, n2:nivel(1)[S.tip[1]].label, n3:h.label,
+      n1:nivel(0)[S.tip[0]].label, n2:nivel(1)[S.tip[1]].label, n3:h.label,
       nota:$('tipNota').value.trim()
     })
       .then(({ok, d}) => {
@@ -1117,6 +1115,7 @@ function aplicarPuesto() {
     if (nuevo) { S.actual = S.contactos.findIndex(c => c.id === lead.call_id); pintarTodo(); }
     else { pintarTabsLista(); pintarCartera(); }
   }
+  elegirArbol();
   pintarControl();
   ajustarRitmo();
 }
@@ -1132,7 +1131,7 @@ function accionDiscador(accion, extra) {
   })
     .then(r => r.json().then(d => ({ok:r.ok, d})))
     .then(({ok, d}) => {
-      if (d && d.fixed) FIJO = d.fixed;                       // sólo al conectar
+      if (d && d.fixed) { FIJO = d.fixed; elegirArbol(); }     // sólo al conectar
       if (d && Array.isArray(d.history)) sembrarCartera(d.history);
       if (d && d.state) { PUESTO = d.state; aplicarPuesto(); }
       return {ok, d};
@@ -1142,6 +1141,18 @@ function accionDiscador(accion, extra) {
 // Lead que el agente está atendiendo o acaba de colgar sin tipificar.
 function leadVivo() { return !!(PUESTO && PUESTO.lead); }
 function tipificacionPendiente() { return !!(PUESTO && PUESTO.pending); }
+
+// Carga el árbol de la campaña seleccionada (o de la única manual que haya).
+function elegirArbol() {
+  const arboles = (FIJO && FIJO.trees) || {};
+  const elegida = (PUESTO && PUESTO.selectedCampaign)
+    || (FIJO.campaigns && FIJO.campaigns.length === 1 ? FIJO.campaigns[0].id : 0);
+  const nodos = arboles[String(elegida)] || [];
+  const antes = JSON.stringify(TIPIFICACION.map(n => n.code));
+  TIPIFICACION = armarArbol(nodos);
+  // Si cambió el árbol, la cascada a medio elegir deja de ser válida.
+  if (JSON.stringify(TIPIFICACION.map(n => n.code)) !== antes) S.tip = [null, null, null];
+}
 
 function pintarControl() {
   const sel = $('ctlCampaign');

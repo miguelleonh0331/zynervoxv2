@@ -211,19 +211,21 @@ El orden importa: primero el discador, después el lead. Si la escritura en el
 lead fallara, la llamada ya quedó cerrada y se avisa («Llamada tipificada (no
 se pudo escribir en el lead)») en vez de deshacer el cierre.
 
-La cascada de tres niveles se conserva como modelo de la consola y se traduce
-al código que el discador espera. El nivel 1 ya coincide con las
-disposiciones de la campaña:
+**La cascada la define la campaña, no el código.** El árbol llega con el
+`bootstrap` (`fixed.trees`) desde las disposiciones de la campaña y la
+consola lo reconstruye con `armarArbol()`: los códigos de seis dígitos dicen
+el nivel y el padre, así que no hace falta ninguna consulta extra ni repetir
+el árbol en cada sondeo.
 
-| Nivel 1 | Código |
-|---|---|
-| CONTACTADO | `01` contacto |
-| NO CONTACTADO | `02` NoContacto |
+El desenlace de cada hoja sale de las marcas que la disposición ya tiene:
+**Venta** → abre la propuesta, **Reintenta** → exige agendar rellamada, y si
+no tiene ninguna se registra sin trámite.
 
-La traducción (`codigoPara`) busca primero por código y, si la campaña los
-nombró distinto, por etiqueta; si no encuentra equivalencia **no inventa
-ninguno**: avisa y no tipifica. Los niveles 2 y 3 quedan en pantalla, sin
-guardarse, hasta decidir dónde persistirlos.
+Ya no hay traducción de cascada a código: **la hoja elegida es la disposición
+de la campaña**, de modo que su código (`010101`) cierra la llamada en el
+discador y es la ruta que queda en el lead. Si una campaña no tiene árbol
+jerárquico cargado, la cascada aparece vacía y lo dice, en lugar de ofrecer
+niveles que el discador rechazaría.
 
 Mientras dura el ciclo, la ficha "Información del cliente" muestra **el lead
 del discador** (intento, teléfono, nombre, campaña, estado de la llamada y
