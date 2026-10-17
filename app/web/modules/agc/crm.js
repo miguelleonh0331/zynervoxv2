@@ -737,9 +737,14 @@ function botoneraCanales(c) {
     el('button', {cls:'ch ch--more', type:'button', onclick:menuCliente}, svg('mas'), 'Más acciones'));
 }
 
-function registrar(tipo, titulo, detalle, extra) {
+// idContacto es opcional: sin él la interacción cuelga de la ficha abierta.
+// Quien tipifica una llamada debe pasarlo, porque la ficha puede haber
+// cambiado (o no haber ninguna) para cuando el discador responde.
+function registrar(tipo, titulo, detalle, extra, idContacto) {
+  const destino = (idContacto != null) ? idContacto : (cli() ? cli().id : null);
+  if (destino === null) return;
   S.interacciones.push(Object.assign({
-    id:seq.interaccion++, contacto:cli().id, tipo, titulo, detalle,
+    id:seq.interaccion++, contacto:destino, tipo, titulo, detalle,
     f:new Date().toISOString(), autor:S.operador
   }, extra || {}));
 }
@@ -989,6 +994,10 @@ function grabarGestion() {
   const porCerrar = (PUESTO && (PUESTO.pending || PUESTO.lead)) || null;
   if (porCerrar) {
     const idLlamada = (PUESTO.pending ? PUESTO.pending.call_id : PUESTO.lead.call_id);
+    // Copia de lo tipificado ANTES de hablar con el discador: su respuesta
+    // cierra el ciclo y eso vacía la cascada, así que leerla después deja la
+    // gestión sin los niveles que el agente acababa de elegir.
+    const copia = capturarGestion(h);
     // La hoja elegida ES la disposición de la campaña: su código cierra la
     // llamada en el discador y es la ruta que queda en el lead.
     const codigo = h.code || '';
@@ -1006,42 +1015,61 @@ function grabarGestion() {
       n1:nivel(0)[S.tip[0]].label, n2:nivel(1)[S.tip[1]].label, n3:h.label,
       nota:$('tipNota').value.trim()
     })
-      .then(({ok, d}) => {
-        if (!ok || d.error) { aviso('Tipificar', d.error || 'El discador rechazó la tipificación.'); return; }
-        marcarTipificada(idLlamada, codigo);
-        registrarGestionLocal(h, idLlamada);
-        estado(d.message + ' ' + (PUESTO && PUESTO.autodial && PUESTO.autodial.waiting
-          ? 'Preparando la siguiente llamada…' : ''));
-      })
-      .catch(() => aviso('Tipificar', 'No se pudo contactar el discador; la gestión no se registró.'))
+      .then(
+        ({ok, d}) => {
+          if (!ok || d.error) { aviso('Tipificar', d.error || 'El discador rechazó la tipificación.'); return; }
+          // Desde aquí la llamada YA está tipificada en base. Lo que sigue es
+          // sólo la copia en pantalla: si fallara, no puede anunciarse como un
+          // fallo del discador ni perder la tipificación que ya quedó grabada.
+          marcarTipificada(idLlamada, codigo);
+          try { registrarGestionLocal(copia, idLlamada); }
+          catch (e) { aviso('Tipificar', 'La llamada quedó tipificada, pero no se pudo reflejar en el expediente.'); }
+          estado(d.message + ' ' + (PUESTO && PUESTO.autodial && PUESTO.autodial.waiting
+            ? 'Preparando la siguiente llamada…' : ''));
+        },
+        () => aviso('Tipificar', 'No se pudo contactar el discador; la gestión no se registró.'))
       .finally(() => { pintarGestion(); });
     return;
   }
 
   // Sin llamada del discador (cliente abierto a mano) se registra y ya.
-  registrarGestionLocal(h);
+  registrarGestionLocal(capturarGestion(h));
   estado('Gestión registrada.');
+}
+
+// Congela la gestión tal como está en pantalla en este instante.
+function capturarGestion(h) {
+  const n0 = nivel(0)[S.tip[0]], n1 = nivel(1)[S.tip[1]];
+  const nota = $('tipNota');
+  return {
+    n1:n0 ? n0.label : '', n2:n1 ? n1.label : '', n3:h.label, kind:h.kind,
+    nota:nota ? nota.value.trim() : '',
+    propuesta:S.propuesta, agenda:S.agenda,
+    contacto:cli() ? cli().id : null
+  };
 }
 
 // Deja la gestión en el expediente del cliente. Por ahora sólo vive en
 // memoria: la cascada todavía no se persiste en base.
-function registrarGestionLocal(h, callId) {
+function registrarGestionLocal(g, callId) {
   // La gestión pertenece a la llamada tipificada, no a la ficha que el agente
   // tenga abierta en ese momento: pueden no ser la misma.
-  const c = (callId ? S.contactos.find(x => x.id === callId) : null) || cli();
+  const porLlamada = callId ? S.contactos.find(x => x.id === callId) : null;
+  const c = porLlamada || (g.contacto != null ? S.contactos.find(x => x.id === g.contacto) : null) || cli();
   if (!c) return;
-  const n1 = nivel(0)[S.tip[0]].label, n2 = nivel(1)[S.tip[1]].label;
-  const nota = $('tipNota').value.trim();
-  S.gestiones.push({id:seq.gestion++, contacto:c.id, f:new Date().toISOString(), asesor:S.operador, n1, n2, n3:h.label, nota});
-  registrar('gestion', 'Gestión registrada', n1 + ' › ' + n2 + ' › ' + h.label + (nota ? ' — ' + nota : ''));
+  const nota = g.nota;
+  S.gestiones.push({id:seq.gestion++, contacto:c.id, f:new Date().toISOString(), asesor:S.operador,
+    n1:g.n1, n2:g.n2, n3:g.n3, nota});
+  registrar('gestion', 'Gestión registrada',
+    g.n1 + ' › ' + g.n2 + ' › ' + g.n3 + (nota ? ' — ' + nota : ''), null, c.id);
 
-  if (S.propuesta) {
+  if (g.propuesta) {
     S.ventas.push({id:seq.venta++, contacto:c.id, f:hoyISO(), asesor:S.operador,
-      producto:S.propuesta.CbTipoSeguro || c.producto,
-      estado:S.propuesta.CbTipoEstado || 'PENDIENTE', subestado:S.propuesta.CbEstado || 'POR REVISAR',
-      prima:S.propuesta.TxtIMPORTE_PACTADO || '0.00'});
+      producto:g.propuesta.CbTipoSeguro || c.producto,
+      estado:g.propuesta.CbTipoEstado || 'PENDIENTE', subestado:g.propuesta.CbEstado || 'POR REVISAR',
+      prima:g.propuesta.TxtIMPORTE_PACTADO || '0.00'});
   }
-  if (S.agenda) S.agendas.push({id:seq.agenda++, contacto:c.id, fecha:S.agenda.fecha, hora:S.agenda.hora, nota:S.agenda.nota});
+  if (g.agenda) S.agendas.push({id:seq.agenda++, contacto:c.id, fecha:g.agenda.fecha, hora:g.agenda.hora, nota:g.agenda.nota});
 
   limpiarGestion();
   pintarTodo();
