@@ -566,11 +566,14 @@ function panelChat(c) {
   // La sesión caduca; se fuerza una carga nueva en cada apertura.
   const marco = el('iframe', {cls:'chat-frame', id:'chatFrame', title:'Conversación de WhatsApp',
     src:url, onload:encajarChat});
+  // El marco permanece oculto hasta que la conversación está montada, para
+  // no enseñar el formulario de acceso de Zynerwaba mientras se resuelve.
+  const cargando = el('div', {cls:'chat-load', id:'chatLoad', txt:'Abriendo conversación…'});
   return el('section', {cls:'panel panel--chat'},
     el('h3', null,
       el('span', {txt:'WhatsApp · ' + c.nombre}),
       el('span', {cls:'spacer'}), destino, abrirAparte, cerrar),
-    el('div', {cls:'panel-body chat-body', id:'chatBody'}, marco));
+    el('div', {cls:'panel-body chat-body', id:'chatBody'}, cargando, marco));
 }
 
 // Zynerwaba sirve su chat con un diseño pensado para móvil: tarjeta de 480 px
@@ -600,12 +603,34 @@ function encajarChat(ev) {
   const marco = ev && ev.target;
   if (!marco) return;
   let doc = null;
-  try { doc = marco.contentDocument; } catch (e) { return; }  // otro origen: no se toca
-  if (!doc || !doc.head || doc.getElementById('crmEmbedCss')) return;
-  const hoja = doc.createElement('style');
-  hoja.id = 'crmEmbedCss';
-  hoja.textContent = CHAT_EMBED_CSS;
-  doc.head.appendChild(hoja);
+  try { doc = marco.contentDocument; } catch (e) { mostrarChat(); return; }  // otro origen
+  if (!doc || !doc.head) { mostrarChat(); return; }
+  if (!doc.getElementById('crmEmbedCss')) {
+    const hoja = doc.createElement('style');
+    hoja.id = 'crmEmbedCss';
+    hoja.textContent = CHAT_EMBED_CSS;
+    doc.head.appendChild(hoja);
+  }
+  esperarConversacion(doc, 0);
+}
+
+// El marco dispara "load" con el documento listo, pero Zynerwaba todavía
+// tiene que validar la sesión, traer los contactos y abrir el hilo. Hasta
+// que eso ocurre se vería su pantalla de acceso, así que se espera a que la
+// vista de conversación aparezca. Tope de 5 s para no dejarlo tapado si algo
+// sale distinto de lo previsto.
+function esperarConversacion(doc, intentos) {
+  let vista = null;
+  try { vista = doc.getElementById('chatView'); } catch (e) { mostrarChat(); return; }
+  if ((vista && !vista.classList.contains('hidden')) || intentos >= 50) { mostrarChat(); return; }
+  setTimeout(() => esperarConversacion(doc, intentos + 1), 100);
+}
+
+function mostrarChat() {
+  const marco = $('chatFrame');
+  if (marco) marco.classList.add('is-ready');
+  const aviso2 = $('chatLoad');
+  if (aviso2) aviso2.remove();
 }
 
 function abrirChat() {

@@ -162,6 +162,13 @@ oculta esos dos botones. Si el servicio cambiara su maquetado, las reglas
 dejarían de aplicar pero **el chat seguiría funcionando**; y si el marco
 resultara inaccesible, la función sale sin hacer nada.
 
+El marco permanece oculto (`visibility:hidden`) mostrando "Abriendo
+conversación…" hasta que la conversación está montada: así no se ve el
+formulario de acceso de Zynerwaba, que su HTML trae visible por defecto
+mientras el JS valida la sesión, trae los contactos y abre el hilo. El
+destape espera a que `#chatView` deje de estar oculto, con un tope de 5 s
+para no tapar el panel si algo sale distinto.
+
 Queda deliberadamente visible la lista de contactos en el caso raro de que
 Zynerwaba no encuentre el hilo (número recién cambiado, por ejemplo): es
 preferible a dejar el panel en blanco. En la práctica no debería ocurrir,
