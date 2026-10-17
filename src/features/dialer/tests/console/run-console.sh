@@ -1,0 +1,11 @@
+#!/bin/bash
+# Comprueba la consola del agente (app/web/modules/agc) sin navegador ni base
+# de datos: levanta el marcado real de crm.php en un mini-DOM y ejecuta el
+# crm.js real contra un discador simulado.
+#
+# No toca MariaDB, Asterisk ni el despliegue. Se puede correr en cualquier
+# momento, también con el motor en marcha.
+set -euo pipefail
+here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+command -v node >/dev/null || { echo 'Falta node para ejecutar esta prueba.' >&2; exit 1; }
+exec node "$here/console.js"

@@ -2617,3 +2617,52 @@ Validation: PHP 7.4 lint and matching source/deployment checksum, root:www0640, 
 ## 2026-10-16 - Export IVR editor flow as Markdown
 
 Added Exportar beside Resultados. Browser downloads current editor state as Markdown with Mermaid diagram and complete node configuration, including unpublished edits. No API, database or publication changes.
+
+### 2026-10-17 17:39 - dialer_AGENT - dialer
+
+Tipo: feature
+
+Resumen:
+Consola del agente en modules/agc conectada al discador real: llamada manual, ciclo manual progresivo, cascada de tipificación de tres niveles leída de la campaña y guardada en el lead, rellamada dirigida, cartera alimentada por el discador y resumen del turno sin consultas adicionales.
+
+Motivo:
+El agente de televentas necesitaba una consola propia y aislada para operar el marcador manual progresivo, con la tipificación jerárquica que exige la operación y sin aumentar la carga de consultas sobre MariaDB.
+
+Archivos modificados:
+- app/web/modules/agc/crm.php
+- app/web/modules/agc/crm.js
+- app/web/modules/agc/crm.css
+- app/web/modules/agc/login_view.php
+- app/web/modules/agc/logout.php
+- app/web/modules/agc/crm_wa_session.php
+- app/web/includes/Dialer.php
+- app/web/modules/admin/dialer_campaign_edit.php
+- src/features/dialer/models/003-dispositions.sql
+- docs/CRM_MODULE.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+El expediente del cliente sigue siendo maqueta: lo real son las llamadas y la tipificación. Dos pendientes conocidos quedan documentados en docs/CRM_MODULE.md: la tipificación pendiente no tiene límite de fecha y puede bloquear al agente entre días, y al conectar con una tipificación pendiente la ficha de esa llamada no se abre.
+
+### 2026-10-17 17:39 - dialer_AGENT - dialer
+
+Tipo: test
+
+Resumen:
+Banco de pruebas de la consola del agente incorporado al repositorio en src/features/dialer/tests/console: 110 comprobaciones sobre el marcado real de crm.php y el crm.js real, en un mini-DOM, sin navegador ni base de datos.
+
+Motivo:
+Vivía en /tmp y se perdía al reiniciar. Es lo que detectó la regresión que anunciaba un fallo de red cuando la tipificación sí se había guardado.
+
+Archivos modificados:
+- src/features/dialer/tests/console/console.js
+- src/features/dialer/tests/console/dom.js
+- src/features/dialer/tests/console/run-console.sh
+
+Contrato:
+- sin cambios
+
+Riesgos:
+Simula el discador: no sustituye las pruebas SIP ni la verificación contra datos reales.

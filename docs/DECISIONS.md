@@ -1159,3 +1159,28 @@ Approved scope: Bot IVR list navigation and a read-only level-9 search page, plu
 ## 2026-10-16 - Zynerdesk isolated entrypoint (primary-agent architecture review)
 
 Approve exact modules/admin/zynerdesk.php in Core IsolatedGate, consuming the existing Zynerdesk contract and level-9 Auth. Existing native backend, proxy and matching SSO configuration are healthy; no reinstall, service restart, database, proxy, credentials or remote-agent changes. Do not allow the separate service-control endpoints or any wildcard.
+
+### ADR-0023 - Especialista dedicado para el dialer, con la consola del agente dentro de su alcance
+
+Fecha: 2026-10-17
+
+Estado: aceptada
+
+Contexto:
+El módulo dialer usaba el agente genérico pese a ser el más complejo del sistema. La consola del agente (app/web/modules/agc) se construyó estos días sin dueño declarado, y los arreglos se repartieron entre el navegador y el motor: de siete correcciones, tres estuvieron en Dialer.php y cuatro en crm.js.
+
+Decisión:
+Crear agents/dialer_AGENT.md cubriendo el ciclo de llamada completo: Dialer.php, modules/agc, los paneles de agente y campaña, las migraciones y las pruebas del módulo. El archivo incorpora las trampas conocidas, las reglas que fijó el usuario y cómo verificar sin navegador, en vez de dejar la sección de reglas pendiente.
+
+Motivo:
+Un especialista limitado a la consola tendría que escalar en la mitad de los casos reales, porque el síntoma aparece en pantalla y la causa suele estar en el motor. Y un archivo de alcance sin conocimiento obliga a reinvestigar el módulo en cada sesión.
+
+Alternativas evaluadas:
+- agc_AGENT.md limitado a la consola: descartado por el escalamiento constante y porque colisiona con src/features/agent, que ya reclama la palabra agc para otra consola
+- Dejar el agente genérico: descartado, no retiene nada del módulo
+
+Impacto:
+No cambia contratos ni código ejecutable. IsolatedGate.php queda explícitamente fuera del alcance del especialista. La frontera con src/features/agent queda documentada como pendiente de unificar.
+
+Seguimiento:
+Unificar la propiedad de app/web/agc/zynervox.php y app/web/modules/agc exige escalar: toca dos contratos.

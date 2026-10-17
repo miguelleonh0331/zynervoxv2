@@ -666,8 +666,8 @@ la hoja que abre la propuesta, **Reintenta** devuelve el lead a la cola.
 2. **Modelo de datos.** El esquema SQLite del proyecto original (`contacts`,
    `phones`, `activities`, `sales`, `recalls`, `audit`) es una referencia de
    diseño ya validada; no se trajo a este repositorio.
-3. **Catálogos**: hoy `TIPIFICACION` y `OPC` están codificados en el JS. En
-   el original eran configurables por campaña desde la base de datos.
+3. **Catálogos**: `OPC` sigue codificado en el JS. `TIPIFICACION` ya no: en
+   `modules/agc` el árbol llega desde `v2_dialer_dispositions` de la campaña.
 4. **Roles.** Decidir si basta con los niveles 1-9 de Zynervox o si hace
    falta un modelo propio (el original distinguía agente, supervisor,
    validador, backoffice y admin, con visibilidad por fila: un agente sólo
@@ -677,9 +677,13 @@ la hoja que abre la propuesta, **Reintenta** devuelve el lead a la cola.
    canal hoy son campos de la maqueta en `crm.js`; al haber backend deben
    venir de la base y alimentarse de la operación real (el canal WhatsApp de
    Zynervox, el correo saliente, el discador).
-6. **Integración con el discador.** Se quitó la pestaña Inconcert; si en el
-   futuro la consola debe acoplarse al marcador de Zynervox, es trabajo
-   nuevo y debería apoyarse en el módulo `dialer`, no en Inconcert.
+6. **Integración con el discador.** Hecha, y sólo en `modules/agc`: llamadas,
+   ciclo manual progresivo y tipificación son reales contra el módulo
+   `dialer`. La maqueta de `modules/admin/crm.php` sigue sin discador.
+
+Los puntos 1, 2, 4 y 5 valen para las dos consolas. El expediente de
+`modules/agc` —prioridad, producto, monto, interacciones— sigue siendo
+maqueta: lo real ahí son las llamadas y la tipificación.
 
 ## Flujo para modificar este módulo
 
@@ -696,3 +700,50 @@ commit y push desde la fuente. Ver la skill `zynervoxv2`.
 > pero en el docroot quedan ~178 respaldos antiguos de otros módulos que sí
 > lo son. Conviene decidir una solución general (negarlos en la
 > configuración de Apache o guardar los respaldos fuera del docroot).
+
+## Estado y pendientes (2026-10-17)
+
+Lo que sigue es el contexto que no se deduce leyendo el código: qué espera
+decisión del usuario y qué riesgos se detectaron sin tocarlos. El
+especialista del área es `agents/dialer_AGENT.md`.
+
+### Esperan decisión del usuario
+
+| Pendiente | Situación |
+|---|---|
+| ~255 respaldos `.php.bak*` en el docroot | Apache los sirve como texto plano. Negarlos en Apache o sacarlos del docroot. Es infraestructura |
+| Índice sobre `reserved_agent_user` en `v2_dialer_call_log` | Hoy la tabla es chica y rinde. Cuando crezca, entra como migración numerada |
+| Separar «el lead reintenta solo» de «el agente debe agendar» | `retryable` gobierna las dos cosas. Haría falta una columna `requires_schedule` |
+| Limpieza del árbol de la campaña 55 | Quedó la rama de prueba `030000 VACIO`; `020000 NO CONTACTADO` tiene Reintenta en el nivel 1 |
+| Transporte de la transcripción | Si el motor de voz corre fuera del navegador, elegir sondeo, SSE o WebSocket. El recuadro ya acepta escritura directa |
+| Softphone | Aplazado por el usuario. En pantalla ya aparece una barra ZynerPhone |
+
+### Riesgos detectados, no modificados
+
+- **Sin límite de fecha para la tipificación pendiente.**
+  `Dialer::pendingDispositionForAgent()` y la rama de llamada abierta de
+  `agentCurrentLead()` no acotan por fecha. Un intento abandonado —el agente
+  cierra el navegador al colgar— sigue bloqueando a ese agente días después,
+  y `agentHasWork()` le impide reservar en todas sus campañas. Puede ser
+  deliberado («tipificar es obligatorio»); no está decidido.
+
+- **Bienvenida contra tipificación pendiente.** Al conectar no se abre
+  ninguna ficha. Si el discador tiene una llamada esperando tipificación, el
+  agente ve la pantalla de bienvenida a la izquierda y «el discador espera la
+  tipificación de #N» a la derecha, sin la ficha de esa llamada delante. El
+  arreglo es abrir la ficha cuando el lead llega con tipificación pendiente,
+  distinguiéndolo de «ubicarse en la última llamada del día», que es lo que el
+  usuario pidió evitar.
+
+### Lo que sí está cerrado
+
+Llamada manual y ciclo manual progresivo, cascada de tres niveles leída de la
+campaña y guardada en el lead, rellamada dirigida al cliente (también en
+pausa), cartera alimentada por el discador con una sola consulta de historial,
+resumen del turno calculado sin consultas, recuadro de transcripción, entorno
+aislado con login y logout propios.
+
+### Verificación
+
+`bash src/features/dialer/tests/console/run-console.sh` — 110 comprobaciones
+sobre el marcado real y el `crm.js` real, sin navegador ni base de datos.

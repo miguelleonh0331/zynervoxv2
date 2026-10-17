@@ -61,6 +61,11 @@ sin handler: PBX_LOST, sin inventar duración de conversación.
 
 ## Pruebas y continuidad
 
+`tests/console/run-console.sh`: consola del agente (`app/web/modules/agc`) sin
+navegador ni base de datos. Levanta el marcado real de `crm.php` en un mini-DOM
+y ejecuta el `crm.js` real contra un discador simulado: cartera, ciclo manual
+progresivo, cascada de tipificación, rellamada y aislamiento del entorno. No
+toca MariaDB, Asterisk ni el despliegue; se puede correr con el motor en marcha.
 `tests/run-reporting.sh`: HTTP y SQL con tablas TEMPORARY por conexión.
 `tests/run-routing.sh`: selección SIP, prefijos, callbacks automáticos, salida
 compartida conservada y rechazo de cambios RUNNING/con llamadas abiertas o de

@@ -2,7 +2,7 @@
 
 Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 
-Última generación: 2026-10-11 16:08
+Última generación: 2026-10-17 17:39
 
 ## Módulos
 
@@ -12,7 +12,7 @@ Archivo autogenerado por `repo_agent.py map`. No editar a mano.
 | agent | src/features/agent | _DEFAULT_MODULE_AGENT.md | (sin descripción) | src/features/agent/CONTRACT.md |
 | bot_ivr | src/features/bot_ivr | bot_ivr_AGENT.md | (sin descripción) | src/features/bot_ivr/CONTRACT.md |
 | core | src/features/core | _DEFAULT_MODULE_AGENT.md | (sin descripción) | src/features/core/CONTRACT.md |
-| dialer | src/features/dialer | _DEFAULT_MODULE_AGENT.md | (sin descripción) | src/features/dialer/CONTRACT.md |
+| dialer | src/features/dialer | dialer_AGENT.md | (sin descripción) | src/features/dialer/CONTRACT.md |
 | farm | src/features/farm | farm_AGENT.md | (sin descripción) | src/features/farm/CONTRACT.md |
 | installer | src/features/installer | installer_AGENT.md | (sin descripción) | src/features/installer/CONTRACT.md |
 | ivr_builder | src/features/ivr_builder | _DEFAULT_MODULE_AGENT.md | (sin descripción) | src/features/ivr_builder/CONTRACT.md |
