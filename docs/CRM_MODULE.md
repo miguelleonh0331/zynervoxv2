@@ -187,7 +187,18 @@ llamar. Queda auditada como `ORIGINATE_REDIAL` para distinguirla del
 marcado normal.
 
 Genera **un intento nuevo**, tipificable por separado: no toca la llamada
-anterior ni su tipificación. En la consola el botón se bloquea —diciendo por
+anterior ni su tipificación.
+
+**Si el agente está en pausa, la rellamada la cierra antes de marcar.** El
+discador no origina con el agente pausado, y el caso que motiva esta función
+—se cortó la llamada y hay que retomarla— no admite pedirle que reanude
+primero. Se cierra la pausa, no se deja abierta: marcar es declarar que se
+está trabajando, y seguir figurando en pausa mientras se habla falsearía el
+tiempo productivo. El mensaje lo dice ("Pausa finalizada para poder marcar").
+
+"Marcar siguiente lead" **no** hace eso: pedir trabajo nuevo de la cola sí
+exige reanudar a propósito, y su botón queda deshabilitado mientras haya
+pausa. En la consola el botón se bloquea —diciendo por
 qué— si hay una tipificación pendiente o una llamada en curso, y pasa a
 "Colgar" mientras esa llamada está viva.
 

@@ -315,10 +315,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && in_array($_POST['action'
                     $leadRe = filter_var($_POST['lead_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
                     if (!$campanaRe || !$leadRe) throw new RuntimeException('No se puede identificar a quién rellamar.');
                     Dialer::selectManualCampaign($usuario, $campanaRe);
+
+                    // Volver a marcar es declarar que se está trabajando. Si
+                    // había pausa abierta se cierra antes: el discador no
+                    // origina con el agente pausado, y dejarla abierta
+                    // mientras habla falsearía su tiempo productivo.
+                    $veniaEnPausa = Dialer::agentPause($usuario) !== null;
+                    if ($veniaEnPausa) Dialer::agentPauseAll($usuario, null);
+
                     $nuevo = Dialer::redialLead($campanaRe, $usuario, $leadRe);
+                    $aviso = $veniaEnPausa ? ' Pausa finalizada para poder marcar.' : '';
                     $mensaje = $nuevo === null
-                        ? 'No se pudo marcar ahora: revisa cupo, pausa u horario de la campaña.'
-                        : 'Rellamada #' . $nuevo . ' enviada. Contesta en tu softphone.';
+                        ? 'No se pudo marcar ahora: revisa el cupo o el horario de la campaña.' . $aviso
+                        : 'Rellamada #' . $nuevo . ' enviada. Contesta en tu softphone.' . $aviso;
                     break;
 
                 case 'dispose':

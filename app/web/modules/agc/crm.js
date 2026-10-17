@@ -698,7 +698,8 @@ function botoneraCanales(c) {
       title:esEste ? 'Colgar la llamada en curso'
             : (trabado ? 'Tipifica la llamada anterior antes de volver a marcar'
             : (viva ? 'Hay una llamada en curso'
-            : (!c.leadId ? 'Este contacto no viene del discador' : 'Volver a llamar a este cliente'))),
+            : (!c.leadId ? 'Este contacto no viene del discador'
+            : ((PUESTO && PUESTO.pause) ? 'Volver a llamar (finaliza tu pausa)' : 'Volver a llamar a este cliente')))),
       onclick:() => esEste ? colgar() : llamar()}, svg('tel'), esEste ? 'Colgar' : 'Llamar'),
     (() => {
       const hay = tieneChat(c);
@@ -735,6 +736,7 @@ function llamar() {
     aviso('Llamar', 'Ya hay una llamada en curso. Cuélgala antes de marcar de nuevo.');
     return;
   }
+  // En pausa se marca igual: el servidor la cierra antes de originar.
   const boton = $('detBody').querySelector('.ch');
   if (boton) boton.disabled = true;
   estado('Rellamando a ' + (c.telefono || c.nombre) + '…');
