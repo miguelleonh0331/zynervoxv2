@@ -922,7 +922,13 @@ function grabarGestion() {
     const boton = $('btnGrabar');
     boton.disabled = true;
     estado('Tipificando la llamada…');
-    accionDiscador('dispose', {call_id:String(idLlamada), code:codigo})
+    // Los tres niveles viajan con el cierre: el discador guarda su código y
+    // la cascada completa queda en el lead.
+    accionDiscador('dispose', {
+      call_id:String(idLlamada), code:codigo,
+      n1:nivel1, n2:nivel(1)[S.tip[1]].label, n3:h.label,
+      nota:$('tipNota').value.trim()
+    })
       .then(({ok, d}) => {
         if (!ok || d.error) { aviso('Tipificar', d.error || 'El discador rechazó la tipificación.'); return; }
         registrarGestionLocal(h);

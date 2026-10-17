@@ -180,8 +180,36 @@ Por eso "Grabar gestión" hace dos cosas, en este orden:
 1. **Cierra el intento en el discador** (`action=dispose` → `setDisposition`).
    Si el discador lo rechaza, se avisa y **la gestión no se registra**: nunca
    queda una gestión en el CRM que el discador no aceptó.
-2. Deja la gestión en el expediente (sólo en memoria; la cascada todavía no
-   se persiste en base).
+2. **Guarda la cascada en el lead** y deja la gestión en el expediente.
+
+### Dónde queda la tipificación
+
+Los tres niveles se escriben en `v2_dialer_leads.custom_fields`, el JSON que
+ya trae los datos de origen de la base cargada (`id_contacto`, `nombre`,
+`monto`, `local`, `direccion`). Se añaden sólo claves con prefijo `tip_`:
+
+| Clave | Contenido |
+|---|---|
+| `tip_nivel1` `tip_nivel2` `tip_nivel3` | La cascada elegida |
+| `tip_nota` | Nota de la gestión |
+| `tip_codigo` | Código enviado al discador (`01` / `02`) |
+| `tip_agente` · `tip_llamada` · `tip_fecha` | Quién, en qué intento y cuándo |
+
+La escritura usa **`JSON_SET` en una sola sentencia** (MariaDB 10.6), no un
+leer-modificar-escribir: así no hay forma de pisar los datos de origen ni de
+perder lo que otro proceso haya guardado entretanto. Si `custom_fields`
+estuviera vacío o con JSON inválido, parte de `{}` en vez de fallar. Los
+valores se recortan (80 caracteres por nivel, 1000 la nota) porque el campo
+es compartido.
+
+Guarda **la última tipificación del lead**, a propósito: el historial por
+llamada ya vive en `v2_dialer_call_log`, y las tablas dedicadas de
+tipificaciones y gestiones llegarán con el software de gestión que se
+conectará más adelante.
+
+El orden importa: primero el discador, después el lead. Si la escritura en el
+lead fallara, la llamada ya quedó cerrada y se avisa («Llamada tipificada (no
+se pudo escribir en el lead)») en vez de deshacer el cierre.
 
 La cascada de tres niveles se conserva como modelo de la consola y se traduce
 al código que el discador espera. El nivel 1 ya coincide con las

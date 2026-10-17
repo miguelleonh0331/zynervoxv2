@@ -182,6 +182,56 @@ function agc_historial(string $u, int $limite = 50): array {
     return $filas;
 }
 
+/**
+ * Deja la tipificación en el propio lead, dentro de `custom_fields`.
+ *
+ * Ese JSON ya trae los datos de origen de la base cargada (id_contacto,
+ * nombre, monto, local, direccion), así que se escriben sólo claves propias
+ * con prefijo `tip_`. Se usa JSON_SET en una única sentencia: evita el
+ * leer-modificar-escribir y, con él, el riesgo de pisar lo que otro proceso
+ * haya guardado entretanto.
+ *
+ * Es deliberadamente la última tipificación: el historial por llamada vive en
+ * v2_dialer_call_log, y las tablas de tipificaciones y gestiones llegarán con
+ * el software de gestión que se conectará más adelante.
+ */
+function agc_tipificar_lead(int $callId, string $agente, string $codigo, string $n1, string $n2, string $n3, string $nota): bool {
+    $db = \Includes\Database::getCoreInstance();
+
+    $q = $db->prepare('SELECT lead_id FROM v2_dialer_call_log WHERE call_id=?');
+    $q->execute([$callId]);
+    $leadId = $q->fetchColumn();
+    if (!$leadId) return false;
+
+    // Recortes defensivos: el campo es compartido y no debe crecer sin límite.
+    $corta = static function (string $v, int $max) {
+        $v = preg_replace('/[\x00-\x1f]/u', ' ', trim($v));
+        return mb_substr((string)$v, 0, $max, 'UTF-8');
+    };
+
+    $sql = 'UPDATE v2_dialer_leads
+            SET custom_fields = JSON_SET(
+                  CASE WHEN custom_fields IS NULL OR custom_fields = \'\' OR JSON_VALID(custom_fields) = 0
+                       THEN \'{}\' ELSE custom_fields END,
+                  \'$.tip_nivel1\', :n1,
+                  \'$.tip_nivel2\', :n2,
+                  \'$.tip_nivel3\', :n3,
+                  \'$.tip_nota\',   :nota,
+                  \'$.tip_codigo\', :codigo,
+                  \'$.tip_agente\', :agente,
+                  \'$.tip_llamada\', :llamada,
+                  \'$.tip_fecha\',  :fecha)
+            WHERE lead_id = :lead';
+    $u = $db->prepare($sql);
+    $u->execute([
+        'n1' => $corta($n1, 80), 'n2' => $corta($n2, 80), 'n3' => $corta($n3, 80),
+        'nota' => $corta($nota, 1000), 'codigo' => $corta($codigo, 20),
+        'agente' => $corta($agente, 60), 'llamada' => $callId,
+        'fecha' => date('Y-m-d H:i:s'), 'lead' => (int)$leadId,
+    ]);
+    return $u->rowCount() > 0;
+}
+
 $accionesJson = ['bootstrap', 'state', 'manual', 'pause', 'unpause', 'hangup', 'dispose'];
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && in_array($_POST['action'] ?? '', $accionesJson, true)) {
     header('Content-Type: application/json; charset=utf-8');
@@ -244,7 +294,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && in_array($_POST['action'
                     if (!$llamada) throw new RuntimeException('No hay llamada que tipificar.');
                     if ($codigo === '') throw new RuntimeException('Falta el código de tipificación.');
                     Dialer::setDisposition($llamada, $usuario, $codigo);
-                    $mensaje = 'Llamada tipificada.';
+                    // El discador ya aceptó el cierre; ahora la cascada queda
+                    // en el lead. Si esto fallara, la llamada igual está
+                    // tipificada: se avisa sin deshacer lo anterior.
+                    $guardado = agc_tipificar_lead(
+                        $llamada, $usuario, $codigo,
+                        (string)($_POST['n1'] ?? ''), (string)($_POST['n2'] ?? ''),
+                        (string)($_POST['n3'] ?? ''), (string)($_POST['nota'] ?? '')
+                    );
+                    $mensaje = $guardado
+                        ? 'Llamada tipificada y guardada en el lead.'
+                        : 'Llamada tipificada (no se pudo escribir en el lead).';
                     break;
             }
         } catch (Throwable $e) {
