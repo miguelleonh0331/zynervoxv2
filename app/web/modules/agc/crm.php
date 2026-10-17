@@ -94,6 +94,18 @@ function agc_estado(string $u): array {
     $pausa = Dialer::agentPause($u);
     $lead = Dialer::agentCurrentLead($u);
     $autodial = Dialer::agentAutodialState($u);
+    $pendiente = Dialer::pendingDispositionForAgent($u);
+
+    // Disposiciones de la campaña del lead: son los códigos que el discador
+    // acepta para cerrarlo. La cascada de la consola se traduce a uno de
+    // ellos; sin un código válido el ciclo progresivo no encadena.
+    $codigos = [];
+    if ($lead) {
+        foreach (Dialer::dispositions((int)$lead['campaign_id']) as $d) {
+            $codigos[] = ['code' => (string)$d['code'], 'label' => (string)$d['label']];
+        }
+    }
+
     return [
         'campaigns' => $manuales,
         'pauseTypes' => $motivos,
@@ -102,15 +114,33 @@ function agc_estado(string $u): array {
             'call_id' => (int)$lead['call_id'],
             'phone' => (string)($lead['phone_number'] ?? ''),
             'campaign' => (string)($lead['campaign_name'] ?? ''),
+            'campaign_id' => (int)$lead['campaign_id'],
+            'name' => trim((string)($lead['first_name'] ?? '') . ' ' . (string)($lead['last_name'] ?? '')),
             'started' => (string)($lead['originated_at'] ?? ''),
             'ended' => $lead['ended_at'] !== null,
+            'bridged' => $lead['bridged_at'] !== null,
             'disposed' => $lead['disposition_code'] !== null,
+            'status' => (string)($lead['status'] ?? ''),
+            'variables' => is_array($lead['variables'] ?? null) ? $lead['variables'] : [],
+        ] : null,
+        'dispositions' => $codigos,
+        'pending' => $pendiente ? [
+            'call_id' => (int)$pendiente['call_id'],
+            'phone' => (string)($pendiente['phone_number'] ?? ''),
+            'campaign' => (string)($pendiente['campaign_name'] ?? ''),
+            'reason' => (string)($pendiente['termination_reason'] ?? ''),
         ] : null,
         'selectedCampaign' => (int)($autodial['selected_campaign_id'] ?? 0),
+        'autodial' => [
+            'enabled' => (bool)($autodial['enabled'] ?? false),
+            'waiting' => (bool)($autodial['pending'] ?? false),
+            'seconds' => $autodial['seconds_until'] === null ? null : (int)$autodial['seconds_until'],
+            'running' => (bool)($autodial['running'] ?? false),
+        ],
     ];
 }
 
-$accionesJson = ['bootstrap', 'state', 'manual', 'pause', 'unpause', 'hangup'];
+$accionesJson = ['bootstrap', 'state', 'manual', 'pause', 'unpause', 'hangup', 'dispose'];
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && in_array($_POST['action'] ?? '', $accionesJson, true)) {
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
@@ -161,6 +191,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && in_array($_POST['action'
                 case 'hangup':
                     Dialer::agentHangup($usuario, (int)($_POST['call_id'] ?? 0));
                     $mensaje = 'Solicitud de colgar enviada.';
+                    break;
+
+                case 'dispose':
+                    // Cierra el intento en el discador. Es lo que libera el
+                    // encadenado: setDisposition() programa la llamada
+                    // siguiente si la campaña tiene autodial manual.
+                    $llamada = filter_var($_POST['call_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+                    $codigo = (string)($_POST['code'] ?? '');
+                    if (!$llamada) throw new RuntimeException('No hay llamada que tipificar.');
+                    if ($codigo === '') throw new RuntimeException('Falta el código de tipificación.');
+                    Dialer::setDisposition($llamada, $usuario, $codigo);
+                    $mensaje = 'Llamada tipificada.';
                     break;
             }
         } catch (Throwable $e) {

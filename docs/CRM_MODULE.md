@@ -131,7 +131,43 @@ blanco esperando al primer sondeo.
 
 Como el discador cambia por su cuenta (entra una llamada, un supervisor
 pausa), se relee el estado cada 4 s. En pausa no se puede marcar, y el
-selector de motivo se oculta dejando sólo "Reanudar". **No duplica código**: referencia `crm.css`, `crm.js` y
+selector de motivo se oculta dejando sólo "Reanudar".
+
+### Ciclo manual progresivo
+
+El encadenado de llamadas nace en la tipificación: `setDisposition()` llama a
+`triggerManualAutodialIfIdle()`, que programa `autodial_due_at = NOW() + 3s`,
+y el worker (`workerTick → processManualAutodial`) marca la siguiente. Si la
+consola no cerrara el intento en el discador, el ciclo se detendría tras la
+primera llamada.
+
+Por eso "Grabar gestión" hace dos cosas, en este orden:
+
+1. **Cierra el intento en el discador** (`action=dispose` → `setDisposition`).
+   Si el discador lo rechaza, se avisa y **la gestión no se registra**: nunca
+   queda una gestión en el CRM que el discador no aceptó.
+2. Deja la gestión en el expediente (sólo en memoria; la cascada todavía no
+   se persiste en base).
+
+La cascada de tres niveles se conserva como modelo de la consola y se traduce
+al código que el discador espera. El nivel 1 ya coincide con las
+disposiciones de la campaña:
+
+| Nivel 1 | Código |
+|---|---|
+| CONTACTADO | `01` contacto |
+| NO CONTACTADO | `02` NoContacto |
+
+La traducción (`codigoPara`) busca primero por código y, si la campaña los
+nombró distinto, por etiqueta; si no encuentra equivalencia **no inventa
+ninguno**: avisa y no tipifica. Los niveles 2 y 3 quedan en pantalla, sin
+guardarse, hasta decidir dónde persistirlos.
+
+Mientras dura el ciclo, la ficha "Información del cliente" muestra **el lead
+del discador** (intento, teléfono, nombre, campaña, estado de la llamada y
+las variables del lead) en lugar del contacto de la maqueta, y "Marcar
+siguiente lead" queda bloqueado si hay una tipificación pendiente, diciendo
+por qué. **No duplica código**: referencia `crm.css`, `crm.js` y
 `crm_wa_session.php` de `modules/admin/`. Por eso `crm.js` toma el endpoint de
 WhatsApp del atributo `data-crm-wa` del `<body>` (con `crm_wa_session.php` por
 defecto, que es lo que usa admin) en lugar de llevarlo fijo, y el botón

@@ -34,6 +34,25 @@ const TIPIFICACION = [
     {label:'NÚMERO ERRADO', hijos:[
       {label:'NO CORRESPONDE', kind:'normal'}]}]}
 ];
+// La consola tipifica con la cascada de tres niveles; el discador sólo
+// entiende sus códigos de disposición. El nivel 1 ya coincide con ellos, así
+// que basta traducir por ahí. Si una campaña usara otros códigos, aquí es
+// donde hay que ampliarlo.
+const CODIGO_DISCADOR = {
+  'CONTACTADO': ['01', 'contacto'],
+  'NO CONTACTADO': ['02', 'nocontacto']
+};
+
+function codigoPara(nivel1, disponibles) {
+  const esperado = CODIGO_DISCADOR[String(nivel1 || '').toUpperCase()];
+  if (!esperado || !disponibles || !disponibles.length) return null;
+  // Primero por código exacto; si la campaña los nombró distinto, por etiqueta.
+  const porCodigo = disponibles.find(d => d.code === esperado[0]);
+  if (porCodigo) return porCodigo.code;
+  const porEtiqueta = disponibles.find(d => String(d.label || '').toLowerCase().replace(/\s+/g, '') === esperado[1]);
+  return porEtiqueta ? porEtiqueta.code : null;
+}
+
 const DESENLACE = {
   sale:'Requiere registrar la propuesta de venta.',
   recall:'Requiere agendar fecha y hora de rellamada.',
@@ -485,7 +504,7 @@ function pintarDetalle() {
     // modo que la botonera y el historial bajan y le dejan sitio.
     body.replaceChildren(
       el('div', {cls:'duo' + (S.chat ? ' duo--chat' : '')},
-        S.chat ? panelChat(c) : panelInfo(c), panelNotas(c)),
+        S.chat ? panelChat(c) : (leadVivo() ? panelLead(PUESTO.lead) : panelInfo(c)), panelNotas(c)),
       botoneraCanales(c));
     // El historial no se repite aquí: vive completo en la pestaña
     // "Interacciones", con sus filtros por canal.
@@ -521,6 +540,28 @@ function pintarDetalle() {
     body.replaceChildren(panel('Notas del cliente', listaNotas(c), [
       el('button', {cls:'btn-sm btn-sm--ghost', type:'button', txt:'Agregar nota', onclick:nuevaNota})]));
   }
+}
+
+// Con llamada en curso (o pendiente de tipificar) la ficha muestra al lead
+// que entregó el discador, no un contacto de la maqueta.
+function panelLead(lead) {
+  const dl = el('dl', {cls:'kv'});
+  const filas = [
+    ['Intento', '#' + lead.call_id],
+    ['Teléfono', lead.phone || '—'],
+    ['Nombre', lead.name || '—'],
+    ['Campaña', lead.campaign || '—'],
+    ['Estado del lead', lead.status || '—'],
+    ['Llamada', lead.ended ? 'Finalizada' : (lead.bridged ? 'En conversación' : 'Timbrando')],
+  ];
+  for (const [k, v] of Object.entries(lead.variables || {})) {
+    if (filas.length > 24) break;
+    filas.push([String(k).slice(0, 40), String(v === null ? '' : v).slice(0, 200) || '—']);
+  }
+  for (const [k, v] of filas) {
+    dl.append(el('dt', {txt:k}), el('dd', {txt:String(v), title:String(v)}));
+  }
+  return panel('Información del cliente · lead del discador', dl);
 }
 
 function panelInfo(c) {
@@ -881,6 +922,12 @@ function pintarGestion() {
     btn.onclick = abrirAgenda; btn.hidden = false;
   } else { pend.hidden = true; btn.hidden = true; }
   $('btnGrabar').disabled = !h;
+  // Aviso visible de que el discador espera la tipificación.
+  if (!h && tipificacionPendiente()) {
+    pend.hidden = false;
+    pend.innerHTML = 'El discador espera la <b>tipificación</b> de la llamada #' + PUESTO.pending.call_id + '.';
+    btn.hidden = true;
+  }
 }
 
 function elegirNivel(i, valor) {
@@ -905,6 +952,41 @@ function grabarGestion() {
   if (h.kind === 'sale' && !S.propuesta) { aviso('Registro de gestión', 'Esta tipificación exige registrar la propuesta de venta.', [['Registrar', abrirVenta], ['Cancelar', () => {}]]); return; }
   if (h.kind === 'recall' && !S.agenda) { aviso('Registro de gestión', 'Esta tipificación exige agendar la rellamada.', [['Agendar', abrirAgenda], ['Cancelar', () => {}]]); return; }
 
+  // Si hay una llamada del discador abierta o recién colgada, la tipificación
+  // va primero al discador: es lo que cierra el intento y encadena la
+  // siguiente llamada. Sin confirmación suya no se da por registrada.
+  const porCerrar = (PUESTO && (PUESTO.pending || PUESTO.lead)) || null;
+  if (porCerrar) {
+    const idLlamada = (PUESTO.pending ? PUESTO.pending.call_id : PUESTO.lead.call_id);
+    const nivel1 = nivel(0)[S.tip[0]].label;
+    const codigo = codigoPara(nivel1, PUESTO.dispositions);
+    if (!codigo) {
+      aviso('Tipificar', 'La campaña no tiene un código equivalente a «' + nivel1 + '». Avisa a tu supervisor.');
+      return;
+    }
+    const boton = $('btnGrabar');
+    boton.disabled = true;
+    estado('Tipificando la llamada…');
+    accionDiscador('dispose', {call_id:String(idLlamada), code:codigo})
+      .then(({ok, d}) => {
+        if (!ok || d.error) { aviso('Tipificar', d.error || 'El discador rechazó la tipificación.'); return; }
+        registrarGestionLocal(h);
+        estado(d.message + ' ' + (PUESTO && PUESTO.autodial && PUESTO.autodial.waiting
+          ? 'Preparando la siguiente llamada…' : ''));
+      })
+      .catch(() => aviso('Tipificar', 'No se pudo contactar el discador; la gestión no se registró.'))
+      .finally(() => { pintarGestion(); });
+    return;
+  }
+
+  // Sin llamada del discador (cliente abierto a mano) se registra y ya.
+  registrarGestionLocal(h);
+  estado('Gestión registrada.');
+}
+
+// Deja la gestión en el expediente del cliente. Por ahora sólo vive en
+// memoria: la cascada todavía no se persiste en base.
+function registrarGestionLocal(h) {
   const c = cli();
   const n1 = nivel(0)[S.tip[0]].label, n2 = nivel(1)[S.tip[1]].label;
   const nota = $('tipNota').value.trim();
@@ -919,10 +1001,8 @@ function grabarGestion() {
   }
   if (S.agenda) S.agendas.push({id:seq.agenda++, contacto:c.id, fecha:S.agenda.fecha, hora:S.agenda.hora, nota:S.agenda.nota});
 
-  const extra = S.propuesta ? ' Propuesta adjuntada.' : (S.agenda ? ' Rellamada agendada.' : '');
   limpiarGestion();
   pintarTodo();
-  estado('Gestión registrada.' + extra);
 }
 
 function terminarAtencion() {
@@ -1084,6 +1164,10 @@ function accionDiscador(accion, extra) {
     });
 }
 
+// Lead que el agente está atendiendo o acaba de colgar sin tipificar.
+function leadVivo() { return !!(PUESTO && PUESTO.lead); }
+function tipificacionPendiente() { return !!(PUESTO && PUESTO.pending); }
+
 function pintarControl() {
   const sel = $('ctlCampaign');
   if (!sel || !PUESTO) return;
@@ -1096,7 +1180,11 @@ function pintarControl() {
       ...PUESTO.campaigns.map(c => el('option', {value:String(c.id), txt:c.name, selected:String(c.id) === elegida})));
   }
   sel.disabled = !PUESTO.campaigns.length;
-  $('ctlDial').disabled = !PUESTO.campaigns.length || !!PUESTO.pause;
+  // Sin tipificar la anterior no se marca: es la regla del ciclo progresivo.
+  const trabado = tipificacionPendiente();
+  const botonMarcar = $('ctlDial');
+  botonMarcar.disabled = !PUESTO.campaigns.length || !!PUESTO.pause || trabado;
+  botonMarcar.title = trabado ? 'Tipifica la llamada anterior para continuar' : '';
 
   // Motivos de pausa
   const motivos = $('ctlPauseType');
@@ -1119,14 +1207,24 @@ function pintarControl() {
   const activa = !!lead && !lead.ended;
   $('ctlHangup').hidden = !activa;
   const caja = $('ctlLead');
-  if (lead) {
+  const prox = PUESTO.autodial || {};
+  if (tipificacionPendiente()) {
+    caja.hidden = false;
+    caja.innerHTML = 'Llamada <b>#' + PUESTO.pending.call_id + '</b> cerrada · <b>tipifica para continuar</b>';
+  } else if (prox.waiting) {
+    caja.hidden = false;
+    caja.innerHTML = 'Siguiente llamada en <b>' + (prox.seconds === null ? '…' : prox.seconds + ' s') + '</b>';
+  } else if (lead) {
     caja.hidden = false;
     caja.innerHTML = 'Intento <b>#' + lead.call_id + '</b> · ' + (lead.phone || 's/n')
       + (lead.campaign ? ' · ' + lead.campaign : '')
-      + (lead.ended ? ' · finalizada' : '');
+      + (lead.ended ? ' · finalizada' : (lead.bridged ? ' · en conversación' : ' · timbrando'));
   } else {
     caja.hidden = true;
   }
+  // La ficha del expediente sigue al lead, así que se repinta con él.
+  const firma = JSON.stringify([lead && lead.call_id, lead && lead.ended, lead && lead.bridged, !!PUESTO.pending]);
+  if (firma !== pintarControl._firma) { pintarControl._firma = firma; pintarDetalle(); }
 }
 
 function marcarSiguiente() {
