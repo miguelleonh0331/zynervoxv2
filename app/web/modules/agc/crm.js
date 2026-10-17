@@ -351,6 +351,17 @@ function deLlamada(x) {
   };
 }
 
+// Al tipificar, esa llamada deja de viajar en el sondeo (ya no está en curso
+// ni pendiente), así que su fila se quedaría mostrando "sin tipificar" para
+// siempre. Se marca aquí, con el código que el discador acaba de aceptar.
+function marcarTipificada(callId, codigo) {
+  const i = S.contactos.findIndex(c => c.id === callId);
+  if (i < 0) return;
+  S.contactos[i].disposition = codigo;
+  pintarTabsLista();
+  pintarCartera();
+}
+
 // Suma o actualiza la llamada en la cartera sin consultar la base.
 function anotarLlamada(x) {
   if (!x || !x.call_id) return;
@@ -957,6 +968,7 @@ function grabarGestion() {
     })
       .then(({ok, d}) => {
         if (!ok || d.error) { aviso('Tipificar', d.error || 'El discador rechazó la tipificación.'); return; }
+        marcarTipificada(idLlamada, codigo);
         registrarGestionLocal(h);
         estado(d.message + ' ' + (PUESTO && PUESTO.autodial && PUESTO.autodial.waiting
           ? 'Preparando la siguiente llamada…' : ''));
