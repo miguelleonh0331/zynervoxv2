@@ -111,10 +111,37 @@ que le deja la columna y la botonera de canales queda fija abajo. Cada
 `panel-body` hace su propio scroll, y un `min-height` de 220 px evita que el
 contenido se aplaste en pantallas bajas.
 
-**El cuerpo del chat está vacío a propósito** (`#chatBody`): su contenido se
-definirá más adelante. El enganche natural es el módulo WhatsApp que Zynervox
-ya tiene (`modules/admin/whatsapp.php`, con Zynerwaba detrás), en vez de
-construir un canal nuevo desde cero.
+El chat embebe la bandeja de Zynerwaba (`/zynerwabav2/`) en un `<iframe>`,
+que se puede incrustar porque el servicio no envía `X-Frame-Options` ni CSP
+`frame-ancestors` y comparte dominio con el panel.
+
+La autenticación la resuelve **`crm_wa_session.php`**, un archivo nuevo de
+este módulo que no toca nada del módulo WhatsApp:
+
+1. Exige sesión de Zynervox (`Auth::checkAccess([1..9])`).
+2. Lee la cuenta de `/etc/zynervox/crm-whatsapp.conf` (root:www 640, **fuera
+   del repositorio**).
+3. Hace `POST /api/login` contra Zynerwaba **servidor contra servidor**, por
+   `127.0.0.1`, de modo que las credenciales nunca llegan al navegador.
+4. Reemite al navegador la cookie de sesión devuelta (conservando `Path`,
+   `HttpOnly` y `SameSite`, y añadiendo `Secure` bajo HTTPS) y responde un
+   `303` hacia la bandeja.
+
+Zynerwaba **no admite credenciales por URL**: `/api/login` es sólo POST y no
+lee la query string. Tampoco conviene — una URL con usuario y contraseña
+queda en los logs de Apache, el historial y la cabecera `Referer`. Existe
+además un SSO firmado (`POST /api/sso/zynervox`, HMAC con vigencia de 90 s)
+que usa `whatsapp.php`; no se empleó aquí porque mapea el rol según el nivel
+de Zynervox (≥9 superadmin, ≥8 supervisor, resto admin), mientras que el chat
+necesita entrar siempre con la cuenta de la empresa configurada.
+
+El `src` del marco lleva un parámetro de tiempo para forzar una sesión nueva
+en cada apertura, y la cabecera del panel ofrece "Abrir aparte" para usar la
+bandeja completa en otra pestaña.
+
+**Pendiente:** el marco abre la bandeja completa, no la conversación del
+cliente en pantalla. Preseleccionar el contacto por teléfono requiere ver si
+el frontend de Zynerwaba acepta algún parámetro para ello.
 
 Equivalencias con el escritorio WinForms del que partió el módulo:
 

@@ -537,18 +537,25 @@ function panelInfo(c) {
 }
 
 // Ventana de chat del cliente. Ocupa el lugar de la ficha mientras está
-// abierta. El cuerpo queda deliberadamente vacío: su contenido se definirá
-// cuando se conecte con el módulo WhatsApp de Zynervox.
+// abierta y embebe la bandeja de Zynerwaba. crm_wa_session.php abre la sesión
+// servidor contra servidor y redirige, así que el marco carga ya autenticado
+// sin que viajen credenciales al navegador.
 function panelChat(c) {
   const cerrar = el('button', {cls:'btn-sm btn-sm--ghost', type:'button', txt:'Cerrar chat',
     title:'Volver a la información del cliente', onclick:cerrarChat});
+  const abrirAparte = el('button', {cls:'btn-sm btn-sm--ghost', type:'button', txt:'Abrir aparte',
+    title:'Abrir la bandeja en una pestaña nueva',
+    onclick:() => window.open('crm_wa_session.php', '_blank', 'noopener')});
   const destino = el('span', {style:'font-weight:400;letter-spacing:0;text-transform:none;color:#C7CAD4',
     txt:(c.telefonos[0] || {}).n || 'sin número'});
+  // La sesión caduca; se fuerza una carga nueva en cada apertura.
+  const marco = el('iframe', {cls:'chat-frame', id:'chatFrame', title:'Bandeja de WhatsApp',
+    src:'crm_wa_session.php?t=' + Date.now()});
   return el('section', {cls:'panel panel--chat'},
     el('h3', null,
       el('span', {txt:'WhatsApp · ' + c.nombre}),
-      el('span', {cls:'spacer'}), destino, cerrar),
-    el('div', {cls:'panel-body chat-body', id:'chatBody'}));
+      el('span', {cls:'spacer'}), destino, abrirAparte, cerrar),
+    el('div', {cls:'panel-body chat-body', id:'chatBody'}, marco));
 }
 
 function abrirChat() {
