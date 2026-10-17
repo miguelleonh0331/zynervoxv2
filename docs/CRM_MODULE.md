@@ -167,6 +167,51 @@ está en `reserved_agent_user`—, por eso no basta el índice
 recorre el índice primario sin coste apreciable; **si crece mucho, conviene
 un índice sobre `reserved_agent_user`**.
 
+### Transcripción en vivo (área de pruebas)
+
+Franja al pie de la columna central, bajo el expediente: muestra lo que el
+motor de voz vaya entregando. **No transcribe nada por sí misma** — es la
+superficie de pruebas; el audio y el reconocimiento son de quien la alimente.
+
+Está **fuera de `#detBody`** a propósito: ese contenedor se reconstruye entero
+en cada repintado del expediente (cambio de pestaña, lead nuevo, chat) y
+borraría lo transcrito.
+
+**Nombres que necesita el integrador**
+
+| Qué | Nombre |
+|---|---|
+| Contenedor | `#trx` |
+| Lista de líneas | `#trxBody` |
+| Indicador de cabecera | `#trxEstado` |
+| API JavaScript | `window.ZVT` |
+| Clase de cada línea | `.trx-line` + `--agente` / `--cliente` / `--sistema` / `--parcial` |
+
+```js
+ZVT.linea('buenos días, le habla Miguel')   // línea cerrada (quien = 'agente')
+ZVT.linea('¿con quién hablo?', 'cliente')   // quien: agente | cliente | sistema
+ZVT.parcial('estoy diciendo esto…')         // hipótesis en curso; la siguiente la reemplaza
+ZVT.estado('escuchando')                    // texto del indicador
+ZVT.limpiar()
+ZVT.volcado()                               // array de líneas, para verificar
+```
+
+Desde otra ventana, el contenedor o un iframe con el socket del motor:
+
+```js
+destino.postMessage({zvt:{texto:'…', quien:'agente', parcial:false}}, '*')
+```
+
+`parcial` existe porque los motores emiten hipótesis antes de cerrar la frase:
+se pinta en gris y la reemplaza la siguiente, en vez de llenar el panel de
+versiones a medio hacer. Se conservan las últimas **400** líneas. Cada llamada
+nueva deja una marca de sistema (`Llamada #id · teléfono · nombre`) para saber
+dónde empieza cada una.
+
+**Lo que todavía no existe**: el transporte desde el servidor. Si el
+reconocimiento corre fuera del navegador (servicio STT), hace falta decidir
+cómo llega —sondeo, SSE o WebSocket—; hoy la página sólo expone la superficie.
+
 ### Resumen del turno (panel "Tipificación de hoy")
 
 El bloque del pie de la columna derecha dejó de ser la maqueta con la meta de

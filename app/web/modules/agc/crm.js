@@ -182,6 +182,8 @@ const S = {
   ventas: [],
   agendas: [],
   documentos: [],
+  transcripcion: [],        // líneas cerradas del motor de voz
+  trxParcial: null,         // frase en curso, aún sin cerrar
 };
 let seq = {gestion:2, venta:2, agenda:3, interaccion:9, doc:4};
 
@@ -1167,7 +1169,12 @@ function aplicarPuesto() {
     // Aunque la llamada ya estuviera en la cartera, sus datos cambiaron: el
     // resumen se recalcula para no quedar mostrando el conteo anterior.
     if (!nuevo) pintarPerformance();
-    if (nuevo) { S.actual = S.contactos.findIndex(c => c.id === lead.call_id); pintarTodo(); }
+    if (nuevo) {
+      S.actual = S.contactos.findIndex(c => c.id === lead.call_id);
+      pintarTodo();
+      // Separador en la transcripción: deja claro dónde empieza cada llamada.
+      ZVT.linea('Llamada #' + lead.call_id + ' · ' + (lead.phone || '') + ' · ' + (lead.name || 'sin nombre'), 'sistema');
+    }
     else { pintarTabsLista(); pintarCartera(); }
   }
   elegirArbol();
@@ -1418,6 +1425,90 @@ function pintarPerformance() {
     : [el('div', {cls:'perf-row perf-row--vacio', txt:'Todavía no tipificaste llamadas hoy.'})]));
 }
 
+/* --------------------------------------- transcripción en vivo (pruebas)
+
+   Superficie para el motor de voz. No transcribe nada por sí misma: sólo
+   muestra lo que le entreguen, y por eso tiene tres entradas equivalentes.
+
+   Desde la misma página (consola de pruebas, extensión, Web Speech API):
+
+     ZVT.linea('buenos días, le habla Miguel')        línea cerrada
+     ZVT.linea('¿con quién hablo?', 'cliente')        quien: agente|cliente|sistema
+     ZVT.parcial('estoy diciendo esto ahora…')        línea en curso, se reemplaza
+     ZVT.estado('escuchando')                         indicador de la cabecera
+     ZVT.limpiar()                                    vacía el panel
+     ZVT.volcado()                                    devuelve las líneas, para pruebas
+
+   Desde fuera (otra ventana, el contenedor, un WebSocket en un iframe):
+
+     postMessage({zvt:{texto:'…', quien:'agente', parcial:false}}, '*')
+
+   `parcial` existe porque los motores de voz emiten hipótesis antes de
+   cerrar la frase: se pinta en gris y la siguiente la reemplaza, en vez de
+   llenar el panel de versiones a medio hacer.                               */
+
+const TRX_MAX = 400;   // líneas que se conservan; lo viejo se descarta
+
+const trxQuien = q => {
+  const k = String(q || 'agente').toLowerCase();
+  return (k === 'cliente' || k === 'sistema') ? k : 'agente';
+};
+const TRX_ET = {agente:'AG', cliente:'CLI', sistema:'··'};
+
+function trxHora() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+}
+
+function trxLinea(l, parcial) {
+  return el('div', {cls:'trx-line trx-line--' + l.quien + (parcial ? ' trx-line--parcial' : '')},
+    el('span', {cls:'trx-quien', txt:TRX_ET[l.quien]}),
+    el('span', {cls:'trx-txt', txt:l.texto}),
+    el('span', {cls:'trx-hora', txt:parcial ? '…' : l.hora}));
+}
+
+function pintarTranscripcion() {
+  const caja = $('trxBody');
+  if (!caja) return;
+  if (!S.transcripcion.length && !S.trxParcial) {
+    caja.replaceChildren(el('div', {cls:'empty', txt:'Sin transcripción. El motor de voz todavía no envía nada.'}));
+    return;
+  }
+  caja.replaceChildren(
+    ...S.transcripcion.map(l => trxLinea(l, false)),
+    ...(S.trxParcial ? [trxLinea(S.trxParcial, true)] : []));
+  caja.scrollTop = caja.scrollHeight;   // siempre pegado a lo último dicho
+}
+
+const ZVT = {
+  linea(texto, quien) {
+    const t = String(texto === null || texto === undefined ? '' : texto).trim();
+    if (!t) return;
+    S.transcripcion.push({quien:trxQuien(quien), texto:t, hora:trxHora()});
+    if (S.transcripcion.length > TRX_MAX) S.transcripcion.splice(0, S.transcripcion.length - TRX_MAX);
+    S.trxParcial = null;
+    pintarTranscripcion();
+  },
+  parcial(texto, quien) {
+    const t = String(texto === null || texto === undefined ? '' : texto);
+    S.trxParcial = t.trim() ? {quien:trxQuien(quien), texto:t} : null;
+    pintarTranscripcion();
+  },
+  estado(txt) { if ($('trxEstado')) $('trxEstado').textContent = String(txt === undefined ? '' : txt); },
+  limpiar() { S.transcripcion = []; S.trxParcial = null; pintarTranscripcion(); },
+  volcado() { return S.transcripcion.slice(); }
+};
+if (typeof window !== 'undefined') window.ZVT = ZVT;
+
+// Puente para quien no comparte contexto con esta página.
+function trxMensaje(ev) {
+  const m = ev && ev.data && ev.data.zvt;
+  if (!m) return;
+  if (m.limpiar) ZVT.limpiar();
+  if (m.estado !== undefined) ZVT.estado(m.estado);
+  if (m.texto !== undefined) m.parcial ? ZVT.parcial(m.texto, m.quien) : ZVT.linea(m.texto, m.quien);
+}
+
 /* ------------------------------------------------------------- arranque */
 
 function pintarTodo() {
@@ -1460,6 +1551,17 @@ function init() {
     .then(r => r.ok ? r.json() : null)
     .then(d => { if (d && Array.isArray(d.phones)) { S.waPhones = d.phones; pintarDetalle(); } })
     .catch(() => {});
+
+  if ($('trx')) {
+    pintarTranscripcion();
+    $('trxClear').addEventListener('click', () => { ZVT.limpiar(); estado('Transcripción vaciada.'); });
+    $('trxToggle').addEventListener('click', () => {
+      const plegado = $('trx').classList.toggle('trx--plegado');
+      $('trxToggle').textContent = plegado ? 'Mostrar' : 'Ocultar';
+      $('trxToggle').setAttribute('aria-expanded', String(!plegado));
+    });
+    window.addEventListener('message', trxMensaje);
+  }
 
   if ($('ctlDial')) {
     $('ctlDial').addEventListener('click', marcarSiguiente);
