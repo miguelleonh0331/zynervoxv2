@@ -584,7 +584,13 @@ function panelChat(c) {
 // Como el marco es del mismo dominio, se le inyecta una hoja de estilos en
 // lugar de modificar Zynerwaba. Si el servicio cambiara su maquetado, estas
 // reglas simplemente dejarían de aplicar: el chat seguiría funcionando.
+// Porcentaje del tamaño de letra original dentro del chat. Zynerwaba define
+// todos sus tamaños en rem sin fijar la raíz, así que tocar html basta para
+// escalar texto y espaciados en proporción. Súbelo o bájalo para ajustar.
+const CHAT_ESCALA = 70;
+
 const CHAT_EMBED_CSS = `
+  html { font-size: ${CHAT_ESCALA}%; }
   html, body.compact-body { height: 100%; background: #fff; }
   .compact-app {
     max-width: none !important;
