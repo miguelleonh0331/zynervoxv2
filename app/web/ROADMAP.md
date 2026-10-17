@@ -63,6 +63,8 @@ Reportes propuestos (a definir alcance exacto con el cliente):
 
 ## 5. Sin backend ni UI todavía
 
+- [ ] **CRM** (`crm.php`/`crm_app.php`): solo la maqueta del escritorio de
+      ventas (14 formularios, sin BD ni persistencia). Ver `docs/CRM_MODULE.md`.
 - [ ] **Quality Control** (`quality.php`, stub).
 - [ ] **Scripts** (`scripts.php`, stub).
 - [ ] **Inbound / Ingroups / IVR** (`inbound.php`, stub) — enrutamiento de llamadas
