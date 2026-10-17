@@ -74,27 +74,107 @@ if (empty($_SESSION['dialer_csrf'])) $_SESSION['dialer_csrf'] = bin2hex(random_b
 // modules/admin/dialer_agent.php: Dialer::agentLogin valida que el agente
 // tenga anexo SIP activo, lo marca conectado y lo suma a las colas de sus
 // campañas activas. La consola la invoca al abrir y muestra el resultado.
-if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '') === 'bootstrap') {
+//
+// Las demás acciones son las mismas de modules/admin/dialer_agent.php
+// (marcar, pausar, reanudar, colgar), expuestas como JSON porque esta consola
+// se repinta sola en vez de recargar la página.
+
+/** Estado del puesto de trabajo que el navegador necesita para repintar. */
+function agc_estado(string $u): array {
+    $manuales = [];
+    foreach (Dialer::campaignsForAgent($u) as $c) {
+        if ($c['active'] && $c['dial_method'] === 'MANUAL') {
+            $manuales[] = ['id' => (int)$c['campaign_id'], 'name' => (string)$c['name']];
+        }
+    }
+    $motivos = [];
+    foreach (Dialer::pauseTypes() as $t) {
+        if ($t['active']) $motivos[] = ['id' => (int)$t['pause_type_id'], 'label' => (string)$t['label']];
+    }
+    $pausa = Dialer::agentPause($u);
+    $lead = Dialer::agentCurrentLead($u);
+    $autodial = Dialer::agentAutodialState($u);
+    return [
+        'campaigns' => $manuales,
+        'pauseTypes' => $motivos,
+        'pause' => $pausa ? ['label' => (string)$pausa['label'], 'seconds' => (int)$pausa['duration_seconds']] : null,
+        'lead' => $lead ? [
+            'call_id' => (int)$lead['call_id'],
+            'phone' => (string)($lead['phone_number'] ?? ''),
+            'campaign' => (string)($lead['campaign_name'] ?? ''),
+            'started' => (string)($lead['originated_at'] ?? ''),
+            'ended' => $lead['ended_at'] !== null,
+            'disposed' => $lead['disposition_code'] !== null,
+        ] : null,
+        'selectedCampaign' => (int)($autodial['selected_campaign_id'] ?? 0),
+    ];
+}
+
+$accionesJson = ['bootstrap', 'state', 'manual', 'pause', 'unpause', 'hangup'];
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && in_array($_POST['action'] ?? '', $accionesJson, true)) {
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
+    $accion = (string)$_POST['action'];
     $mensaje = '';
     $fallo = '';
+
     if (!is_string($_POST['csrf_token'] ?? null) || !hash_equals($_SESSION['dialer_csrf'], $_POST['csrf_token'])) {
         $fallo = 'Sesión inválida, recarga la página.';
     } else {
         try {
-            $_SESSION['dialer_entered'] = true;
-            Dialer::agentLogin($usuario);
-            $activas = array_filter(Dialer::campaignsForAgent($usuario), static function ($c) { return (bool)$c['active']; });
-            $mensaje = $activas
-                ? 'Conectado · ' . count($activas) . ' campaña' . (count($activas) === 1 ? '' : 's')
-                : 'Sin campañas activas asignadas';
+            switch ($accion) {
+                case 'bootstrap':
+                    $_SESSION['dialer_entered'] = true;
+                    Dialer::agentLogin($usuario);
+                    $activas = array_filter(Dialer::campaignsForAgent($usuario), static function ($c) { return (bool)$c['active']; });
+                    $mensaje = $activas
+                        ? 'Conectado · ' . count($activas) . ' campaña' . (count($activas) === 1 ? '' : 's')
+                        : 'Sin campañas activas asignadas';
+                    break;
+
+                case 'state':
+                    break;   // sólo devuelve el estado de abajo
+
+                case 'manual':
+                    $campana = filter_var($_POST['campaign_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+                    if (!$campana) throw new RuntimeException('Selecciona una campaña.');
+                    // Recordar la elección, igual que el panel de agente.
+                    Dialer::selectManualCampaign($usuario, $campana);
+                    $callId = Dialer::originateNext($campana, $usuario);
+                    $mensaje = $callId === null
+                        ? 'Sin lead elegible, capacidad o agente disponible; no se marcó.'
+                        : 'Intento #' . $callId . ' enviado. Contesta en tu softphone para marcar al cliente.';
+                    break;
+
+                case 'pause':
+                    $motivo = filter_var($_POST['pause_type_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+                    if (!$motivo) throw new RuntimeException('Selecciona un motivo de pausa.');
+                    Dialer::agentPauseAll($usuario, $motivo);
+                    $mensaje = 'Pausa aplicada a todas tus campañas.';
+                    break;
+
+                case 'unpause':
+                    Dialer::agentPauseAll($usuario, null);
+                    $mensaje = 'Agente reanudado.';
+                    break;
+
+                case 'hangup':
+                    Dialer::agentHangup($usuario, (int)($_POST['call_id'] ?? 0));
+                    $mensaje = 'Solicitud de colgar enviada.';
+                    break;
+            }
         } catch (Throwable $e) {
             $fallo = $e->getMessage();
         }
     }
+
+    // El estado viaja siempre que se pueda: tras un fallo el navegador debe
+    // repintar con la situación real, no con la que suponía.
+    $estado = null;
+    try { $estado = agc_estado($usuario); } catch (Throwable $e) { /* se informa sin estado */ }
+
     if ($fallo !== '') http_response_code(503);
-    echo json_encode(['message' => $mensaje, 'error' => $fallo], JSON_THROW_ON_ERROR);
+    echo json_encode(['message' => $mensaje, 'error' => $fallo, 'state' => $estado], JSON_THROW_ON_ERROR);
     exit;
 }
 
@@ -171,6 +251,31 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
 
   <!-- Columna 3: trabajo del asesor sobre la llamada en curso. -->
   <aside class="col col--work">
+
+    <!-- Control de llamada: las funciones del panel de agente (campaña,
+         marcar, pausa y colgar), que el JS mantiene al día con el discador. -->
+    <div class="block" id="callCtl">
+      <h2>Control de llamada <span class="h-count" id="agentState">—</span></h2>
+      <div class="block-body block-body--pad">
+        <div class="field">
+          <label for="ctlCampaign">Campaña para marcar</label>
+          <select id="ctlCampaign"><option value="">Sin campañas manuales</option></select>
+        </div>
+        <button class="btn btn--primary" id="ctlDial" type="button" style="width:100%;height:28px">Marcar siguiente lead</button>
+
+        <div class="field" id="ctlPauseWrap" style="margin-top:8px">
+          <label for="ctlPauseType">Motivo de pausa</label>
+          <select id="ctlPauseType"><option value="">Selecciona un motivo…</option></select>
+        </div>
+        <div class="ctl-row">
+          <button class="btn-sm" id="ctlPause" type="button">Pausar</button>
+          <button class="btn-sm btn-sm--danger" id="ctlHangup" type="button" hidden>Colgar</button>
+        </div>
+
+        <div class="note" id="ctlLead" hidden></div>
+      </div>
+    </div>
+
     <div class="block block--grow">
       <h2>Tipificar gestión</h2>
       <div class="block-body block-body--pad">

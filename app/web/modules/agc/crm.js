@@ -1062,6 +1062,115 @@ function guardarAgenda() {
   estado('Rellamada preparada para el ' + fecha + ' a las ' + hora + '.');
 }
 
+/* ------------------------------------------- control de llamada (discador) */
+
+// Estado del puesto según el discador. Lo llena cada respuesta del servidor.
+let PUESTO = null;
+let sondeo = null;
+
+function accionDiscador(accion, extra) {
+  const destino = document.body.dataset.crmDialer;
+  if (!destino) return Promise.resolve(null);
+  const cuerpo = Object.assign({action:accion, csrf_token:document.body.dataset.crmCsrf || ''}, extra || {});
+  return fetch(destino, {
+    method:'POST', credentials:'same-origin',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:new URLSearchParams(cuerpo)
+  })
+    .then(r => r.json().then(d => ({ok:r.ok, d})))
+    .then(({ok, d}) => {
+      if (d && d.state) { PUESTO = d.state; pintarControl(); }
+      return {ok, d};
+    });
+}
+
+function pintarControl() {
+  const sel = $('ctlCampaign');
+  if (!sel || !PUESTO) return;
+
+  // Campañas manuales. Se respeta lo que el agente esté eligiendo.
+  if (document.activeElement !== sel) {
+    const elegida = String(PUESTO.selectedCampaign || sel.value || '');
+    sel.replaceChildren(
+      el('option', {value:'', txt:PUESTO.campaigns.length ? '— Selecciona una campaña —' : 'Sin campañas manuales'}),
+      ...PUESTO.campaigns.map(c => el('option', {value:String(c.id), txt:c.name, selected:String(c.id) === elegida})));
+  }
+  sel.disabled = !PUESTO.campaigns.length;
+  $('ctlDial').disabled = !PUESTO.campaigns.length || !!PUESTO.pause;
+
+  // Motivos de pausa
+  const motivos = $('ctlPauseType');
+  if (document.activeElement !== motivos) {
+    motivos.replaceChildren(
+      el('option', {value:'', txt:'Selecciona un motivo…'}),
+      ...PUESTO.pauseTypes.map(t => el('option', {value:String(t.id), txt:t.label})));
+  }
+
+  // Pausado o disponible
+  const enPausa = !!PUESTO.pause;
+  $('ctlPauseWrap').hidden = enPausa;
+  $('ctlPause').textContent = enPausa ? 'Reanudar' : 'Pausar';
+  $('ctlPause').className = 'btn-sm' + (enPausa ? ' btn-sm--primary' : '');
+  const marca = $('agentState');
+  marca.textContent = enPausa ? ('Pausado · ' + PUESTO.pause.label) : 'Disponible';
+
+  // Llamada en curso: sólo entonces se puede colgar
+  const lead = PUESTO.lead;
+  const activa = !!lead && !lead.ended;
+  $('ctlHangup').hidden = !activa;
+  const caja = $('ctlLead');
+  if (lead) {
+    caja.hidden = false;
+    caja.innerHTML = 'Intento <b>#' + lead.call_id + '</b> · ' + (lead.phone || 's/n')
+      + (lead.campaign ? ' · ' + lead.campaign : '')
+      + (lead.ended ? ' · finalizada' : '');
+  } else {
+    caja.hidden = true;
+  }
+}
+
+function marcarSiguiente() {
+  const sel = $('ctlCampaign');
+  if (!sel.value) { aviso('Marcar', 'Selecciona la campaña con la que vas a marcar.'); return; }
+  const boton = $('ctlDial');
+  boton.disabled = true;
+  estado('Solicitando lead…');
+  accionDiscador('manual', {campaign_id:sel.value})
+    .then(({ok, d}) => { estado(d.error || d.message); if (!ok && d.error) aviso('Marcar', d.error); })
+    .catch(() => estado('No se pudo contactar el discador.'))
+    .finally(() => { boton.disabled = false; pintarControl(); });
+}
+
+function alternarPausa() {
+  const enPausa = !!(PUESTO && PUESTO.pause);
+  if (!enPausa) {
+    const motivo = $('ctlPauseType').value;
+    if (!motivo) { aviso('Pausa', 'Selecciona el motivo de la pausa.'); return; }
+    accionDiscador('pause', {pause_type_id:motivo})
+      .then(({d}) => estado(d.error || d.message))
+      .catch(() => estado('No se pudo aplicar la pausa.'));
+  } else {
+    accionDiscador('unpause')
+      .then(({d}) => estado(d.error || d.message))
+      .catch(() => estado('No se pudo reanudar.'));
+  }
+}
+
+function colgarLlamada() {
+  const lead = PUESTO && PUESTO.lead;
+  if (!lead) return;
+  accionDiscador('hangup', {call_id:String(lead.call_id)})
+    .then(({d}) => estado(d.error || d.message))
+    .catch(() => estado('No se pudo enviar la solicitud de colgar.'));
+}
+
+// El discador cambia por su cuenta (entra una llamada, termina, un supervisor
+// pausa). Se relee cada pocos segundos para que el panel no mienta.
+function vigilarPuesto() {
+  if (sondeo) return;
+  sondeo = setInterval(() => { accionDiscador('state').catch(() => {}); }, 4000);
+}
+
 /* ------------------------------------------- conexión con el discador */
 
 // Sólo la consola del agente declara data-crm-dialer. Repite la acción
@@ -1077,19 +1186,17 @@ function conectarDiscador() {
   etiqueta.textContent = 'Conectando…';
   caja.dataset.on = 'wait';
 
-  fetch(destino, {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: new URLSearchParams({action:'bootstrap', ajax:'1', csrf_token:document.body.dataset.crmCsrf || ''})
-  })
-    .then(r => r.json().then(d => ({ok:r.ok, d})))
+  // accionDiscador ya aplica el estado que viene en la respuesta, así que el
+  // control de llamada queda poblado de inmediato y no en blanco hasta el
+  // primer sondeo.
+  accionDiscador('bootstrap')
     .then(({ok, d}) => {
       const fallo = !ok || !!d.error;
       etiqueta.textContent = d.error || d.message || 'Discador';
       caja.dataset.on = fallo ? 'false' : 'true';
       caja.title = fallo ? 'No fue posible conectar con el discador' : 'Conectado al discador';
       estado(fallo ? ('Discador: ' + etiqueta.textContent) : etiqueta.textContent);
+      if (!fallo) vigilarPuesto();
     })
     .catch(() => {
       etiqueta.textContent = 'Discador no disponible';
@@ -1177,6 +1284,11 @@ function init() {
     .then(d => { if (d && Array.isArray(d.phones)) { S.waPhones = d.phones; pintarDetalle(); } })
     .catch(() => {});
 
+  if ($('ctlDial')) {
+    $('ctlDial').addEventListener('click', marcarSiguiente);
+    $('ctlPause').addEventListener('click', alternarPausa);
+    $('ctlHangup').addEventListener('click', colgarLlamada);
+  }
   conectarDiscador();
 
   pintarFiltroProducto();

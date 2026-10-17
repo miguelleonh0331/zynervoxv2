@@ -107,7 +107,31 @@ falla (sin anexo asignado, anexo inactivo, discador caído). Un token inválido
 responde 503 y sin sesión de Zynervox se redirige al login.
 
 Sólo ocurre en esta consola: se activa por el atributo `data-crm-dialer` del
-`<body>`, que el CRM del panel no declara. **No duplica código**: referencia `crm.css`, `crm.js` y
+`<body>`, que el CRM del panel no declara.
+
+### Control de llamada
+
+El bloque "Control de llamada" de la columna derecha trae las funciones de
+`modules/admin/dialer_agent.php`, sin tocar ese archivo:
+
+| Control | Acción | Qué hace |
+|---|---|---|
+| Campaña para marcar | — | Sólo campañas activas con `dial_method = MANUAL` |
+| Marcar siguiente lead | `manual` | `selectManualCampaign()` + `originateNext()` |
+| Motivo de pausa · Pausar | `pause` | `agentPauseAll()` con el motivo elegido |
+| Reanudar | `unpause` | `agentPauseAll(null)` |
+| Colgar | `hangup` | `agentHangup()`; sólo visible con llamada activa |
+
+A diferencia del panel de agente, que recarga la página con formularios, aquí
+las acciones van por JSON y **cada respuesta devuelve el estado completo del
+puesto** (campañas, motivos, pausa, llamada en curso), así que la interfaz se
+repinta con la situación real y no con la que suponía — también tras un
+error. El `bootstrap` ya trae ese estado, de modo que el bloque no queda en
+blanco esperando al primer sondeo.
+
+Como el discador cambia por su cuenta (entra una llamada, un supervisor
+pausa), se relee el estado cada 4 s. En pausa no se puede marcar, y el
+selector de motivo se oculta dejando sólo "Reanudar". **No duplica código**: referencia `crm.css`, `crm.js` y
 `crm_wa_session.php` de `modules/admin/`. Por eso `crm.js` toma el endpoint de
 WhatsApp del atributo `data-crm-wa` del `<body>` (con `crm_wa_session.php` por
 defecto, que es lo que usa admin) en lugar de llevarlo fijo, y el botón

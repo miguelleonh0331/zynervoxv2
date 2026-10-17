@@ -262,6 +262,12 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
 .req{color:var(--danger)}
 .form-error{grid-column:1/-1;background:#FEF2F2;border-bottom:1px solid #FCA5A5;color:var(--danger);font-size:11px;padding:4px 8px}
 
+/* ----------------------------------------- control de llamada (agente) */
+.ctl-row{display:flex;gap:4px;margin-top:8px}
+.ctl-row .btn-sm{flex:1}
+#callCtl .block-body--pad{padding:7px 8px 9px}
+#agentState{font-weight:700;color:#C7CAD4}
+
 /* --------------------------------------------- acceso del agente */
 .login-body{display:grid;place-items:center;height:100dvh;background:var(--bg-main);overflow:auto}
 .login-box{width:min(340px,calc(100vw - 24px));background:var(--bg-card);border:1px solid var(--border)}
