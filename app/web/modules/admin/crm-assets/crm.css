@@ -1,0 +1,168 @@
+/* Consola de Atención Telefónica — Zynervox CRM (maqueta).
+   Rediseño propio: no deriva del demo.css de WinForms. Rejilla densa tipo
+   hoja de cálculo, sin sombras, sin degradados, sin esquinas redondeadas,
+   sin imágenes. Misma paleta y filosofía que layout.css del panel admin. */
+:root{
+  --primary:#F5821F; --primary-hover:#E0731A; --dark:#2D2F3B;
+  --bg-main:#F5F1EA; --bg-card:#FFFFFF; --text:#2D2F3B; --text-muted:#6B7280;
+  --border:#E5E0D8; --rule:#EFEBE4;
+  --ok:#15803D; --warn:#B45309; --danger:#B91C1C;
+  --row:21px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font:12px/1.25 Arial,Helvetica,sans-serif;color:var(--text);background:var(--bg-main)}
+button,input,select,textarea{font:inherit;color:inherit;border-radius:0}
+button{cursor:pointer}
+:focus-visible{outline:1px solid var(--primary);outline-offset:-1px}
+[hidden]{display:none!important}
+
+/* ---------- Esqueleto: 3 columnas, barra arriba y abajo ---------- */
+#app{display:grid;grid-template-columns:248px minmax(0,1fr) 312px;grid-template-rows:28px minmax(0,1fr) 20px;height:100dvh}
+.topbar{grid-column:1/-1;background:var(--dark);color:#fff;display:flex;align-items:stretch;gap:0}
+.statusbar{grid-column:1/-1;background:var(--bg-card);border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 8px;font-size:11px;color:var(--text-muted)}
+.statusbar b{color:var(--text);font-weight:700}
+.col{min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg-card)}
+.col--queue{border-right:1px solid var(--border)}
+.col--action{border-left:1px solid var(--border)}
+.col--file{background:var(--bg-main)}
+
+/* ---------- Barra superior ---------- */
+.brand{display:flex;align-items:center;gap:7px;padding:0 10px;font-weight:700;letter-spacing:.4px;font-size:11px;background:rgba(0,0,0,.18)}
+.brand i{width:7px;height:7px;background:var(--primary);display:block}
+.topbar-jump{display:flex;align-items:center;gap:0;padding:3px 8px}
+.topbar-jump label{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#AEB2BD;margin-right:6px}
+.topbar-jump input{width:92px;height:22px;border:1px solid #4A4D5C;background:#23252F;color:#fff;padding:0 5px}
+.topbar-jump input:focus{border-color:var(--primary);outline:none}
+.topbar-jump button{height:22px;border:1px solid #4A4D5C;border-left:0;background:#3A3D4B;color:#fff;padding:0 9px;font-size:11px}
+.topbar-jump button:hover{background:var(--primary);border-color:var(--primary)}
+.topbar-spacer{flex:1}
+.topbar-meta{display:flex;align-items:center;gap:14px;padding:0 10px;font-size:11px;color:#C7CAD4}
+.topbar-meta b{color:#fff}
+.pill{display:inline-flex;align-items:center;gap:5px;background:var(--primary);color:#fff;font-weight:700;font-size:11px;padding:2px 8px}
+.topbar-exit{border:0;background:transparent;color:#C7CAD4;padding:0 11px;font-size:11px;border-left:1px solid rgba(255,255,255,.14)}
+.topbar-exit:hover{background:var(--danger);color:#fff}
+
+/* ---------- Cabecera de bloque (reemplaza los GroupBox) ---------- */
+.block{display:flex;flex-direction:column;min-height:0;border-bottom:1px solid var(--border)}
+.block--grow{flex:1;min-height:0}
+.block>h2{flex:none;height:19px;background:var(--dark);color:#fff;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center;gap:8px;padding:0 8px}
+.block>h2 .h-count{margin-left:auto;font-weight:400;color:#AEB2BD}
+.block>h2 .h-btn{border:1px solid rgba(255,255,255,.28);background:transparent;color:#fff;font-size:10px;line-height:1;padding:2px 6px}
+.block>h2 .h-btn:hover{background:var(--primary);border-color:var(--primary)}
+.block-body{flex:1;min-height:0;overflow:auto}
+.block-body--pad{padding:5px 7px}
+
+/* ---------- Tablas densas (todo dato en celda, filas contiguas) ---------- */
+table{border-collapse:collapse;width:100%;font-size:11px;white-space:nowrap}
+thead th{position:sticky;top:0;z-index:1;background:#3A3D4B;color:#fff;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.3px;text-align:left;padding:3px 6px;height:19px;
+  border-right:1px solid rgba(255,255,255,.12)}
+tbody td{padding:2px 6px;height:var(--row);border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  overflow:hidden;text-overflow:ellipsis;max-width:320px}
+tbody tr:nth-child(even){background:rgba(45,47,59,.028)}
+tbody tr[data-pick]{cursor:pointer}
+tbody tr[data-pick]:hover{background:rgba(245,130,31,.1)}
+tbody tr.is-active{background:var(--primary);color:#fff}
+tbody tr.is-active td{border-right-color:rgba(255,255,255,.25)}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+.empty{padding:10px;font-size:11px;color:var(--text-muted);background:var(--bg-main)}
+
+/* ---------- Columna 1: cola de trabajo ---------- */
+.queue-modes{flex:none;display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border)}
+.queue-modes button{height:23px;border:0;border-right:1px solid var(--border);border-bottom:1px solid var(--border);
+  background:var(--bg-main);color:var(--text-muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.queue-modes button:hover{color:var(--primary)}
+.queue-modes button[aria-pressed=true]{background:var(--bg-card);color:var(--primary);box-shadow:inset 0 -2px 0 var(--primary)}
+.queue-filter{flex:none;display:flex;border-bottom:1px solid var(--border)}
+.queue-filter input,.queue-filter select{height:23px;border:0;border-right:1px solid var(--border);background:var(--bg-card);padding:0 5px;min-width:0}
+.queue-filter input{flex:1}
+.queue-filter select{flex:none;width:74px;font-size:11px}
+.queue-filter button{flex:none;border:0;background:var(--bg-card);color:var(--text-muted);padding:0 8px;font-size:11px}
+.queue-filter button:hover{color:var(--primary)}
+
+/* ---------- Columna 2: ficha del contacto ---------- */
+.contact-head{flex:none;background:var(--bg-card);border-bottom:1px solid var(--border);padding:5px 9px;display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.contact-head .cid{font-size:11px;font-weight:700;color:#fff;background:var(--dark);padding:1px 6px}
+.contact-head .cname{font-size:15px;font-weight:700;letter-spacing:.2px}
+.contact-head .cdoc{font-size:11px;color:var(--text-muted)}
+.contact-head .cdoc b{color:var(--text)}
+.contact-head .spacer{flex:1}
+
+/* Rejilla de ficha: pares etiqueta|valor, dos pares por fila, sin huecos */
+.kv{display:grid;grid-template-columns:118px minmax(0,1fr) 118px minmax(0,1fr);font-size:11px;border-top:1px solid var(--rule)}
+.kv dt{background:var(--bg-main);color:var(--text-muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;
+  padding:3px 7px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);display:flex;align-items:center}
+.kv dd{padding:3px 7px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center}
+@media(max-width:1180px){.kv{grid-template-columns:118px minmax(0,1fr)}}
+
+/* ---------- Columna 3: panel de tipificación ---------- */
+.field{display:grid;grid-template-columns:100%;gap:2px;margin-bottom:6px}
+.field>label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)}
+.field select,.field input,.field textarea{width:100%;height:24px;border:1px solid var(--border);background:var(--bg-card);padding:0 5px}
+.field textarea{height:52px;padding:4px 5px;resize:none;line-height:1.3}
+.field select:focus,.field input:focus,.field textarea:focus{border-color:var(--primary);outline:none}
+.field select:disabled{background:var(--bg-main);color:#A3A3A3}
+.field--step>label::before{content:attr(data-step);display:inline-block;width:13px;height:13px;line-height:13px;text-align:center;
+  background:var(--dark);color:#fff;font-size:9px;margin-right:5px}
+.field--on>label::before{background:var(--primary)}
+
+.outcome{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:3px 7px;margin-bottom:6px;
+  border-left:3px solid var(--border);background:var(--bg-main);color:var(--text-muted)}
+.outcome[data-kind=sale]{border-left-color:var(--ok);color:var(--ok)}
+.outcome[data-kind=recall]{border-left-color:var(--warn);color:var(--warn)}
+.outcome[data-kind=normal]{border-left-color:var(--primary);color:var(--primary)}
+
+.actions{flex:none;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border-top:1px solid var(--border)}
+.btn{border:0;height:30px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;background:var(--bg-card);color:var(--text)}
+.btn:hover{background:var(--bg-main)}
+.btn--primary{background:var(--primary);color:#fff}
+.btn--primary:hover{background:var(--primary-hover)}
+.btn--primary:disabled{background:#D9D5CE;color:#8A8A8A;cursor:default}
+.btn--wide{grid-column:1/-1}
+
+/* Botonera compacta reutilizable (teléfonos, modales) */
+.bar{display:flex;gap:4px;align-items:center;padding:4px 6px;background:var(--bg-main);border-bottom:1px solid var(--border);flex:none}
+.bar--end{justify-content:flex-end;border-bottom:0;border-top:1px solid var(--border)}
+.bar input,.bar select{height:22px;border:1px solid var(--border);background:var(--bg-card);padding:0 5px;min-width:0}
+.btn-sm{border:1px solid var(--border);background:var(--bg-card);color:var(--text);height:22px;padding:0 9px;font-size:11px}
+.btn-sm:hover{border-color:var(--primary);color:var(--primary)}
+.btn-sm--primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn-sm--primary:hover{background:var(--primary-hover);border-color:var(--primary-hover);color:#fff}
+.btn-sm--danger:hover{border-color:var(--danger);color:var(--danger)}
+.btn-sm:disabled{opacity:.45;cursor:default;border-color:var(--border);color:var(--text-muted)}
+
+/* ---------- Capa modal (venta, rellamada) ---------- */
+#layer{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:rgba(45,47,59,.42)}
+.sheet{background:var(--bg-card);border:1px solid var(--dark);display:flex;flex-direction:column;max-width:calc(100vw - 20px);max-height:calc(100dvh - 20px);min-width:300px}
+.sheet>header{flex:none;height:24px;background:var(--dark);color:#fff;display:flex;align-items:center;gap:8px;padding:0 4px 0 9px;
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.sheet>header .spacer{flex:1}
+.sheet>header button{border:0;background:transparent;color:#fff;width:24px;height:24px;font-size:14px;line-height:1}
+.sheet>header button:hover{background:var(--danger)}
+.sheet-body{flex:1;min-height:0;overflow:auto}
+.sheet-msg{padding:14px 16px;font-size:12px;line-height:1.5;max-width:460px}
+
+/* Formulario de venta: rejilla de 4 columnas, celdas contiguas */
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:0}
+.grid4>.f{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:3px 6px;min-width:0}
+.grid4>.f>label{display:block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted);margin-bottom:1px}
+.grid4>.f input,.grid4>.f select{width:100%;height:21px;border:1px solid var(--border);background:var(--bg-card);padding:0 4px;font-size:11px}
+.grid4>.f input:focus,.grid4>.f select:focus{border-color:var(--primary);outline:none}
+.grid4>.f--wide{grid-column:span 2}
+.grid4>.f--full{grid-column:1/-1}
+.grid4>.f--check{display:flex;align-items:center;gap:6px;grid-column:span 2}
+.grid4>.f--check input{width:13px;height:13px;accent-color:var(--primary);flex:none}
+.grid4>.f--check label{margin:0;font-size:10px;text-transform:none;letter-spacing:0;color:var(--text)}
+.grid4>.f textarea{width:100%;height:40px;border:1px solid var(--border);padding:3px 4px;font-size:11px;resize:none}
+.grid4 .f.is-bad input,.grid4 .f.is-bad select{border-color:var(--danger);background:#FEF2F2}
+.sec{grid-column:1/-1;background:var(--bg-main);border-bottom:1px solid var(--border);border-top:1px solid var(--border);
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);padding:3px 8px}
+.req{color:var(--danger)}
+.form-error{grid-column:1/-1;background:#FEF2F2;border-bottom:1px solid #FCA5A5;color:var(--danger);font-size:11px;padding:4px 8px}
+
+/* Aviso inline del panel de acción */
+.note{font-size:11px;line-height:1.35;padding:4px 7px;background:var(--bg-main);border-left:3px solid var(--primary);color:var(--text-muted);margin-bottom:6px}
+.note b{color:var(--text)}

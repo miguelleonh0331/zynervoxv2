@@ -4,46 +4,37 @@
 
 ## Qué es hoy
 
-Una **maqueta de interfaz**, sin backend: el escritorio de ventas con sus 14
-formularios, menús, pestañas y tablas, navegable y clicable, pero sin base de
-datos ni persistencia. Cerrar la pestaña borra lo capturado.
+La **consola de Atención Telefónica** del agente de televentas, en estado de
+**maqueta**: navegable y con todas sus reglas de negocio activas, pero sin
+backend. El estado vive en memoria: recargar la página lo descarta.
 
 No confundir con `src/features/whatsapp/vendor/src/features/crm/` — es un
 módulo de otro proyecto vendoreado (business suite de Zynerwaba/WhatsApp),
 sin relación con este.
 
-## Origen
+## Origen y alcance actual
 
-Portado desde un proyecto standalone independiente (`crm-escritorio`, fuera
-de este repositorio) que era una app Python completa: servidor WSGI propio,
-SQLite privado, login y roles propios (admin/supervisor/agente/validador/
-backoffice), guardado de escritorio por cuenta con detección de conflictos.
+Portado desde un proyecto standalone (`crm-escritorio`, fuera de este
+repositorio): una app Python con servidor WSGI, SQLite, login y roles
+propios, que reproducía en el navegador un escritorio Windows Forms de 14
+formularios mediante un motor genérico (`demo.js`) que interpretaba 353
+controles en coordenadas absolutas desde un `gui-layout.json` de 7.200
+líneas.
 
-Al integrarlo como módulo de Zynervox se quitó deliberadamente todo lo que
-dependía de ese servidor Python:
+De ahí se descartó, por decisión explícita, todo lo que no era la atención
+telefónica:
 
-- El servidor WSGI (`server.py`, ~30 rutas REST) y su validación de negocio
-  (dinero, fechas, catálogo dinámico, import CSV/XLSX, auditoría).
-- La base SQLite (`crm.sqlite3`) y su esquema (`users`, `contacts`,
-  `activities`, `sales`, `recalls`, `audit`, `gui_workspaces`, etc.).
-- El login y los roles propios de la app (pantalla `Frm_Login`, sesión por
-  cookie `escritorio_session`).
-- La pantalla adicional `/gestion` (`index.html` + `app.js`), que dependía
-  100% del mismo API Python y no se migró.
+- El servidor Python, su SQLite y su login/roles propios.
+- El motor de render WinForms y su `gui-layout.json`, junto con las 21
+  imágenes de iconos. El módulo pasó de ~390 KB de assets a ~43 KB.
+- Los 13 formularios restantes (Back Office, Trama, Cargar Base, Actualizar
+  Campos, Cambio de Estado, Eliminar Gestiones, Referido, Menú, Login…).
+- La pestaña **Datos Inconcert** y sus 12 campos de integración con el
+  discador (id de llamada, lote, base, agente, proceso, país, área, teléfono
+  contactado, user token, anexo, campaña). No queda ninguna referencia.
 
-Lo que **sí** se conservó del proyecto original:
-
-- `demo.js` — motor de render, copiado byte a byte: interpreta
-  `gui-layout.json` y dibuja ventanas, pestañas, tablas y controles. Nunca se
-  tocó su lógica.
-- `gui-layout.json` — la geometría (posición y tamaño de los 353 controles de
-  los 14 formularios) es la original sin tocar. Sus 117 valores de color
-  (`BackColor`/`ForeColor`) sí se remapearon a la paleta de marca — ver
-  "Reskin de marca" más abajo.
-- `gui-assets/*.{png,jpg}` — las 21 imágenes de iconos/botones, sin tocar.
-
-`demo.css` (el estilo visual) **no** es el original: se reescribió completo
-para la identidad de marca — ver la sección siguiente.
+Lo que sí se conserva es la **lógica**, reimplementada de forma explícita en
+`crm.js` (ver "Reglas de negocio").
 
 ## Dónde vive cada archivo
 
@@ -52,109 +43,106 @@ desplegado a `/srv/www/htdocs/zynervoxv2/modules/admin/`):
 
 ```
 modules/admin/
-├── crm.php                  Página Zynervox: sidebar + layout.css + <iframe> a crm_app.php
-├── crm_app.php               El escritorio en sí (full-page), cargado dentro del iframe
+├── crm.php                 Página Zynervox: sidebar + layout.css + <iframe> a crm_app.php
+├── crm_app.php             La consola (full-page), cargada dentro del iframe
 └── crm-assets/
-    ├── demo.js                Sin tocar (copia del original)
-    ├── demo.css                Reescrito — reskin de marca (ver abajo)
-    ├── gui-layout.json         Geometría sin tocar; colores remapeados (ver abajo)
-    ├── gui-assets/*.png,*.jpg  Sin tocar (21 imágenes)
-    └── crm-local.js            NUEVO — reemplaza a desktop-api.js del original
+    ├── crm.css             Estilo propio, ~12 KB
+    └── crm.js              Estado, render y reglas de negocio, ~30 KB
 ```
 
 `sidebar.php` tiene la entrada `crm` (icono propio `_svgIcon('crm')`) justo
 debajo de `dialer_agent` ("Panel de agente"), con `built => true`.
 
-## Reskin de marca (2026-10-17)
+Sin dependencias externas: ni framework, ni webfont, ni imágenes. Dos
+archivos estáticos y una página PHP.
 
-El escritorio original traía el look clásico de Windows Forms (verde oliva
-oscuro, grises, botones con relieve 3D, barras de título en degradado azul).
-Se reemplazó por la paleta de marca Zynervox, con la misma filosofía densa y
-plana que ya usa el resto del panel admin (ver el comentario en
-`layout.css`: *"Estilo liviano/denso tipo VICIdial clásico: sin webfont
-remoto, sin sombras/gradientes/animaciones, tablas con encabezado oscuro"*).
+## Disposición de la pantalla
 
-Dos capas distintas de color, ambas tocadas:
+Rejilla de tres columnas a pantalla completa, densa, sin espacios muertos;
+misma filosofía que `layout.css` del panel admin (sin sombras, sin
+degradados, sin esquinas redondeadas, encabezados de tabla oscuros).
 
-1. **`demo.css`**, reescrito completo. Mismos selectores y propiedades de
-   geometría/overflow/posición que el original — lo que cambió es: colores
-   (paleta de marca, ver tabla), degradados y `box-shadow` eliminados (chrome
-   plano), `border-radius` en 0 en todas partes (sin esquinas redondeadas,
-   pedido explícito), paddings/alturas de chrome reducidos (barra de título,
-   menú, pestañas, diálogos) para que el contenido real ocupe más espacio, y
-   tablas (`.wf-list`) con encabezado oscuro sólido en vez del degradado gris
-   claro original, igual que las tablas del resto del panel.
-2. **`gui-layout.json`**, mismo archivo, misma geometría — solo se
-   remapearon sus 117 valores `BackColor`/`ForeColor` (de 14 formularios y
-   sus controles) con un script de reemplazo dirigido por campo (no
-   búsqueda/reemplazo de texto), verificado para no tocar ninguna otra clave
-   (posición, tamaño, texto, `children`). Los colores semánticos (`Red`,
-   `DarkRed` para errores/obligatorios) se dejaron intactos a propósito.
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ barra: marca · ir a contacto · campaña · operador · asignados    │
+├────────────┬───────────────────────────────┬─────────────────────┤
+│ COLA DE    │ FICHA DEL CONTACTO            │ TIPIFICAR GESTIÓN   │
+│ TRABAJO    │  cabecera (id · nombre · doc) │  nivel 1 ▾          │
+│            │  datos en rejilla etiqueta/   │  nivel 2 ▾          │
+│ 4 modos:   │  valor (12 pares)             │  nivel 3 ▾          │
+│ contactos  ├───────────────────────────────┤  desenlace          │
+│ asignados  │ TELÉFONOS (alta/edición/baja) │  trámite pendiente  │
+│ agenda     ├───────────────────────────────┤  nota               │
+│ ventas     │ HISTORIAL DE GESTIONES        │  [grabar][terminar] │
+├────────────┴───────────────────────────────┴─────────────────────┤
+│ barra de estado                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
 
-| Uso | Color original | Color de marca |
-|---|---|---|
-| Fondo de cada ventana (formulario) | `DarkOliveGreen` / `#556b2f` / `SeaGreen` / `Thistle` / `LightSteelBlue` (variaba por formulario) | `#FFFFFF` — tarjeta blanca |
-| Lienzo detrás de las ventanas (`#workspace`) | `#ababab` gris | `#F5F1EA` — crema, igual que el fondo de página del resto del panel |
-| Paneles internos / pestañas / campos de solo lectura | `DarkOliveGreen`, `InactiveCaptionText`, `ControlLightLight`, `#ffffe1` | `#F5F1EA` — crema, distinguible de la tarjeta blanca que lo contiene |
-| Barra de título, menú activo, legend de `GroupBox`, encabezado de tabla | degradados azules / gris claro | `#2D2F3B` sólido — mismo tono que el sidebar y las tablas del panel admin |
-| Texto que dependía de fondo oscuro (`White`/`Black`/`Transparent`→blanco) | blanco sobre oliva | `#2D2F3B` — porque el fondo que lo contenía pasó a ser claro |
-| Acento/selección/hover | azul Windows `#0078d7` | `#F5821F` — naranja primario de marca |
-| Un caso casi-naranja preexistente (`#ff8000`, labels "Estado") | — | `#F5821F` exacto |
+Equivalencias con el escritorio original, por si hace falta rastrear algo:
 
-Lo que **no** cambió: la posición/tamaño de ningún control, las 353
-coordenadas de `gui-layout.json`, la tipografía (`Tahoma`/`Segoe UI`, igual
-que el original — cambiarla arriesgaba desbordar texto en cajas de tamaño
-fijo en píxeles), y la lógica de `demo.js`.
-
-**Límite conocido:** la posición de cada uno de los 353 controles es fija
-(heredada del diseño original en píxeles absolutos). Este reskin no
-reordena ni redimensiona campos dentro de un formulario — eso sería
-rediseñar cada uno de los 14 formularios desde cero, no un cambio de paleta.
-Si se pide una redistribución real tipo grilla por formulario, es trabajo
-aparte.
-
-## Por qué un `<iframe>` y no HTML inline
-
-El escritorio trae su propia hoja de estilos de **pantalla completa**
-(`html,body{height:100%;overflow:hidden}`, modales `position:fixed`), que
-chocaría con el layout de Zynervox (`.sidebar`, `.main-content`) si se
-insertara directo en la misma página. `crm.php` resuelve esto con:
-
-- Sidebar + cabecera estándar de Zynervox arriba.
-- Un `<iframe class="crm-frame" src="crm_app.php">` que ocupa el resto de
-  `main-content` (convertido a `display:flex; flex-direction:column; height:
-  100vh` solo en esta página).
-- Un botón "Abrir en pestaña completa" que apunta a `crm_app.php` directo,
-  sin iframe, para usar el escritorio a pantalla completa real.
-
-`crm_app.php` es la única página que replica el `<!doctype html>` original
-(`demo.html`): cabecera, nav de menú, workspace y la barra de estado.
-
-## `crm-local.js`: el reemplazo de `desktop-api.js`
-
-El original hablaba por HTTP con el servidor Python (`fetch('/api'+path)`)
-para login, bootstrap y guardado de escritorio (`PUT /api/workspace`).
-`crm-local.js` implementa la misma interfaz que `demo.js` espera, sin red:
-
-| Símbolo que `demo.js` necesita | Qué hace `crm-local.js` |
+| Original | Ahora |
 |---|---|
-| `currentUser` | Se arma desde `document.body.dataset.crmUser`, que `crm_app.php` llena con `$_SESSION['full_name']` (o `$_SESSION['user']`) de Zynervox. |
-| `needsSetup` | Siempre `false` — no hay primer-uso que configurar. |
-| `persistWorkspace()` | `Promise.resolve()` — no hay nada que guardar. |
-| `logoutDesktop()` | `top.location.href = ...crmExit` — saca del iframe y vuelve a `index.php` de Zynervox (la sesión real la administra `Auth`, no este escritorio). |
-| `action(ctx,id)` | Versión síncrona de la original (sin `await` porque no hay red). |
-| `bootDesktop()` | Carga `gui-layout.json`, reescribe las rutas `/gui-assets/...` (absolutas de raíz en el original) a `crm-assets/gui-assets/...` (relativas al módulo), y entra directo a `Frm_AtencionTelefonica` — sin pasar por `Frm_Login`. |
+| `TabControl` de 5 pestañas de búsqueda (arriba a la derecha) | Columna **Cola de trabajo** (izquierda) con 4 modos; la 5.ª pestaña era Inconcert y se eliminó |
+| Botón campana `BtnAsignados` → modal `Frm_LeadsAsignados` | Modo **Asignados** de la cola + contador en la barra superior |
+| Pestañas "Buscar Clientes Agendados" y "Buscar Rellamados" | Unificadas en el modo **Agenda** (en la maqueta original mostraban la misma entidad con las mismas columnas) |
+| `GroupBox` "Datos del Contacto" (izquierda) | Columna central: cabecera + rejilla etiqueta/valor |
+| `lvw_Telefonos` + menú contextual (nuevo/modificar/eliminar) | Bloque **Teléfonos** con barra de alta/edición en línea y botones por fila |
+| `GboDatosGestiones` (abajo a la derecha) | Columna **Tipificar gestión** (derecha), fija |
+| `lvw_Historial` (franja inferior) | Bloque **Historial** en la columna central |
+| Modal `Frm_Venta` (96 controles) | Hoja de **Propuesta de venta**: 44 campos en rejilla de 4 columnas, por secciones |
+| Modal `Frm_Rellamado` | Hoja de **Agendar rellamada** |
+| Barra de menús (Archivo/Gestión/Consultas/Mantenimiento/Ayuda) | Eliminada; sus entradas apuntaban a formularios que ya no existen. "Salir" quedó en la barra superior |
+| Panel lateral "Segmentador" (estaba oculto y vacío) | Eliminado |
 
-Las rutas de imagen se reescriben en runtime (string-replace sobre el JSON
-antes de parsearlo) en vez de editar `gui-layout.json`, precisamente para
-poder seguir usando ese archivo sin tocarlo.
+## Reglas de negocio conservadas
+
+Están explícitas en `crm.js`, ya no implícitas en un JSON de diseño:
+
+- **Tipificación en cascada de tres niveles** (`TIPIFICACION`). Reproduce el
+  árbol `gestion` que el backend original traía por defecto: cada nivel se
+  puebla del anterior, y cambiar un nivel superior invalida los inferiores.
+- **El nodo hoja define el desenlace** (`kind`), igual que en el original:
+  - `sale` → exige registrar la propuesta de venta antes de grabar;
+  - `recall` → exige agendar fecha y hora;
+  - `normal` → se graba sin trámite adicional.
+  Cambiar de rama descarta el trámite que ya no aplica.
+- **Validaciones de la propuesta**, las mismas que aplicaba `sale_data()` en
+  el servidor Python: 11 campos obligatorios; importes no negativos; prima
+  pactada mayor que cero; TREA obligatorio y positivo sólo cuando el tipo de
+  seguro es `INVERSION_SEGURA`; porcentaje de retorno ≤ 100; fecha de
+  nacimiento no futura.
+- **Rellamada** con fecha igual o posterior a hoy (regla `recall_date()`).
+- **Teléfonos**: formato válido, sin duplicados en el contacto, y el contacto
+  debe conservar al menos uno.
+- **Terminar atención** pasa al siguiente contacto de la cola y limpia el
+  formulario, como el `BtnTerminar` original.
+
+Mejoras deliberadas sobre la maqueta original, por coherencia: los teléfonos,
+el historial, las ventas y las agendas pertenecen a un contacto concreto (en
+el original eran listas globales compartidas por todos), y la propuesta de
+venta precarga los datos ya conocidos del contacto más valores de arranque de
+televenta (medio de llamada saliente, tarjeta "no aplica").
 
 ## Acceso
 
 `crm.php` y `crm_app.php` llaman `Auth::checkAccess([1,2,3,4,5,6,7,8,9])` —
 mismo criterio que "Panel de agente": cualquier usuario logueado en
-Zynervox, sin nivel mínimo. No hay control de rol propio (el original tenía
-5 roles distintos; aquí no se migraron).
+Zynervox, sin nivel mínimo. No hay control de rol propio.
+
+El nombre del operador sale de la sesión de Zynervox
+(`$_SESSION['full_name']`, con `$_SESSION['user']` de reserva) y llega al JS
+por `data-crm-user` en el `<body>`; `data-crm-exit` indica a dónde vuelve el
+botón "Salir".
+
+## Por qué un `<iframe>`
+
+La consola usa su propia hoja de estilos de pantalla completa (`html,body` al
+100 %, rejilla a `100dvh`, capa modal fija), que chocaría con el layout de
+Zynervox (`.sidebar`, `.main-content`) si se insertara en la misma página.
+`crm.php` muestra el sidebar y la cabecera estándar y embebe `crm_app.php` en
+un iframe que ocupa el resto exacto; también ofrece "Abrir en pestaña
+completa" para usarla sin el sidebar.
 
 ## Gotcha de despliegue: `IsolatedGate.php`
 
@@ -164,42 +152,52 @@ Producción corre con `deployment.isolated = true`
 esté en su allowlist explícita**, sin importar que `Auth::checkAccess` lo
 permita.
 
-`modules/admin/crm.php` y `modules/admin/crm_app.php` ya están agregados a
-esa lista. **Si se agrega un nuevo archivo `.php` a este módulo (por ejemplo
-un endpoint de API para un backend futuro), hay que sumarlo también ahí** o
-responderá 403 en producción aunque pase `php -l` y `Auth::checkAccess` sin
-problema. Los assets estáticos (`crm-assets/*.js/.css/.json/.png`) no pasan
-por este gate — solo los `.php`.
+`modules/admin/crm.php` y `modules/admin/crm_app.php` ya están en esa lista.
+**Si se agrega un nuevo `.php` a este módulo (por ejemplo un endpoint de API
+para el backend futuro), hay que sumarlo también ahí** o responderá 403
+aunque pase `php -l` y `Auth::checkAccess`. Los assets estáticos
+(`crm-assets/*.css`, `*.js`) no pasan por este gate.
+
+## Cómo verificar cambios sin navegador
+
+El servidor no tiene navegador y `npm` está bloqueado por certificados, así
+que la verificación se hace ejecutando `crm.js` sobre un mini-DOM en Node,
+alimentado con el HTML real de `crm_app.php`. Eso permite comprobar el
+render y recorrer los flujos (cascada, venta con validaciones, rellamada,
+teléfonos, cola, terminar atención) de punta a punta. El arnés es
+desechable: se escribe en `/tmp` al momento de verificar, no vive en el
+repositorio. Lo importante es qué cubrir, no el archivo.
 
 ## Qué falta para que deje de ser maqueta
 
-No hay nada construido de esto todavía; es el mapa de lo que falta decidir
-e implementar cuando se aborde el backend real:
-
-1. **Persistencia.** Reemplazar `persistWorkspace()`/`loadWorkspace()` en
-   `crm-local.js` (o reintroducir equivalentes) por llamadas a un backend
-   real. `demo.js` no necesita cambios para esto: ya invoca
-   `persistWorkspace()` después de cada acción que modifica `demo`.
-2. **Modelo de datos.** El esquema SQLite del proyecto original (tablas
-   `contacts`, `phones`, `activities`, `sales`, `recalls`, `audit`,
-   `gui_workspaces`) es una referencia de diseño ya validada, no un
-   artefacto a reutilizar literalmente — no se trajo a este repo.
-3. **Decisión de roles/auth**: si el futuro backend reutiliza los niveles
-   1-9 de Zynervox tal cual, o si se necesita un modelo de permisos propio
-   (el original distinguía agente/supervisor/validador/backoffice/admin con
-   reglas de visibilidad por fila, p. ej. un agente solo ve sus contactos
-   asignados).
-4. **`/gestion`** (`index.html`/`app.js` del proyecto original) no tiene
-   equivalente en este módulo. Si se necesita, es trabajo nuevo: esos
-   archivos no se migraron.
-5. Decidir si cada operador necesita su propio escritorio (como en el
-   original) o si el CRM pasa a ser compartido/por campaña.
+1. **Persistencia.** Hoy todo vive en el objeto `S` de `crm.js`. Hace falta
+   un backend y reemplazar las escrituras a `S.gestiones`, `S.ventas`,
+   `S.agendas` y `S.contactos[].telefonos` por llamadas a él.
+2. **Modelo de datos.** El esquema SQLite del proyecto original (`contacts`,
+   `phones`, `activities`, `sales`, `recalls`, `audit`) es una referencia de
+   diseño ya validada; no se trajo a este repositorio.
+3. **Catálogos**: hoy `TIPIFICACION` y `OPC` están codificados en el JS. En
+   el original eran configurables por campaña desde la base de datos.
+4. **Roles.** Decidir si basta con los niveles 1-9 de Zynervox o si hace
+   falta un modelo propio (el original distinguía agente, supervisor,
+   validador, backoffice y admin, con visibilidad por fila: un agente sólo
+   veía sus contactos asignados).
+5. **Integración con el discador.** Se quitó la pestaña Inconcert; si en el
+   futuro la consola debe acoplarse al marcador de Zynervox, es trabajo
+   nuevo y debería apoyarse en el módulo `dialer`, no en Inconcert.
 
 ## Flujo para modificar este módulo
 
-Igual que el resto de Zynervox: editar en `/opt/zynervoxv2-fuente`
-(nunca en `/srv/www/htdocs/zynervoxv2`), `php -l` sobre cada `.php`
-tocado, backup `.bak.<timestamp>` del destino, copiar con `root:www 640`,
-comparar `md5sum` fuente/destino, actualizar `IsolatedGate.php` si se suma
-un `.php` nuevo, commit y push desde la fuente. Ver la skill `zynervoxv2`
-para el procedimiento completo.
+Igual que el resto de Zynervox: editar en `/opt/zynervoxv2-fuente` (nunca en
+`/srv/www/htdocs/zynervoxv2`), `php -l` sobre cada `.php` tocado, respaldo
+`.bak.<timestamp>` del destino, copiar con `root:www 640`, comparar `md5sum`
+fuente/destino, actualizar `IsolatedGate.php` si se suma un `.php` nuevo,
+commit y push desde la fuente. Ver la skill `zynervoxv2`.
+
+> Nota de seguridad observada el 2026-10-17: los respaldos `.php.bak.<ts>`
+> que esta rutina deja dentro del docroot **Apache los sirve como texto
+> plano** (se probó: HTTP 200 devolviendo el código fuente). Los respaldos de
+> este módulo se dejaron en modo `600` para que no sean legibles por Apache,
+> pero en el docroot quedan ~178 respaldos antiguos de otros módulos que sí
+> lo son. Conviene decidir una solución general (negarlos en la
+> configuración de Apache o guardar los respaldos fuera del docroot).
