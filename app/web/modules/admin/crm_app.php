@@ -1,5 +1,5 @@
 <?php
-// Consola de Atención Telefónica (maqueta). Se sirve dentro del iframe de
+// Consola CRM de Atención Telefónica (maqueta). Se sirve dentro del iframe de
 // crm.php para que su hoja de estilos de pantalla completa no choque con el
 // layout de Zynervox. Mismo nivel de acceso que crm.php y "Panel de agente".
 require_once __DIR__ . '/../../includes/Auth.php';
@@ -8,6 +8,8 @@ use Includes\Auth;
 Auth::checkAccess([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
 $operador = (string)($_SESSION['full_name'] ?? $_SESSION['user'] ?? 'OPERADOR');
+$nivel = (int)($_SESSION['user_level'] ?? 1);
+$rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de ventas');
 function crm_h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
 ?>
 <!doctype html>
@@ -16,75 +18,64 @@ function crm_h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UT
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#2D2F3B">
-<title>Atención Telefónica · Zynervox CRM</title>
+<title>CRM · Atención Telefónica · Zynervox</title>
 <link rel="stylesheet" href="crm-assets/crm.css">
 <script src="crm-assets/crm.js" defer></script>
 </head>
-<body data-crm-user="<?php echo crm_h($operador); ?>" data-crm-exit="index.php">
+<body data-crm-user="<?php echo crm_h($operador); ?>" data-crm-rol="<?php echo crm_h($rol); ?>" data-crm-exit="index.php">
 
 <div id="app">
 
+  <!-- Barra superior: búsqueda global, estado de la llamada e identidad. -->
   <header class="topbar">
-    <div class="brand"><i></i> ZYNERVOX CRM</div>
-    <div class="topbar-jump">
-      <label for="jump">Ir a contacto</label>
-      <input id="jump" type="search" placeholder="ID o documento" autocomplete="off">
-      <button id="jumpGo" type="button">Abrir</button>
+    <div class="brand"><i></i> ZYNERVOX <b>CRM</b></div>
+
+    <div class="search">
+      <svg viewBox="0 0 24 24" class="ico"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="search" type="search" autocomplete="off"
+             placeholder="Buscar cliente por nombre, documento o teléfono…">
+      <kbd>/</kbd>
     </div>
-    <div class="topbar-spacer"></div>
-    <div class="topbar-meta">
-      <span>Campaña <b>CRM VENTAS</b></span>
-      <span>Operador <b id="opName">—</b></span>
-      <span class="pill">Asignados <b id="leadCount">0</b></span>
+
+    <div class="call-state" id="callState" data-on="false">
+      <span class="dot"></span>
+      <span id="callLabel">Sin llamada</span>
+      <b id="callTimer">00:00</b>
     </div>
-    <button id="exit" class="topbar-exit" type="button">Salir</button>
+
+    <div class="who">
+      <span class="avatar avatar--sm" id="whoAv">—</span>
+      <span class="who-txt"><b id="opName">—</b><em id="opRole">—</em></span>
+    </div>
+    <button id="exit" class="topbar-exit" type="button" title="Volver al panel">Salir</button>
   </header>
 
-  <!-- Columna 1: cola de trabajo. Reemplaza las pestañas de búsqueda y el
-       cuadro de leads asignados del escritorio original. -->
-  <section class="col col--queue">
-    <div class="block block--grow">
-      <h2>Cola de trabajo <span class="h-count" id="queueCount">—</span></h2>
-      <div class="queue-modes" id="queueModes"></div>
-      <div class="queue-filter" id="queueFilter"></div>
-      <div class="block-body" id="queueBody"></div>
+  <!-- Columna 1: cartera del asesor. -->
+  <section class="col col--list">
+    <nav class="list-tabs" id="listTabs"></nav>
+    <div class="list-filters">
+      <select id="fProducto" title="Producto"></select>
+      <select id="fOrden" title="Orden">
+        <option value="prioridad">Orden: Prioridad</option>
+        <option value="reciente">Orden: Más reciente</option>
+        <option value="nombre">Orden: Nombre</option>
+        <option value="monto">Orden: Monto</option>
+      </select>
     </div>
+    <div class="list-body" id="listBody"></div>
+    <div class="list-foot"><span id="listCount">—</span></div>
   </section>
 
-  <!-- Columna 2: ficha del contacto, sus teléfonos y su historial. -->
-  <section class="col col--file">
-    <div class="contact-head">
-      <span class="cid" id="cHeadId">—</span>
-      <span class="cname" id="cHeadName">—</span>
-      <span class="spacer"></span>
-      <span class="cdoc" id="cHeadDoc"></span>
-    </div>
-
-    <div class="block">
-      <h2>Datos del contacto</h2>
-      <dl class="kv" id="cData"></dl>
-    </div>
-
-    <div class="block">
-      <h2>Teléfonos <span class="h-count" id="telCount">—</span></h2>
-      <div class="bar">
-        <input id="telNum" type="text" placeholder="Número" style="width:140px" autocomplete="off">
-        <select id="telTipo" style="width:110px"></select>
-        <button id="telSave" class="btn-sm btn-sm--primary" type="button">Agregar</button>
-        <button id="telCancel" class="btn-sm" type="button">Limpiar</button>
-      </div>
-      <div class="block-body" id="telBody" style="max-height:132px"></div>
-    </div>
-
-    <div class="block block--grow">
-      <h2>Historial de gestiones <span class="h-count" id="histCount">—</span></h2>
-      <div class="block-body" id="histBody"></div>
-    </div>
+  <!-- Columna 2: expediente del cliente. -->
+  <section class="col col--detail">
+    <header class="det-head" id="detHead"></header>
+    <div class="kpis" id="kpis"></div>
+    <nav class="det-tabs" id="detTabs"></nav>
+    <div class="det-body" id="detBody"></div>
   </section>
 
-  <!-- Columna 3: tipificación. Es la acción principal del agente, por eso
-       ocupa una columna fija en vez de ir embebida al pie del formulario. -->
-  <aside class="col col--action">
+  <!-- Columna 3: trabajo del asesor sobre la llamada en curso. -->
+  <aside class="col col--work">
     <div class="block block--grow">
       <h2>Tipificar gestión</h2>
       <div class="block-body block-body--pad">
@@ -103,7 +94,6 @@ function crm_h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UT
         </div>
 
         <div class="outcome" id="tipOut">Elige los tres niveles para habilitar el registro.</div>
-
         <div class="note" id="tipPend" hidden></div>
         <button class="btn-sm btn-sm--primary" id="tipPendBtn" type="button" style="width:100%;margin-bottom:8px" hidden></button>
 
@@ -111,11 +101,19 @@ function crm_h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UT
           <label for="tipNota">Nota de la gestión</label>
           <textarea id="tipNota" maxlength="2000" placeholder="Observaciones de la llamada…"></textarea>
         </div>
-
       </div>
       <div class="actions">
         <button class="btn btn--primary btn--wide" id="btnGrabar" type="button" disabled>Grabar gestión</button>
         <button class="btn btn--wide" id="btnTerminar" type="button">Terminar atención</button>
+      </div>
+    </div>
+
+    <!-- Rendimiento del día, traído de la columna de navegación del modelo. -->
+    <div class="perf">
+      <h2>Tu performance hoy</h2>
+      <div class="perf-body">
+        <div class="donut" id="perfDonut"><span id="perfRatio">0/0</span><em>Ventas</em></div>
+        <dl class="perf-kpis" id="perfKpis"></dl>
       </div>
     </div>
   </aside>

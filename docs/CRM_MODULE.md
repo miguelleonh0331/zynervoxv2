@@ -46,8 +46,8 @@ modules/admin/
 ├── crm.php                 Página Zynervox: sidebar + layout.css + <iframe> a crm_app.php
 ├── crm_app.php             La consola (full-page), cargada dentro del iframe
 └── crm-assets/
-    ├── crm.css             Estilo propio, ~12 KB
-    └── crm.js              Estado, render y reglas de negocio, ~30 KB
+    ├── crm.css             Estilo propio, ~19 KB
+    └── crm.js              Estado, render y reglas de negocio, ~51 KB
 ```
 
 `sidebar.php` tiene la entrada `crm` (icono propio `_svgIcon('crm')`) justo
@@ -58,42 +58,59 @@ archivos estáticos y una página PHP.
 
 ## Disposición de la pantalla
 
-Rejilla de tres columnas a pantalla completa, densa, sin espacios muertos;
-misma filosofía que `layout.css` del panel admin (sin sombras, sin
-degradados, sin esquinas redondeadas, encabezados de tabla oscuros).
+Rejilla de tres columnas a pantalla completa, densa, sin espacios muertos.
+La **estructura** sigue la de un CRM comercial de referencia (cartera ·
+expediente · panel contextual); la **estética** es la del panel admin: plana,
+sin sombras, sin degradados, sin esquinas redondeadas, sin imágenes.
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│ barra: marca · ir a contacto · campaña · operador · asignados    │
-├────────────┬───────────────────────────────┬─────────────────────┤
-│ COLA DE    │ FICHA DEL CONTACTO            │ TIPIFICAR GESTIÓN   │
-│ TRABAJO    │  cabecera (id · nombre · doc) │  nivel 1 ▾          │
-│            │  datos en rejilla etiqueta/   │  nivel 2 ▾          │
-│ 4 modos:   │  valor (12 pares)             │  nivel 3 ▾          │
-│ contactos  ├───────────────────────────────┤  desenlace          │
-│ asignados  │ TELÉFONOS (alta/edición/baja) │  trámite pendiente  │
-│ agenda     ├───────────────────────────────┤  nota               │
-│ ventas     │ HISTORIAL DE GESTIONES        │  [grabar][terminar] │
-├────────────┴───────────────────────────────┴─────────────────────┤
-│ barra de estado                                                  │
-└──────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│ marca · buscador global (/) · estado de llamada + cronómetro · perfil│
+├────────────┬─────────────────────────────────┬───────────────────────┤
+│ CARTERA    │ EXPEDIENTE DEL CLIENTE          │ TIPIFICAR GESTIÓN     │
+│            │  cabecera: avatar, prioridad,   │  nivel 1 ▾            │
+│ 3 pestañas │  contacto, Editar/Más           │  nivel 2 ▾            │
+│ 2 filtros  │  3 tarjetas: producto, monto,   │  nivel 3 ▾            │
+│            │  origen                         │  desenlace            │
+│ tarjetas   │  5 pestañas ───────────────────│  trámite pendiente    │
+│ de cliente │  Resumen: info + notas clave,   │  nota                 │
+│ (avatar,   │   canales, últimas interacciones│  [grabar] [terminar]  │
+│  prioridad,│  Interacciones: timeline+chips  ├───────────────────────┤
+│  producto, │  Transacciones · Documentos     │ TU PERFORMANCE HOY    │
+│  cuándo)   │  Notas                          │  anillo + 4 métricas  │
+├────────────┴─────────────────────────────────┴───────────────────────┤
+│ barra de estado                                                      │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-Equivalencias con el escritorio original, por si hace falta rastrear algo:
+Decisiones al adoptar la estructura de referencia:
 
-| Original | Ahora |
+- **La columna de navegación del modelo no se replica**: Zynervox ya aporta su
+  sidebar y el módulo vive embebido en él; dos menús en pantalla sobraban. Lo
+  que sí se trajo de esa columna es el bloque **"Tu performance hoy"**, que
+  ocupa el pie del panel derecho.
+- **El panel de asistente del modelo se usa para la tipificación.** Es el
+  núcleo del flujo de televentas y necesita un lugar fijo; si en el futuro se
+  suma un asistente, convive en esa misma columna.
+- **Historial unificado**: llamadas, WhatsApp, correos, SMS, notas y gestiones
+  tipificadas son eventos del mismo timeline, filtrables por chips, en vez de
+  dos tablas separadas (interacciones por un lado, gestiones por otro).
+
+Equivalencias con el escritorio WinForms del que partió el módulo:
+
+| Escritorio original | Ahora |
 |---|---|
-| `TabControl` de 5 pestañas de búsqueda (arriba a la derecha) | Columna **Cola de trabajo** (izquierda) con 4 modos; la 5.ª pestaña era Inconcert y se eliminó |
-| Botón campana `BtnAsignados` → modal `Frm_LeadsAsignados` | Modo **Asignados** de la cola + contador en la barra superior |
-| Pestañas "Buscar Clientes Agendados" y "Buscar Rellamados" | Unificadas en el modo **Agenda** (en la maqueta original mostraban la misma entidad con las mismas columnas) |
-| `GroupBox` "Datos del Contacto" (izquierda) | Columna central: cabecera + rejilla etiqueta/valor |
-| `lvw_Telefonos` + menú contextual (nuevo/modificar/eliminar) | Bloque **Teléfonos** con barra de alta/edición en línea y botones por fila |
-| `GboDatosGestiones` (abajo a la derecha) | Columna **Tipificar gestión** (derecha), fija |
-| `lvw_Historial` (franja inferior) | Bloque **Historial** en la columna central |
-| Modal `Frm_Venta` (96 controles) | Hoja de **Propuesta de venta**: 44 campos en rejilla de 4 columnas, por secciones |
-| Modal `Frm_Rellamado` | Hoja de **Agendar rellamada** |
-| Barra de menús (Archivo/Gestión/Consultas/Mantenimiento/Ayuda) | Eliminada; sus entradas apuntaban a formularios que ya no existen. "Salir" quedó en la barra superior |
-| Panel lateral "Segmentador" (estaba oculto y vacío) | Eliminado |
+| `TabControl` de 5 pestañas de búsqueda | Pestañas de cartera (Mis clientes / Prioritarios / Seguimientos) + buscador global; la 5.ª pestaña era Inconcert y se eliminó |
+| Botón campana → modal `Frm_LeadsAsignados` | La cartera *es* la lista de asignados; el total va en la barra de performance |
+| "Buscar Agendados" y "Buscar Rellamados" | Pestaña **Seguimientos** (en el original mostraban la misma entidad) |
+| "Buscar Ventas Agentes" | Pestaña **Transacciones** del expediente |
+| `GroupBox` "Datos del Contacto" | Cabecera + tarjetas KPI + panel "Información del cliente" |
+| `lvw_Telefonos` + menú contextual | Hoja "Gestionar teléfonos", desde la fila Teléfono de la ficha o desde Más acciones |
+| `GboDatosGestiones` | Columna **Tipificar gestión**, fija a la derecha |
+| `lvw_Historial` | Timeline de interacciones, con la gestión como un evento más |
+| Modal `Frm_Venta` (96 controles) | Hoja **Propuesta de venta**: 44 campos en rejilla de 4 columnas por secciones |
+| Modal `Frm_Rellamado` | Hoja **Agendar rellamada** |
+| Barra de menús y panel "Segmentador" | Eliminados |
 
 ## Reglas de negocio conservadas
 
@@ -115,8 +132,12 @@ Están explícitas en `crm.js`, ya no implícitas en un JSON de diseño:
 - **Rellamada** con fecha igual o posterior a hoy (regla `recall_date()`).
 - **Teléfonos**: formato válido, sin duplicados en el contacto, y el contacto
   debe conservar al menos uno.
-- **Terminar atención** pasa al siguiente contacto de la cola y limpia el
-  formulario, como el `BtnTerminar` original.
+- **Terminar atención** pasa al siguiente cliente de la cartera visible
+  (respetando pestaña, filtros y orden) y limpia el formulario, como el
+  `BtnTerminar` original.
+- **Llamada en curso**: al llamar arranca el cronómetro de la barra superior;
+  mientras dure no se puede abrir otro cliente ni salir del módulo, y al
+  colgar la llamada queda registrada con su duración.
 
 Mejoras deliberadas sobre la maqueta original, por coherencia: los teléfonos,
 el historial, las ventas y las agendas pertenecen a un contacto concreto (en
@@ -182,7 +203,12 @@ repositorio. Lo importante es qué cubrir, no el archivo.
    falta un modelo propio (el original distinguía agente, supervisor,
    validador, backoffice y admin, con visibilidad por fila: un agente sólo
    veía sus contactos asignados).
-5. **Integración con el discador.** Se quitó la pestaña Inconcert; si en el
+5. **Datos del expediente.** Prioridad, producto de interés, monto estimado,
+   origen, profesión, empresa, notas clave, documentos y las interacciones por
+   canal hoy son campos de la maqueta en `crm.js`; al haber backend deben
+   venir de la base y alimentarse de la operación real (el canal WhatsApp de
+   Zynervox, el correo saliente, el discador).
+6. **Integración con el discador.** Se quitó la pestaña Inconcert; si en el
    futuro la consola debe acoplarse al marcador de Zynervox, es trabajo
    nuevo y debería apoyarse en el módulo `dialer`, no en Inconcert.
 
