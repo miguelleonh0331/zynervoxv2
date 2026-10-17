@@ -204,9 +204,20 @@ destino.postMessage({zvt:{texto:'…', quien:'agente', parcial:false}}, '*')
 
 `parcial` existe porque los motores emiten hipótesis antes de cerrar la frase:
 se pinta en gris y la reemplaza la siguiente, en vez de llenar el panel de
-versiones a medio hacer. Se conservan las últimas **400** líneas. Cada llamada
-nueva deja una marca de sistema (`Llamada #id · teléfono · nombre`) para saber
-dónde empieza cada una.
+versiones a medio hacer. Se conservan las últimas **400** líneas.
+
+**Escritura cruda.** Si el sistema externo sólo vuelca texto, no necesita la
+API: puede escribir directamente en `#trxBody`.
+
+```js
+document.getElementById('trxBody').textContent += 'lo que diga\n'
+```
+
+Para que eso funcione sin sorpresas, **nada del CRM escribe en ese recuadro por
+su cuenta**: no hay rótulo automático al entrar una llamada, y el aviso de
+"sin transcripción" es CSS sobre `:empty`, no un nodo que haya que borrar. El
+cuerpo lleva `white-space:pre-wrap`, así que los saltos de línea del texto
+crudo se respetan.
 
 **Lo que todavía no existe**: el transporte desde el servidor. Si el
 reconocimiento corre fuera del navegador (servicio STT), hace falta decidir

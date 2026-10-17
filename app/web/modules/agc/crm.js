@@ -1169,12 +1169,9 @@ function aplicarPuesto() {
     // Aunque la llamada ya estuviera en la cartera, sus datos cambiaron: el
     // resumen se recalcula para no quedar mostrando el conteo anterior.
     if (!nuevo) pintarPerformance();
-    if (nuevo) {
-      S.actual = S.contactos.findIndex(c => c.id === lead.call_id);
-      pintarTodo();
-      // Separador en la transcripción: deja claro dónde empieza cada llamada.
-      ZVT.linea('Llamada #' + lead.call_id + ' · ' + (lead.phone || '') + ' · ' + (lead.name || 'sin nombre'), 'sistema');
-    }
+    // Nada escribe en la transcripción por su cuenta: el recuadro es de quien
+    // lo alimente desde fuera y un rótulo automático le borraría lo suyo.
+    if (nuevo) { S.actual = S.contactos.findIndex(c => c.id === lead.call_id); pintarTodo(); }
     else { pintarTabsLista(); pintarCartera(); }
   }
   elegirArbol();
@@ -1470,10 +1467,9 @@ function trxLinea(l, parcial) {
 function pintarTranscripcion() {
   const caja = $('trxBody');
   if (!caja) return;
-  if (!S.transcripcion.length && !S.trxParcial) {
-    caja.replaceChildren(el('div', {cls:'empty', txt:'Sin transcripción. El motor de voz todavía no envía nada.'}));
-    return;
-  }
+  // Vacío de verdad: el aviso de "sin transcripción" lo pone el CSS sobre
+  // :empty, así que escribir ahí desde fuera lo tapa sin pelearse con nadie.
+  if (!S.transcripcion.length && !S.trxParcial) { caja.replaceChildren(); return; }
   caja.replaceChildren(
     ...S.transcripcion.map(l => trxLinea(l, false)),
     ...(S.trxParcial ? [trxLinea(S.trxParcial, true)] : []));

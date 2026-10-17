@@ -213,7 +213,10 @@ button{cursor:pointer}
 .trx-head .spacer{flex:1}
 .trx-head .btn-sm{height:16px;padding:0 6px;font-size:10px;color:#fff;border-color:rgba(255,255,255,.35)}
 .trx-estado{font-weight:400;text-transform:none;letter-spacing:0;color:#CFCBC4}
-.trx-body{flex:1;min-height:0;overflow:auto;padding:2px 0;font-size:11px}
+/* `white-space:pre-wrap` para que el texto crudo que vuelque un sistema
+   externo respete sus saltos de línea sin tener que construir nodos. */
+.trx-body{flex:1;min-height:0;overflow:auto;padding:2px 0;font-size:11px;white-space:pre-wrap;word-break:break-word}
+.trx-body:empty::before{content:'Sin transcripción todavía.';display:block;padding:4px 8px;color:var(--text-muted)}
 .trx-line{display:flex;gap:6px;align-items:baseline;padding:1px 8px}
 .trx-line:nth-child(even){background:rgba(45,47,59,.028)}
 .trx-quien{flex:none;width:26px;font-size:9px;font-weight:700;letter-spacing:.3px;color:var(--text-muted)}
