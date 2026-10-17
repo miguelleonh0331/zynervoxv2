@@ -73,7 +73,7 @@ sin sombras, sin degradados, sin esquinas redondeadas, sin imágenes.
 │ 2 filtros  │  3 tarjetas: producto, monto,   │  nivel 3 ▾            │
 │            │  origen                         │  desenlace            │
 │ tarjetas   │  5 pestañas ───────────────────│  trámite pendiente    │
-│ de cliente │  Resumen: info + notas clave,   │  nota                 │
+│ de cliente │  Resumen: info (o chat) + notas,│  nota                 │
 │ (avatar,   │   canales, últimas interacciones│  [grabar] [terminar]  │
 │  prioridad,│  Interacciones: timeline+chips  ├───────────────────────┤
 │  producto, │  Transacciones · Documentos     │ TU PERFORMANCE HOY    │
@@ -95,6 +95,21 @@ Decisiones al adoptar la estructura de referencia:
 - **Historial unificado**: llamadas, WhatsApp, correos, SMS, notas y gestiones
   tipificadas son eventos del mismo timeline, filtrables por chips, en vez de
   dos tablas separadas (interacciones por un lado, gestiones por otro).
+
+### Ventana de chat (WhatsApp)
+
+El botón **WhatsApp** de la botonera no abre una hoja de envío como Email o
+SMS: sustituye el panel "Información del cliente" por una **ventana de chat**
+con ese cliente, dentro de la pestaña Resumen. Mientras está abierta, el
+bloque superior crece (`.duo--chat`, 360 px mínimo), de modo que la botonera y
+el historial bajan y la conversación gana alto; las notas clave siguen al
+lado. El botón pasa a "Cerrar chat" y queda resaltado; el chat también se
+cierra al cambiar de cliente o al terminar la atención.
+
+**El cuerpo del chat está vacío a propósito** (`#chatBody`): su contenido se
+definirá más adelante. El enganche natural es el módulo WhatsApp que Zynervox
+ya tiene (`modules/admin/whatsapp.php`, con Zynerwaba detrás), en vez de
+construir un canal nuevo desde cero.
 
 Equivalencias con el escritorio WinForms del que partió el módulo:
 

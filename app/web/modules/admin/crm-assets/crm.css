@@ -115,6 +115,12 @@ button{cursor:pointer}
 .panel-body{min-height:0;overflow:auto}
 .duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
 @media(max-width:1500px){.duo{grid-template-columns:minmax(0,1fr)}}
+/* Con el chat abierto el bloque superior crece: la botonera y el historial
+   quedan más abajo y la conversación gana alto. */
+.duo--chat{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);min-height:360px}
+@media(max-width:1500px){.duo--chat{grid-template-columns:minmax(0,1fr)}}
+.panel--chat{min-height:360px}
+.chat-body{flex:1;background:var(--bg-card)}
 
 /* Rejilla etiqueta/valor */
 .kv{display:grid;grid-template-columns:120px minmax(0,1fr);font-size:11px}
@@ -140,6 +146,7 @@ button{cursor:pointer}
 .ch--more:hover{background:var(--dark)}
 .ch:disabled{color:var(--text-muted);background:var(--bg-main);cursor:default}
 .ch:disabled:hover{color:var(--text-muted);background:var(--bg-main)}
+.ch.is-on{background:var(--wa);color:#fff}
 
 /* Chips de filtro del historial */
 .chips{display:flex;gap:4px;align-items:center;flex-wrap:wrap}

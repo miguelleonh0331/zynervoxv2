@@ -145,6 +145,7 @@ const S = {
   orden: 'prioridad',
   busqueda: '',
   chip: 'todas',
+  chat: null,                // 'whatsapp' mientras la ventana de chat esté abierta
   actual: 0,
   tip: [null, null, null],
   propuesta: null,
@@ -407,6 +408,7 @@ function abrirCliente(id) {
   S.actual = i;
   limpiarGestion();
   S.tabDetalle = 'resumen';
+  S.chat = null;
   pintarTodo();
   estado('Expediente de ' + cli().nombre + ' abierto.');
 }
@@ -476,8 +478,11 @@ function pintarDetalle() {
   const c = cli();
   const body = $('detBody');
   if (S.tabDetalle === 'resumen') {
+    // Con el chat abierto ocupa el lugar de la ficha y el bloque crece, de
+    // modo que la botonera y el historial bajan y le dejan sitio.
     body.replaceChildren(
-      el('div', {cls:'duo'}, panelInfo(c), panelNotas(c)),
+      el('div', {cls:'duo' + (S.chat ? ' duo--chat' : '')},
+        S.chat ? panelChat(c) : panelInfo(c), panelNotas(c)),
       botoneraCanales(c),
       panel('Historial de interacciones',
         listaTimeline(interaccionesDe(c).slice(0, 6), 'Sin interacciones registradas.'),
@@ -542,6 +547,33 @@ function panelInfo(c) {
   return panel('Información del cliente', dl);
 }
 
+// Ventana de chat del cliente. Ocupa el lugar de la ficha mientras está
+// abierta. El cuerpo queda deliberadamente vacío: su contenido se definirá
+// cuando se conecte con el módulo WhatsApp de Zynervox.
+function panelChat(c) {
+  const cerrar = el('button', {cls:'btn-sm btn-sm--ghost', type:'button', txt:'Cerrar chat',
+    title:'Volver a la información del cliente', onclick:cerrarChat});
+  const destino = el('span', {style:'font-weight:400;letter-spacing:0;text-transform:none;color:#C7CAD4',
+    txt:(c.telefonos[0] || {}).n || 'sin número'});
+  return el('section', {cls:'panel panel--chat'},
+    el('h3', null,
+      el('span', {txt:'WhatsApp · ' + c.nombre}),
+      el('span', {cls:'spacer'}), destino, cerrar),
+    el('div', {cls:'panel-body chat-body', id:'chatBody'}));
+}
+
+function abrirChat() {
+  S.chat = 'whatsapp';
+  if (S.tabDetalle !== 'resumen') { S.tabDetalle = 'resumen'; pintarTabsDetalle(); }
+  pintarDetalle();
+  estado('Chat de WhatsApp abierto con ' + cli().nombre + '.');
+}
+function cerrarChat() {
+  S.chat = null;
+  pintarDetalle();
+  estado('Chat cerrado.');
+}
+
 function panelNotas(c) {
   return panel('Notas clave', listaNotas(c),
     [el('button', {cls:'btn-sm btn-sm--ghost', type:'button', txt:'Agregar nota', onclick:nuevaNota})]);
@@ -575,7 +607,8 @@ function botoneraCanales(c) {
   return el('div', {cls:'channels'},
     el('button', {cls:'ch ch--call', type:'button', disabled:enLlamada && !propio,
       onclick:() => propio ? colgar() : llamar()}, svg('tel'), propio ? 'Colgar' : 'Llamar'),
-    el('button', {cls:'ch ch--wa', type:'button', onclick:() => enviarPor('whatsapp')}, svg('wa'), 'WhatsApp'),
+    el('button', {cls:'ch ch--wa' + (S.chat ? ' is-on' : ''), type:'button',
+      onclick:() => S.chat ? cerrarChat() : abrirChat()}, svg('wa'), S.chat ? 'Cerrar chat' : 'WhatsApp'),
     el('button', {cls:'ch ch--mail', type:'button', onclick:() => enviarPor('email')}, svg('mail'), 'Email'),
     el('button', {cls:'ch ch--sms', type:'button', onclick:() => enviarPor('sms')}, svg('sms'), 'SMS'),
     el('button', {cls:'ch ch--more', type:'button', onclick:menuCliente}, svg('mas'), 'Más acciones'));
@@ -813,6 +846,7 @@ function terminarAtencion() {
   S.actual = S.contactos.findIndex(x => x.id === siguiente.id);
   limpiarGestion();
   S.tabDetalle = 'resumen';
+  S.chat = null;
   pintarTodo();
   estado('Atención de ' + previo + ' finalizada. Siguiente: ' + cli().nombre + '.');
 }
