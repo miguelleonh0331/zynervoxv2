@@ -1772,7 +1772,7 @@ class Dialer {
     }
 
     public static function agentCurrentLead(string $user): ?array {
-        $q=self::database()->prepare("SELECT l.call_id,l.campaign_id,c.name campaign_name,l.phone_number,l.originated_at,l.ended_at,l.bridged_at,l.disposition_code,d.first_name,d.last_name,d.custom_fields,d.status
+        $q=self::database()->prepare("SELECT l.call_id,l.campaign_id,l.lead_id,c.name campaign_name,l.phone_number,l.originated_at,l.ended_at,l.bridged_at,l.disposition_code,d.first_name,d.last_name,d.custom_fields,d.status
           FROM v2_dialer_call_log l JOIN v2_dialer_campaigns c ON c.campaign_id=l.campaign_id JOIN v2_dialer_leads d ON d.lead_id=l.lead_id
           WHERE (l.ended_at IS NULL AND (l.agent_user=:u OR l.reserved_agent_user=:reserved)) OR (l.ended_at IS NOT NULL AND COALESCE(l.agent_user,l.disposition_agent_user)=:closed AND l.disposition_code IS NULL)
           ORDER BY (l.ended_at IS NULL) DESC,l.call_id DESC LIMIT 1");
