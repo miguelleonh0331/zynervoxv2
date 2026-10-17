@@ -99,5 +99,14 @@ if ($entregadas === 0) {
 
 // Ruta pública equivalente a WA_BASE, para que el navegador siga el proxy.
 $publico = '/' . ltrim(parse_url($base, PHP_URL_PATH) ?: '/zynerwabav2', '/');
+
+// Con un número se abre esa conversación (chat.html lo busca por teléfono);
+// sin él, la bandeja completa. El valor llega del navegador, así que se
+// reduce a dígitos y se acota: así no puede torcer el destino del redirect.
+$numero = preg_replace('/\D/', '', (string)($_GET['id'] ?? ''));
+$destino = ($numero !== '' && strlen($numero) <= 20)
+    ? $publico . '/chat.html?id=' . $numero
+    : $publico . '/';
+
 header('Cache-Control: no-store, private');
-header('Location: ' . $publico . '/', true, 303);
+header('Location: ' . $destino, true, 303);

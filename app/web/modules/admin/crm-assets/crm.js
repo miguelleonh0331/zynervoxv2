@@ -155,7 +155,7 @@ const S = {
      profesion:'Ejecutivo en empleabilidad', empresa:'—', ubicacion:'Lima, Perú',
      direccion:'Av. Demostración 123, Miraflores', poliza:'DEMO-001', campania:'CRM VENTAS', base:'BASE DEMO',
      vigencia:'10 AÑOS', prima:'250.00',
-     telefonos:[{n:'+51 987 654 321', t:'MÓVIL'}, {n:'+51 1 555 0101', t:'TRABAJO'}],
+     telefonos:[{n:'+51 957 741 704', t:'MÓVIL'}, {n:'+51 1 555 0101', t:'TRABAJO'}],
      notas:[{t:'Interés: inversiones a mediano plazo (3–5 años)', f:haceMin(180)},
             {t:'Prefiere asesoría virtual', f:haceMin(170)},
             {t:'Busca seguridad y buena rentabilidad en USD', f:haceMin(160)},
@@ -543,14 +543,17 @@ function panelInfo(c) {
 function panelChat(c) {
   const cerrar = el('button', {cls:'btn-sm btn-sm--ghost', type:'button', txt:'Cerrar chat',
     title:'Volver a la información del cliente', onclick:cerrarChat});
+  // Zynerwaba identifica al contacto por su número en dígitos.
+  const numero = ((c.telefonos[0] || {}).n || '').replace(/\D/g, '');
+  const url = 'crm_wa_session.php?t=' + Date.now() + (numero ? '&id=' + numero : '');
   const abrirAparte = el('button', {cls:'btn-sm btn-sm--ghost', type:'button', txt:'Abrir aparte',
-    title:'Abrir la bandeja en una pestaña nueva',
-    onclick:() => window.open('crm_wa_session.php', '_blank', 'noopener')});
+    title:'Abrir esta conversación en una pestaña nueva',
+    onclick:() => window.open(url, '_blank', 'noopener')});
   const destino = el('span', {style:'font-weight:400;letter-spacing:0;text-transform:none;color:#C7CAD4',
     txt:(c.telefonos[0] || {}).n || 'sin número'});
   // La sesión caduca; se fuerza una carga nueva en cada apertura.
-  const marco = el('iframe', {cls:'chat-frame', id:'chatFrame', title:'Bandeja de WhatsApp',
-    src:'crm_wa_session.php?t=' + Date.now()});
+  const marco = el('iframe', {cls:'chat-frame', id:'chatFrame', title:'Conversación de WhatsApp',
+    src:url});
   return el('section', {cls:'panel panel--chat'},
     el('h3', null,
       el('span', {txt:'WhatsApp · ' + c.nombre}),

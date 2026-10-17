@@ -111,7 +111,10 @@ que le deja la columna y la botonera de canales queda fija abajo. Cada
 `panel-body` hace su propio scroll, y un `min-height` de 220 px evita que el
 contenido se aplaste en pantallas bajas.
 
-El chat embebe la bandeja de Zynerwaba (`/zynerwabav2/`) en un `<iframe>`,
+El chat embebe **la conversación del cliente** en un `<iframe>`: el frontend
+`chat.html` de Zynerwaba acepta `?id=<teléfono en dígitos>` y abre ese hilo
+(busca por coincidencia exacta o por sufijo del número). Sin número, se abre
+la bandeja completa. El servicio se puede embeber
 que se puede incrustar porque el servicio no envía `X-Frame-Options` ni CSP
 `frame-ancestors` y comparte dominio con el panel.
 
@@ -125,11 +128,16 @@ este módulo que no toca nada del módulo WhatsApp:
    `127.0.0.1`, de modo que las credenciales nunca llegan al navegador.
 4. Reemite al navegador la cookie de sesión devuelta (conservando `Path`,
    `HttpOnly` y `SameSite`, y añadiendo `Secure` bajo HTTPS) y responde un
-   `303` hacia la bandeja.
+   `303` hacia `chat.html?id=…` (o la bandeja si no se pidió número).
 
-Zynerwaba **no admite credenciales por URL**: `/api/login` es sólo POST y no
-lee la query string. Tampoco conviene — una URL con usuario y contraseña
-queda en los logs de Apache, el historial y la cabecera `Referer`. Existe
+El parámetro `id` llega del navegador, así que se reduce a dígitos y se
+limita a 20 caracteres antes de construir el destino: un valor con símbolos
+se normaliza y cualquier intento de torcer el redirect cae en la bandeja.
+
+Sobre credenciales por URL: `chat.html` **sí** acepta `?user=&password=`
+para autologin, pero no se usa — esa URL acabaría en el `src` del iframe, en
+los logs de Apache, el historial y la cabecera `Referer`. La bandeja
+principal no lo admite en ningún caso (`/api/login` es sólo POST). Existe
 además un SSO firmado (`POST /api/sso/zynervox`, HMAC con vigencia de 90 s)
 que usa `whatsapp.php`; no se empleó aquí porque mapea el rol según el nivel
 de Zynervox (≥9 superadmin, ≥8 supervisor, resto admin), mientras que el chat
@@ -139,9 +147,10 @@ El `src` del marco lleva un parámetro de tiempo para forzar una sesión nueva
 en cada apertura, y la cabecera del panel ofrece "Abrir aparte" para usar la
 bandeja completa en otra pestaña.
 
-**Pendiente:** el marco abre la bandeja completa, no la conversación del
-cliente en pantalla. Preseleccionar el contacto por teléfono requiere ver si
-el frontend de Zynerwaba acepta algún parámetro para ello.
+El cliente de ejemplo del CRM usa el número `+51 957 741 704`, que
+corresponde a una conversación real en Zynerwaba, para que el panel abra con
+contenido. Los demás contactos de la maqueta no tienen hilo asociado: en
+ellos `chat.html` avisa de que no existe.
 
 Equivalencias con el escritorio WinForms del que partió el módulo:
 
