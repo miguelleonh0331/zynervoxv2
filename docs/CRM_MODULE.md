@@ -50,8 +50,23 @@ modules/admin/
     └── crm.js              Estado, render y reglas de negocio, ~51 KB
 ```
 
+Y la interfaz del agente, que reutiliza todo lo anterior:
+
+```
+modules/agc/
+└── crm.php                 La misma consola a pantalla completa, sin sidebar
+```
+
+`modules/agc/crm.php` es para quien sólo atiende llamadas: no muestra el menú
+de administración. **No duplica código**: referencia `crm.css`, `crm.js` y
+`crm_wa_session.php` de `modules/admin/`. Por eso `crm.js` toma el endpoint de
+WhatsApp del atributo `data-crm-wa` del `<body>` (con `crm_wa_session.php` por
+defecto, que es lo que usa admin) en lugar de llevarlo fijo, y el botón
+"Salir" apunta a `../../index.php`.
+
 `sidebar.php` tiene la entrada `crm` (icono propio `_svgIcon('crm')`) justo
-debajo de `dialer_agent` ("Panel de agente"), con `built => true`.
+debajo de `dialer_agent` ("Panel de agente"), con `built => true`. La consola
+del agente no figura en el menú: se entra por enlace directo.
 
 Sin dependencias externas: ni framework, ni webfont, ni imágenes. Dos
 archivos estáticos y una página PHP.
@@ -114,9 +129,8 @@ contenido se aplaste en pantallas bajas.
 El chat embebe **la conversación del cliente** en un `<iframe>`: el frontend
 `chat.html` de Zynerwaba acepta `?id=<teléfono en dígitos>` y abre ese hilo
 (busca por coincidencia exacta o por sufijo del número). Sin número, se abre
-la bandeja completa. El servicio se puede embeber
-que se puede incrustar porque el servicio no envía `X-Frame-Options` ni CSP
-`frame-ancestors` y comparte dominio con el panel.
+la bandeja completa. El servicio se puede incrustar porque no envía
+`X-Frame-Options` ni CSP `frame-ancestors` y comparte dominio con el panel.
 
 La autenticación la resuelve **`crm_wa_session.php`**, un archivo nuevo de
 este módulo que no toca nada del módulo WhatsApp:

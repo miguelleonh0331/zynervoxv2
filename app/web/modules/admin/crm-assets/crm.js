@@ -137,6 +137,7 @@ const S = {
   operador: document.body.dataset.crmUser || 'OPERADOR',
   rol: document.body.dataset.crmRol || 'Asesor de ventas',
   salida: document.body.dataset.crmExit || 'index.php',
+  waEndpoint: document.body.dataset.crmWa || 'crm_wa_session.php',
   tabLista: 'mis',
   tabDetalle: 'resumen',
   filtroProducto: '',
@@ -557,7 +558,7 @@ function panelChat(c) {
     title:'Volver a la información del cliente', onclick:cerrarChat});
   // Zynerwaba identifica al contacto por su número en dígitos.
   const numero = ((c.telefonos[0] || {}).n || '').replace(/\D/g, '');
-  const url = 'crm_wa_session.php?t=' + Date.now() + (numero ? '&id=' + numero : '');
+  const url = S.waEndpoint + '?t=' + Date.now() + (numero ? '&id=' + numero : '');
   const abrirAparte = el('button', {cls:'btn-sm btn-sm--ghost', type:'button', txt:'Abrir aparte',
     title:'Abrir esta conversación en una pestaña nueva',
     onclick:() => window.open(url, '_blank', 'noopener')});
@@ -1135,7 +1136,7 @@ function init() {
   // Qué clientes tienen conversación, para habilitar o no el botón. Si la
   // consulta falla se deja el botón disponible: vale más intentar abrir el
   // chat que bloquearlo por un fallo pasajero del servicio.
-  fetch('crm_wa_session.php?contacts=1', {credentials:'same-origin'})
+  fetch(S.waEndpoint + '?contacts=1', {credentials:'same-origin'})
     .then(r => r.ok ? r.json() : null)
     .then(d => { if (d && Array.isArray(d.phones)) { S.waPhones = d.phones; pintarDetalle(); } })
     .catch(() => {});
