@@ -100,11 +100,16 @@ Decisiones al adoptar la estructura de referencia:
 
 El botón **WhatsApp** de la botonera no abre una hoja de envío como Email o
 SMS: sustituye el panel "Información del cliente" por una **ventana de chat**
-con ese cliente, dentro de la pestaña Resumen. Mientras está abierta, el
-bloque superior crece (`.duo--chat`, 360 px mínimo), de modo que la botonera y
-el historial bajan y la conversación gana alto; las notas clave siguen al
-lado. El botón pasa a "Cerrar chat" y queda resaltado; el chat también se
-cierra al cambiar de cliente o al terminar la atención.
+con ese cliente, dentro de la pestaña Resumen; las notas clave siguen al lado
+(el chat toma algo más de ancho, 1.6 a 1). El botón pasa a "Cerrar chat" y
+queda resaltado; el chat también se cierra al cambiar de cliente o al
+terminar la atención.
+
+El bloque principal de cada pestaña (`.det-body > .duo | .panel`) se estira
+hasta el pie del expediente con `flex:1`, así que el chat ocupa todo el alto
+que le deja la columna y la botonera de canales queda fija abajo. Cada
+`panel-body` hace su propio scroll, y un `min-height` de 220 px evita que el
+contenido se aplaste en pantallas bajas.
 
 **El cuerpo del chat está vacío a propósito** (`#chatBody`): su contenido se
 definirá más adelante. El enganche natural es el módulo WhatsApp que Zynervox
