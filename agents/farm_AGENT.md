@@ -12,10 +12,32 @@ Debe leer antes de trabajar:
 1. `src/features/farm/README.md`
 2. `src/features/farm/CONTRACT.md`
 
+## Dónde vive el código
+
+```text
+src/features/farm/vendor/        ~400 KB importados de un repo externo
+  services/control-plane/orchestrator.py   75 KB, el corazón
+  services/annex/                          daemon de anexos
+  services/ws-tts-mvp/                     worker TTS
+  monitor.php  annexes.php  api.php  auth.php  proxy_*.php
+app/web/modules/admin/farm.php   envoltorio de 2.6 KB
+installer/farm.sh                instala dos units systemd
+```
+
+**Trampa importante:** `modules/admin/farm.php` hace `require` de
+`modules/admin/farm_app/`, que **no existe en el repositorio**. Lo crea el
+instalador copiando `src/features/farm/vendor` al desplegar. En el checkout la
+página está rota *por diseño*. Quien mire sólo `app/web/` va a concluir que el
+módulo está muerto, y se equivoca.
+
+Stack propio: Python, systemd y baresip, contra el PHP del resto del sistema.
+
 ## Puede modificar
 
 ```text
 src/features/farm/**
+app/web/modules/admin/farm.php
+installer/farm.sh
 docs/CHANGELOG_AGENT.md
 ```
 
@@ -44,6 +66,29 @@ agents/ARCHITECT_AGENT.md
 - Conservar integraciones externas deshabilitadas por defecto.
 - No versionar tokens, cuentas proxy, anexos ni auditoría.
 - Registrar el commit upstream al actualizar `vendor/`.
+- Ninguna ruta funciona sin sesión administrativa nivel 9.
+- No consultar tablas ni contenedores de WhatsApp, ni compartir secretos
+  productivos, ni habilitar SIP/TTS externos durante una prueba de humo.
+- La auditoría es append-only y va asociada al usuario Zynervox.
+- Al re-extraer `vendor/`, recordar que el despliegue vive en
+  `modules/admin/farm_app/`: una copia parcial deja la página rota sin que
+  ninguna prueba del repositorio lo detecte.
+
+## Acoplamiento
+
+Es una isla con una sola puerta: entra por `modules/admin/sidebar.php` y nada
+más del repositorio importa su código. Por eso este especialista casi nunca
+necesita escalar.
+
+## Cuando el pedido no es mío
+
+| Si el pedido trata de… | No es mío. Consultá a | Preguntale |
+|---|---|---|
+| Sesión, niveles, la lista blanca del gate | `zynervox_nucleo` | «¿`modules/admin/farm.php` sigue permitido y con qué nivel?» |
+| La entrada del menú | `zynervox_panel` | «¿Cómo se declara la entrada en el sidebar?» |
+| Instalar las units, el venv, permisos, `farm_app` | `zynervox_instalador` | «¿Qué copia `farm.sh` y con qué dueño y modo?» |
+| Anexos SIP usados por el discador | `zynervox_discador` | «¿Qué anexos consume el marcador y desde qué tabla?» |
+| Troncales o dialplan | `zynervox_telefonia` | «¿Este anexo necesita una ruta de salida declarada?» |
 
 ## Debe escalar al ARCHITECT_AGENT si
 

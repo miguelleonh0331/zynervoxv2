@@ -718,6 +718,26 @@ especialista del área es `agents/dialer_AGENT.md`.
 | Transporte de la transcripción | Si el motor de voz corre fuera del navegador, elegir sondeo, SSE o WebSocket. El recuadro ya acepta escritura directa |
 | Softphone | Aplazado por el usuario. En pantalla ya aparece una barra ZynerPhone |
 
+### Defectos abiertos (auditoría 2026-10-17)
+
+Detallados en `docs/AUDITORIA_2026-10-17.md`. **No corregidos.**
+
+- **XSS almacenado en la tira de control.** `crm.js` arma esa línea con
+  `innerHTML` y concatena `lead.campaign` y `lead.phone` sin escapar. El
+  nombre de campaña sólo se valida por longitud, así que un administrador
+  puede inyectar HTML que se ejecuta en el navegador de cada agente de esa
+  campaña, en cada llamada. Rompe la cláusula «sin HTML» del contrato del
+  dialer; el panel clásico no tiene ni un `innerHTML`. Son tres líneas.
+- **`logout.php` de la consola cierra por GET, sin CSRF, y se traga el fallo
+  de `agentLogout`.** Si Asterisk no responde, el agente queda como miembro de
+  las colas creyendo que salió, y sus llamadas se abandonan. El contrato de
+  core prohíbe exactamente eso; `app/web/logout.php` hace lo correcto.
+- **`crm.php` llama a `getCoreInstance()` directo**, saltando el guard de base
+  que `Dialer::database()` sí aplica.
+- **La consola no está en ningún contrato.** `src/features/dialer/CONTRACT.md`
+  describe el panel clásico y no menciona «agc», «crm», «cascada» ni
+  «rellamada». Es deuda de contrato reconocida.
+
 ### Riesgos detectados, no modificados
 
 - **Sin límite de fecha para la tipificación pendiente.**

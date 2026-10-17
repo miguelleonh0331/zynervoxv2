@@ -16,6 +16,7 @@ Debe leer antes de trabajar:
 1. `src/features/dialer/README.md`
 2. `src/features/dialer/CONTRACT.md`
 3. `docs/CRM_MODULE.md` — sólo si toca la consola del agente (`modules/agc`).
+4. `docs/AUDITORIA_2026-10-17.md` — divergencias y defectos abiertos.
 
 ## Dónde vive el código
 
@@ -162,6 +163,101 @@ Para inspeccionar la base en lectura, un script de un solo uso ejecutado con
 `php -d auto_prepend_file=` (así se evita `IsolatedGate` en CLI). Verificar
 contra datos reales antes de cambiar nada: más de una vez el síntoma reportado
 no estaba donde parecía.
+
+### Promesas del contrato que conviene tener a mano
+
+- Todo vive en `zynervox_core` con prefijo `v2_dialer_`, sólo por
+  `getCoreInstance()` y sólo en despliegue aislado. Nunca la base legacy.
+- No hay tabla de agentes: la identidad es el usuario Zynervox, el anexo es
+  una fila de `v2_phones` leída por `Includes\Phones`, y la asignación la fija
+  el administrador.
+- Sin ARI ni Redis: todo es MySQL + AMI + AGI. El estado de agentes se obtiene
+  **parseando texto** de `queue show` y `core show channels concise`.
+- `disposition_agent_user` se captura al reservar, sólo si la campaña es
+  MANUAL en ese momento, y se conserva aunque la campaña cambie de modo.
+- Un intento MANUAL sin respuesta se cierra conservando el fallo y con
+  `agent_user`, `answered_at`, `bridged_at`, `duration_talk` y grabación en
+  NULL — pero **igual debe tipificarse**. Esa espera no fabrica wrapup ni AHT.
+- Tipificar una llamada vieja **nunca** recicla un intento más nuevo del mismo
+  lead.
+- MANUAL conecta primero el anexo del agente y omite Queue y AMD aunque la
+  campaña tenga AMD. Un fallo de grabación **aborta el puente**.
+- `channel_uniqueid` es `zv2dialer-<call_id>` durante todo el intento: es la
+  clave de reconciliación y de colgar.
+- Cambiar `dial_method` o el dialplan exige motor detenido y ningún intento
+  abierto.
+- Prioridad de pausa: manual → pendiente de tipificación → reserva →
+  disponible. Sólo se revierte la automática, nunca la manual.
+- `MACHINE` nunca cuenta como abandono. La reconciliación libera un intento
+  **sólo** tras confirmar que el canal ya no existe, y una consulta incompleta
+  de canales lanza excepción sin liberar nada.
+- Producción es una unidad systemd única con `flock`. El panel no ejecuta
+  shell ni `systemctl`.
+- Borrar una campaña exige detenida, cero llamadas abiertas y confirmación;
+  borra sólo las DNC propias y **conserva los WAV**.
+- El panel renderiza valores con `textContent`, **sin HTML**.
+
+### Riesgos de rotura
+
+1. **El nombre de las colas y el hash de la cola personal.** Cambiar el
+   prefijo, el algoritmo o la longitud deja agentes en colas huérfanas que
+   nadie quita, y los intentos en vuelo marcan a una cola inexistente.
+2. **«Normalizar» el parseo de texto de AMI.** Las columnas de `core show
+   channels concise`, los literales `paused`, `(Not in use)`,
+   `DIALER_RESERVED`, `DIALER_WRAPUP`, y el prefijo `zv2dialer-`. Un `trim` de
+   más rompe la reconciliación **en silencio**: los intentos quedan abiertos,
+   ocupan capacidad para siempre y el motor deja de marcar sin error visible.
+3. **Quitar el `COALESCE` «por claridad».** El agente deja de ver su llamada,
+   puede marcar sin tipificar, o recibe «llamada de otro agente» al tipificar
+   lo suyo.
+4. **Agregar un campo a la lista de campos de campaña.** Se exige valor válido
+   para todos salvo tres excepciones: un campo nuevo que el formulario no
+   envíe **rompe todo guardado de campaña**, y cada guardado dispara recarga
+   de dialplan y colas por AMI.
+5. **Añadir una consulta al sondeo de la consola**, o quitar `lead_id` o
+   `call_id` del payload: deja sin rellamada y sin tipificación a la cartera
+   que el navegador mantiene en memoria. Y `Dialer::campaignMonitor()` debe
+   devolver **exactamente la misma forma** que el de bot_ivr, porque se
+   concatenan en el mismo array y los pinta un único componente.
+6. Escribir fuera de `/run/zynervox-dialer` o del directorio de grabaciones
+   falla por el endurecimiento de la unidad systemd.
+7. Desplegar clases PHP sin reiniciar el worker deja el daemon con la versión
+   vieja en memoria. El reinicio exige autorización.
+
+### Defectos abiertos en este módulo
+
+Detectados el 2026-10-17, **no corregidos**. Ver `docs/AUDITORIA_2026-10-17.md`.
+
+- **XSS almacenado en la tira de control.** `crm.js` arma esa línea con
+  `innerHTML` y concatena `lead.campaign` y `lead.phone` sin escapar. El
+  nombre de campaña sólo se valida por longitud, así que un administrador
+  puede inyectar HTML que se ejecuta en el navegador de cada agente de esa
+  campaña. Rompe la promesa «sin HTML» del contrato. El panel clásico no tiene
+  un solo `innerHTML`.
+- **`modules/agc/logout.php` cierra por GET, sin CSRF, y se traga el fallo de
+  `agentLogout`.** El contrato de core prohíbe explícitamente fingir que el
+  agente se retiró de las colas: si Asterisk no responde, el agente queda
+  recibiendo llamadas en un puesto vacío. El logout de core hace lo contrario:
+  POST+CSRF y se niega a cerrar, ofreciendo reintentar.
+- **La consola viva no está en el contrato.** `CONTRACT.md` no menciona «agc»,
+  «crm», «cascada», «rellamada» ni «transcripción»: describe el panel clásico.
+  Toda la consola es deuda de contrato reconocida.
+- **`crm.php` llama a `getCoreInstance()` directo** tres veces, saltando el
+  guard de base que `Dialer::database()` sí aplica. Mitigado por el gate, pero
+  la comprobación nominal no se hace.
+
+## Cuando el pedido no es mío
+
+| Si el pedido trata de… | No es mío. Consultá a | Preguntale |
+|---|---|---|
+| Sesión, niveles, auditoría, la lista blanca, credenciales AMI | `zynervox_nucleo` | «¿Esta ruta está en `IsolatedGate` y qué expone `Auth` para esto?» |
+| Troncales, dialplans, contextos, recarga de Asterisk | `zynervox_telefonia` | «¿Puedo pedir esta ruta de salida sin romper la plantilla común?» |
+| El monitor de campañas, el sidebar, páginas de administración | `zynervox_panel` | «¿Qué forma espera el snapshot y qué acciones acepta el API?» |
+| IVR, listas automáticas, TTS, flujos | `zynervox_bot` | «¿`campaignMonitor()` de tu lado devuelve la misma forma que el mío?» |
+| Anexos SIP y la flota de workers | `zynervox_granja` | «¿De dónde sale el anexo que uso para este agente?» |
+| Desplegar, permisos, reiniciar el worker | `zynervox_instalador` | «¿Qué hay que desplegar y requiere reinicio del daemon?» |
+
+Traé la respuesta y seguimos.
 
 ## Debe escalar al ARCHITECT_AGENT si
 

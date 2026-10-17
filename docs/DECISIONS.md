@@ -1184,3 +1184,29 @@ No cambia contratos ni código ejecutable. IsolatedGate.php queda explícitament
 
 Seguimiento:
 Unificar la propiedad de app/web/agc/zynervox.php y app/web/modules/agc exige escalar: toca dos contratos.
+
+### ADR-0024 - Especialistas por area derivados de la auditoria, no del mapa de modulos
+
+Fecha: 2026-10-17
+
+Estado: aceptada
+
+Contexto:
+El sistema declara quince modulos en src/features, pero cuatro no tienen una sola linea de codigo propio y el ejecutable vive en app/web. Antes de repartir areas se audito el repositorio contra el despliegue de zynervoxv2 y se reconciliaron los quince contratos (179 secciones append-only, dieciseis con sustituciones parciales).
+
+Decisión:
+Crear nueve especialistas con alcance derivado de la evidencia: dialer, bot_ivr (que absorbe ivr_builder), core, telephony, admin, zynervox_queries, vpn, farm e installer. Cada ficha lleva las promesas vigentes del contrato ya reconciliadas, de quien depende y quien depende de ella, las trampas verificadas, y una tabla de derivacion que indica a que otro especialista consultar y con que pregunta exacta. El usuario hace de puente entre especialistas; el ARCHITECT_AGENT queda para crear modulos, cambiar contratos, mover limites y dar de alta entradas en IsolatedGate.
+
+Motivo:
+Un especialista por modulo declarado habria asignado duenos a carpetas vacias y dejado sin dueno el codigo vivo. Y un alcance demasiado estrecho obliga a escalar en la mitad de los casos reales, porque el sintoma aparece en una capa y la causa esta en otra.
+
+Alternativas evaluadas:
+- Un especialista por modulo de MODULE_MAP.md: descartado, asigna duenos a modulos zombi y reparte mal el codigo de app/web/includes
+- Un especialista separado para ivr_builder: descartado, bot_ivr lo llama desde siete archivos, comparten base por contrato y el nodo Reenviar lo ejecuta un AGI de bot_ivr
+- Incluir whatsapp y zynerdesk: descartado por indicacion del usuario, son excepcion de migracion y su backend corre en otra instalacion
+
+Impacto:
+No cambia codigo ejecutable ni contratos. Documenta que telephony y core legislan sobre el mismo codigo, que el monitor de campanas tiene tres duenos y que IsolatedGate concentra entradas que ningun contrato cubre. Las skills zynervox_* viven en /opt/codex-web/skills y son locales: no se versionan.
+
+Seguimiento:
+Resolver el perimetro de telephony, la propiedad del monitor de campanas, contratar el motor de reintentos y la consola del agente, y decidir que hacer con los modulos agent y reporting. Todo requiere escalar.

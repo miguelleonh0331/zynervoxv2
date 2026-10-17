@@ -2666,3 +2666,33 @@ Contrato:
 
 Riesgos:
 Simula el discador: no sustituye las pruebas SIP ni la verificación contra datos reales.
+
+### 2026-10-17 18:34 - ARCHITECT_AGENT - (global)
+
+Tipo: docs
+
+Resumen:
+Auditoria del repositorio contra el despliegue de zynervoxv2 y nueve especialistas por area, con indice y diccionario de palabras.
+
+Motivo:
+El conocimiento del sistema vivia en conversaciones y se perdia entre sesiones. Cada area necesitaba un dueno con las promesas de su contrato a mano y una via de derivacion clara cuando el pedido se sale de su terreno.
+
+Archivos modificados:
+- docs/AUDITORIA_2026-10-17.md
+- agents/README.md
+- agents/core_AGENT.md
+- agents/admin_AGENT.md
+- agents/vpn_AGENT.md
+- agents/zynervox_queries_AGENT.md
+- agents/telephony_AGENT.md
+- agents/bot_ivr_AGENT.md
+- agents/installer_AGENT.md
+- agents/farm_AGENT.md
+- agents/dialer_AGENT.md
+- docs/CRM_MODULE.md
+
+Contrato:
+- sin cambios
+
+Riesgos:
+La auditoria dejo cinco defectos con consecuencia operativa sin corregir, por indicacion expresa del usuario de no tocar codigo ni produccion: XSS almacenado en la consola del agente, logout del agente sin CSRF que ademas no falla cerrado y lo deja en las colas, 103 archivos escribibles por cualquiera en el docroot, validacion de canales de Play solo en el navegador, y endpoints que no revalidan la cuenta desactivada. Estan listados en docs/AUDITORIA_2026-10-17.md seccion 7.
