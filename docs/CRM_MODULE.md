@@ -50,15 +50,48 @@ modules/admin/
     └── crm.js              Estado, render y reglas de negocio, ~51 KB
 ```
 
-Y la interfaz del agente, que reutiliza todo lo anterior:
+Y el entorno del agente, **autónomo**:
 
 ```
 modules/agc/
-└── crm.php                 La misma consola a pantalla completa, sin sidebar
+├── crm.php                 Acceso + consola (la misma URL resuelve ambos)
+├── login_view.php          Pantalla de credenciales
+├── logout.php              Sale de las colas, cierra sesión y vuelve a crm.php
+├── crm_wa_session.php      Puente de WhatsApp propio
+├── crm.css                 Copia propia + estilos del acceso
+└── crm.js                  Copia propia
 ```
 
 `modules/agc/crm.php` es para quien sólo atiende llamadas: no muestra el menú
-de administración y **conecta al agente con el discador** al abrirse.
+de administración, **pide credenciales propias** y **conecta al agente con el
+discador** al abrirse.
+
+### Por qué está aislado
+
+El agente nunca sale de `modules/agc/`: ni el acceso, ni la salida, ni los
+recursos. Por eso esta carpeta tiene **copias** de `crm.css`, `crm.js` y
+`crm_wa_session.php` en vez de referenciar las de `modules/admin/`. Es
+duplicación deliberada: el CRM del panel queda como demostración y el del
+agente evolucionará hacia datos reales del discador, así que van a divergir.
+Mientras no lo hagan, un arreglo en uno hay que replicarlo en el otro.
+
+### Acceso y salida
+
+`crm.php` resuelve las dos situaciones en la misma URL: sin sesión incluye
+`login_view.php`, con sesión abre la consola. El formulario publica
+`action=login` y autentica con `Auth::login()` — la misma función del panel —
+seguido de `session_regenerate_id(true)` y un `303` para que recargar no
+reenvíe las credenciales. Un intento fallido responde 401 y espera 300 ms.
+
+No se usa `Auth::checkAccess()` porque redirige al `index.php` del panel; en
+su lugar se comprueba la sesión y, en despliegue aislado, se revalida la
+cuenta contra la base en cada carga (igual que hace `checkAccess`), de modo
+que una cuenta desactivada pierde el acceso sin esperar a que caduque.
+
+`logout.php` cierra primero la sesión del discador con `Dialer::agentLogout()`
+—sacando al agente de las colas— y después la de Zynervox, borrando la cookie
+y devolviendo a `crm.php`, que volverá a pedir credenciales. Si el discador no
+responde la salida continúa igual, para no dejar al agente atrapado.
 
 ### Conexión con el discador
 

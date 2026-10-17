@@ -1,16 +1,71 @@
 <?php
-// Interfaz del agente: la consola CRM a pantalla completa, sin el sidebar de
-// administración. Es la misma consola que modules/admin/crm_app.php embebe en
-// el panel, servida aquí de forma autónoma para quien sólo atiende llamadas.
+// Consola del agente: entorno autónomo. Todo lo que necesita vive en
+// modules/agc/ (login, salida, recursos y puente de WhatsApp); nunca envía al
+// agente al panel de administración.
 //
-// Los recursos (crm.css, crm.js) y el puente de WhatsApp siguen viviendo en
-// modules/admin/: se referencian, no se duplican.
+// La misma URL resuelve las dos situaciones: sin sesión pide credenciales,
+// con sesión abre la consola y conecta al discador.
+declare(strict_types=1);
 require_once __DIR__ . '/../../includes/Auth.php';
 require_once __DIR__ . '/../../includes/Dialer.php';
 use Includes\Auth;
 use Includes\Dialer;
 
-Auth::checkAccess([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+if (session_status() === PHP_SESSION_NONE) session_start();
+
+function crm_h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
+
+$errorLogin = '';
+
+// --- Acceso -------------------------------------------------------------
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '') === 'login') {
+    $usuarioEnviado = (string)($_POST['username'] ?? '');
+    $claveEnviada = (string)($_POST['password'] ?? '');
+    if ($usuarioEnviado === '' || $claveEnviada === '') {
+        $errorLogin = 'Escribe usuario y contraseña.';
+    } elseif (Auth::login($usuarioEnviado, $claveEnviada)) {
+        // Identificador nuevo tras autenticar, y se vuelve por GET para que
+        // recargar no reenvíe las credenciales.
+        session_regenerate_id(true);
+        header('Location: crm.php', true, 303);
+        exit;
+    } else {
+        $errorLogin = 'Usuario o contraseña incorrectos.';
+        usleep(300000);
+    }
+}
+
+// En despliegue aislado la cuenta se revalida contra la base en cada carga,
+// igual que hace Auth::checkAccess, para que una cuenta desactivada pierda el
+// acceso sin esperar a que caduque la sesión.
+$autenticado = isset($_SESSION['user']);
+if ($autenticado && \Config\Config::deployment('isolated', false)) {
+    try {
+        $stmt = \Includes\Database::getCoreInstance()->prepare(
+            'SELECT full_name,user_level FROM ' . \Config\Config::coreTable('users') . ' WHERE user=? AND active=\'Y\''
+        );
+        $stmt->execute([$_SESSION['user']]);
+        $cuenta = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$cuenta) {
+            $_SESSION = [];
+            session_destroy();
+            $autenticado = false;
+            $errorLogin = 'Tu cuenta ya no está activa.';
+        } else {
+            $_SESSION['user_level'] = (int)$cuenta['user_level'];
+            $_SESSION['full_name'] = $cuenta['full_name'];
+        }
+    } catch (Throwable $e) {
+        http_response_code(503);
+        exit('No se pudo verificar la cuenta.');
+    }
+}
+
+if (!$autenticado) {
+    http_response_code($errorLogin !== '' ? 401 : 200);
+    include __DIR__ . '/login_view.php';
+    exit;
+}
 
 $usuario = (string)($_SESSION['user'] ?? '');
 if (empty($_SESSION['dialer_csrf'])) $_SESSION['dialer_csrf'] = bin2hex(random_bytes(32));
@@ -46,7 +101,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['action'] ?? '')
 $operador = (string)($_SESSION['full_name'] ?? $_SESSION['user'] ?? 'OPERADOR');
 $nivel = (int)($_SESSION['user_level'] ?? 1);
 $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de ventas');
-function crm_h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
 ?>
 <!doctype html>
 <html lang="es">
@@ -55,10 +109,10 @@ function crm_h($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UT
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#2D2F3B">
 <title>CRM · Atención Telefónica · Zynervox</title>
-<link rel="stylesheet" href="../admin/crm-assets/crm.css">
-<script src="../admin/crm-assets/crm.js" defer></script>
+<link rel="stylesheet" href="crm.css">
+<script src="crm.js" defer></script>
 </head>
-<body data-crm-user="<?php echo crm_h($operador); ?>" data-crm-rol="<?php echo crm_h($rol); ?>" data-crm-exit="../../index.php" data-crm-wa="../admin/crm_wa_session.php"
+<body data-crm-user="<?php echo crm_h($operador); ?>" data-crm-rol="<?php echo crm_h($rol); ?>" data-crm-exit="logout.php" data-crm-wa="crm_wa_session.php"
       data-crm-dialer="crm.php" data-crm-csrf="<?php echo crm_h($_SESSION['dialer_csrf']); ?>">
 
 <div id="app">
