@@ -16,7 +16,7 @@ $tabs=['lists'=>'Listas','configuration'=>'Configuración','dispositions'=>'Disp
 $requestedTab=$_GET['tab'] ?? 'configuration';
 $activeTab=is_string($requestedTab) && isset($tabs[$requestedTab]) ? $requestedTab : 'configuration';
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET')==='POST') {
-    $actionTabs=['start_engine'=>'configuration','stop_engine'=>'configuration','update_campaign'=>'configuration','create_list'=>'lists','create_disposition'=>'dispositions','delete_disposition'=>'dispositions','set_agents'=>'agents'];
+    $actionTabs=['start_engine'=>'configuration','stop_engine'=>'configuration','update_campaign'=>'configuration','create_list'=>'lists','create_disposition'=>'dispositions','update_disposition'=>'dispositions','delete_disposition'=>'dispositions','set_agents'=>'agents'];
     $postedAction=$_POST['action'] ?? '';
     if (is_string($postedAction) && isset($actionTabs[$postedAction])) $activeTab=$actionTabs[$postedAction];
 }
@@ -52,6 +52,17 @@ try {
                 (int) ($_POST['retry_delay_minutes'] ?? 60)
             );
             $msg = 'Tipificación ' . $codigo . ' creada.';
+        } elseif ($action === 'update_disposition') {
+            Dialer::updateDisposition(
+                (int) ($_POST['disposition_id'] ?? 0),
+                $campaignId,
+                (string) ($_POST['label'] ?? ''),
+                isset($_POST['is_contact']),
+                isset($_POST['is_sale']),
+                isset($_POST['retryable']),
+                (int) ($_POST['retry_delay_minutes'] ?? 60)
+            );
+            $msg = 'Tipificación actualizada.';
         } elseif ($action === 'delete_disposition') {
             Dialer::deleteDisposition((int) ($_POST['disposition_id'] ?? 0), $campaignId);
             $msg = 'Disposición eliminada.';
@@ -265,20 +276,28 @@ if ($campaignId) {
 
         <div class="card dialer-card" id="panel-dispositions" role="tabpanel" aria-labelledby="tab-dispositions" tabindex="0" <?php echo $activeTab!=='dispositions' ? 'hidden' : ''; ?>>
             <h2>Disposiciones</h2>
+            <?php foreach ($dispositions as $d): ?>
+            <form method="POST" id="disp<?php echo (int) $d['disposition_id']; ?>">
+                <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>">
+                <input type="hidden" name="action" value="update_disposition">
+                <input type="hidden" name="disposition_id" value="<?php echo (int) $d['disposition_id']; ?>">
+            </form>
+            <?php endforeach; ?>
+            <p class="section-description">El código fija la jerarquía y queda grabado en cada llamada tipificada, por eso no se puede cambiar. Para mover una rama, crea la nueva y elimina la anterior.</p>
             <div class="table-scroll"><table class="dialer-table">
                 <thead><tr><th>Código</th><th>Etiqueta</th><th>Contacto</th><th>Venta</th><th>Reintenta</th><th>Espera (min)</th><th></th></tr></thead>
                 <tbody>
-                <?php foreach ($dispositions as $d): ?>
-                    <?php $nivel = Dialer::dispositionLevel((string)$d['code']); ?>
+                <?php foreach ($dispositions as $d): $nivel = Dialer::dispositionLevel((string)$d['code']); $fid = 'disp' . (int)$d['disposition_id']; ?>
                     <tr>
                         <td style="font-variant-numeric:tabular-nums"><?php echo h($d['code']); ?></td>
-                        <td><?php echo $nivel > 1 ? str_repeat('&nbsp;&nbsp;&nbsp;&nbsp;', $nivel - 1) . '↳ ' : ''; ?><?php echo h($d['label']); ?></td>
-                        <td><?php echo $d['is_contact'] ? 'Sí' : 'No'; ?></td>
-                        <td><?php echo $d['is_sale'] ? 'Sí' : 'No'; ?></td>
-                        <td><?php echo $d['retryable'] ? 'Sí' : 'No'; ?></td>
-                        <td><?php echo (int) $d['retry_delay_minutes']; ?></td>
+                        <td><?php echo $nivel > 1 ? str_repeat('&nbsp;&nbsp;&nbsp;&nbsp;', $nivel - 1) . '↳ ' : ''; ?><input type="text" name="label" form="<?php echo $fid; ?>" value="<?php echo h($d['label']); ?>" maxlength="80" required style="width:16em"></td>
+                        <td><input type="checkbox" name="is_contact" form="<?php echo $fid; ?>" <?php echo $d['is_contact'] ? 'checked' : ''; ?> style="width:auto"></td>
+                        <td><input type="checkbox" name="is_sale" form="<?php echo $fid; ?>" <?php echo $d['is_sale'] ? 'checked' : ''; ?> style="width:auto"></td>
+                        <td><input type="checkbox" name="retryable" form="<?php echo $fid; ?>" <?php echo $d['retryable'] ? 'checked' : ''; ?> style="width:auto"></td>
+                        <td><input type="number" name="retry_delay_minutes" form="<?php echo $fid; ?>" value="<?php echo (int) $d['retry_delay_minutes']; ?>" min="0" max="100000" style="width:7em"></td>
                         <td>
-                            <form method="POST" onsubmit="return confirm('¿Eliminar disposición?');">
+                            <button type="submit" form="<?php echo $fid; ?>" class="link-action">Guardar</button>
+                            <form method="POST" class="inline-form" onsubmit="return confirm('¿Eliminar esta tipificación?');">
                                 <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['dialer_csrf']); ?>">
                                 <input type="hidden" name="action" value="delete_disposition">
                                 <input type="hidden" name="disposition_id" value="<?php echo (int) $d['disposition_id']; ?>">
@@ -308,7 +327,7 @@ if ($campaignId) {
                 <div class="field"><label>Espera reintento (min)</label><input type="number" name="retry_delay_minutes" value="60" min="0" max="100000"></div>
                 <label style="display:flex;align-items:center;gap:4px;"><input type="checkbox" name="is_contact" style="width:auto"> Contacto</label>
                 <label style="display:flex;align-items:center;gap:4px;"><input type="checkbox" name="is_sale" style="width:auto"> Venta</label>
-                <label style="display:flex;align-items:center;gap:4px;"><input type="checkbox" name="retryable" checked style="width:auto"> Reintenta</label>
+                <label style="display:flex;align-items:center;gap:4px;"><input type="checkbox" name="retryable" style="width:auto"> Reintenta</label>
                 <button type="submit" class="carsa-btn">Agregar</button>
             </form>
         </div>

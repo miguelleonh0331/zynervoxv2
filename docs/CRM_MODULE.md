@@ -501,10 +501,20 @@ En el alta **no se escribe el código**: se elige "Depende de" y
 impide romper el formato del que depende toda la lectura. La tabla se muestra
 indentada según el nivel.
 
+Cada fila se puede **editar en línea**: etiqueta, Contacto, Venta, Reintenta
+y espera, con su botón Guardar. **El código no es editable**: fija la
+jerarquía y queda grabado en cada llamada ya tipificada, así que cambiarlo
+rompería el árbol y el histórico. Para mover una rama hay que crear la nueva
+y borrar la anterior.
+
 Protecciones: `00` es reservado y ningún tramo propio puede valerlo; un
 código con hueco (`010001`) se considera inválido; no se admite un cuarto
 nivel; y una tipificación con subtipificaciones no se puede borrar sin
 eliminar antes sus hijas.
+
+El alta ya **no marca "Reintenta" por defecto**. Lo hacía, y como la consola
+interpreta esa marca como "el agente debe agendar la rellamada", toda
+tipificación nueva pedía agenda sin que nadie lo hubiera elegido.
 
 Como la hoja (`010101`) es una disposición real de la campaña, ese mismo
 código sirve para las dos cosas: cerrar la llamada en el discador y quedar en

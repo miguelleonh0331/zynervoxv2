@@ -1358,6 +1358,36 @@ class Dialer {
         return $code;
     }
 
+    /**
+     * Modifica una tipificación existente. El código no se toca a propósito:
+     * define la jerarquía y queda grabado en cada llamada ya tipificada, así
+     * que cambiarlo rompería el árbol y el histórico. Para mover una rama hay
+     * que crear la nueva y borrar la vieja.
+     */
+    public static function updateDisposition(int $dispositionId, int $campaignId, string $label, bool $isContact, bool $isSale, bool $retryable, int $retryDelayMinutes): void {
+        if ($isSale) $isContact = true;
+        $label = trim($label);
+        if ($label === '' || mb_strlen($label, 'UTF-8') > 80) throw new \RuntimeException('Etiqueta inválida.');
+        if (preg_match('/[\x00-\x1f]/u', $label)) throw new \RuntimeException('Etiqueta inválida.');
+        if ($retryDelayMinutes < 0 || $retryDelayMinutes > 100000) throw new \RuntimeException('Minutos de reintento inválidos.');
+        self::campaign($campaignId);
+        $q = self::database()->prepare(
+            'UPDATE v2_dialer_dispositions SET label=:label,is_contact=:ic,is_sale=:is,retryable=:rt,retry_delay_minutes=:rd
+             WHERE disposition_id=:id AND campaign_id=:c'
+        );
+        $q->execute([
+            'label' => $label, 'ic' => (int)$isContact, 'is' => (int)$isSale,
+            'rt' => (int)$retryable, 'rd' => $retryDelayMinutes,
+            'id' => $dispositionId, 'c' => $campaignId,
+        ]);
+        if ($q->rowCount() === 0) {
+            $existe = self::database()->prepare('SELECT 1 FROM v2_dialer_dispositions WHERE disposition_id=? AND campaign_id=?');
+            $existe->execute([$dispositionId, $campaignId]);
+            if (!$existe->fetchColumn()) throw new \RuntimeException('Tipificación inexistente en esta campaña.');
+        }
+        self::audit('DISPOSITION_UPDATE', (string)$dispositionId);
+    }
+
     public static function deleteDisposition(int $dispositionId, int $campaignId): void {
         // Una tipificación con hijos no se borra sola: dejaría ramas sueltas.
         $q = self::database()->prepare('SELECT code FROM v2_dialer_dispositions WHERE disposition_id=? AND campaign_id=?');
