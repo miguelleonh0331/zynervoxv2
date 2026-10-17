@@ -79,8 +79,60 @@ if (empty($_SESSION['dialer_csrf'])) $_SESSION['dialer_csrf'] = bin2hex(random_b
 // (marcar, pausar, reanudar, colgar), expuestas como JSON porque esta consola
 // se repinta sola en vez de recargar la página.
 
-/** Estado del puesto de trabajo que el navegador necesita para repintar. */
-function agc_estado(string $u): array {
+/**
+ * Lo que cambia solo y hay que releer: llamada en curso, pausa, tipificación
+ * pendiente y autodial. Es lo único que viaja en cada sondeo.
+ */
+function agc_volatil(string $u): array {
+    $pausa = Dialer::agentPause($u);
+    $lead = Dialer::agentCurrentLead($u);
+    $autodial = Dialer::agentAutodialState($u);
+    $pendiente = Dialer::pendingDispositionForAgent($u);
+
+    // Los códigos de cierre sólo hacen falta cuando hay algo que tipificar.
+    $codigos = [];
+    if ($lead) {
+        foreach (Dialer::dispositions((int)$lead['campaign_id']) as $d) {
+            $codigos[] = ['code' => (string)$d['code'], 'label' => (string)$d['label']];
+        }
+    }
+
+    return [
+        'pause' => $pausa ? ['label' => (string)$pausa['label'], 'seconds' => (int)$pausa['duration_seconds']] : null,
+        'lead' => $lead ? [
+            'call_id' => (int)$lead['call_id'],
+            'phone' => (string)($lead['phone_number'] ?? ''),
+            'campaign' => (string)($lead['campaign_name'] ?? ''),
+            'campaign_id' => (int)$lead['campaign_id'],
+            'name' => trim((string)($lead['first_name'] ?? '') . ' ' . (string)($lead['last_name'] ?? '')),
+            'at' => (string)($lead['originated_at'] ?? ''),
+            'ended' => $lead['ended_at'] !== null,
+            'bridged' => $lead['bridged_at'] !== null,
+            'disposition' => $lead['disposition_code'],
+            'status' => (string)($lead['status'] ?? ''),
+            'variables' => is_array($lead['variables'] ?? null) ? $lead['variables'] : [],
+        ] : null,
+        'dispositions' => $codigos,
+        'pending' => $pendiente ? [
+            'call_id' => (int)$pendiente['call_id'],
+            'phone' => (string)($pendiente['phone_number'] ?? ''),
+            'campaign' => (string)($pendiente['campaign_name'] ?? ''),
+        ] : null,
+        'autodial' => [
+            'enabled' => (bool)($autodial['enabled'] ?? false),
+            'waiting' => (bool)($autodial['pending'] ?? false),
+            'seconds' => $autodial['seconds_until'] === null ? null : (int)$autodial['seconds_until'],
+            'running' => (bool)($autodial['running'] ?? false),
+        ],
+        'selectedCampaign' => (int)($autodial['selected_campaign_id'] ?? 0),
+    ];
+}
+
+/**
+ * Lo que no cambia durante el turno: campañas del agente y motivos de pausa.
+ * Viaja sólo al conectar, para no repetirlo en cada sondeo.
+ */
+function agc_fijo(string $u): array {
     $manuales = [];
     foreach (Dialer::campaignsForAgent($u) as $c) {
         if ($c['active'] && $c['dial_method'] === 'MANUAL') {
@@ -91,53 +143,43 @@ function agc_estado(string $u): array {
     foreach (Dialer::pauseTypes() as $t) {
         if ($t['active']) $motivos[] = ['id' => (int)$t['pause_type_id'], 'label' => (string)$t['label']];
     }
-    $pausa = Dialer::agentPause($u);
-    $lead = Dialer::agentCurrentLead($u);
-    $autodial = Dialer::agentAutodialState($u);
-    $pendiente = Dialer::pendingDispositionForAgent($u);
+    return ['campaigns' => $manuales, 'pauseTypes' => $motivos];
+}
 
-    // Disposiciones de la campaña del lead: son los códigos que el discador
-    // acepta para cerrarlo. La cascada de la consola se traduce a uno de
-    // ellos; sin un código válido el ciclo progresivo no encadena.
-    $codigos = [];
-    if ($lead) {
-        foreach (Dialer::dispositions((int)$lead['campaign_id']) as $d) {
-            $codigos[] = ['code' => (string)$d['code'], 'label' => (string)$d['label']];
-        }
+/**
+ * Llamadas que el agente ya trabajó, para poblar la cartera al abrir. Una
+ * sola consulta por carga de página: después la lista se mantiene sola con el
+ * lead que ya viaja en cada sondeo.
+ *
+ * En llamadas MANUAL `agent_user` queda NULL y el agente real está en
+ * `reserved_agent_user` / `disposition_agent_user`, de ahí el OR.
+ */
+function agc_historial(string $u, int $limite = 50): array {
+    $sql = 'SELECT l.call_id,l.campaign_id,l.phone_number,l.originated_at,l.ended_at,l.disposition_code,
+                   c.name campaign_name,d.first_name,d.last_name,d.status
+            FROM v2_dialer_call_log l
+            JOIN v2_dialer_campaigns c ON c.campaign_id=l.campaign_id
+            LEFT JOIN v2_dialer_leads d ON d.lead_id=l.lead_id
+            WHERE (l.reserved_agent_user=:u1 OR l.disposition_agent_user=:u2 OR l.agent_user=:u3)
+              AND l.originated_at >= CURDATE()
+            ORDER BY l.call_id DESC LIMIT ' . max(1, min(200, $limite));
+    $q = \Includes\Database::getCoreInstance()->prepare($sql);
+    $q->execute(['u1' => $u, 'u2' => $u, 'u3' => $u]);
+    $filas = [];
+    foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $filas[] = [
+            'call_id' => (int)$r['call_id'],
+            'campaign_id' => (int)$r['campaign_id'],
+            'campaign' => (string)$r['campaign_name'],
+            'phone' => (string)$r['phone_number'],
+            'name' => trim((string)($r['first_name'] ?? '') . ' ' . (string)($r['last_name'] ?? '')),
+            'at' => (string)$r['originated_at'],
+            'ended' => $r['ended_at'] !== null,
+            'disposition' => $r['disposition_code'],
+            'status' => (string)($r['status'] ?? ''),
+        ];
     }
-
-    return [
-        'campaigns' => $manuales,
-        'pauseTypes' => $motivos,
-        'pause' => $pausa ? ['label' => (string)$pausa['label'], 'seconds' => (int)$pausa['duration_seconds']] : null,
-        'lead' => $lead ? [
-            'call_id' => (int)$lead['call_id'],
-            'phone' => (string)($lead['phone_number'] ?? ''),
-            'campaign' => (string)($lead['campaign_name'] ?? ''),
-            'campaign_id' => (int)$lead['campaign_id'],
-            'name' => trim((string)($lead['first_name'] ?? '') . ' ' . (string)($lead['last_name'] ?? '')),
-            'started' => (string)($lead['originated_at'] ?? ''),
-            'ended' => $lead['ended_at'] !== null,
-            'bridged' => $lead['bridged_at'] !== null,
-            'disposed' => $lead['disposition_code'] !== null,
-            'status' => (string)($lead['status'] ?? ''),
-            'variables' => is_array($lead['variables'] ?? null) ? $lead['variables'] : [],
-        ] : null,
-        'dispositions' => $codigos,
-        'pending' => $pendiente ? [
-            'call_id' => (int)$pendiente['call_id'],
-            'phone' => (string)($pendiente['phone_number'] ?? ''),
-            'campaign' => (string)($pendiente['campaign_name'] ?? ''),
-            'reason' => (string)($pendiente['termination_reason'] ?? ''),
-        ] : null,
-        'selectedCampaign' => (int)($autodial['selected_campaign_id'] ?? 0),
-        'autodial' => [
-            'enabled' => (bool)($autodial['enabled'] ?? false),
-            'waiting' => (bool)($autodial['pending'] ?? false),
-            'seconds' => $autodial['seconds_until'] === null ? null : (int)$autodial['seconds_until'],
-            'running' => (bool)($autodial['running'] ?? false),
-        ],
-    ];
+    return $filas;
 }
 
 $accionesJson = ['bootstrap', 'state', 'manual', 'pause', 'unpause', 'hangup', 'dispose'];
@@ -211,12 +253,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && in_array($_POST['action'
     }
 
     // El estado viaja siempre que se pueda: tras un fallo el navegador debe
-    // repintar con la situación real, no con la que suponía.
-    $estado = null;
-    try { $estado = agc_estado($usuario); } catch (Throwable $e) { /* se informa sin estado */ }
+    // repintar con la situación real, no con la que suponía. Lo fijo y el
+    // historial sólo al conectar: repetirlos en cada sondeo sería gasto puro.
+    $respuesta = ['message' => $mensaje, 'error' => $fallo, 'state' => null];
+    try {
+        $respuesta['state'] = agc_volatil($usuario);
+        if ($accion === 'bootstrap') {
+            $respuesta['fixed'] = agc_fijo($usuario);
+            $respuesta['history'] = agc_historial($usuario);
+        }
+    } catch (Throwable $e) { /* se informa sin estado */ }
 
     if ($fallo !== '') http_response_code(503);
-    echo json_encode(['message' => $mensaje, 'error' => $fallo, 'state' => $estado], JSON_THROW_ON_ERROR);
+    echo json_encode($respuesta, JSON_THROW_ON_ERROR);
     exit;
 }
 
@@ -271,15 +320,6 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
   <!-- Columna 1: cartera del asesor. -->
   <section class="col col--list">
     <nav class="list-tabs" id="listTabs"></nav>
-    <div class="list-filters">
-      <select id="fProducto" title="Producto"></select>
-      <select id="fOrden" title="Orden">
-        <option value="prioridad">Orden: Prioridad</option>
-        <option value="reciente">Orden: Más reciente</option>
-        <option value="nombre">Orden: Nombre</option>
-        <option value="monto">Orden: Monto</option>
-      </select>
-    </div>
     <div class="list-body" id="listBody"></div>
     <div class="list-foot"><span id="listCount">—</span></div>
   </section>
@@ -346,7 +386,6 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
       </div>
       <div class="actions">
         <button class="btn btn--primary btn--wide" id="btnGrabar" type="button" disabled>Grabar gestión</button>
-        <button class="btn btn--wide" id="btnTerminar" type="button">Terminar atención</button>
       </div>
     </div>
 

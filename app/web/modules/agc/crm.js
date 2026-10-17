@@ -159,8 +159,6 @@ const S = {
   waEndpoint: document.body.dataset.crmWa || 'crm_wa_session.php',
   tabLista: 'mis',
   tabDetalle: 'resumen',
-  filtroProducto: '',
-  orden: 'prioridad',
   busqueda: '',
   chip: 'todas',
   chat: null,                // 'whatsapp' mientras la ventana de chat esté abierta
@@ -170,96 +168,19 @@ const S = {
   propuesta: null,
   agenda: null,
   llamada: null,            // {contacto, desde:Date}
-  contactos: [
-    {id:1001, documento:'44012345', nombre:'Víctor Andrés Arbulú Rocca', correo:'victor.arbulu@correo.com',
-     prioridad:'Alta', producto:'Inversión Segura', monto:25000, moneda:'S/', origen:'Referido (Jorge Odar)',
-     profesion:'Ejecutivo en empleabilidad', empresa:'—', ubicacion:'Lima, Perú',
-     direccion:'Av. Demostración 123, Miraflores', poliza:'DEMO-001', campania:'CRM VENTAS', base:'BASE DEMO',
-     vigencia:'10 AÑOS', prima:'250.00',
-     telefonos:[{n:'+51 957 741 704', t:'MÓVIL'}, {n:'+51 1 555 0101', t:'TRABAJO'}],
-     notas:[{t:'Interés: inversiones a mediano plazo (3–5 años)', f:haceMin(180)},
-            {t:'Prefiere asesoría virtual', f:haceMin(170)},
-            {t:'Busca seguridad y buena rentabilidad en USD', f:haceMin(160)},
-            {t:'Referido por Jorge Odar', f:haceMin(2880)}]},
-    {id:1002, documento:'44022221', nombre:'María López García', correo:'maria.lopez@correo.com',
-     prioridad:'Media', producto:'Vida', monto:8400, moneda:'S/', origen:'Campaña digital',
-     profesion:'Contadora', empresa:'Estudio Contable Lima', ubicacion:'Lima, Perú',
-     direccion:'Jr. Demostración 456, Lince', poliza:'DEMO-002', campania:'CRM VENTAS', base:'BASE DEMO',
-     vigencia:'20 AÑOS', prima:'150.00',
-     telefonos:[{n:'+51 912 345 678', t:'MÓVIL'}],
-     notas:[{t:'Solicita cotización para cónyuge', f:haceMin(300)}]},
-    {id:1003, documento:'44033330', nombre:'Carlos Ramírez Díaz', correo:'carlos.ramirez@correo.com',
-     prioridad:'Alta', producto:'Rumbo', monto:15200, moneda:'S/', origen:'Base propia',
-     profesion:'Ingeniero civil', empresa:'Constructora Demo', ubicacion:'Arequipa, Perú',
-     direccion:'Av. Demostración 789, Cayma', poliza:'DEMO-003', campania:'CRM VENTAS', base:'BASE DEMO',
-     vigencia:'5 AÑOS', prima:'320.00',
-     telefonos:[{n:'+51 934 567 890', t:'MÓVIL'}],
-     notas:[{t:'Pidió llamar después de las 6 pm', f:haceMin(1500)}]},
-    {id:1004, documento:'44044440', nombre:'Patricia Fernández Luna', correo:'patricia.fernandez@correo.com',
-     prioridad:'Media', producto:'SOAT', monto:380, moneda:'S/', origen:'Renovación',
-     profesion:'Comerciante', empresa:'—', ubicacion:'Lima, Perú',
-     direccion:'Calle Demostración 321, Surco', poliza:'DEMO-004', campania:'CRM VENTAS', base:'BASE DEMO',
-     vigencia:'1 AÑO', prima:'380.00',
-     telefonos:[{n:'+51 987 222 333', t:'MÓVIL'}],
-     notas:[{t:'Vence su SOAT el próximo mes', f:haceMin(1600)}]},
-    {id:1005, documento:'44055550', nombre:'Luis González Paredes', correo:'luis.gonzalez@correo.com',
-     prioridad:'Alta', producto:'Vida', monto:19800, moneda:'S/', origen:'Referido (Ana Torres)',
-     profesion:'Médico', empresa:'Clínica Demo', ubicacion:'Lima, Perú',
-     direccion:'Av. Demostración 654, San Isidro', poliza:'DEMO-005', campania:'CRM VENTAS', base:'BASE DEMO',
-     vigencia:'20 AÑOS', prima:'410.00',
-     telefonos:[{n:'+51 998 111 222', t:'MÓVIL'}],
-     notas:[]},
-    {id:1006, documento:'44066660', nombre:'Sofía Martínez Vega', correo:'sofia.martinez@correo.com',
-     prioridad:'Media', producto:'Inversión Segura', monto:31000, moneda:'S/', origen:'Campaña digital',
-     profesion:'Arquitecta', empresa:'Estudio Demo', ubicacion:'Lima, Perú',
-     direccion:'Av. Demostración 987, Barranco', poliza:'DEMO-006', campania:'CRM VENTAS', base:'BASE DEMO',
-     vigencia:'10 AÑOS', prima:'520.00',
-     telefonos:[{n:'+51 966 333 444', t:'MÓVIL'}],
-     notas:[{t:'Comparará con otra aseguradora', f:haceMin(4300)}]},
-    {id:1007, documento:'44077770', nombre:'Jorge Ruiz Campos', correo:'jorge.ruiz@correo.com',
-     prioridad:'Baja', producto:'Rumbo', monto:5600, moneda:'S/', origen:'Base propia',
-     profesion:'Docente', empresa:'Colegio Demo', ubicacion:'Trujillo, Perú',
-     direccion:'Jr. Demostración 147, Centro', poliza:'DEMO-007', campania:'CRM VENTAS', base:'BASE DEMO',
-     vigencia:'5 AÑOS', prima:'120.00',
-     telefonos:[{n:'+51 944 555 666', t:'MÓVIL'}],
-     notas:[]},
-    {id:1008, documento:'44088880', nombre:'Camila Torres Ríos', correo:'camila.torres@correo.com',
-     prioridad:'Alta', producto:'Vida', monto:22400, moneda:'S/', origen:'Referido (Jorge Odar)',
-     profesion:'Abogada', empresa:'Estudio Jurídico Demo', ubicacion:'Lima, Perú',
-     direccion:'Av. Demostración 258, La Molina', poliza:'DEMO-008', campania:'CRM VENTAS', base:'BASE DEMO',
-     vigencia:'20 AÑOS', prima:'460.00',
-     telefonos:[{n:'+51 922 888 777', t:'MÓVIL'}],
-     notas:[{t:'Pide propuesta por correo antes de decidir', f:haceMin(5800)}]}
-  ],
-  interacciones: [
-    {id:1, contacto:1001, tipo:'llamada',  titulo:'Llamada realizada', detalle:'Interesado en Inversión Segura. Se envió cotización.', f:haceMin(200), autor:'Ana Torres', dur:'04:28'},
-    {id:2, contacto:1001, tipo:'whatsapp', titulo:'WhatsApp enviado',  detalle:'Hola Víctor, como conversamos te comparto la cotización de Inversión Segura.', f:haceMin(220), autor:'Ana Torres'},
-    {id:3, contacto:1001, tipo:'email',    titulo:'Correo enviado',    detalle:'Propuesta de inversión + brochure.', f:haceMin(1300), autor:'Ana Torres'},
-    {id:4, contacto:1001, tipo:'llamada',  titulo:'Llamada entrante',  detalle:'Consulta sobre tasas en USD.', f:haceMin(1400), autor:'Ana Torres', dur:'02:11'},
-    {id:5, contacto:1001, tipo:'nota',     titulo:'Nota',              detalle:'Cliente menciona que evaluará con su equipo.', f:haceMin(1500), autor:'Ana Torres'},
-    {id:6, contacto:1002, tipo:'llamada',  titulo:'Llamada realizada', detalle:'Solicita incluir a su cónyuge en la cotización.', f:haceMin(320), autor:'Ana Torres', dur:'03:02'},
-    {id:7, contacto:1003, tipo:'gestion',  titulo:'Gestión registrada', detalle:'CONTACTADO › SEGUIMIENTO › VOLVER A LLAMAR — Pidió llamar después de las 6 pm.', f:haceMin(1500), autor:'Ana Torres'},
-    {id:8, contacto:1006, tipo:'email',    titulo:'Correo enviado',    detalle:'Comparativo de rentabilidad a 3 y 5 años.', f:haceMin(4300), autor:'Ana Torres'}
-  ],
-  gestiones: [
-    {id:1, contacto:1003, f:haceMin(1500), asesor:'Ana Torres', n1:'CONTACTADO', n2:'SEGUIMIENTO', n3:'VOLVER A LLAMAR', nota:'Pidió llamar después de las 6 pm.'}
-  ],
-  ventas: [
-    {id:1, contacto:1002, f:hoyISO(), asesor:'Ana Torres', producto:'Vida', estado:'PENDIENTE', subestado:'POR REVISAR', prima:'150.00'}
-  ],
-  agendas: [
-    {id:1, contacto:1003, fecha:hoyISO(), hora:'18:30', nota:'Rellamada solicitada por el cliente.'},
-    {id:2, contacto:1006, fecha:hoyISO(), hora:'11:00', nota:'Confirmar comparativo enviado.'}
-  ],
-  documentos: [
-    {id:1, contacto:1001, nombre:'Cotización Inversión Segura.pdf', tipo:'Cotización', f:haceMin(220)},
-    {id:2, contacto:1001, nombre:'Brochure producto.pdf', tipo:'Material', f:haceMin(1300)},
-    {id:3, contacto:1001, nombre:'DNI escaneado.jpg', tipo:'Identidad', f:haceMin(2880)}
-  ]
+  // La cartera son las llamadas que el agente ya trabajó hoy. Se siembra con
+  // una consulta al conectar y después se mantiene sola con el lead que ya
+  // viaja en cada sondeo: ni una consulta extra durante el turno.
+  contactos: [],
+  interacciones: [],
+  gestiones: [],
+  ventas: [],
+  agendas: [],
+  documentos: [],
 };
 let seq = {gestion:2, venta:2, agenda:3, interaccion:9, doc:4};
 
-const cli = () => S.contactos[S.actual] || S.contactos[0];
+const cli = () => S.contactos[S.actual] || S.contactos[0] || null;
 
 /* -------------------------------------------------------------- utilidades */
 
@@ -365,34 +286,21 @@ function tieneChat(c) {
 /* --------------------------------------------- columna 1: cartera */
 
 const TABS_LISTA = [
-  {id:'mis',   et:'Mis clientes', filtro:() => S.contactos},
-  {id:'prio',  et:'Prioritarios', filtro:() => S.contactos.filter(c => c.prioridad === 'Alta')},
-  {id:'segui', et:'Seguimientos', filtro:() => S.contactos.filter(c => S.agendas.some(a => a.contacto === c.id))}
+  {id:'hoy',      et:'Hoy',           filtro:() => S.contactos},
+  {id:'pendiente',et:'Sin tipificar', filtro:() => S.contactos.filter(c => !c.disposition)},
+  {id:'todas',    et:'Todas',         filtro:() => S.contactos}
 ];
-const PESO = {Alta:0, Media:1, Baja:2};
 
-// Última señal de actividad del cliente, para ordenar y mostrar "cuándo".
-function ultima(c) {
-  const fechas = S.interacciones.filter(i => i.contacto === c.id).map(i => +new Date(i.f));
-  return fechas.length ? Math.max(...fechas) : 0;
-}
-
+// Orden natural del trabajo: lo último llamado arriba.
 function carteraVisible() {
   const tab = TABS_LISTA.find(t => t.id === S.tabLista) || TABS_LISTA[0];
   let lista = tab.filtro();
-  if (S.filtroProducto) lista = lista.filter(c => c.producto === S.filtroProducto);
   const q = S.busqueda.trim().toLocaleLowerCase('es');
   if (q) {
-    lista = lista.filter(c => [c.nombre, c.documento, c.producto, ...c.telefonos.map(t => t.n)]
+    lista = lista.filter(c => [c.nombre, c.telefono, c.campania, String(c.id)]
       .join(' ').toLocaleLowerCase('es').includes(q));
   }
-  const orden = {
-    prioridad:(a, b) => PESO[a.prioridad] - PESO[b.prioridad] || ultima(b) - ultima(a),
-    reciente:(a, b) => ultima(b) - ultima(a),
-    nombre:(a, b) => a.nombre.localeCompare(b.nombre, 'es'),
-    monto:(a, b) => b.monto - a.monto
-  }[S.orden];
-  return lista.slice().sort(orden);
+  return lista.slice().sort((a, b) => b.id - a.id);
 }
 
 function pintarTabsLista() {
@@ -402,30 +310,63 @@ function pintarTabsLista() {
       onclick:() => { S.tabLista = t.id; pintarTabsLista(); pintarCartera(); }})));
 }
 
-function pintarFiltroProducto() {
-  const prods = [...new Set(S.contactos.map(c => c.producto))].sort();
-  $('fProducto').replaceChildren(
-    el('option', {value:'', txt:'Todos los productos'}),
-    ...prods.map(p => el('option', {value:p, txt:p, selected:S.filtroProducto === p})));
-}
 
 function pintarCartera() {
   const lista = carteraVisible();
   $('listBody').replaceChildren(...(lista.length ? lista.map(c => {
-    const u = ultima(c);
-    return el('div', {cls:'cli', 'aria-current':String(c.id === cli().id), role:'button', tabindex:'0',
+    const cerrada = !!c.disposition;
+    return el('div', {cls:'cli', 'aria-current':String(c.id === (cli() || {}).id), role:'button', tabindex:'0',
         onclick:() => abrirCliente(c.id),
         onkeydown:e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirCliente(c.id); } }},
-      avatar(c.nombre),
-      el('div', {cls:'cli-name', txt:c.nombre, title:c.nombre}),
-      el('span', {cls:'tag tag--' + c.prioridad.toLowerCase(), txt:c.prioridad}),
-      el('div', {cls:'cli-tel', txt:c.telefonos[0] ? c.telefonos[0].n : '—'}),
+      avatar(c.nombre || c.telefono),
+      el('div', {cls:'cli-name', txt:c.nombre || c.telefono, title:c.nombre || c.telefono}),
+      el('span', {cls:'tag ' + (cerrada ? 'tag--baja' : 'tag--media'),
+        txt:cerrada ? c.disposition : 'SIN TIP.',
+        title:cerrada ? 'Tipificada con el código ' + c.disposition : 'Pendiente de tipificar'}),
+      el('div', {cls:'cli-tel', txt:c.telefono || '—'}),
       el('div', {cls:'cli-meta'},
-        svg(c.producto === 'SOAT' ? 'doc' : 'prod'),
-        el('span', {cls:'prod', txt:c.producto, title:c.producto}),
-        el('span', {cls:'when', txt:u ? corto(new Date(u).toISOString()) : '—'})));
-  }) : [el('div', {cls:'empty', txt:'Ningún cliente coincide con el filtro.'})]));
-  $('listCount').textContent = lista.length + ' de ' + S.contactos.length + ' clientes';
+        svg('tel'),
+        el('span', {cls:'prod', txt:'#' + c.id + (c.campania ? ' · ' + c.campania : ''), title:c.campania}),
+        el('span', {cls:'when', txt:c.cuando ? corto(c.cuando) : '—'})));
+  }) : [el('div', {cls:'empty', txt:S.contactos.length
+      ? 'Ninguna llamada coincide con el filtro.'
+      : 'Todavía no has llamado a nadie hoy. Usa «Marcar siguiente lead».'})]));
+  $('listCount').textContent = lista.length + ' de ' + S.contactos.length + ' llamadas';
+}
+
+// Convierte una llamada del discador en la ficha que maneja la consola.
+function deLlamada(x) {
+  return {
+    id: x.call_id,
+    nombre: x.name || '',
+    telefono: x.phone || '',
+    campania: x.campaign || '',
+    campaignId: x.campaign_id || 0,
+    cuando: x.at ? String(x.at).replace(' ', 'T') : '',
+    disposition: x.disposition || null,
+    estadoLead: x.status || '',
+    variables: x.variables || {},
+    // Compatibilidad con el resto de la consola
+    documento: '', correo: '', direccion: '', poliza: '', base: '', vigencia: '',
+    producto: x.campaign || '', prioridad: 'Media', monto: 0, moneda: 'S/',
+    origen: '', profesion: '', empresa: '', ubicacion: '',
+    telefonos: x.phone ? [{n:x.phone, t:'MÓVIL'}] : [],
+    notas: []
+  };
+}
+
+// Suma o actualiza la llamada en la cartera sin consultar la base.
+function anotarLlamada(x) {
+  if (!x || !x.call_id) return;
+  const ficha = deLlamada(x);
+  const i = S.contactos.findIndex(c => c.id === ficha.id);
+  if (i < 0) {
+    S.contactos.unshift(ficha);
+    S.actual = 0;
+  } else {
+    // Conserva lo que el agente haya añadido (notas) y refresca lo del discador.
+    S.contactos[i] = Object.assign(ficha, {notas:S.contactos[i].notas});
+  }
 }
 
 function abrirCliente(id) {
@@ -446,8 +387,19 @@ const nombreDe = id => (S.contactos.find(c => c.id === id) || {}).nombre || '—
 
 /* ------------------------------------------- columna 2: expediente */
 
+// Al empezar el turno la cartera está vacía: no hay expediente que mostrar.
+function pintarSinCliente() {
+  $('detHead').replaceChildren(
+    el('div', {cls:'det-title'}, el('h1', {txt:'Sin llamada en curso'})),
+    el('div', {cls:'det-contact'}, el('span', {txt:'La ficha del cliente aparece al marcar el siguiente lead.'})));
+  $('detTabs').replaceChildren();
+  $('detBody').replaceChildren(el('div', {cls:'empty',
+    txt:'Elige una campaña y pulsa «Marcar siguiente lead» para comenzar.'}));
+}
+
 function pintarCabecera() {
   const c = cli();
+  if (!c) return pintarSinCliente();
   $('detHead').replaceChildren(
     avatar(c.nombre, 'avatar--lg'),
     el('div', {cls:'det-title'},
@@ -482,6 +434,7 @@ const TABS_DET = [
 
 function pintarTabsDetalle() {
   const c = cli();
+  if (!c) { $('detTabs').replaceChildren(); return; }
   $('detTabs').replaceChildren(...TABS_DET.map(t => {
     const n = t.n(c);
     return el('button', {type:'button', 'aria-pressed':String(S.tabDetalle === t.id),
@@ -498,6 +451,7 @@ function panel(titulo, cuerpo, acciones) {
 
 function pintarDetalle() {
   const c = cli();
+  if (!c) return pintarSinCliente();
   const body = $('detBody');
   if (S.tabDetalle === 'resumen') {
     // Con el chat abierto ocupa el lugar de la ficha y el bloque crece, de
@@ -725,6 +679,7 @@ function listaTimeline(items, vacio) {
 /* ------------------------------------------------- canales de contacto */
 
 function botoneraCanales(c) {
+  if (!c) return el('div');
   const enLlamada = !!S.llamada;
   const propio = enLlamada && S.llamada.contacto === c.id;
   return el('div', {cls:'channels'},
@@ -1005,19 +960,6 @@ function registrarGestionLocal(h) {
   pintarTodo();
 }
 
-function terminarAtencion() {
-  if (S.llamada) { aviso('Terminar atención', 'Hay una llamada en curso. Cuélgala antes de terminar la atención.'); return; }
-  const lista = carteraVisible();
-  const pos = lista.findIndex(x => x.id === cli().id);
-  const siguiente = lista[(pos + 1) % lista.length] || cli();
-  const previo = cli().nombre;
-  S.actual = S.contactos.findIndex(x => x.id === siguiente.id);
-  limpiarGestion();
-  S.tabDetalle = 'resumen';
-  S.chat = null;
-  pintarTodo();
-  estado('Atención de ' + previo + ' finalizada. Siguiente: ' + cli().nombre + '.');
-}
 
 /* --------------------------------------------------- propuesta de venta */
 
@@ -1146,7 +1088,32 @@ function guardarAgenda() {
 
 // Estado del puesto según el discador. Lo llena cada respuesta del servidor.
 let PUESTO = null;
+let FIJO = {campaigns:[], pauseTypes:[]};   // llega una vez, al conectar
 let sondeo = null;
+let ritmo = 0;                              // cadencia actual del sondeo, en ms
+
+// Carga inicial de la cartera: las llamadas de hoy, en una sola consulta.
+function sembrarCartera(historial) {
+  S.contactos = historial.map(deLlamada);
+  S.actual = 0;
+  pintarTabsLista();
+  pintarCartera();
+  if (S.contactos.length) pintarTodo();
+}
+
+// Tras cada sondeo: la llamada viva (o la que falta tipificar) entra en la
+// cartera sin consultar nada, porque sus datos ya vienen en la respuesta.
+function aplicarPuesto() {
+  const lead = PUESTO && PUESTO.lead;
+  if (lead) {
+    const nuevo = !S.contactos.some(c => c.id === lead.call_id);
+    anotarLlamada(lead);
+    if (nuevo) { S.actual = S.contactos.findIndex(c => c.id === lead.call_id); pintarTodo(); }
+    else { pintarTabsLista(); pintarCartera(); }
+  }
+  pintarControl();
+  ajustarRitmo();
+}
 
 function accionDiscador(accion, extra) {
   const destino = document.body.dataset.crmDialer;
@@ -1159,7 +1126,9 @@ function accionDiscador(accion, extra) {
   })
     .then(r => r.json().then(d => ({ok:r.ok, d})))
     .then(({ok, d}) => {
-      if (d && d.state) { PUESTO = d.state; pintarControl(); }
+      if (d && d.fixed) FIJO = d.fixed;                       // sólo al conectar
+      if (d && Array.isArray(d.history)) sembrarCartera(d.history);
+      if (d && d.state) { PUESTO = d.state; aplicarPuesto(); }
       return {ok, d};
     });
 }
@@ -1176,14 +1145,14 @@ function pintarControl() {
   if (document.activeElement !== sel) {
     const elegida = String(PUESTO.selectedCampaign || sel.value || '');
     sel.replaceChildren(
-      el('option', {value:'', txt:PUESTO.campaigns.length ? '— Selecciona una campaña —' : 'Sin campañas manuales'}),
-      ...PUESTO.campaigns.map(c => el('option', {value:String(c.id), txt:c.name, selected:String(c.id) === elegida})));
+      el('option', {value:'', txt:FIJO.campaigns.length ? '— Selecciona una campaña —' : 'Sin campañas manuales'}),
+      ...FIJO.campaigns.map(c => el('option', {value:String(c.id), txt:c.name, selected:String(c.id) === elegida})));
   }
-  sel.disabled = !PUESTO.campaigns.length;
+  sel.disabled = !FIJO.campaigns.length;
   // Sin tipificar la anterior no se marca: es la regla del ciclo progresivo.
   const trabado = tipificacionPendiente();
   const botonMarcar = $('ctlDial');
-  botonMarcar.disabled = !PUESTO.campaigns.length || !!PUESTO.pause || trabado;
+  botonMarcar.disabled = !FIJO.campaigns.length || !!PUESTO.pause || trabado;
   botonMarcar.title = trabado ? 'Tipifica la llamada anterior para continuar' : '';
 
   // Motivos de pausa
@@ -1191,7 +1160,7 @@ function pintarControl() {
   if (document.activeElement !== motivos) {
     motivos.replaceChildren(
       el('option', {value:'', txt:'Selecciona un motivo…'}),
-      ...PUESTO.pauseTypes.map(t => el('option', {value:String(t.id), txt:t.label})));
+      ...FIJO.pauseTypes.map(t => el('option', {value:String(t.id), txt:t.label})));
   }
 
   // Pausado o disponible
@@ -1263,11 +1232,28 @@ function colgarLlamada() {
 }
 
 // El discador cambia por su cuenta (entra una llamada, termina, un supervisor
-// pausa). Se relee cada pocos segundos para que el panel no mienta.
-function vigilarPuesto() {
-  if (sondeo) return;
-  sondeo = setInterval(() => { accionDiscador('state').catch(() => {}); }, 4000);
+// pausa), así que hay que releerlo. Pero un agente pasa buena parte del turno
+// sin llamada: sondear igual de rápido en reposo es gasto puro, así que la
+// cadencia sigue a la actividad.
+const RITMO_ACTIVO = 2500;
+const RITMO_REPOSO = 12000;
+
+function ritmoDeseado() {
+  if (!PUESTO) return RITMO_ACTIVO;
+  const lead = PUESTO.lead;
+  const ocupado = (lead && !lead.ended) || !!PUESTO.pending || (PUESTO.autodial && PUESTO.autodial.waiting);
+  return ocupado ? RITMO_ACTIVO : RITMO_REPOSO;
 }
+
+function ajustarRitmo() {
+  const quiero = ritmoDeseado();
+  if (quiero === ritmo) return;
+  ritmo = quiero;
+  if (sondeo) clearInterval(sondeo);
+  sondeo = setInterval(() => { accionDiscador('state').catch(() => {}); }, ritmo);
+}
+
+function vigilarPuesto() { ajustarRitmo(); }
 
 /* ------------------------------------------- conexión con el discador */
 
@@ -1327,6 +1313,7 @@ function refrescarCrono() {
 }
 
 function pintarPerformance() {
+  if (!$('perfKpis')) return;
   const llamadasHoy = S.interacciones.filter(i => i.tipo === 'llamada' && esHoy(i.f)).length;
   const ventasHoy = S.ventas.filter(v => v.f === hoyISO()).length;
   const reunionesHoy = S.agendas.filter(a => a.fecha === hoyISO()).length;
@@ -1358,12 +1345,9 @@ function init() {
     if (S.llamada) { aviso('Salir', 'Hay una llamada en curso. Cuélgala antes de salir.'); return; }
     top.location.href = S.salida;
   });
-  $('fProducto').addEventListener('change', e => { S.filtroProducto = e.target.value; pintarCartera(); });
-  $('fOrden').addEventListener('change', e => { S.orden = e.target.value; pintarCartera(); });
 
   for (let i = 0; i < 3; i++) $('tip' + i).addEventListener('change', e => elegirNivel(i, e.target.value));
   $('btnGrabar').addEventListener('click', grabarGestion);
-  $('btnTerminar').addEventListener('click', terminarAtencion);
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !$('layer').hidden) { cerrarCapa(); return; }
@@ -1389,7 +1373,6 @@ function init() {
   }
   conectarDiscador();
 
-  pintarFiltroProducto();
   pintarLlamada();
   pintarTodo();
   estado('Listo. Maqueta de demostración: los datos son ficticios y no se guardan.');

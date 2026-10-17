@@ -129,9 +129,43 @@ repinta con la situación real y no con la que suponía — también tras un
 error. El `bootstrap` ya trae ese estado, de modo que el bloque no queda en
 blanco esperando al primer sondeo.
 
-Como el discador cambia por su cuenta (entra una llamada, un supervisor
-pausa), se relee el estado cada 4 s. En pausa no se puede marcar, y el
-selector de motivo se oculta dejando sólo "Reanudar".
+En pausa no se puede marcar, y el selector de motivo se oculta dejando sólo
+"Reanudar".
+
+### Coste de consultas
+
+El sondeo es por agente y corre todo el turno, así que se cuida lo que pide:
+
+- **Lo fijo viaja una vez.** Campañas del agente y motivos de pausa sólo van
+  en el `bootstrap` (`fixed`); repetirlos en cada sondeo era gasto puro. El
+  sondeo (`state`) lleva únicamente lo que cambia solo: llamada, pausa,
+  tipificación pendiente y autodial.
+- **Cadencia adaptativa.** Con llamada viva, tipificación pendiente o cuenta
+  regresiva se relee cada 2,5 s; en reposo, cada 12 s. Un agente pasa buena
+  parte del turno sin llamada.
+- **La cartera no se consulta.** Se siembra con **una** consulta al conectar
+  (`history`) y después se mantiene sola: el lead ya viaja en cada sondeo, así
+  que la lista se actualiza en el navegador sin pedir nada más.
+
+### Cartera de llamadas
+
+La columna izquierda son **las llamadas que el agente trabajó hoy**, no una
+lista de clientes: nombre del lead, teléfono, número de intento, campaña,
+cuándo y si quedó tipificada (con su código) o pendiente. Pestañas **Hoy ·
+Sin tipificar · Todas**; el buscador de la barra superior filtra por nombre,
+teléfono, campaña o número de intento.
+
+Al no haber leads con prioridad, producto ni monto, se quitaron los filtros
+de producto y orden, y el botón "Terminar atención": en el ciclo progresivo
+el siguiente contacto lo decide el discador, no el agente.
+
+La consulta de siembra filtra por `reserved_agent_user OR
+disposition_agent_user OR agent_user`, acotada a `originated_at >= CURDATE()`
+y con `LIMIT`. En llamadas MANUAL `agent_user` queda **NULL** —el agente real
+está en `reserved_agent_user`—, por eso no basta el índice
+`idx_dialer_call_log_agent`. Con la tabla actual (decenas de filas) el plan
+recorre el índice primario sin coste apreciable; **si crece mucho, conviene
+un índice sobre `reserved_agent_user`**.
 
 ### Ciclo manual progresivo
 
