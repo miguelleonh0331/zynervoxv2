@@ -18,7 +18,7 @@ Auth::checkAccess([1, 2, 3, 4, 5, 6, 7, 8, 9]);
        este layout si se insertara en la misma página. Aquí main-content pasa
        a columna de alto completo para que el marco ocupe el resto exacto. */
     .main-content { display: flex; flex-direction: column; height: 100vh; }
-    .crm-frame { flex: 1; min-height: 0; width: 100%; display: block; border: 1px solid var(--border); background: #ababab; }
+    .crm-frame { flex: 1; min-height: 0; width: 100%; display: block; border: 1px solid var(--border); background: var(--bg-main); }
     </style>
 </head>
 <body>

@@ -31,14 +31,19 @@ dependía de ese servidor Python:
 - La pantalla adicional `/gestion` (`index.html` + `app.js`), que dependía
   100% del mismo API Python y no se migró.
 
-Lo que **sí** se conservó, copiado byte a byte desde el proyecto original:
+Lo que **sí** se conservó del proyecto original:
 
-- `demo.js` — motor de render: interpreta `gui-layout.json` y dibuja
-  ventanas, pestañas, tablas y controles.
-- `demo.css` — toda la geometría y el estilo visual del escritorio.
-- `gui-layout.json` — definición de los 14 formularios (controles, posición,
-  tamaño, imágenes).
-- `gui-assets/*.{png,jpg}` — las 21 imágenes de iconos/botones del escritorio.
+- `demo.js` — motor de render, copiado byte a byte: interpreta
+  `gui-layout.json` y dibuja ventanas, pestañas, tablas y controles. Nunca se
+  tocó su lógica.
+- `gui-layout.json` — la geometría (posición y tamaño de los 353 controles de
+  los 14 formularios) es la original sin tocar. Sus 117 valores de color
+  (`BackColor`/`ForeColor`) sí se remapearon a la paleta de marca — ver
+  "Reskin de marca" más abajo.
+- `gui-assets/*.{png,jpg}` — las 21 imágenes de iconos/botones, sin tocar.
+
+`demo.css` (el estilo visual) **no** es el original: se reescribió completo
+para la identidad de marca — ver la sección siguiente.
 
 ## Dónde vive cada archivo
 
@@ -51,14 +56,62 @@ modules/admin/
 ├── crm_app.php               El escritorio en sí (full-page), cargado dentro del iframe
 └── crm-assets/
     ├── demo.js                Sin tocar (copia del original)
-    ├── demo.css                Sin tocar
-    ├── gui-layout.json         Sin tocar
+    ├── demo.css                Reescrito — reskin de marca (ver abajo)
+    ├── gui-layout.json         Geometría sin tocar; colores remapeados (ver abajo)
     ├── gui-assets/*.png,*.jpg  Sin tocar (21 imágenes)
     └── crm-local.js            NUEVO — reemplaza a desktop-api.js del original
 ```
 
 `sidebar.php` tiene la entrada `crm` (icono propio `_svgIcon('crm')`) justo
 debajo de `dialer_agent` ("Panel de agente"), con `built => true`.
+
+## Reskin de marca (2026-10-17)
+
+El escritorio original traía el look clásico de Windows Forms (verde oliva
+oscuro, grises, botones con relieve 3D, barras de título en degradado azul).
+Se reemplazó por la paleta de marca Zynervox, con la misma filosofía densa y
+plana que ya usa el resto del panel admin (ver el comentario en
+`layout.css`: *"Estilo liviano/denso tipo VICIdial clásico: sin webfont
+remoto, sin sombras/gradientes/animaciones, tablas con encabezado oscuro"*).
+
+Dos capas distintas de color, ambas tocadas:
+
+1. **`demo.css`**, reescrito completo. Mismos selectores y propiedades de
+   geometría/overflow/posición que el original — lo que cambió es: colores
+   (paleta de marca, ver tabla), degradados y `box-shadow` eliminados (chrome
+   plano), `border-radius` en 0 en todas partes (sin esquinas redondeadas,
+   pedido explícito), paddings/alturas de chrome reducidos (barra de título,
+   menú, pestañas, diálogos) para que el contenido real ocupe más espacio, y
+   tablas (`.wf-list`) con encabezado oscuro sólido en vez del degradado gris
+   claro original, igual que las tablas del resto del panel.
+2. **`gui-layout.json`**, mismo archivo, misma geometría — solo se
+   remapearon sus 117 valores `BackColor`/`ForeColor` (de 14 formularios y
+   sus controles) con un script de reemplazo dirigido por campo (no
+   búsqueda/reemplazo de texto), verificado para no tocar ninguna otra clave
+   (posición, tamaño, texto, `children`). Los colores semánticos (`Red`,
+   `DarkRed` para errores/obligatorios) se dejaron intactos a propósito.
+
+| Uso | Color original | Color de marca |
+|---|---|---|
+| Fondo de cada ventana (formulario) | `DarkOliveGreen` / `#556b2f` / `SeaGreen` / `Thistle` / `LightSteelBlue` (variaba por formulario) | `#FFFFFF` — tarjeta blanca |
+| Lienzo detrás de las ventanas (`#workspace`) | `#ababab` gris | `#F5F1EA` — crema, igual que el fondo de página del resto del panel |
+| Paneles internos / pestañas / campos de solo lectura | `DarkOliveGreen`, `InactiveCaptionText`, `ControlLightLight`, `#ffffe1` | `#F5F1EA` — crema, distinguible de la tarjeta blanca que lo contiene |
+| Barra de título, menú activo, legend de `GroupBox`, encabezado de tabla | degradados azules / gris claro | `#2D2F3B` sólido — mismo tono que el sidebar y las tablas del panel admin |
+| Texto que dependía de fondo oscuro (`White`/`Black`/`Transparent`→blanco) | blanco sobre oliva | `#2D2F3B` — porque el fondo que lo contenía pasó a ser claro |
+| Acento/selección/hover | azul Windows `#0078d7` | `#F5821F` — naranja primario de marca |
+| Un caso casi-naranja preexistente (`#ff8000`, labels "Estado") | — | `#F5821F` exacto |
+
+Lo que **no** cambió: la posición/tamaño de ningún control, las 353
+coordenadas de `gui-layout.json`, la tipografía (`Tahoma`/`Segoe UI`, igual
+que el original — cambiarla arriesgaba desbordar texto en cajas de tamaño
+fijo en píxeles), y la lógica de `demo.js`.
+
+**Límite conocido:** la posición de cada uno de los 353 controles es fija
+(heredada del diseño original en píxeles absolutos). Este reskin no
+reordena ni redimensiona campos dentro de un formulario — eso sería
+rediseñar cada uno de los 14 formularios desde cero, no un cambio de paleta.
+Si se pide una redistribución real tipo grilla por formulario, es trabajo
+aparte.
 
 ## Por qué un `<iframe>` y no HTML inline
 
