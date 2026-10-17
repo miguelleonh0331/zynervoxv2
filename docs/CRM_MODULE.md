@@ -144,8 +144,28 @@ de Zynervox (≥9 superadmin, ≥8 supervisor, resto admin), mientras que el cha
 necesita entrar siempre con la cuenta de la empresa configurada.
 
 El `src` del marco lleva un parámetro de tiempo para forzar una sesión nueva
-en cada apertura, y la cabecera del panel ofrece "Abrir aparte" para usar la
-bandeja completa en otra pestaña.
+en cada apertura, y la cabecera del panel ofrece "Abrir aparte" para ver la
+misma conversación en otra pestaña.
+
+### Encaje del marco
+
+Zynerwaba sirve su chat con un diseño para móvil: tarjeta de 480 px centrada,
+con margen, esquinas redondeadas y sombra (`public/chat-compact.css`), más los
+botones de volver a la lista (`#backButton`) y cerrar sesión (`#logout`).
+Dentro del expediente eso sobra: el cliente ya está elegido y la cuenta es
+compartida.
+
+Como el marco es del mismo dominio, `crm.js` le inyecta una hoja de estilos al
+cargar (`encajarChat`, constante `CHAT_EMBED_CSS`) en vez de modificar
+Zynerwaba: anula ancho fijo, margen, redondeo y sombra para que ocupe todo, y
+oculta esos dos botones. Si el servicio cambiara su maquetado, las reglas
+dejarían de aplicar pero **el chat seguiría funcionando**; y si el marco
+resultara inaccesible, la función sale sin hacer nada.
+
+Queda deliberadamente visible la lista de contactos en el caso raro de que
+Zynerwaba no encuentre el hilo (número recién cambiado, por ejemplo): es
+preferible a dejar el panel en blanco. En la práctica no debería ocurrir,
+porque el botón ya se bloquea para los clientes sin conversación.
 
 **El botón sólo se habilita si el cliente tiene conversación.** Al cargar, el
 CRM consulta `crm_wa_session.php?contacts=1`, que inicia sesión contra

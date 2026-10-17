@@ -565,12 +565,47 @@ function panelChat(c) {
     txt:(c.telefonos[0] || {}).n || 'sin número'});
   // La sesión caduca; se fuerza una carga nueva en cada apertura.
   const marco = el('iframe', {cls:'chat-frame', id:'chatFrame', title:'Conversación de WhatsApp',
-    src:url});
+    src:url, onload:encajarChat});
   return el('section', {cls:'panel panel--chat'},
     el('h3', null,
       el('span', {txt:'WhatsApp · ' + c.nombre}),
       el('span', {cls:'spacer'}), destino, abrirAparte, cerrar),
     el('div', {cls:'panel-body chat-body', id:'chatBody'}, marco));
+}
+
+// Zynerwaba sirve su chat con un diseño pensado para móvil: tarjeta de 480 px
+// centrada, con margen, esquinas redondeadas y sombra, más los botones de
+// volver a la lista y de cerrar sesión. Dentro del expediente eso sobra: aquí
+// el cliente ya está elegido y la sesión es compartida.
+//
+// Como el marco es del mismo dominio, se le inyecta una hoja de estilos en
+// lugar de modificar Zynerwaba. Si el servicio cambiara su maquetado, estas
+// reglas simplemente dejarían de aplicar: el chat seguiría funcionando.
+const CHAT_EMBED_CSS = `
+  html, body.compact-body { height: 100%; background: #fff; }
+  .compact-app {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  /* Sin vuelta a la lista ni cierre de sesión: el cliente lo fija el CRM y
+     la cuenta es compartida. */
+  #backButton, #logout { display: none !important; }
+`;
+
+function encajarChat(ev) {
+  const marco = ev && ev.target;
+  if (!marco) return;
+  let doc = null;
+  try { doc = marco.contentDocument; } catch (e) { return; }  // otro origen: no se toca
+  if (!doc || !doc.head || doc.getElementById('crmEmbedCss')) return;
+  const hoja = doc.createElement('style');
+  hoja.id = 'crmEmbedCss';
+  hoja.textContent = CHAT_EMBED_CSS;
+  doc.head.appendChild(hoja);
 }
 
 function abrirChat() {
