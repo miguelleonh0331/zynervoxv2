@@ -114,6 +114,8 @@ button{cursor:pointer}
 /* El bloque principal de cada pestaña se estira hasta el pie del expediente,
    para no dejar hueco muerto; la botonera de canales queda fija abajo. */
 .det-body>.duo,.det-body>.panel{flex:1;min-height:220px}
+/* Las notas no compiten por el alto con el bloque principal de la pestaña. */
+.det-body>.panel--notas{flex:none;min-height:0;max-height:34%}
 
 /* Panel genérico dentro del expediente */
 .panel{background:var(--bg-card);border:1px solid var(--border);display:flex;flex-direction:column;min-height:0}

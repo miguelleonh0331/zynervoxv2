@@ -484,11 +484,12 @@ function pintarDetalle() {
   if (!c) return pintarSinCliente();
   const body = $('detBody');
   if (S.tabDetalle === 'resumen') {
-    // Con el chat abierto ocupa el lugar de la ficha y el bloque crece, de
-    // modo que la botonera y el historial bajan y le dejan sitio.
+    // Un solo bloque a todo el ancho: la transcripción en vivo ya ocupa el
+    // costado del expediente, y partir lo que queda dejaba la ficha y el
+    // chat demasiado angostos para leerlos. Las notas clave pasaron a la
+    // pestaña "Interacciones", que es donde se consulta el historial.
     body.replaceChildren(
-      el('div', {cls:'duo' + (S.chat ? ' duo--chat' : '')},
-        S.chat ? panelChat(c) : (leadVivo() ? panelLead(PUESTO.lead) : panelInfo(c)), panelNotas(c)),
+      S.chat ? panelChat(c) : (leadVivo() ? panelLead(PUESTO.lead) : panelInfo(c)),
       botoneraCanales(c));
     // El historial no se repite aquí: vive completo en la pestaña
     // "Interacciones", con sus filtros por canal.
@@ -496,6 +497,7 @@ function pintarDetalle() {
     const chips = ['todas', 'llamada', 'whatsapp', 'email', 'sms', 'nota', 'gestion'];
     body.replaceChildren(
       botoneraCanales(c),
+      panelNotas(c),
       panel('Historial de interacciones',
         listaTimeline(interaccionesDe(c).filter(i => S.chip === 'todas' || i.tipo === S.chip), 'Sin interacciones de este tipo.'),
         [el('div', {cls:'chips'}, chips.map(k =>
@@ -682,8 +684,12 @@ function cerrarChat() {
 }
 
 function panelNotas(c) {
-  return panel('Notas clave', listaNotas(c),
+  const p = panel('Notas clave', listaNotas(c),
     [el('button', {cls:'btn-sm btn-sm--ghost', type:'button', txt:'Agregar nota', onclick:nuevaNota})]);
+  // Acompaña al historial sin robarle alto: crece con sus notas hasta un
+  // tope y el resto de la pestaña queda para las interacciones.
+  p.classList.add('panel--notas');
+  return p;
 }
 function listaNotas(c) {
   if (!c.notas.length) return el('div', {cls:'empty', txt:'Sin notas registradas para este cliente.'});
