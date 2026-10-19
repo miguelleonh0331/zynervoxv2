@@ -178,6 +178,7 @@ const S = {
   chip: 'todas',
   chat: null,                // 'whatsapp' mientras la ventana de chat esté abierta
   gestionCerrada: null,      // llamada cuya hoja de tipificación cerró el asesor
+  vista: 'clientes',         // sección abierta: clientes | tareas | reportes | conocimiento
   waPhones: null,            // números con conversación; null = sin dato fiable
   actual: -1,            // ninguna ficha abierta al entrar
   tip: [null, null, null],
@@ -2025,6 +2026,58 @@ function trxMensaje(ev) {
   if (m.texto !== undefined) m.parcial ? ZVT.parcial(m.texto, m.quien) : ZVT.linea(m.texto, m.quien);
 }
 
+/* ------------------------------------------------------- secciones
+
+   La cartera, el expediente y el panel de trabajo son la consola de verdad.
+   Las demás secciones viven en #vista, que se superpone a esas tres
+   columnas. Las columnas NO se destruyen al cambiar de sección: se ocultan.
+   Si se recrearan, cada visita a Reportes borraría la transcripción y lo
+   que el asesor tenga escrito a medio camino.
+
+   Nada de esto navega fuera de la consola: no hay enlaces ni recargas, sólo
+   un atributo en el cuerpo. El aislamiento del agente sigue intacto.      */
+
+const VISTAS = {
+  tareas:       {pinta:() => pintarTareas(),   et:'Tareas'},
+  reportes:     {pinta:() => pintarReportes(), et:'Reportes'},
+  conocimiento: {pinta:() => pintarWiki(),     et:'Base de conocimiento'}
+};
+
+function irA(vista) {
+  const v = VISTAS[vista] ? vista : 'clientes';
+  S.vista = v;
+  document.body.dataset.vista = v;
+
+  for (const b of document.querySelectorAll('.side-link')) {
+    if (!b.dataset || !b.dataset.vista) continue;
+    const activo = b.dataset.vista === v;
+    b.classList.toggle('is-on', activo);
+    if (activo) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  }
+
+  const lienzo = $('vista');
+  if (v === 'clientes') {
+    lienzo.hidden = true;
+    lienzo.replaceChildren();
+    estado('Cartera del turno.');
+    return;
+  }
+  lienzo.hidden = false;
+  VISTAS[v].pinta();
+  lienzo.scrollTop = 0;
+  estado(VISTAS[v].et + ' · datos de demostración.');
+}
+
+// El contador de tareas vencidas se calcula una vez al arrancar: es un dato
+// de la demo, no algo que haya que recalcular en cada sondeo.
+function marcarTareasPendientes() {
+  const n = $('sideTareas');
+  if (!n || typeof demoTareasPendientes !== 'function') return;
+  const vencidas = demoTareasPendientes().filter(t => t.vence < new Date()).length;
+  n.textContent = String(vencidas || demoTareasPendientes().length);
+  n.classList.toggle('side-count--alerta', vencidas > 0);
+}
+
 /* ------------------------------------------------------------- arranque */
 
 function pintarTodo() {
@@ -2053,6 +2106,11 @@ function init() {
   // Plegar el menú. La preferencia se guarda en el propio navegador del
   // puesto: es una comodidad de pantalla, no un dato del agente, y no
   // justifica ni una consulta ni una columna en la base.
+  for (const b of document.querySelectorAll('.side-link')) {
+    if (b.dataset && b.dataset.vista) b.addEventListener('click', () => irA(b.dataset.vista));
+  }
+  marcarTareasPendientes();
+
   if ($('sideToggle')) {
     const app = document.getElementById('app'), bot = $('sideToggle');
     const aplicar = plegado => {

@@ -108,6 +108,9 @@ class El {
       return true;
     });
   }
+  removeAttribute(k) { delete this._attrs[k]; }
+  // Alias del DOM real: hay código que construye SVG con appendChild.
+  appendChild(n) { this.append(n); return n; }
   closest(sel) { let n = this; while (n) { if (n.nodeType === 1 && n.matches(sel)) return n; n = n.parentNode; } return null; }
   querySelectorAll(sel) {
     const out = [], want = sel.split(',').map(s => s.trim());

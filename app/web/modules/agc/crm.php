@@ -391,6 +391,7 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
 <meta name="theme-color" content="#2D2F3B">
 <title>CRM · Atención Telefónica · Zynervox</title>
 <link rel="stylesheet" href="crm.css">
+<script src="crm_demo.js" defer></script>
 <script src="crm.js" defer></script>
 </head>
 <body data-crm-user="<?php echo crm_h($operador); ?>" data-crm-rol="<?php echo crm_h($rol); ?>" data-crm-exit="logout.php" data-crm-wa="crm_wa_session.php"
@@ -412,19 +413,19 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
       <button class="side-link" type="button" aria-disabled="true" disabled>
         <svg viewBox="0 0 24 24" class="ico"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>
         <span>Inicio</span></button>
-      <button class="side-link is-on" type="button" aria-current="page">
+      <button class="side-link is-on" type="button" id="navClientes" data-vista="clientes" aria-current="page">
         <svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
         <span>Mis clientes</span><b class="side-count" id="sideCount">0</b></button>
       <button class="side-link" type="button" aria-disabled="true" disabled>
         <svg viewBox="0 0 24 24" class="ico"><path d="M3 11l18-7-7 18-2.5-8z"/></svg>
         <span>Campañas</span></button>
-      <button class="side-link" type="button" aria-disabled="true" disabled>
+      <button class="side-link" type="button" id="navTareas" data-vista="tareas">
         <svg viewBox="0 0 24 24" class="ico"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
-        <span>Tareas</span></button>
-      <button class="side-link" type="button" aria-disabled="true" disabled>
+        <span>Tareas</span><b class="side-count side-count--alerta" id="sideTareas">0</b></button>
+      <button class="side-link" type="button" id="navReportes" data-vista="reportes">
         <svg viewBox="0 0 24 24" class="ico"><path d="M5 20V9m7 11V4m7 16v-7"/></svg>
         <span>Reportes</span></button>
-      <button class="side-link" type="button" aria-disabled="true" disabled>
+      <button class="side-link" type="button" id="navWiki" data-vista="conocimiento">
         <svg viewBox="0 0 24 24" class="ico"><path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2z"/><path d="M8 7h7"/></svg>
         <span>Base de conocimiento</span></button>
     </nav>
@@ -578,6 +579,11 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
     </section>
 
   </aside>
+
+  <!-- Secciones que no son la cartera. Ocupan el lugar de las tres columnas
+       centrales; éstas quedan en el documento, no se destruyen, para no
+       perder la transcripción ni lo que el asesor tenga a medio escribir. -->
+  <main class="vista" id="vista" hidden></main>
 
   <footer class="statusbar">
     <span id="msg">Cargando…</span>

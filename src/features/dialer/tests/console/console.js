@@ -66,8 +66,12 @@ sandbox.__estado = JSON.parse(JSON.stringify(VOLATIL));
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 
-const code = fs.readFileSync(path.join(WEB, 'modules/agc/crm.js'), 'utf8')
-  + '\n;globalThis.__S=S;globalThis.__fn={abrirCliente,asisPreguntar,pintarDetalle,pintarCartera,pintarControl,cerrarGestion,quizaAbrirGestion,accionDiscador,armarArbol,RITMO_ACTIVO,RITMO_REPOSO};globalThis.__arbol=()=>TIPIFICACION;\n';
+// Las pantallas de demostración viven en su propio archivo, que la página
+// carga antes que crm.js. Acá se concatenan en el mismo orden.
+const code = fs.readFileSync(path.join(WEB, 'modules/agc/crm_demo.js'), 'utf8')
+  + '\n'
+  + fs.readFileSync(path.join(WEB, 'modules/agc/crm.js'), 'utf8')
+  + '\n;globalThis.__S=S;globalThis.__fn={abrirCliente,asisPreguntar,irA,pintarDetalle,pintarCartera,pintarControl,cerrarGestion,quizaAbrirGestion,accionDiscador,armarArbol,RITMO_ACTIVO,RITMO_REPOSO};globalThis.__arbol=()=>TIPIFICACION;globalThis.__fn.pintarWiki=pintarWiki;globalThis.__demo={wiki:demoWikiEstado,tareas:demoEstadoTareas,ventasMes:()=>DEMO_VENTAS_MES.reduce((a,d)=>a+d.n,0)};\n';
 try { vm.runInContext(code, sandbox, {filename:'crm.js'}); }
 catch (e) { console.log('FALLO al ejecutar: ' + e.message + '\n' + e.stack); process.exit(1); }
 
@@ -97,9 +101,14 @@ check('nada apunta a modules/admin', !/\.\.\/admin\//.test(html));
 // pone un href sin declarar la página en IsolatedGate, esto lo marca.
 check('el menú del asesor no enlaza a ningún lado',
   !/<a[^>]*class="side-link/.test(html) && !/side-link[^>]*href=/.test(html));
-check('las entradas de maqueta están desactivadas',
-  (html.match(/class="side-link"[^>]*aria-disabled="true"[^>]*disabled/g) || []).length === 6);
-check('sólo "Mis clientes" está activa',
+// Inicio, Campañas y Soporte siguen siendo maqueta; Tareas, Reportes y Base
+// de conocimiento ya tienen pantalla propia dentro de la consola.
+check('las entradas sin pantalla siguen desactivadas',
+  (html.match(/class="side-link"[^>]*aria-disabled="true"[^>]*disabled/g) || []).length === 3);
+check('las que sí la tienen declaran su vista',
+  ['clientes', 'tareas', 'reportes', 'conocimiento']
+    .every(v => html.includes('data-vista="' + v + '"')));
+check('al entrar, la cartera es la sección activa',
   (html.match(/side-link is-on/g) || []).length === 1);
 check('hoja y script propios', /href="crm\.css"/.test(html) && /src="crm\.js"/.test(html));
 check('salida al logout del agente', S.salida === 'logout.php', S.salida);
@@ -617,6 +626,67 @@ function seguir() {
     check('la caja queda vacía para la siguiente', $('asisTexto').value === '');
     // El texto llega del RAG, que es un tercero: nunca como marcado.
     check('las respuestas no se pegan como HTML', !/burbuja\.innerHTML/.test(js));
+  }
+
+  console.log('\n== Secciones: Tareas, Reportes y Conocimiento ==');
+  {
+    const v = $('vista');
+    check('al entrar no hay sección abierta', v.hidden === true && S.vista === 'clientes');
+
+    // --- Tareas
+    sandbox.__fn.irA('tareas');
+    check('Tareas se abre', v.hidden === false && S.vista === 'tareas');
+    check('y lista los pendientes', v.querySelectorAll('.tarea').length >= 8,
+      String(v.querySelectorAll('.tarea').length));
+    check('marca lo vencido', v.querySelectorAll('.tarea--vencida').length >= 1);
+    check('muestra el avance', v.querySelectorAll('.barra').length === 1);
+    check('y lo ya completado', /Completadas hoy/.test(txt('vista')));
+    const antes = v.querySelectorAll('.tarea').length;
+    v.querySelectorAll('.tarea')[0].querySelectorAll('button')[2].dispatch('click', {});
+    check('completar una la saca de la lista',
+      v.querySelectorAll('.tarea').length === antes - 1,
+      antes + ' -> ' + v.querySelectorAll('.tarea').length);
+
+    // --- Reportes
+    sandbox.__fn.irA('reportes');
+    check('Reportes se abre', S.vista === 'reportes');
+    const rep = txt('vista');
+    check('encabeza con la comisión', /Comisión acumulada/.test(rep));
+    check('dice cuánto falta para el tramo', /Te faltan \d+ ventas? para /.test(rep), rep.slice(0, 0) || '');
+    check('muestra la escalera completa',
+      ['Base', 'Plata', 'Oro', 'Platino'].every(t => rep.includes(t)));
+    check('señala en qué tramo está', v.querySelectorAll('.peldano.is-actual').length === 1);
+    check('trae el gráfico del mes', v.querySelectorAll('.gcol').length === 15,
+      String(v.querySelectorAll('.gcol').length));
+    check('y la tabla del equipo con el agente marcado',
+      v.querySelectorAll('.ranking li').length === 6 && v.querySelectorAll('.ranking li.is-yo').length === 1);
+    // Las cifras tienen que cerrar entre sí, no ser adornos sueltos.
+    check('el anillo cuadra con las ventas del mes',
+      rep.includes(sandbox.__demo.ventasMes() + '/20'), sandbox.__demo.ventasMes() + '/20');
+    check('avisa que son datos de demostración', /datos de demostración/i.test(rep));
+
+    // --- Base de conocimiento
+    sandbox.__fn.irA('conocimiento');
+    check('Conocimiento se abre', S.vista === 'conocimiento');
+    check('con su índice de artículos', v.querySelectorAll('.wiki-lista li').length >= 10,
+      String(v.querySelectorAll('.wiki-lista li').length));
+    check('abre uno por defecto', v.querySelectorAll('.wiki-art').length === 1);
+    check('con ficha de combate', v.querySelectorAll('.battle-col').length === 4);
+    // Buscar filtra de verdad, no sólo resalta.
+    const todos = v.querySelectorAll('.wiki-lista li').length;
+    sandbox.__demo.wiki.busqueda = 'desgravamen';
+    sandbox.__fn.pintarWiki();
+    const filtrados = $('vista').querySelectorAll('.wiki-lista li').length;
+    check('la búsqueda filtra', filtrados > 0 && filtrados < todos, todos + ' -> ' + filtrados);
+    check('y resalta lo encontrado', $('vista').querySelectorAll('mark').length >= 1);
+    sandbox.__demo.wiki.busqueda = '';
+    sandbox.__fn.pintarWiki();
+
+    // --- Volver no destruye la consola real
+    sandbox.__fn.irA('clientes');
+    check('volver oculta la sección', $('vista').hidden === true);
+    check('y la consola sigue entera',
+      $('trxBody') !== null && $('tip0') !== null && $('asisTexto') !== null);
   }
 
 console.log('\n== Salida ==');
