@@ -419,6 +419,11 @@ function seguir() {
       [0, 1, 2, 3].every(i => ico(i) && /ico--fill/.test(ico(i).className)));
     check('y el dibujo no quedó vacío',
       [0, 1, 2, 3].every(i => /^<path|^<circle/.test(ico(i).innerHTML)));
+    // Creado con createElement, el navegador no dibuja nada: hay que nacer
+    // en el espacio de nombres de SVG. El DOM de pruebas lo registra.
+    check('nacen en el espacio de nombres de SVG',
+      [0, 1, 2, 3].every(i => ico(i).namespaceURI === 'http://www.w3.org/2000/svg'),
+      String(ico(0).namespaceURI));
     sandbox.__fn.pintarDetalle();
     canal(1).dispatch('click', {});
     check('al cerrarlo vuelve el historial',

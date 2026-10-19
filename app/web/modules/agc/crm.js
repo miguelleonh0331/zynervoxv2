@@ -218,8 +218,18 @@ function el(tag, attrs, ...hijos) {
   for (const h of hijos.flat()) if (h !== null && h !== undefined && h !== false) n.append(h);
   return n;
 }
+/* Un SVG no se crea con createElement: eso devuelve un elemento HTML que
+   *se llama* "svg" y que el navegador no dibuja —se ve el hueco y nada más—.
+   Hay que crearlo en el espacio de nombres de SVG, y lo mismo vale para
+   `class`, que en SVG no se puede asignar por la propiedad `className`.
+   El marcado de ICO es constante del propio archivo: nunca lleva dato del
+   usuario, así que asignarlo por innerHTML es seguro. */
+const NS_SVG = 'http://www.w3.org/2000/svg';
 function svg(name, cls) {
-  const s = el('svg', {cls:cls || 'ico', viewBox:'0 0 24 24'});
+  const s = document.createElementNS(NS_SVG, 'svg');
+  s.setAttribute('class', cls || 'ico');
+  s.setAttribute('viewBox', '0 0 24 24');
+  s.setAttribute('aria-hidden', 'true');
   s.innerHTML = ICO[name] || '';
   return s;
 }

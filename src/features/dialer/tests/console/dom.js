@@ -165,6 +165,10 @@ function makeDocument(html) {
     _root: root,
     activeElement: null,
     createElement: t => new El(t),
+    // Los iconos deben nacer en el espacio de nombres de SVG: creados con
+    // createElement el navegador no los dibuja. Acá se registra el espacio
+    // para poder comprobarlo desde las pruebas.
+    createElementNS: (ns, t) => { const n = new El(t); n.namespaceURI = ns; return n; },
     getElementById: id => {
       const n = byId[id];
       if (!n) return null;
