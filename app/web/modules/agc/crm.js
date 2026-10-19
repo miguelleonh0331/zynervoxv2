@@ -1446,7 +1446,6 @@ function pintarControl() {
   $('ctlPauseWrap').hidden = enPausa;
   $('ctlPause').hidden = !enPausa;
   $('ctlPause').textContent = 'Reanudar';
-  $('ctlPause').className = 'btn-sm btn-sm--primary';
   const marca = $('agentState');
   marca.textContent = enPausa ? ('Pausado · ' + PUESTO.pause.label) : 'Disponible';
 

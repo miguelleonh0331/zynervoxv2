@@ -65,6 +65,21 @@ button{cursor:pointer}
 .call-state[data-on=false]#dialerState{border-color:var(--danger);background:rgba(185,28,28,.18);color:#FCA5A5}
 .call-state[data-on=false]#dialerState .dot{background:var(--danger)}
 #dialerState{margin-left:0;max-width:280px}
+
+/* Pausa del puesto, en la barra superior. Va pegada al estado del discador
+   porque habla de lo mismo: en qué situación está el agente frente a la
+   cola, no qué está haciendo con la ficha abierta. */
+.topbar-pause{flex:none;margin-left:8px}
+.topbar-pause select{height:24px;border:1px solid rgba(255,255,255,.2);border-radius:999px;
+  background:rgba(255,255,255,.08);color:#CBD5E1;padding:0 8px;font-size:11px;max-width:170px}
+.topbar-pause select:hover{border-color:rgba(255,255,255,.4);color:#fff}
+.topbar-pause select:focus{border-color:var(--primary);outline:none}
+.topbar-pause select option{background:var(--dark);color:#fff}
+.topbar-pause select:disabled{opacity:.5}
+.topbar-resume{flex:none;margin-left:8px;height:24px;border-radius:999px;padding:0 14px}
+/* Etiqueta sólo para lectores de pantalla: el selector ya se explica solo. */
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0}
 #dialerLabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .who{display:flex;align-items:center;gap:7px;padding:0 10px 0 14px}
 .who-txt{display:flex;flex-direction:column;line-height:1.15}

@@ -164,6 +164,13 @@ setTimeout(() => {
   console.log('\n== Pausar es elegir el motivo ==');
   {
     const sel = $('ctlPauseType');
+    // La pausa es estado del puesto: vive en la barra, junto al estado del
+    // discador, no en el panel de trabajo sobre la ficha.
+    check('la pausa vive en la barra superior',
+      $('ctlPauseType').closest('.topbar') !== null && $('ctlPause').closest('.topbar') !== null);
+    check('y a la derecha del estado del discador',
+      (() => { const h = $('dialerState').closest('.topbar').children.filter(n => n.tagName);
+               return h.indexOf($('ctlPauseWrap')) === h.indexOf($('dialerState')) + 1; })());
     check('sin pausa, el botón no estorba', $('ctlPause').hidden === true);
     const antes = (sandbox.__acciones || []).length;
     sel.value = '2';

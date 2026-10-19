@@ -464,6 +464,15 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
       <span id="dialerLabel">Discador…</span>
     </div>
 
+    <!-- Pausa del puesto, al lado del estado del discador: pausar es cambiar
+         de estado en la cola, no una acción sobre la ficha abierta. Elegir
+         el motivo pausa en el acto; el botón sólo aparece para reanudar. -->
+    <div class="topbar-pause" id="ctlPauseWrap">
+      <label class="sr-only" for="ctlPauseType">Motivo de pausa</label>
+      <select id="ctlPauseType"><option value="">Pausar…</option></select>
+    </div>
+    <button class="btn-sm btn-sm--primary topbar-resume" id="ctlPause" type="button" hidden>Reanudar</button>
+
     <div class="call-state" id="callState" data-on="false">
       <span class="dot"></span>
       <span id="callLabel">Sin llamada</span>
@@ -548,12 +557,7 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
         </div>
         <button class="btn btn--primary" id="ctlDial" type="button" style="width:100%;height:28px">Marcar siguiente lead</button>
 
-        <div class="field" id="ctlPauseWrap" style="margin-top:8px">
-          <label for="ctlPauseType">Motivo de pausa</label>
-          <select id="ctlPauseType"><option value="">Selecciona un motivo…</option></select>
-        </div>
         <div class="ctl-row">
-          <button class="btn-sm" id="ctlPause" type="button">Pausar</button>
           <button class="btn-sm btn-sm--danger" id="ctlHangup" type="button" hidden>Colgar</button>
         </div>
 
