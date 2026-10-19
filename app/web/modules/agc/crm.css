@@ -48,7 +48,7 @@ button{cursor:pointer}
 .brand{display:flex;align-items:center;gap:7px;padding:0 12px;font-weight:400;letter-spacing:.5px;font-size:11px;background:rgba(0,0,0,.18);align-self:stretch}
 .brand b{font-weight:700}
 .brand i{width:8px;height:8px;border-radius:50%;background:var(--primary);display:block;flex:none}
-.search{flex:1;max-width:520px;display:flex;align-items:center;gap:6px;margin:0 12px;padding:0 8px;height:26px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:999px}
+.search{flex:1;max-width:260px;display:flex;align-items:center;gap:6px;margin:0 12px;padding:0 8px;height:26px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:999px}
 .search:focus-within{border-color:var(--primary)}
 .search .ico{color:#8E93A1}
 .search input{flex:1;min-width:0;height:100%;border:0;background:transparent;color:#fff;outline:none}
@@ -69,6 +69,16 @@ button{cursor:pointer}
 /* Pausa del puesto, en la barra superior. Va pegada al estado del discador
    porque habla de lo mismo: en qué situación está el agente frente a la
    cola, no qué está haciendo con la ficha abierta. */
+/* Marcar, pegado al buscador: campaña y disparo. */
+.topbar-dial{flex:none;display:flex;align-items:center;gap:6px}
+.topbar-dial select{height:24px;max-width:150px;border:1px solid rgba(255,255,255,.2);border-radius:999px;
+  background:rgba(255,255,255,.08);color:#fff;padding:0 8px;font-size:11px}
+.topbar-dial select:hover{border-color:rgba(255,255,255,.4)}
+.topbar-dial select:focus{border-color:var(--primary);outline:none}
+.topbar-dial select option{background:var(--dark);color:#fff}
+.topbar-dial select:disabled{opacity:.5}
+.topbar-dial .btn-sm{height:24px;border-radius:999px;padding:0 14px;white-space:nowrap}
+
 .topbar-pause{flex:none;margin-left:8px}
 .topbar-pause select{height:24px;border:1px solid rgba(255,255,255,.2);border-radius:999px;
   background:rgba(255,255,255,.08);color:#CBD5E1;padding:0 8px;font-size:11px;max-width:170px}

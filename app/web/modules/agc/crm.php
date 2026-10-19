@@ -459,6 +459,15 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
       <kbd>/</kbd>
     </div>
 
+    <!-- Marcar: campaña y disparo, pegados al buscador. Es lo que el asesor
+         más usa en todo el turno, así que vive en la barra y no enterrado en
+         una columna. -->
+    <div class="topbar-dial">
+      <label class="sr-only" for="ctlCampaign">Campaña para marcar</label>
+      <select id="ctlCampaign"><option value="">Sin campañas manuales</option></select>
+      <button class="btn-sm btn-sm--primary" id="ctlDial" type="button">Marcar siguiente lead</button>
+    </div>
+
     <div class="call-state" id="dialerState" data-on="wait" title="Conexión con el discador">
       <span class="dot"></span>
       <span id="dialerLabel">Discador…</span>
@@ -514,12 +523,6 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
     <div class="block" id="callCtl">
       <h2>Control de llamada <span class="h-count" id="agentState">—</span></h2>
       <div class="block-body block-body--pad">
-        <div class="field">
-          <label for="ctlCampaign">Campaña para marcar</label>
-          <select id="ctlCampaign"><option value="">Sin campañas manuales</option></select>
-        </div>
-        <button class="btn btn--primary" id="ctlDial" type="button" style="width:100%;height:28px">Marcar siguiente lead</button>
-
         <div class="ctl-row">
           <button class="btn-sm btn-sm--danger" id="ctlHangup" type="button" hidden>Colgar</button>
         </div>

@@ -164,6 +164,15 @@ setTimeout(() => {
   console.log('\n== Pausar es elegir el motivo ==');
   {
     const sel = $('ctlPauseType');
+    // Marcar es lo que más se usa en el turno: vive en la barra, pegado al
+    // buscador, no enterrado en una columna.
+    check('marcar vive en la barra, junto al buscador',
+      $('ctlDial').closest('.topbar') !== null && $('ctlCampaign').closest('.topbar') !== null
+      && (() => { const h = $('search').closest('.topbar').children.filter(n => n.tagName);
+                  return h.indexOf($('ctlDial').closest('.topbar-dial'))
+                       === h.findIndex(n => n.matches('.search')) + 1; })());
+    check('el buscador ocupa la mitad', /\.search\{[^}]*max-width:260px/.test(
+      fs.readFileSync(path.join(WEB, 'modules/agc/crm.css'), 'utf8')));
     // La pausa es estado del puesto: vive en la barra, junto al estado del
     // discador, no en el panel de trabajo sobre la ficha.
     check('la pausa vive en la barra superior',
