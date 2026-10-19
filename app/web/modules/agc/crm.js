@@ -215,12 +215,81 @@ function svg(name, cls) {
 }
 const iniciales = s => String(s || '?').trim().split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase();
 
-// Color estable del avatar a partir del nombre (sin imágenes ni aleatoriedad).
-const PAL = ['#2D2F3B', '#1D4ED8', '#15803D', '#B45309', '#6D28D9', '#B91C1C', '#0F766E', '#9D174D'];
-function avatar(nombre, cls) {
-  let h = 0;
-  for (const c of String(nombre)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return el('span', {cls:'avatar ' + (cls || ''), style:'background:' + PAL[h % PAL.length], txt:iniciales(nombre)});
+/* ------------------------------------------------------------- avatares
+
+   Un rostro por cliente, dibujado acá mismo como SVG a partir del nombre.
+
+   Se generan en el navegador a propósito: no hay pedido de red, ni CDN, ni
+   archivo que desplegar. Ningún tercero llega a enterarse de los nombres de
+   la cartera, y la consola sigue funcionando con el servidor aislado.
+
+   El nombre se convierte en un número y ese número elige piel, pelo, peinado,
+   ropa y fondo. Es determinista: el mismo cliente tiene siempre la misma
+   cara, en cualquier pantalla y sin guardar nada.
+
+   No son fotos: son figuras. Quien necesite el dato cierto tiene el nombre
+   al lado.                                                                */
+
+const PAL      = ['#1E3A8A', '#1D4ED8', '#15803D', '#B45309', '#6D28D9', '#BE123C', '#0F766E', '#9D174D'];
+const AV_PIEL  = ['#F2D3B8', '#E7BE9B', '#D29C76', '#B57C52', '#8D5A3B', '#6B4328'];
+const AV_PELO  = ['#1B1714', '#3A2B22', '#6B4A32', '#A6692F', '#C9A227', '#8A8F98', '#4A2C6B'];
+const AV_ROPA  = ['#2563EB', '#0F766E', '#7C3AED', '#BE123C', '#B45309', '#334155', '#15803D'];
+const AV_FONDO = ['#DBEAFE', '#DCFCE7', '#EDE9FE', '#FFE4E6', '#FEF3C7', '#E2E8F0', '#CCFBF1'];
+
+const hash = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+const elige = (lista, h, desp) => lista[(h >>> desp) % lista.length];
+
+// Un SVG por rasgo, para no construir decenas de nodos por cada tarjeta: el
+// navegador parsea esta cadena una vez y la clona en su propio ámbito.
+function caraSVG(nombre) {
+  const h = hash(nombre);
+  const piel = elige(AV_PIEL, h, 0), pelo = elige(AV_PELO, h, 3),
+        ropa = elige(AV_ROPA, h, 6), fondo = elige(AV_FONDO, h, 9);
+  const peinado = (h >>> 12) % 4;     // al ras · con flequillo · recogido · largo
+  const vello   = (h >>> 14) % 4 === 0 ? `<path d="M12 23c2 2.6 10 2.6 12 0v2c0 3-12 3-12-2z" fill="${pelo}" opacity=".85"/>` : '';
+  const ojoY    = 19 + ((h >>> 16) % 2);
+  const sonrisa = (h >>> 18) % 3;
+
+  const cabello = [
+    `<path d="M8 17c0-7 4-10 10-10s10 3 10 10c0-4-4-5-10-5S8 13 8 17z" fill="${pelo}"/>`,
+    `<path d="M7 18c0-8 5-11 11-11s11 3 11 11c-1-5-4-7-7-6-2 1-4 2-7 1-3-1-6 0-8 5z" fill="${pelo}"/>`,
+    `<path d="M8 17c0-7 4-10 10-10s10 3 10 10c0-4-4-5-10-5S8 13 8 17z" fill="${pelo}"/>` +
+      `<circle cx="27" cy="11" r="4" fill="${pelo}"/>`,
+    `<path d="M7 19c0-8 5-12 11-12s11 4 11 12v9c-2 1-3-3-3-7 0-4-3-5-8-5s-8 1-8 5c0 4-1 8-3 7z" fill="${pelo}"/>`
+  ][peinado];
+
+  const boca = [
+    `<path d="M15 25c1.6 1.6 4.4 1.6 6 0" stroke="#8B5E4B" stroke-width="1.4" fill="none" stroke-linecap="round"/>`,
+    `<path d="M15 25c1.6 2.4 4.4 2.4 6 0" stroke="#8B5E4B" stroke-width="1.4" fill="none" stroke-linecap="round"/>`,
+    `<path d="M15.5 25h5" stroke="#8B5E4B" stroke-width="1.4" fill="none" stroke-linecap="round"/>`
+  ][sonrisa];
+
+  return '<svg viewBox="0 0 36 36" role="img" aria-hidden="true">'
+    + `<rect width="36" height="36" fill="${fondo}"/>`
+    + `<path d="M4 36c0-7 6-10 14-10s14 3 14 10z" fill="${ropa}"/>`
+    + `<circle cx="18" cy="15" r="2" fill="${piel}"/>`
+    + `<path d="M11 16c0-5 3-8 7-8s7 3 7 8v3c0 5-3 8-7 8s-7-3-7-8z" fill="${piel}"/>`
+    + vello
+    + `<circle cx="14.6" cy="${ojoY}" r="1.15" fill="#2B2320"/>`
+    + `<circle cx="21.4" cy="${ojoY}" r="1.15" fill="#2B2320"/>`
+    + boca
+    + cabello
+    + '</svg>';
+}
+
+// `fallback` fuerza las iniciales: lo usa la chapa del operador, donde el
+// rostro inventado confundiría más de lo que aporta.
+function avatar(nombre, cls, fallback) {
+  const n = String(nombre || '').trim();
+  const caja = el('span', {cls:'avatar ' + (cls || '')});
+  if (!n || fallback) {
+    caja.style.background = PAL[hash(n) % PAL.length];
+    caja.textContent = iniciales(n);
+    return caja;
+  }
+  caja.title = n;
+  caja.innerHTML = caraSVG(n);   // cadena construida acá, sin dato del usuario
+  return caja;
 }
 
 const money = (n, m) => (m || 'S/') + ' ' + Number(n || 0).toLocaleString('es-PE');

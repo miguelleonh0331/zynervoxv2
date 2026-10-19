@@ -63,7 +63,7 @@ sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 
 const code = fs.readFileSync(path.join(WEB, 'modules/agc/crm.js'), 'utf8')
-  + '\n;globalThis.__S=S;globalThis.__fn={abrirCliente,pintarDetalle,accionDiscador,armarArbol,RITMO_ACTIVO,RITMO_REPOSO};globalThis.__arbol=()=>TIPIFICACION;\n';
+  + '\n;globalThis.__S=S;globalThis.__fn={abrirCliente,pintarDetalle,pintarCartera,accionDiscador,armarArbol,RITMO_ACTIVO,RITMO_REPOSO};globalThis.__arbol=()=>TIPIFICACION;\n';
 try { vm.runInContext(code, sandbox, {filename:'crm.js'}); }
 catch (e) { console.log('FALLO al ejecutar: ' + e.message + '\n' + e.stack); process.exit(1); }
 
@@ -106,6 +106,23 @@ setTimeout(() => {
   check('marca las no tipificadas', /SIN TIP/.test(txt('listBody')));
   check('y el código de las tipificadas', /01/.test(txt('listBody')));
   check('la más reciente primero', filas()[0].textContent.includes('alexander'));
+
+  // Avatares: rostros dibujados en el navegador, sin pedir nada a la red.
+  {
+    const av = () => filas()[0].querySelector('.avatar');
+    // El DOM de pruebas guarda innerHTML como texto y no lo parsea, así que
+    // se comprueba el marcado emitido, no el nodo resultante.
+    check('cada cliente trae su rostro', !!av() && /^<svg[\s>]/.test(av().innerHTML));
+    check('dibujado acá, sin pedidos a la red',
+      !/<img|src=|url\(|https?:/i.test(av().innerHTML));
+    // El nombre nunca entra al SVG como marcado: sólo elige colores y formas.
+    const antes = av().innerHTML;
+    sandbox.__fn.pintarCartera();
+    check('la misma persona tiene siempre la misma cara', av().innerHTML === antes);
+    check('el nombre no se interpola en el dibujo', !/alexander/i.test(antes));
+    check('y queda accesible por texto', av().getAttribute('title') !== null
+      && /alexander/i.test(filas()[0].textContent));
+  }
 
   console.log('\n== Al entrar: bienvenida, no la última llamada ==');
   check('ninguna ficha queda abierta', S.actual === -1, String(S.actual));

@@ -1,17 +1,26 @@
-/* Consola CRM de Atención Telefónica — Zynervox (maqueta).
-   Estructura inspirada en un CRM comercial de referencia (cartera · expediente
-   · panel de trabajo), con la estética del panel admin: plana y densa, sin
-   sombras, sin degradados, sin esquinas redondeadas, sin imágenes. */
+/* Consola CRM de Atención Telefónica — Zynervox.
+   Estructura de tres columnas (cartera · expediente · panel de trabajo).
+
+   Estética: densa pero moderna. Se conserva la densidad —el asesor necesita
+   ver su cartera entera sin desplazarse— y se abandona la planitud del panel
+   admin: ahora hay esquinas suaves, sombras discretas y una paleta fría de
+   azules sobre gris muy claro. Todo el color sale de las variables de abajo:
+   cambiar la marca es cambiar este bloque, no rastrear la hoja entera. */
 :root{
-  --primary:#F5821F; --primary-hover:#E0731A; --dark:#2D2F3B;
-  --bg-main:#F5F1EA; --bg-card:#FFFFFF; --text:#2D2F3B; --text-muted:#6B7280;
-  --border:#E5E0D8; --rule:#EFEBE4;
-  --ok:#15803D; --warn:#B45309; --danger:#B91C1C; --info:#1D4ED8; --wa:#128C4A; --sms:#6D28D9;
+  --primary:#2563EB; --primary-hover:#1D4ED8; --dark:#0F172A;
+  --bg-main:#F4F7FB; --bg-card:#FFFFFF; --text:#0F172A; --text-muted:#64748B;
+  --border:#E2E8F0; --rule:#EEF2F7;
+  --ok:#16A34A; --warn:#D97706; --danger:#DC2626; --info:#2563EB; --wa:#22C55E; --sms:#7C3AED;
+  /* Tintes del primario, para fondos de selección sin opacidades sueltas. */
+  --primary-soft:#EFF6FF; --primary-soft2:#DBEAFE;
+  --radius:8px; --radius-sm:6px;
+  --shadow:0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.05);
+  --shadow-md:0 2px 10px rgba(15,23,42,.08);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
 body{font:12px/1.3 Arial,Helvetica,sans-serif;color:var(--text);background:var(--bg-main)}
-button,input,select,textarea{font:inherit;color:inherit;border-radius:0}
+button,input,select,textarea{font:inherit;color:inherit;border-radius:var(--radius-sm)}
 button{cursor:pointer}
 :focus-visible{outline:1px solid var(--primary);outline-offset:-1px}
 [hidden]{display:none!important}
@@ -29,15 +38,15 @@ button{cursor:pointer}
 /* ------------------------------------------------------- barra superior */
 .brand{display:flex;align-items:center;gap:7px;padding:0 12px;font-weight:400;letter-spacing:.5px;font-size:11px;background:rgba(0,0,0,.18);align-self:stretch}
 .brand b{font-weight:700}
-.brand i{width:7px;height:7px;background:var(--primary);display:block;flex:none}
-.search{flex:1;max-width:520px;display:flex;align-items:center;gap:6px;margin:0 12px;padding:0 8px;height:24px;background:#23252F;border:1px solid #4A4D5C}
+.brand i{width:8px;height:8px;border-radius:50%;background:var(--primary);display:block;flex:none}
+.search{flex:1;max-width:520px;display:flex;align-items:center;gap:6px;margin:0 12px;padding:0 8px;height:26px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:999px}
 .search:focus-within{border-color:var(--primary)}
 .search .ico{color:#8E93A1}
 .search input{flex:1;min-width:0;height:100%;border:0;background:transparent;color:#fff;outline:none}
 .search input::placeholder{color:#8E93A1}
 .search kbd{font:10px Arial;color:#8E93A1;border:1px solid #4A4D5C;padding:0 4px;line-height:14px}
-.call-state{display:flex;align-items:center;gap:7px;margin-left:auto;padding:0 11px;height:24px;border:1px solid #4A4D5C;font-size:11px;color:#C7CAD4}
-.call-state .dot{width:7px;height:7px;background:#6B7280;flex:none}
+.call-state{display:flex;align-items:center;gap:7px;margin-left:auto;padding:0 11px;height:24px;border:1px solid rgba(255,255,255,.18);border-radius:999px;font-size:11px;color:#CBD5E1}
+.call-state .dot{width:7px;height:7px;border-radius:50%;background:#6B7280;flex:none}
 .call-state b{color:#fff;font-variant-numeric:tabular-nums}
 .call-state[data-on=true]{border-color:var(--ok);background:rgba(21,128,61,.18);color:#D7F5E2}
 .call-state[data-on=true] .dot{background:#22C55E}
@@ -52,12 +61,15 @@ button{cursor:pointer}
 .who-txt{display:flex;flex-direction:column;line-height:1.15}
 .who-txt b{font-size:11px;color:#fff}
 .who-txt em{font-size:10px;color:#9CA0AC;font-style:normal}
-.topbar-exit{border:0;background:transparent;color:#C7CAD4;padding:0 12px;height:100%;font-size:11px;border-left:1px solid rgba(255,255,255,.14)}
+.topbar-exit{border:0;border-radius:0;background:transparent;color:#CBD5E1;padding:0 12px;height:100%;font-size:11px;border-left:1px solid rgba(255,255,255,.14)}
 .topbar-exit:hover{background:var(--danger);color:#fff}
 
 /* --------------------------------------------------------------- avatar */
-.avatar{display:inline-flex;align-items:center;justify-content:center;flex:none;
-  width:30px;height:30px;font-size:11px;font-weight:700;color:#fff;background:var(--dark);letter-spacing:.3px}
+.avatar{display:inline-flex;align-items:center;justify-content:center;flex:none;overflow:hidden;
+  width:30px;height:30px;border-radius:50%;font-size:11px;font-weight:700;color:#fff;background:var(--dark);
+  letter-spacing:.3px;box-shadow:0 0 0 1px rgba(15,23,42,.06)}
+/* El rostro generado se dibuja como SVG dentro del círculo. */
+.avatar svg{width:100%;height:100%;display:block}
 .avatar--sm{width:22px;height:22px;font-size:9px}
 .avatar--lg{width:42px;height:42px;font-size:14px}
 
@@ -75,15 +87,15 @@ button{cursor:pointer}
 /* Tarjeta de cliente: avatar + datos + prioridad, en rejilla fija */
 .cli{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:0 8px;align-items:start;
   padding:6px 8px;border-bottom:1px solid var(--rule);cursor:pointer;background:var(--bg-card)}
-.cli:hover{background:rgba(245,130,31,.07)}
-.cli[aria-current=true]{background:rgba(245,130,31,.12);box-shadow:inset 3px 0 0 var(--primary)}
+.cli:hover{background:var(--primary-soft)}
+.cli[aria-current=true]{background:var(--primary-soft2);box-shadow:inset 3px 0 0 var(--primary)}
 .cli .avatar{grid-row:span 2}
 .cli-name{font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cli-tel{font-size:11px;color:var(--text-muted);font-variant-numeric:tabular-nums}
 .cli-meta{grid-column:2/-1;display:flex;align-items:center;gap:6px;margin-top:2px;font-size:10px;color:var(--text-muted);min-width:0}
 .cli-meta .prod{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cli-meta .when{margin-left:auto;white-space:nowrap}
-.tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;padding:1px 5px;border:1px solid;white-space:nowrap}
+.tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;padding:1px 7px;border:1px solid;border-radius:999px;white-space:nowrap}
 .tag--alta{color:var(--danger);border-color:var(--danger);background:#FEF2F2}
 .tag--media{color:var(--warn);border-color:var(--warn);background:#FFFBEB}
 .tag--baja{color:var(--text-muted);border-color:var(--border);background:var(--bg-main)}
@@ -118,7 +130,8 @@ button{cursor:pointer}
 .det-body>.panel--notas{flex:none;min-height:0;max-height:34%}
 
 /* Panel genérico dentro del expediente */
-.panel{background:var(--bg-card);border:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+.panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);
+  display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .panel>h3{flex:none;height:22px;background:var(--dark);color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;
   letter-spacing:.5px;display:flex;align-items:center;gap:8px;padding:0 4px 0 9px}
 .panel>h3 .spacer{flex:1}
@@ -146,7 +159,7 @@ button{cursor:pointer}
 /* Notas clave: viñetas compactas */
 .notes{list-style:none}
 .notes li{display:grid;grid-template-columns:7px minmax(0,1fr) auto;gap:7px;align-items:start;padding:5px 8px;border-bottom:1px solid var(--rule);font-size:11px;line-height:1.35}
-.notes li::before{content:'';width:7px;height:7px;background:var(--primary);margin-top:3px}
+.notes li::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--primary);margin-top:3px}
 .notes .when{font-size:10px;color:var(--text-muted);white-space:nowrap}
 
 /* Botonera de canales */
@@ -165,7 +178,7 @@ button{cursor:pointer}
 
 /* Chips de filtro del historial */
 .chips{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
-.chip{border:1px solid rgba(255,255,255,.3);background:transparent;color:#C7CAD4;font-size:10px;font-weight:700;padding:1px 7px;line-height:15px}
+.chip{border:1px solid rgba(255,255,255,.3);background:transparent;color:#CBD5E1;font-size:10px;font-weight:700;padding:1px 7px;line-height:15px;border-radius:999px}
 .chip:hover{border-color:#fff;color:#fff}
 .chip[aria-pressed=true]{background:var(--primary);border-color:var(--primary);color:#fff}
 
@@ -173,7 +186,7 @@ button{cursor:pointer}
 .tl{list-style:none}
 .tl li{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:0 8px;padding:6px 8px;border-bottom:1px solid var(--rule);align-items:start}
 .tl li:hover{background:var(--bg-main)}
-.tl .mark{width:22px;height:22px;display:flex;align-items:center;justify-content:center;color:#fff;grid-row:span 2}
+.tl .mark{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;grid-row:span 2}
 .tl .mark .ico{width:12px;height:12px}
 .tl .t{font-size:11px;font-weight:700}
 .tl .d{grid-column:2;font-size:11px;color:var(--text-muted);line-height:1.35;overflow-wrap:anywhere}
@@ -311,7 +324,7 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
 .ctl-row{display:flex;gap:4px;margin-top:8px}
 .ctl-row .btn-sm{flex:1}
 #callCtl .block-body--pad{padding:7px 8px 9px}
-#agentState{font-weight:700;color:#C7CAD4}
+#agentState{font-weight:700;color:#CBD5E1}
 
 /* --------------------------------------------- acceso del agente */
 .login-body{display:grid;place-items:center;height:100dvh;background:var(--bg-main);overflow:auto}
