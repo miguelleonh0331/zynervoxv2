@@ -63,7 +63,7 @@ sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 
 const code = fs.readFileSync(path.join(WEB, 'modules/agc/crm.js'), 'utf8')
-  + '\n;globalThis.__S=S;globalThis.__fn={abrirCliente,pintarDetalle,pintarCartera,accionDiscador,armarArbol,RITMO_ACTIVO,RITMO_REPOSO};globalThis.__arbol=()=>TIPIFICACION;\n';
+  + '\n;globalThis.__S=S;globalThis.__fn={abrirCliente,pintarDetalle,pintarCartera,pintarControl,accionDiscador,armarArbol,RITMO_ACTIVO,RITMO_REPOSO};globalThis.__arbol=()=>TIPIFICACION;\n';
 try { vm.runInContext(code, sandbox, {filename:'crm.js'}); }
 catch (e) { console.log('FALLO al ejecutar: ' + e.message + '\n' + e.stack); process.exit(1); }
 
@@ -157,6 +157,27 @@ setTimeout(() => {
   console.log('\n== Control de llamada con datos fijos ==');
   check('campañas vienen del bloque fijo', $('ctlCampaign').children.filter(o => o.getAttribute('value')).length === 1);
   check('motivos de pausa también', $('ctlPauseType').children.filter(o => o.getAttribute('value')).length === 2);
+
+  console.log('\n== Pausar es elegir el motivo ==');
+  {
+    const sel = $('ctlPauseType');
+    check('sin pausa, el botón no estorba', $('ctlPause').hidden === true);
+    const antes = (sandbox.__acciones || []).length;
+    sel.value = '2';
+    sel.dispatch('change', {target:sel});
+    const envio = (sandbox.__acciones || [])[antes] || '';
+    check('elegir el motivo pausa sin más clics', /action=pause/.test(envio), envio);
+    check('y manda el motivo elegido', /pause_type_id=2/.test(envio), envio);
+    check('el selector vuelve a neutro', sel.value === '', sel.value);
+    // Pausado: aparece "Reanudar" y el selector se retira.
+    sandbox.__estado.pause = {label:'Baño', seconds:0};
+    sandbox.__fn.pintarControl();
+    check('pausado aparece Reanudar',
+      $('ctlPause').hidden === false && txt('ctlPause') === 'Reanudar', txt('ctlPause'));
+    check('y el selector se retira', $('ctlPauseWrap').hidden === true);
+    sandbox.__estado.pause = null;
+    sandbox.__fn.pintarControl();
+  }
   check('en reposo el sondeo es lento', sandbox.__ritmo === sandbox.__fn.RITMO_REPOSO, sandbox.__ritmo + ' ms');
 
   console.log('\n== Entra una llamada: se suma sola a la cartera ==');

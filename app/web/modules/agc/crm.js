@@ -1426,11 +1426,14 @@ function pintarControl() {
       ...FIJO.pauseTypes.map(t => el('option', {value:String(t.id), txt:t.label})));
   }
 
-  // Pausado o disponible
+  // Pausado o disponible. Elegir el motivo ya pausa, así que mientras el
+  // agente está disponible el botón no hace falta: sólo aparece para
+  // reanudar, que es la acción que sí necesita una confirmación explícita.
   const enPausa = !!PUESTO.pause;
   $('ctlPauseWrap').hidden = enPausa;
-  $('ctlPause').textContent = enPausa ? 'Reanudar' : 'Pausar';
-  $('ctlPause').className = 'btn-sm' + (enPausa ? ' btn-sm--primary' : '');
+  $('ctlPause').hidden = !enPausa;
+  $('ctlPause').textContent = 'Reanudar';
+  $('ctlPause').className = 'btn-sm btn-sm--primary';
   const marca = $('agentState');
   marca.textContent = enPausa ? ('Pausado · ' + PUESTO.pause.label) : 'Disponible';
 
@@ -1471,19 +1474,26 @@ function marcarSiguiente() {
     .finally(() => { boton.disabled = false; pintarControl(); });
 }
 
-function alternarPausa() {
-  const enPausa = !!(PUESTO && PUESTO.pause);
-  if (!enPausa) {
-    const motivo = $('ctlPauseType').value;
-    if (!motivo) { aviso('Pausa', 'Selecciona el motivo de la pausa.'); return; }
-    accionDiscador('pause', {pause_type_id:motivo})
-      .then(({d}) => estado(d.error || d.message))
-      .catch(() => estado('No se pudo aplicar la pausa.'));
-  } else {
-    accionDiscador('unpause')
-      .then(({d}) => estado(d.error || d.message))
-      .catch(() => estado('No se pudo reanudar.'));
-  }
+/* Elegir el motivo pausa en el acto: en un turno real el asesor pausa
+   decenas de veces y el segundo clic no aportaba nada —no hay nada que
+   confirmar, el motivo ya es la decisión—. El selector vuelve a su posición
+   neutra en cuanto se envía, para que al reanudar no quede un motivo viejo
+   colgado y para que volver a elegir el mismo motivo dispare de nuevo. */
+function pausarPorMotivo(motivo) {
+  if (!motivo) return;
+  const sel = $('ctlPauseType');
+  sel.value = '';
+  sel.disabled = true;
+  accionDiscador('pause', {pause_type_id:motivo})
+    .then(({d}) => estado(d.error || d.message))
+    .catch(() => estado('No se pudo aplicar la pausa.'))
+    .finally(() => { sel.disabled = false; pintarControl(); });
+}
+
+function reanudar() {
+  accionDiscador('unpause')
+    .then(({d}) => estado(d.error || d.message))
+    .catch(() => estado('No se pudo reanudar.'));
 }
 
 function colgarLlamada() {
@@ -1768,7 +1778,8 @@ function init() {
 
   if ($('ctlDial')) {
     $('ctlDial').addEventListener('click', marcarSiguiente);
-    $('ctlPause').addEventListener('click', alternarPausa);
+    $('ctlPause').addEventListener('click', reanudar);
+    $('ctlPauseType').addEventListener('change', e => pausarPorMotivo(e.target.value));
     $('ctlHangup').addEventListener('click', colgarLlamada);
   }
   conectarDiscador();
