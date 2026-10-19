@@ -396,7 +396,29 @@ function seguir() {
              return /\.trx-body:empty::before/.test(c) && /\.trx-body\{[^}]*white-space:pre-wrap/.test(c); })());
   ZVT.limpiar();
 
-    console.log('\n== Menú lateral ==');
+    console.log('\n== Resumen partido en dos ==');
+  {
+    const bloques = () => $('detBody').children.filter(n => n.tagName);
+    sandbox.__fn.abrirCliente(0);
+    const b = bloques();
+    check('ficha arriba, canales al medio, historial abajo',
+      b.length === 3 && b[1].matches('.channels')
+      && /INFORMACIÓN DEL CLIENTE|LEAD DEL DISCADOR/i.test(b[0].textContent)
+      && /Historial de interacciones/.test(b[2].textContent),
+      b.map(n => n.className).join(' · '));
+    // Abrir WhatsApp: la conversación es la tarea, el historial se retira.
+    canal(1).dispatch('click', {});
+    const c = bloques();
+    check('con el chat abierto el historial se retira', c.length === 2, String(c.length));
+    check('y la conversación toma todo el alto', !!$('detBody').querySelector('.chat-body'));
+    check('la botonera sigue, para poder cerrarlo', c[1].matches('.channels'));
+    sandbox.__fn.pintarDetalle();
+    canal(1).dispatch('click', {});
+    check('al cerrarlo vuelve el historial',
+      bloques().length === 3 && /Historial/.test(bloques()[2].textContent));
+  }
+
+  console.log('\n== Menú lateral ==');
   check('el resumen del turno vive en el menú',
     !!$('side') && $('perfDonut').closest('.side') !== null);
   check('y ya no cuelga de la columna de trabajo',

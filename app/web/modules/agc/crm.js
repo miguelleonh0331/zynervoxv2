@@ -566,15 +566,24 @@ function pintarDetalle() {
   if (!c) return pintarSinCliente();
   const body = $('detBody');
   if (S.tabDetalle === 'resumen') {
-    // Un solo bloque a todo el ancho: la transcripción en vivo ya ocupa el
-    // costado del expediente, y partir lo que queda dejaba la ficha y el
-    // chat demasiado angostos para leerlos. Las notas clave pasaron a la
-    // pestaña "Interacciones", que es donde se consulta el historial.
-    body.replaceChildren(
-      S.chat ? panelChat(c) : (leadVivo() ? panelLead(PUESTO.lead) : panelInfo(c)),
-      botoneraCanales(c));
-    // El historial no se repite aquí: vive completo en la pestaña
-    // "Interacciones", con sus filtros por canal.
+    // El resumen se parte en dos mitades con la botonera al medio: arriba
+    // quién es el cliente, abajo qué pasó con él. Así el asesor tiene a la
+    // vista el dato y el antecedente sin cambiar de pestaña, y los canales
+    // quedan al alcance entre ambos.
+    //
+    // Con el chat abierto el historial se retira y la conversación ocupa
+    // todo el alto: hablar por WhatsApp es la tarea, no un acompañamiento.
+    // La botonera se queda porque ahí está el botón para cerrarlo.
+    body.replaceChildren(...(S.chat
+      ? [panelChat(c), botoneraCanales(c)]
+      : [
+          leadVivo() ? panelLead(PUESTO.lead) : panelInfo(c),
+          botoneraCanales(c),
+          // Sin filtros ni chips: es un vistazo. La pestaña "Interacciones"
+          // sigue siendo la vista completa, con su filtrado por canal.
+          panel('Historial de interacciones',
+            listaTimeline(interaccionesDe(c), 'Todavía no hay interacciones con este cliente.'))
+        ]));
   } else if (S.tabDetalle === 'interacciones') {
     const chips = ['todas', 'llamada', 'whatsapp', 'email', 'sms', 'nota', 'gestion'];
     body.replaceChildren(
