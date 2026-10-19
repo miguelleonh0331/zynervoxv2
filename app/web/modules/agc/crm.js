@@ -621,13 +621,16 @@ function pintarDetalle() {
       pie.replaceChildren();
     } else {
       body.replaceChildren(leadVivo() ? panelLead(PUESTO.lead) : panelInfo(c));
-      pie.replaceChildren(
+      // replaceChildren no filtra: un null acabaría escrito como «null» en
+      // pantalla. El aviso sólo existe cuando hay algo pendiente.
+      pie.replaceChildren(...[
         avisoPendiente(),
         botoneraCanales(c),
         // Sin filtros ni chips: es un vistazo. La pestaña "Interacciones"
         // sigue siendo la vista completa, con su filtrado por canal.
         panel('Historial de interacciones',
-          listaTimeline(interaccionesDe(c), 'Todavía no hay interacciones con este cliente.')));
+          listaTimeline(interaccionesDe(c), 'Todavía no hay interacciones con este cliente.'))
+      ].filter(Boolean));
     }
   } else if (S.tabDetalle === 'interacciones') {
     const chips = ['todas', 'llamada', 'whatsapp', 'email', 'sms', 'nota', 'gestion'];
@@ -703,7 +706,7 @@ function panelInfo(c) {
       dl.append(el('dd', null,
         el('span', {txt:c.telefonos[0] ? c.telefonos[0].n : '—'}),
         c.telefonos.length > 1 ? el('span', {style:'color:var(--text-muted)', txt:'+' + (c.telefonos.length - 1)}) : null,
-        el('button', {cls:'btn-sm', style:'height:17px;padding:0 6px;margin-left:auto', type:'button',
+        el('button', {cls:'btn-sm', style:'height:15px;padding:0 5px;font-size:9px;margin-left:auto', type:'button',
           txt:'Gestionar', onclick:hojaTelefonos})));
     } else {
       dl.append(el('dd', {txt:String(v || '—'), title:String(v || '')}));

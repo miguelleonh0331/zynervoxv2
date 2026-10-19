@@ -22,9 +22,12 @@ class El {
   // Insertar un nodo que ya tiene padre lo MUEVE, como en el navegador. Sin
   // esto quedaba duplicado en los dos sitios y las pruebas no veían los
   // traslados (p. ej. la hoja de tipificación yendo y viniendo de la capa).
+  // Ojo: el navegador NO filtra null. append(null) escribe el texto "null" en
+  // pantalla, y eso es un fallo visible. Acá se reproduce igual, para que las
+  // pruebas lo vean; el filtrado es trabajo de quien construye los nodos.
   append(...nodes) {
     for (const n of nodes) {
-      if (n === null || n === undefined || n === false) continue;
+      if (n === undefined || n === false) continue;
       if (n && n.parentNode && Array.isArray(n.parentNode.childNodes)) {
         const i = n.parentNode.childNodes.indexOf(n);
         if (i >= 0) n.parentNode.childNodes.splice(i, 1);

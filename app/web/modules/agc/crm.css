@@ -240,16 +240,18 @@ button{cursor:pointer}
    etiqueta baja de peso visual y el valor sube, al revés de como estaba. El
    dato es lo que el asesor lee mientras habla, así que va más grande y con
    el contraste alto; la etiqueta alcanza con que se distinga. */
-.kv{display:grid;grid-template-columns:148px minmax(0,1fr);font-size:12.5px}
+/* Un 15% más chico que la primera versión: con dos pares por renglón ya no
+   hace falta tanto cuerpo, y así entran más campos sin desplazar. */
+.kv{display:grid;grid-template-columns:126px minmax(0,1fr);font-size:10.5px}
 /* Con la ficha a todo el ancho entran dos pares por renglón: los doce campos
    del lead se ven de una vez, sin desplazar. Por debajo de 1100px vuelve a
    una columna, que si no los valores quedan ilegibles. */
 @media(min-width:1100px){
-  .kv--doble{grid-template-columns:148px minmax(0,1fr) 148px minmax(0,1fr)}
+  .kv--doble{grid-template-columns:126px minmax(0,1fr) 126px minmax(0,1fr)}
 }
-.kv dt{background:var(--bg-main);color:#5A6B82;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
-  padding:7px 10px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);display:flex;align-items:center;line-height:1.25}
-.kv dd{padding:7px 12px;color:var(--text);font-weight:600;border-bottom:1px solid var(--rule);
+.kv dt{background:var(--bg-main);color:#5A6B82;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.35px;
+  padding:6px 9px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);display:flex;align-items:center;line-height:1.25}
+.kv dd{padding:6px 10px;color:var(--text);font-weight:600;border-bottom:1px solid var(--rule);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:6px}
 /* Franjas alternas: a doce filas seguidas, el ojo pierde el renglón. */
 .kv dd:nth-of-type(even),.kv dt:nth-of-type(even){background:#FAFCFF}

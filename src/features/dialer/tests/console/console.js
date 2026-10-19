@@ -484,6 +484,11 @@ function seguir() {
     check('la ficha ocupa sola el cuerpo',
       bloques().length === 1 && /INFORMACIÓN DEL CLIENTE|LEAD DEL DISCADOR/i.test(bloques()[0].textContent),
       bloques().map(n => n.className).join(' · '));
+    // replaceChildren no filtra null: lo escribe como texto. Ya pasó.
+    check('el pie no deja sueltos textos como «null»',
+      !/null|undefined/.test(txt('detFoot')), txt('detFoot').slice(0, 80));
+    check('ni el cuerpo del expediente',
+      !/null|undefined/.test(txt('detBody')), txt('detBody').slice(0, 80));
     check('canales e historial van al pie, a todo el ancho',
       pie().length === 2 && pie()[0].matches('.channels')
       && /Historial de interacciones/.test(pie()[1].textContent),
