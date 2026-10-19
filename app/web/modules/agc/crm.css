@@ -168,8 +168,15 @@ button{cursor:pointer}
    tipificación en una columna fija a su derecha. Tipificar es la tarea que
    cierra cada llamada, así que va al lado de lo que el asesor está leyendo
    y no en otra columna. */
-.det-split{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 300px}
+.det-split{flex:0 0 46%;min-height:220px;display:grid;grid-template-columns:minmax(0,1fr) 300px}
 @media(max-width:1500px){.det-split{grid-template-columns:minmax(0,1fr) 270px}}
+/* Pie del expediente: botonera y historial a todo el ancho, bajo la fila que
+   comparten la ficha y la tipificación. Se queda con el alto sobrante. */
+.det-foot{flex:1;min-height:0;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
+.det-foot>.panel{flex:1;min-height:160px}
+/* Con el chat abierto la conversación se queda con la fila entera. */
+.col--detail.is-chat .det-split{flex:1}
+.col--detail.is-chat .det-foot{display:none}
 .det-split>.block{border-bottom:0;border-left:1px solid var(--border)}
 .det-body{min-height:0;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
 /* Los bloques de cada pestaña se estiran hasta el pie del expediente, para

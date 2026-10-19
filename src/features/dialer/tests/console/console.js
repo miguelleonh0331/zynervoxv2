@@ -71,7 +71,10 @@ const $ = id => document.getElementById(id);
 const S = sandbox.__S;
 const txt = id => ($(id) ? $(id).textContent.trim() : '<sin nodo>');
 const btnTxt = t => $('layer').querySelectorAll('button').find(b => b.textContent.trim() === t);
-const canal = i => $('detBody').querySelectorAll('.ch')[i];
+// La botonera vive en el cuerpo (con el chat abierto) o en el pie (resto):
+// se la busca en la columna entera para no atarse a dónde esté hoy.
+const canales = () => $('detBody').closest('.col--detail').querySelectorAll('.ch');
+const canal = i => canales()[i];
 const filas = () => $('listBody').querySelectorAll('.cli');
 const accion = a => sandbox.__fn.accionDiscador(a);
 const elegir = (i, label) => {
@@ -197,7 +200,7 @@ setTimeout(() => {
     // botón Llamar quedaría muerto justo para el cliente recién atendido.
     check('el lead del sondeo conserva su lead_id', S.contactos[S.actual].leadId === 267, String(S.contactos[S.actual].leadId));
     check('y su botón Llamar no queda muerto tras tipificar',
-      (() => { const b = $('detBody').querySelectorAll('.ch')[0]; return /Colgar/.test(b.textContent) || b.disabled === false; })());
+      (() => { const b = canal(0); return /Colgar/.test(b.textContent) || b.disabled === false; })());
     check('con sus variables', /12345678/.test(txt('detBody')));
     check('ahora sí se puede tipificar', $('tip0').disabled === false && txt('tipOut') !== 'Sin llamada que tipificar.');
     check('con llamada activa el sondeo acelera', sandbox.__ritmo === sandbox.__fn.RITMO_ACTIVO, sandbox.__ritmo + ' ms');
@@ -275,7 +278,7 @@ function cerrar() {
   sandbox.__resp = {message:'', error:'', state:sandbox.__estado};
   accion('state').then(() => {
     sandbox.__fn.abrirCliente(423); sandbox.__fn.pintarDetalle();
-    const llamar = $('detBody').querySelectorAll('.ch')[0];
+    const llamar = canal(0);
     check('el botón Llamar está activo sin llamada en curso', llamar.disabled === false, llamar.title);
     sandbox.__resp = {message:'Rellamada #500 enviada. Contesta en tu softphone.', error:'', state:sandbox.__estado};
     llamar.dispatch('click');
@@ -287,7 +290,7 @@ function cerrar() {
     sandbox.__resp = {message:'', error:'', state:sandbox.__estado};
     accion('state').then(() => {
       sandbox.__fn.pintarDetalle();
-      const b = $('detBody').querySelectorAll('.ch')[0];
+      const b = canal(0);
       check('bloqueado con tipificación pendiente', b.disabled === true, b.title);
 
       // Con llamada viva, el botón pasa a Colgar
@@ -296,7 +299,7 @@ function cerrar() {
               name:'alexander', at:'', ended:false, bridged:true, disposition:null, status:'NEW', variables:{}}});
       sandbox.__resp = {message:'', error:'', state:sandbox.__estado};
       accion('state').then(() => {
-        const b2 = $('detBody').querySelectorAll('.ch')[0];
+        const b2 = canal(0);
         check('con llamada viva ofrece Colgar', /Colgar/.test(b2.textContent) && b2.disabled === false, b2.textContent);
         seguir();
       });
@@ -427,17 +430,22 @@ function seguir() {
     console.log('\n== Resumen partido en dos ==');
   {
     const bloques = () => $('detBody').children.filter(n => n.tagName);
+    const pie = () => $('detFoot').children.filter(n => n.tagName);
     sandbox.__fn.abrirCliente(0);
-    const b = bloques();
-    check('ficha arriba, canales al medio, historial abajo',
-      b.length === 3 && b[1].matches('.channels')
-      && /INFORMACIÓN DEL CLIENTE|LEAD DEL DISCADOR/i.test(b[0].textContent)
-      && /Historial de interacciones/.test(b[2].textContent),
-      b.map(n => n.className).join(' · '));
+    // La ficha comparte su fila con la tipificación; la botonera y el
+    // historial van debajo, a todo el ancho, en el pie del expediente.
+    check('la ficha ocupa sola el cuerpo',
+      bloques().length === 1 && /INFORMACIÓN DEL CLIENTE|LEAD DEL DISCADOR/i.test(bloques()[0].textContent),
+      bloques().map(n => n.className).join(' · '));
+    check('canales e historial van al pie, a todo el ancho',
+      pie().length === 2 && pie()[0].matches('.channels')
+      && /Historial de interacciones/.test(pie()[1].textContent),
+      pie().map(n => n.className).join(' · '));
     // Abrir WhatsApp: la conversación es la tarea, el historial se retira.
     canal(1).dispatch('click', {});
     const c = bloques();
-    check('con el chat abierto el historial se retira', c.length === 2, String(c.length));
+    check('con el chat abierto el historial se retira',
+      pie().length === 0 && c.length === 2, 'pie=' + pie().length + ' cuerpo=' + c.length);
     check('y la conversación toma todo el alto', !!$('detBody').querySelector('.chat-body'));
     check('la botonera sigue, para poder cerrarlo', c[1].matches('.channels'));
     // Cada canal se reconoce por su símbolo, no sólo por el color.
@@ -455,7 +463,8 @@ function seguir() {
     sandbox.__fn.pintarDetalle();
     canal(1).dispatch('click', {});
     check('al cerrarlo vuelve el historial',
-      bloques().length === 3 && /Historial/.test(bloques()[2].textContent));
+      pie().length === 2 && /Historial/.test(pie()[1].textContent),
+      'pie=' + pie().length);
   }
 
   console.log('\n== Menú lateral ==');

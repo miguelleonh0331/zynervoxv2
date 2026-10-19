@@ -520,6 +520,9 @@ function pintarSinCliente() {
       pendientes ? el('span', {txt:pendientes + ' sin tipificar'}) : null,
       el('span', {txt:'Ninguna ficha abierta'})));
   $('detTabs').replaceChildren();
+  // Sin ficha abierta no hay botonera ni historial que mostrar.
+  $('detFoot').replaceChildren();
+  $('detBody').closest('.col--detail').classList.remove('is-chat');
   $('detBody').replaceChildren(panel('Para empezar', el('ol', {cls:'pasos'},
     el('li', null, 'Elige la campaña en ', el('b', {txt:'Control de llamada'}), ' y pulsa ',
       el('b', {txt:'Marcar siguiente lead'}), '.'),
@@ -584,7 +587,12 @@ function panel(titulo, cuerpo, acciones) {
 function pintarDetalle() {
   const c = cli();
   if (!c) return pintarSinCliente();
-  const body = $('detBody');
+  const body = $('detBody'), pie = $('detFoot');
+  // El pie sólo tiene contenido en el resumen; en las demás pestañas el
+  // cuerpo se queda con todo el espacio.
+  const col = body.closest('.col--detail');
+  col.classList.toggle('is-chat', !!(S.chat && S.tabDetalle === 'resumen'));
+  if (S.tabDetalle !== 'resumen') pie.replaceChildren();
   if (S.tabDetalle === 'resumen') {
     // El resumen se parte en dos mitades con la botonera al medio: arriba
     // quién es el cliente, abajo qué pasó con él. Así el asesor tiene a la
@@ -594,16 +602,21 @@ function pintarDetalle() {
     // Con el chat abierto el historial se retira y la conversación ocupa
     // todo el alto: hablar por WhatsApp es la tarea, no un acompañamiento.
     // La botonera se queda porque ahí está el botón para cerrarlo.
-    body.replaceChildren(...(S.chat
-      ? [panelChat(c), botoneraCanales(c)]
-      : [
-          leadVivo() ? panelLead(PUESTO.lead) : panelInfo(c),
-          botoneraCanales(c),
-          // Sin filtros ni chips: es un vistazo. La pestaña "Interacciones"
-          // sigue siendo la vista completa, con su filtrado por canal.
-          panel('Historial de interacciones',
-            listaTimeline(interaccionesDe(c), 'Todavía no hay interacciones con este cliente.'))
-        ]));
+    if (S.chat) {
+      // Hablar por WhatsApp es la tarea: la conversación se queda con la
+      // fila entera y el pie se retira. La botonera la acompaña porque ahí
+      // está el botón para cerrarla.
+      body.replaceChildren(panelChat(c), botoneraCanales(c));
+      pie.replaceChildren();
+    } else {
+      body.replaceChildren(leadVivo() ? panelLead(PUESTO.lead) : panelInfo(c));
+      pie.replaceChildren(
+        botoneraCanales(c),
+        // Sin filtros ni chips: es un vistazo. La pestaña "Interacciones"
+        // sigue siendo la vista completa, con su filtrado por canal.
+        panel('Historial de interacciones',
+          listaTimeline(interaccionesDe(c), 'Todavía no hay interacciones con este cliente.')));
+    }
   } else if (S.tabDetalle === 'interacciones') {
     const chips = ['todas', 'llamada', 'whatsapp', 'email', 'sms', 'nota', 'gestion'];
     body.replaceChildren(

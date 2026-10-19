@@ -527,6 +527,11 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
         </div>
       </div>
     </div>
+
+    <!-- Pie del expediente: la botonera y el historial van a todo el ancho,
+         bajo la fila que comparten la ficha y la tipificación. Lo repinta el
+         JS junto con el cuerpo; no debe alojar nada con estado propio. -->
+    <div class="det-foot" id="detFoot"></div>
   </section>
 
   <!-- Columna 3: trabajo del asesor sobre la llamada en curso. -->
