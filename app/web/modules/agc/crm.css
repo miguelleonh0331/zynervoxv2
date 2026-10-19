@@ -104,7 +104,13 @@ button{cursor:pointer}
 .det-tabs button:hover{color:var(--primary)}
 .det-tabs button[aria-pressed=true]{color:var(--text);box-shadow:inset 0 -2px 0 var(--primary)}
 .det-tabs .n{font-weight:400;color:var(--text-muted)}
-.det-body{flex:1;min-height:0;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
+/* El expediente y la transcripción comparten la fila: la ficha toma el ancho
+   sobrante y la transcripción una columna fija a su costado. Plegada, la
+   transcripción se reduce a su cabecera y le devuelve el ancho a la ficha. */
+.det-split{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 300px}
+.det-split:has(.trx--plegado){grid-template-columns:minmax(0,1fr) auto}
+@media(max-width:1500px){.det-split{grid-template-columns:minmax(0,1fr) 240px}}
+.det-body{min-height:0;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
 /* El bloque principal de cada pestaña se estira hasta el pie del expediente,
    para no dejar hueco muerto; la botonera de canales queda fija abajo. */
 .det-body>.duo,.det-body>.panel{flex:1;min-height:220px}
@@ -210,11 +216,15 @@ button{cursor:pointer}
 .pasos li:last-child{border-bottom:0}
 
 /* Transcripción en vivo (área de pruebas del motor de voz) */
-.trx{flex:none;display:flex;flex-direction:column;height:150px;background:var(--bg-card);border-top:1px solid var(--border)}
-.trx--plegado{height:auto}
-.trx--plegado .trx-body{display:none}
-.trx-head{flex:none;display:flex;align-items:center;gap:8px;height:22px;padding:0 8px;background:var(--dark);color:#fff;
-  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+/* Columna propia al costado del expediente: alto completo, scroll propio. */
+.trx{min-width:0;min-height:0;display:flex;flex-direction:column;background:var(--bg-card);border-left:1px solid var(--border)}
+/* Plegada se reduce a la cabecera: oculta el cuerpo y el rótulo, y deja sólo
+   los botones para poder volver a abrirla. */
+.trx--plegado .trx-body,
+.trx--plegado .trx-head>span{display:none}
+.trx-head{flex:none;display:flex;align-items:center;gap:8px;min-height:22px;padding:0 8px;background:var(--dark);color:#fff;
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;flex-wrap:wrap}
+.trx-head>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .trx-head .spacer{flex:1}
 .trx-head .btn-sm{height:16px;padding:0 6px;font-size:10px;color:#fff;border-color:rgba(255,255,255,.35)}
 .trx-estado{font-weight:400;text-transform:none;letter-spacing:0;color:#CFCBC4}

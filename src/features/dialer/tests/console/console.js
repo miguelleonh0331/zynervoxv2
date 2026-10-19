@@ -304,6 +304,13 @@ function seguir() {
   const ultima = () => { const l = lineas(); return l.length ? l[l.length - 1] : null; };
   check('el panel existe', !!$('trx') && !!$('trxBody'));
   check('vive fuera del expediente, que se repinta entero', $('trx').closest('.det-body') === null);
+  // Va al costado de la ficha, no debajo: ambos cuelgan del mismo reparto de
+  // ancho. Si alguien devuelve la transcripción al pie, esto lo marca.
+  check('comparte la fila con el expediente', !!$('trx').closest('.det-split')
+    && $('trx').closest('.det-split') === $('detBody').closest('.det-split'));
+  check('el CSS reparte el ancho entre los dos',
+    /\.det-split\{[^}]*grid-template-columns/.test(
+      fs.readFileSync(path.join(WEB, 'modules/agc/crm.css'), 'utf8')));
   check('la API queda expuesta', !!ZVT && typeof ZVT.linea === 'function' && typeof ZVT.parcial === 'function');
   check('nadie escribe en el recuadro por su cuenta', ZVT.volcado().length === 0,
     JSON.stringify(ZVT.volcado().map(l => l.texto)));

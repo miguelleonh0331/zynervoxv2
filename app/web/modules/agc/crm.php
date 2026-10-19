@@ -434,23 +434,29 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
   <section class="col col--detail">
     <header class="det-head" id="detHead"></header>
     <nav class="det-tabs" id="detTabs"></nav>
-    <div class="det-body" id="detBody"></div>
 
-    <!-- Área de pruebas: transcripción en vivo de la voz del agente.
-         Vive fuera de #detBody a propósito: ese contenedor se reconstruye
-         entero en cada repintado del expediente y borraría lo transcrito.
-         El motor de voz escribe por window.ZVT o por postMessage; ver
-         docs/CRM_MODULE.md § Transcripción en vivo. -->
-    <section class="trx" id="trx">
-      <header class="trx-head">
-        <span>Transcripción en vivo</span>
-        <span class="trx-estado" id="trxEstado">en espera</span>
-        <span class="spacer"></span>
-        <button class="btn-sm btn-sm--ghost" type="button" id="trxClear">Limpiar</button>
-        <button class="btn-sm btn-sm--ghost" type="button" id="trxToggle" aria-expanded="true">Ocultar</button>
-      </header>
-      <div class="trx-body" id="trxBody"></div>
-    </section>
+    <!-- Expediente y transcripción van lado a lado: el asesor lee la ficha
+         del cliente y lo que se está diciendo sin cambiar de foco. El
+         contenedor sólo reparte el ancho; cada hijo conserva su scroll. -->
+    <div class="det-split">
+      <div class="det-body" id="detBody"></div>
+
+      <!-- Área de pruebas: transcripción en vivo de la voz del agente.
+           Vive fuera de #detBody a propósito: ese contenedor se reconstruye
+           entero en cada repintado del expediente y borraría lo transcrito.
+           El motor de voz escribe por window.ZVT o por postMessage; ver
+           docs/CRM_MODULE.md § Transcripción en vivo. -->
+      <section class="trx" id="trx">
+        <header class="trx-head">
+          <span>Transcripción en vivo</span>
+          <span class="trx-estado" id="trxEstado">en espera</span>
+          <span class="spacer"></span>
+          <button class="btn-sm btn-sm--ghost" type="button" id="trxClear">Limpiar</button>
+          <button class="btn-sm btn-sm--ghost" type="button" id="trxToggle" aria-expanded="true">Ocultar</button>
+        </header>
+        <div class="trx-body" id="trxBody"></div>
+      </section>
+    </div>
   </section>
 
   <!-- Columna 3: trabajo del asesor sobre la llamada en curso. -->
