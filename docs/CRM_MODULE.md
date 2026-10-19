@@ -658,6 +658,52 @@ el lead como ruta completa. Ya no hace falta traducir la cascada a un código
 aparte. Y los campos que la tabla ya tenía siguen valiendo: **Venta** marca
 la hoja que abre la propuesta, **Reintenta** devuelve el lead a la cola.
 
+## Secciones del menú lateral (2026-10-19)
+
+La consola dejó de ser una sola pantalla. El menú de la izquierda abre
+cuatro secciones; las tres últimas son **escenografía con datos inventados**
+y viven enteras en el navegador, en `modules/agc/crm_demo.js`.
+
+| Sección | Estado | Dónde |
+|---|---|---|
+| Mis clientes | **Real.** Cartera, discador, tipificación | `crm.js` |
+| Tareas | Demo | `crm_demo.js` · `DEMO_TAREAS` |
+| Reportes | Demo | `crm_demo.js` · `DEMO_VENTAS_MES` |
+| Base de conocimiento | Demo | `crm_demo.js` · `DEMO_WIKI` |
+| Inicio · Campañas · Soporte | Sin pantalla, desactivadas | — |
+
+El archivo está separado de `crm.js` a propósito: así se ve de un vistazo
+qué parte de la consola es real y qué parte es decorado. Cuando cada área
+tenga su origen de verdad se reemplaza el bloque de datos y las funciones de
+pintado siguen sirviendo tal cual.
+
+### Reglas que no se pueden romper
+
+- **Las columnas se ocultan, no se destruyen.** `irA()` superpone `#vista` a
+  las tres columnas centrales. Recrearlas borraría la transcripción, la
+  tipificación a medio llenar y la conversación con el asistente.
+- **Nada navega fuera de la consola.** No hay enlaces ni recargas: sólo un
+  atributo en el cuerpo. El aislamiento del agente sigue intacto y no hace
+  falta tocar `IsolatedGate.php`.
+- **Las entradas sin pantalla siguen `disabled`.** Darles destino exige
+  declarar la página en `IsolatedGate.php` y revisar el permiso, no sólo
+  poner un `href`. Hay checks que lo vigilan.
+- **Todo lo que venga de la base o del RAG se pinta con nodos de texto**,
+  nunca con `innerHTML`.
+
+### Onda de actividad y asistente
+
+En la columna de la derecha, bajo la transcripción:
+
+- **La onda es decorativa.** El audio vive en el softphone y nunca llega al
+  navegador. Reacciona al texto transcrito y decae sola; el bucle se detiene
+  por completo en reposo. Entrada única para un medidor real:
+  `ZVT.nivel(0..1)`.
+- **El asistente responde con material escrito a mano**, elegido por
+  palabras clave. Se apaga con `ASISTENTE_DEMO = false` en `crm.js`, y
+  entonces avisa que no está conectado en vez de inventar. Cuando exista el
+  RAG se reemplaza `asisResponder()` y la pantalla no se toca.
+
 ## Qué falta para que deje de ser maqueta
 
 1. **Persistencia.** Hoy todo vive en el objeto `S` de `crm.js`. Hace falta

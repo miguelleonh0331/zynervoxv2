@@ -2696,3 +2696,22 @@ Contrato:
 
 Riesgos:
 La auditoria dejo cinco defectos con consecuencia operativa sin corregir, por indicacion expresa del usuario de no tocar codigo ni produccion: XSS almacenado en la consola del agente, logout del agente sin CSRF que ademas no falla cerrado y lo deja en las colas, 103 archivos escribibles por cualquiera en el docroot, validacion de canales de Play solo en el navegador, y endpoints que no revalidan la cuenta desactivada. Estan listados en docs/AUDITORIA_2026-10-17.md seccion 7.
+
+### 2026-10-19 15:06 - dialer - (global)
+
+Tipo: feature
+
+Resumen:
+Consola del agente: menú lateral con Tareas, Reportes y Base de conocimiento (demo), onda de actividad y asistente con material de ejemplo
+
+Motivo:
+Area de demostracion para cliente; datos inventados aislados en crm_demo.js para distinguir lo real de la escenografia
+
+Archivos modificados:
+- (sin archivos indicados)
+
+Contrato:
+- sin cambios
+
+Riesgos:
+- ninguno conocido
