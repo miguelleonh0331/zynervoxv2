@@ -164,7 +164,14 @@ button{cursor:pointer}
 .det-tabs button:hover{color:var(--primary)}
 .det-tabs button[aria-pressed=true]{color:var(--text);box-shadow:inset 0 -2px 0 var(--primary)}
 .det-tabs .n{font-weight:400;color:var(--text-muted)}
-.det-body{flex:1;min-height:0;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
+/* El expediente se parte en dos: la ficha del cliente a la izquierda y la
+   tipificación en una columna fija a su derecha. Tipificar es la tarea que
+   cierra cada llamada, así que va al lado de lo que el asesor está leyendo
+   y no en otra columna. */
+.det-split{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 300px}
+@media(max-width:1500px){.det-split{grid-template-columns:minmax(0,1fr) 270px}}
+.det-split>.block{border-bottom:0;border-left:1px solid var(--border)}
+.det-body{min-height:0;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
 /* Los bloques de cada pestaña se estiran hasta el pie del expediente, para
    no dejar hueco muerto. En el resumen hay dos —ficha arriba, historial
    abajo— y se reparten el alto por igual; el mínimo es bajo a propósito,
@@ -295,12 +302,10 @@ button{cursor:pointer}
 .pasos li:last-child{border-bottom:0}
 
 /* Transcripción en vivo (área de pruebas del motor de voz) */
-/* Mitad inferior de la columna de trabajo: la tipificación arriba, lo que
-   se está diciendo abajo. Ambas piden el mismo alto y ninguna aplasta a la
-   otra; la transcripción conserva su propio scroll. */
+/* La transcripción se queda con todo lo que deja el control de llamada:
+   es lo único que vive bajo él en esta columna. */
 .trx{flex:1 1 0;min-width:0;min-height:120px;display:flex;flex-direction:column;
   background:var(--bg-card);border-top:1px solid var(--border)}
-/* Plegada cede su mitad a la tipificación y deja sólo la cabecera. */
 .trx--plegado{flex:none;min-height:0}
 .trx--plegado .trx-body{display:none}
 .trx-head{flex:none;display:flex;align-items:center;gap:8px;min-height:22px;padding:0 8px;background:var(--dark);color:#fff;

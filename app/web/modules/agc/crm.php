@@ -488,7 +488,45 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
     <header class="det-head" id="detHead"></header>
     <nav class="det-tabs" id="detTabs"></nav>
 
-    <div class="det-body" id="detBody"></div>
+    <!-- Expediente y tipificación comparten la fila. El bloque de
+         tipificación vive FUERA de #detBody a propósito: ese contenedor se
+         reconstruye entero en cada repintado y se llevaría por delante los
+         selectores, la nota a medio escribir y sus escuchas, que se enlazan
+         una sola vez al arrancar. -->
+    <div class="det-split">
+      <div class="det-body" id="detBody"></div>
+
+      <div class="block block--grow">
+        <h2>Tipificar gestión</h2>
+        <div class="block-body block-body--pad">
+
+          <div class="field field--step">
+            <label for="tip0" data-step="1">Nivel 1 · Resultado</label>
+            <select id="tip0"></select>
+          </div>
+          <div class="field field--step">
+            <label for="tip1" data-step="2">Nivel 2 · Motivo</label>
+            <select id="tip1"></select>
+          </div>
+          <div class="field field--step">
+            <label for="tip2" data-step="3">Nivel 3 · Desenlace</label>
+            <select id="tip2"></select>
+          </div>
+
+          <div class="outcome" id="tipOut">Elige los tres niveles para habilitar el registro.</div>
+          <div class="note" id="tipPend" hidden></div>
+          <button class="btn-sm btn-sm--primary" id="tipPendBtn" type="button" style="width:100%;margin-bottom:8px" hidden></button>
+
+          <div class="field">
+            <label for="tipNota">Nota de la gestión</label>
+            <textarea id="tipNota" maxlength="2000" placeholder="Observaciones de la llamada…"></textarea>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn btn--primary btn--wide" id="btnGrabar" type="button" disabled>Grabar gestión</button>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- Columna 3: trabajo del asesor sobre la llamada en curso. -->
@@ -515,37 +553,6 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
         </div>
 
         <div class="note" id="ctlLead" hidden></div>
-      </div>
-    </div>
-
-    <div class="block block--grow">
-      <h2>Tipificar gestión</h2>
-      <div class="block-body block-body--pad">
-
-        <div class="field field--step">
-          <label for="tip0" data-step="1">Nivel 1 · Resultado</label>
-          <select id="tip0"></select>
-        </div>
-        <div class="field field--step">
-          <label for="tip1" data-step="2">Nivel 2 · Motivo</label>
-          <select id="tip1"></select>
-        </div>
-        <div class="field field--step">
-          <label for="tip2" data-step="3">Nivel 3 · Desenlace</label>
-          <select id="tip2"></select>
-        </div>
-
-        <div class="outcome" id="tipOut">Elige los tres niveles para habilitar el registro.</div>
-        <div class="note" id="tipPend" hidden></div>
-        <button class="btn-sm btn-sm--primary" id="tipPendBtn" type="button" style="width:100%;margin-bottom:8px" hidden></button>
-
-        <div class="field">
-          <label for="tipNota">Nota de la gestión</label>
-          <textarea id="tipNota" maxlength="2000" placeholder="Observaciones de la llamada…"></textarea>
-        </div>
-      </div>
-      <div class="actions">
-        <button class="btn btn--primary btn--wide" id="btnGrabar" type="button" disabled>Grabar gestión</button>
       </div>
     </div>
 

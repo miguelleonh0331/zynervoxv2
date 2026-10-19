@@ -334,13 +334,20 @@ function seguir() {
   // el alto con ella. Si alguien la devuelve al expediente, esto lo marca.
   check('vive en la columna de trabajo', $('trx').closest('.col--work') !== null);
   {
-    const col = $('trx').closest('.col--work');
-    const hijos = col.children.filter(n => n.tagName);
-    const iTrx = hijos.indexOf($('trx'));
-    const iTip = hijos.findIndex(n => /Tipificar gestión/.test(n.textContent));
-    check('y debajo de la tipificación', iTip >= 0 && iTrx === hijos.length - 1 && iTrx > iTip,
-      'tip=' + iTip + ' trx=' + iTrx);
+    // En esta columna sólo quedan el control de llamada y la transcripción:
+    // la tipificación se mudó al expediente para dejarle el alto.
+    const hijos = $('trx').closest('.col--work').children.filter(n => n.tagName);
+    check('comparte columna sólo con el control de llamada',
+      hijos.length === 2 && hijos[0].id === 'callCtl' && hijos[1].id === 'trx',
+      hijos.map(n => n.id || n.className).join(' · '));
   }
+  // La tipificación pasó al expediente, al costado de la ficha, y sigue fuera
+  // de #detBody: ese contenedor se repinta entero y borraría la nota a medio
+  // escribir junto con las escuchas, que se enlazan una sola vez.
+  check('tipificar vive junto a la ficha del cliente',
+    $('tip0').closest('.det-split') !== null
+    && $('tip0').closest('.det-split') === $('detBody').closest('.det-split'));
+  check('y fuera del cuerpo que se repinta', $('tip0').closest('.det-body') === null);
   check('el CSS les da el mismo alto',
     /\.trx\{flex:1 1 0/.test(fs.readFileSync(path.join(WEB, 'modules/agc/crm.css'), 'utf8')));
   check('la API queda expuesta', !!ZVT && typeof ZVT.linea === 'function' && typeof ZVT.parcial === 'function');
