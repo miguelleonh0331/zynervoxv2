@@ -1123,6 +1123,14 @@ function pintarGestion() {
   // sin sus nodos no hay nada que pintar y se vuelve en el siguiente repintado.
   if (!$('tip0')) return;
   const activa = hayQueTipificar();
+  // Si ya no queda nada que tipificar, la hoja se retira. Va ANTES de
+  // cualquier salida temprana de esta función: estaba después y por eso la
+  // ventana se quedaba encima tras grabar, bloqueando la llamada siguiente.
+  if (!activa && $('layer').querySelector('.sheet--gestion')) {
+    cerrarCapa();
+    S.gestionCerrada = null;
+    return pintarGestion();     // repinta ya en su depósito
+  }
   for (let i = 0; i < 3; i++) {
     const sel = $('tip' + i), ops = nivel(i);
     sel.replaceChildren(
@@ -1159,8 +1167,6 @@ function pintarGestion() {
     btn.onclick = abrirAgenda; btn.hidden = false;
   } else { pend.hidden = true; btn.hidden = true; }
   $('btnGrabar').disabled = !h;
-  // Cerrar la hoja en cuanto ya no hay nada que tipificar.
-  if (!activa && $('layer').querySelector('.sheet--gestion')) cerrarCapa();
   // Aviso visible de que el discador espera la tipificación.
   if (!h && tipificacionPendiente()) {
     pend.hidden = false;

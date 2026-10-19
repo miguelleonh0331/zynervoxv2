@@ -261,6 +261,13 @@ setTimeout(() => {
           !!g && g.n1 === 'CONTACTADO' && g.n2 === 'SEGUIMIENTO' && g.n3 === 'INTERESADO', JSON.stringify(g || null));
         check('y como interacción del cliente tipificado',
           S.interacciones.some(x => x.tipo === 'gestion' && x.contacto === 424));
+        // La hoja tiene que retirarse sola al grabar: si queda encima, tapa
+        // la pantalla y el asesor no puede atender la llamada siguiente.
+        check('la hoja se retira al grabar',
+          $('layer').hidden === true && $('layer').querySelector('.sheet--gestion') === null,
+          txt('layer').slice(0, 60));
+        check('y el bloque vuelve a su depósito',
+          $('tip0') !== null && $('tip0').closest('#gestionHost') !== null);
         check('vuelve a permitir marcar', $('ctlDial').disabled === false);
         // La llamada tipificada deja de viajar en el sondeo: su fila debe
         // quedar marcada igual, sin volver a consultar el historial.
