@@ -177,8 +177,8 @@ button{cursor:pointer}
 /* Panel genérico dentro del expediente */
 .panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);
   display:flex;flex-direction:column;min-height:0;overflow:hidden}
-.panel>h3{flex:none;height:22px;background:var(--dark);color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;
-  letter-spacing:.5px;display:flex;align-items:center;gap:8px;padding:0 4px 0 9px}
+.panel>h3{flex:none;height:26px;background:var(--dark);color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.6px;display:flex;align-items:center;gap:8px;padding:0 5px 0 11px}
 .panel>h3 .spacer{flex:1}
 .panel-body{flex:1;min-height:0;overflow:auto}
 .duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
@@ -196,10 +196,18 @@ button{cursor:pointer}
   font-size:11px;color:var(--text-muted)}
 
 /* Rejilla etiqueta/valor */
-.kv{display:grid;grid-template-columns:120px minmax(0,1fr);font-size:11px}
-.kv dt{background:var(--bg-main);color:var(--text-muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;
-  padding:3px 8px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);display:flex;align-items:center}
-.kv dd{padding:3px 8px;border-bottom:1px solid var(--rule);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:5px}
+/* Ficha del cliente. La etiqueta es señalización y el valor es el dato: la
+   etiqueta baja de peso visual y el valor sube, al revés de como estaba. El
+   dato es lo que el asesor lee mientras habla, así que va más grande y con
+   el contraste alto; la etiqueta alcanza con que se distinga. */
+.kv{display:grid;grid-template-columns:148px minmax(0,1fr);font-size:12.5px}
+.kv dt{background:var(--bg-main);color:#5A6B82;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+  padding:7px 10px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);display:flex;align-items:center;line-height:1.25}
+.kv dd{padding:7px 12px;color:var(--text);font-weight:600;border-bottom:1px solid var(--rule);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:6px}
+/* Franjas alternas: a doce filas seguidas, el ojo pierde el renglón. */
+.kv dd:nth-of-type(even),.kv dt:nth-of-type(even){background:#FAFCFF}
+.kv dt:nth-of-type(even){background:#F2F6FB}
 
 /* Notas clave: viñetas compactas */
 .notes{list-style:none}
@@ -208,18 +216,28 @@ button{cursor:pointer}
 .notes .when{font-size:10px;color:var(--text-muted);white-space:nowrap}
 
 /* Botonera de canales */
-.channels{flex:none;display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border);border:1px solid var(--border)}
-.ch{display:flex;align-items:center;justify-content:center;gap:6px;height:30px;border:0;background:var(--bg-card);
-  font-size:11px;font-weight:700;color:var(--text)}
-.ch:hover{color:#fff}
-.ch--call:hover{background:var(--ok)}
-.ch--wa:hover{background:var(--wa)}
-.ch--mail:hover{background:var(--info)}
-.ch--sms:hover{background:var(--sms)}
-.ch--more:hover{background:var(--dark)}
-.ch:disabled{color:var(--text-muted);background:var(--bg-main);cursor:default}
-.ch:disabled:hover{color:var(--text-muted);background:var(--bg-main)}
-.ch.is-on{background:var(--wa);color:#fff}
+/* Botonera de canales: botones de verdad, con el color del canal puesto.
+   Antes eran celdas blancas que sólo se pintaban al pasar el mouse, así que
+   no se leían como acciones hasta tocarlas. */
+.channels{flex:none;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:2px 0}
+.ch{display:flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 6px;
+  border:0;border-radius:var(--radius);background:var(--ch,var(--primary));color:#fff;
+  font-size:12px;font-weight:700;box-shadow:var(--shadow);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch .ico{width:15px;height:15px;stroke-width:2.1}
+.ch:hover{filter:brightness(1.08)}
+.ch:active{transform:translateY(1px)}
+.ch--call{--ch:var(--ok)}
+.ch--wa{--ch:var(--wa)}
+.ch--mail{--ch:var(--info)}
+.ch--sms{--ch:var(--sms)}
+/* "Más acciones" no es un canal: queda en claro para no competir. */
+.ch--more{--ch:var(--bg-card);color:var(--text);box-shadow:inset 0 0 0 1px var(--border),var(--shadow)}
+.ch--more:hover{filter:none;background:var(--bg-main)}
+.ch:disabled{--ch:#E8EDF4;color:#9AA7B8;box-shadow:none;cursor:default}
+.ch:disabled:hover{filter:none}
+/* Chat abierto: el botón queda hundido para que se note que es un estado. */
+.ch.is-on{--ch:#0E7A3C;box-shadow:inset 0 2px 4px rgba(0,0,0,.28)}
 
 /* Chips de filtro del historial */
 .chips{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
