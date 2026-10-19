@@ -330,13 +330,19 @@ function seguir() {
   const ultima = () => { const l = lineas(); return l.length ? l[l.length - 1] : null; };
   check('el panel existe', !!$('trx') && !!$('trxBody'));
   check('vive fuera del expediente, que se repinta entero', $('trx').closest('.det-body') === null);
-  // Va al costado de la ficha, no debajo: ambos cuelgan del mismo reparto de
-  // ancho. Si alguien devuelve la transcripción al pie, esto lo marca.
-  check('comparte la fila con el expediente', !!$('trx').closest('.det-split')
-    && $('trx').closest('.det-split') === $('detBody').closest('.det-split'));
-  check('el CSS reparte el ancho entre los dos',
-    /\.det-split\{[^}]*grid-template-columns/.test(
-      fs.readFileSync(path.join(WEB, 'modules/agc/crm.css'), 'utf8')));
+  // Vive en la columna de trabajo, debajo de la tipificación, y se reparte
+  // el alto con ella. Si alguien la devuelve al expediente, esto lo marca.
+  check('vive en la columna de trabajo', $('trx').closest('.col--work') !== null);
+  {
+    const col = $('trx').closest('.col--work');
+    const hijos = col.children.filter(n => n.tagName);
+    const iTrx = hijos.indexOf($('trx'));
+    const iTip = hijos.findIndex(n => /Tipificar gestión/.test(n.textContent));
+    check('y debajo de la tipificación', iTip >= 0 && iTrx === hijos.length - 1 && iTrx > iTip,
+      'tip=' + iTip + ' trx=' + iTrx);
+  }
+  check('el CSS les da el mismo alto',
+    /\.trx\{flex:1 1 0/.test(fs.readFileSync(path.join(WEB, 'modules/agc/crm.css'), 'utf8')));
   check('la API queda expuesta', !!ZVT && typeof ZVT.linea === 'function' && typeof ZVT.parcial === 'function');
   check('nadie escribe en el recuadro por su cuenta', ZVT.volcado().length === 0,
     JSON.stringify(ZVT.volcado().map(l => l.texto)));
