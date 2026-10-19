@@ -379,6 +379,14 @@ function seguir() {
     $('tip0').closest('.det-split') !== null
     && $('tip0').closest('.det-split') === $('detBody').closest('.det-split'));
   check('y fuera del cuerpo que se repinta', $('tip0').closest('.det-body') === null);
+  // Las dos tarjetas de esa fila se dibujan igual: mismo borde, mismo
+  // redondeo, misma sombra. Si alguien deja una plana, esto lo marca.
+  check('ficha y tipificación se dibujan igual', (() => {
+    const css = fs.readFileSync(path.join(WEB, 'modules/agc/crm.css'), 'utf8');
+    const regla = /\.det-split>\.block\{([^}]*)\}/.exec(css);
+    return !!regla && ['border-radius', 'box-shadow', 'border:1px solid']
+      .every(k => regla[1].includes(k));
+  })());
   check('el CSS les da el mismo alto',
     /\.trx\{flex:1 1 0/.test(fs.readFileSync(path.join(WEB, 'modules/agc/crm.css'), 'utf8')));
   check('la API queda expuesta', !!ZVT && typeof ZVT.linea === 'function' && typeof ZVT.parcial === 'function');
