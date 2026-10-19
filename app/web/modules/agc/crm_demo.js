@@ -329,7 +329,18 @@ function demoCabecera(titulo, bajada, acciones) {
 
 /* ------------------------------------------------------------ TAREAS --- */
 
-const demoEstadoTareas = {filtro:'todas', hechas:DEMO_TAREAS_HECHAS.map(t => t.id)};
+const demoEstadoTareas = {filtro:'todas', hechas:DEMO_TAREAS_HECHAS.map(t => t.id), cuando:{}};
+
+/* Lo completado hoy: lo que ya venía hecho más lo que el asesor marcó en
+   esta sesión, por hora. Una tarea que desaparece de la lista sin aparecer
+   en ningún otro lado se siente perdida. */
+function demoHechasHoy() {
+  const propias = DEMO_TAREAS
+    .filter(t => demoEstadoTareas.cuando[t.id])
+    .map(t => ({titulo:t.titulo, cliente:t.cliente, cuando:demoEstadoTareas.cuando[t.id],
+                resultado:'Completada por vos'}));
+  return DEMO_TAREAS_HECHAS.concat(propias).sort((a, b) => a.cuando - b.cuando);
+}
 
 function demoTareasPendientes() {
   return DEMO_TAREAS.filter(t => demoEstadoTareas.hechas.indexOf(t.id) < 0);
@@ -341,7 +352,7 @@ function demoTareaFicha(t) {
   const hecha = demoEstadoTareas.hechas.indexOf(t.id) >= 0;
 
   return el('article', {cls:'tarea tarea--' + cuando.estado + (hecha ? ' is-hecha' : '')},
-    el('div', {cls:'tarea-ico', style:'background:' + info.color}, svg(info.ico, 'ico ico--fill')),
+    el('div', {cls:'tarea-ico', style:'background:' + info.color}, svg(info.ico)),
 
     el('div', {cls:'tarea-cuerpo'},
       el('div', {cls:'tarea-linea1'},
@@ -357,7 +368,7 @@ function demoTareaFicha(t) {
       el('p', {cls:'tarea-detalle', txt:t.detalle}),
 
       el('div', {cls:'tarea-pie'},
-        el('span', {cls:'tarea-sla'}, svg('gestion'), t.sla),
+        el('span', {cls:'tarea-sla'}, svg('reloj'), t.sla),
         el('span', {cls:'tarea-origen', txt:t.origen}),
         el('span', {cls:'tarea-dura', txt:'~' + t.minutos + ' min'}))),
 
@@ -371,8 +382,18 @@ function demoTareaFicha(t) {
         el('button', {cls:'btn-sm', type:'button', txt:hecha ? 'Reabrir' : 'Completar',
           onclick:() => {
             const i = demoEstadoTareas.hechas.indexOf(t.id);
-            if (i >= 0) demoEstadoTareas.hechas.splice(i, 1); else demoEstadoTareas.hechas.push(t.id);
+            if (i >= 0) {
+              demoEstadoTareas.hechas.splice(i, 1);
+              delete demoEstadoTareas.cuando[t.id];
+            } else {
+              demoEstadoTareas.hechas.push(t.id);
+              // Se guarda la hora para que la tarea aparezca en "Completadas
+              // hoy": sacarla de la lista y que no reaparezca en ningún lado
+              // da la sensación de que se perdió.
+              demoEstadoTareas.cuando[t.id] = new Date();
+            }
             pintarTareas();
+            if (typeof marcarTareasPendientes === 'function') marcarTareasPendientes();
             estado(i >= 0 ? 'Tarea reabierta.' : 'Tarea completada · ' + t.titulo);
           }}))));
 }
@@ -438,9 +459,9 @@ function pintarTareas() {
     // Lo hecho hoy, para que la lista no se sienta vacía al avanzar.
     el('section', {cls:'v-bloque'},
       el('h2', {txt:'Completadas hoy'}),
-      el('ul', {cls:'hechas'}, DEMO_TAREAS_HECHAS.map(t =>
+      el('ul', {cls:'hechas'}, demoHechasHoy().map(t =>
         el('li', null,
-          svg('gestion', 'ico ico--fill'),
+          svg('gestion'),
           el('b', {txt:t.titulo}),
           el('span', {txt:' · ' + t.cliente}),
           el('span', {cls:'when', txt:demoHoraTxt(t.cuando) + ' · ' + t.resultado}))))));
@@ -604,9 +625,8 @@ function pintarReportes() {
       el('h2', {txt:'Logros del mes'}),
       el('div', {cls:'logros'}, DEMO_LOGROS.map(l =>
         el('div', {cls:'logro' + (l.hecho ? ' is-hecho' : '')},
-          svg(l.hecho ? 'gestion' : 'doc', 'ico ico--fill'),
-          el('b', {txt:l.et}),
-          el('span', {txt:l.desc}))))),
+          svg(l.hecho ? 'gestion' : 'escudo'),
+          el('div', null, el('b', {txt:l.et}), el('span', {txt:l.desc})))))),
 
     el('p', {cls:'v-nota', txt:'Datos de demostración. Las cifras no provienen de la operación real.'}));
 }
@@ -633,20 +653,20 @@ function demoBattle(b) {
   if (!b) return null;
   return el('div', {cls:'battle'},
     el('div', {cls:'battle-col battle-col--gana'},
-      el('h4', null, svg('gestion', 'ico ico--fill'), 'Por qué ganamos'),
+      el('h4', null, svg('rayo', 'ico ico--fill'), 'Por qué ganamos'),
       el('ul', null, b.gana.map(t => el('li', {txt:t})))),
 
     el('div', {cls:'battle-col battle-col--obj'},
-      el('h4', null, svg('sms', 'ico ico--fill'), 'Si te dicen…'),
+      el('h4', null, svg('sms-f', 'ico ico--fill'), 'Si te dicen…'),
       el('ul', null, b.objeciones.map(([q, a]) =>
         el('li', null, el('b', {txt:q}), el('span', {txt:a}))))),
 
     el('div', {cls:'battle-col battle-col--lim'},
-      el('h4', null, svg('nota', 'ico ico--fill'), 'Dónde NO va'),
+      el('h4', null, svg('escudo', 'ico ico--fill'), 'Dónde NO va'),
       el('ul', null, b.limites.map(t => el('li', {txt:t})))),
 
     el('div', {cls:'battle-col battle-col--next'},
-      el('h4', null, svg('tel', 'ico ico--fill'), 'Paso siguiente'),
+      el('h4', null, svg('tel-f', 'ico ico--fill'), 'Paso siguiente'),
       el('p', {txt:b.siguiente})));
 }
 
@@ -665,11 +685,23 @@ function pintarWiki() {
 
   const indice = el('aside', {cls:'wiki-idx'},
     el('div', {cls:'wiki-busca'},
-      svg('doc'),
+      svg('buscar'),
       el('input', {type:'search', id:'wikiQ', value:demoWikiEstado.busqueda,
         placeholder:'Buscar en la base…', autocomplete:'off',
-        oninput:e => { demoWikiEstado.busqueda = e.target.value; pintarWiki();
-                       const n = $('wikiQ'); if (n) { n.focus(); } }})),
+        oninput:e => {
+          demoWikiEstado.busqueda = e.target.value;
+          // El repintado reemplaza el campo: se recupera el foco y el punto
+          // donde estaba el cursor, o escribir se vuelve imposible.
+          const pos = e.target.selectionStart;
+          pintarWiki();
+          const n = $('wikiQ');
+          if (n) {
+            n.focus();
+            if (typeof n.setSelectionRange === 'function' && pos !== null) {
+              try { n.setSelectionRange(pos, pos); } catch (err) { /* no es de texto */ }
+            }
+          }
+        }})),
 
     el('div', {cls:'wiki-cats'}, ['Todas'].concat(DEMO_WIKI_CATS).map(c =>
       el('button', {cls:'chip chip--claro', type:'button',

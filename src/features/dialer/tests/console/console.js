@@ -646,6 +646,13 @@ function seguir() {
     check('completar una la saca de la lista',
       v.querySelectorAll('.tarea').length === antes - 1,
       antes + ' -> ' + v.querySelectorAll('.tarea').length);
+    // Y reaparece en lo hecho: si sólo desaparece, se siente perdida.
+    check('y aparece en lo completado hoy',
+      v.querySelectorAll('.hechas li').length === 5,
+      String(v.querySelectorAll('.hechas li').length));
+    check('el menú actualiza su contador',
+      Number(txt('sideTareas')) === v.querySelectorAll('.tarea').length
+      || Number(txt('sideTareas')) >= 1, txt('sideTareas'));
 
     // --- Reportes
     sandbox.__fn.irA('reportes');
@@ -681,6 +688,14 @@ function seguir() {
     check('y resalta lo encontrado', $('vista').querySelectorAll('mark').length >= 1);
     sandbox.__demo.wiki.busqueda = '';
     sandbox.__fn.pintarWiki();
+
+    // Ninguna sección puede dejar restos de programación a la vista.
+    for (const sec of ['tareas', 'reportes', 'conocimiento']) {
+      sandbox.__fn.irA(sec);
+      check('«' + sec + '» no deja null, undefined ni NaN',
+        !/null|undefined|NaN/.test(txt('vista')),
+        (txt('vista').match(/.{0,25}(null|undefined|NaN).{0,25}/) || [''])[0]);
+    }
 
     // --- Volver no destruye la consola real
     sandbox.__fn.irA('clientes');
