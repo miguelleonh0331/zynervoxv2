@@ -85,6 +85,15 @@ const elegir = (i, label) => {
 console.log('\n== Entorno aislado ==');
 check('sin sidebar de administración', !/nav-item|sidebar/.test(html));
 check('nada apunta a modules/admin', !/\.\.\/admin\//.test(html));
+// El menú propio del asesor existe, pero no es una puerta al panel: las
+// entradas sin pantalla propia tienen que seguir inertes. Si alguien les
+// pone un href sin declarar la página en IsolatedGate, esto lo marca.
+check('el menú del asesor no enlaza a ningún lado',
+  !/<a[^>]*class="side-link/.test(html) && !/side-link[^>]*href=/.test(html));
+check('las entradas de maqueta están desactivadas',
+  (html.match(/class="side-link"[^>]*aria-disabled="true"[^>]*disabled/g) || []).length === 6);
+check('sólo "Mis clientes" está activa',
+  (html.match(/side-link is-on/g) || []).length === 1);
 check('hoja y script propios', /href="crm\.css"/.test(html) && /src="crm\.js"/.test(html));
 check('salida al logout del agente', S.salida === 'logout.php', S.salida);
 check('puente de WhatsApp propio', S.waEndpoint === 'crm_wa_session.php');
@@ -381,7 +390,26 @@ function seguir() {
              return /\.trx-body:empty::before/.test(c) && /\.trx-body\{[^}]*white-space:pre-wrap/.test(c); })());
   ZVT.limpiar();
 
-  console.log('\n== Salida ==');
+    console.log('\n== Menú lateral ==');
+  check('el resumen del turno vive en el menú',
+    !!$('side') && $('perfDonut').closest('.side') !== null);
+  check('y ya no cuelga de la columna de trabajo',
+    $('perfDonut').closest('.col--work') === null);
+  check('cerrar sesión está en el menú', $('exit').closest('.side') !== null);
+  check('el contador refleja la cartera entera',
+    txt('sideCount') === String(S.contactos.length), txt('sideCount'));
+  // Plegar es sólo comodidad de pantalla: ni consulta ni dato del agente.
+  const app = document.getElementById('app');
+  check('el menú arranca desplegado', !app.classList.contains('is-plegado'));
+  $('sideToggle').dispatch('click', {});
+  check('y se pliega', app.classList.contains('is-plegado')
+    && $('sideToggle').getAttribute('aria-expanded') === 'false');
+  $('sideToggle').dispatch('click', {});
+  check('y vuelve', !app.classList.contains('is-plegado'));
+  check('plegar no consulta al discador',
+    (sandbox.__acciones || []).filter(a => /sideToggle|menu/.test(a)).length === 0);
+
+console.log('\n== Salida ==');
   $('exit').dispatch('click');
   check('"Salir" va al logout del agente', salida.href === 'logout.php');
 

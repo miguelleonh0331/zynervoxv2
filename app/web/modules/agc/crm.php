@@ -394,9 +394,63 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
 
 <div id="app">
 
+  <!-- Barra lateral del asesor.
+       Ojo: la consola del agente está aislada y NO navega al panel de
+       administración. Las entradas que todavía no tienen pantalla propia van
+       como maqueta (aria-disabled, sin destino): se ven, se entiende que
+       vienen después, y no abren nada que al asesor no le corresponda.
+       Cualquiera que les dé rumbo debe declarar antes la página en
+       IsolatedGate.php y revisar el permiso, no sólo poner un href. -->
+  <aside class="side" id="side">
+    <div class="side-brand"><i></i><span>ZYNERVOX <b>CRM</b></span></div>
+
+    <nav class="side-nav" aria-label="Secciones">
+      <button class="side-link" type="button" aria-disabled="true" disabled>
+        <svg viewBox="0 0 24 24" class="ico"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>
+        <span>Inicio</span></button>
+      <button class="side-link is-on" type="button" aria-current="page">
+        <svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        <span>Mis clientes</span><b class="side-count" id="sideCount">0</b></button>
+      <button class="side-link" type="button" aria-disabled="true" disabled>
+        <svg viewBox="0 0 24 24" class="ico"><path d="M3 11l18-7-7 18-2.5-8z"/></svg>
+        <span>Campañas</span></button>
+      <button class="side-link" type="button" aria-disabled="true" disabled>
+        <svg viewBox="0 0 24 24" class="ico"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
+        <span>Tareas</span></button>
+      <button class="side-link" type="button" aria-disabled="true" disabled>
+        <svg viewBox="0 0 24 24" class="ico"><path d="M5 20V9m7 11V4m7 16v-7"/></svg>
+        <span>Reportes</span></button>
+      <button class="side-link" type="button" aria-disabled="true" disabled>
+        <svg viewBox="0 0 24 24" class="ico"><path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2z"/><path d="M8 7h7"/></svg>
+        <span>Base de conocimiento</span></button>
+    </nav>
+
+    <div class="side-foot">
+      <button class="side-link" type="button" aria-disabled="true" disabled>
+        <svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.2 2.4c-.6.2-.7.6-.7 1.1v.5"/><path d="M12 17h.01"/></svg>
+        <span>Soporte</span></button>
+      <button class="side-link side-link--exit" id="exit" type="button" title="Volver al panel">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M11 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/></svg>
+        <span>Cerrar sesión</span></button>
+
+      <!-- Resumen del turno: sale de las llamadas que el agente ya tipificó. -->
+      <div class="perf">
+        <h2>Tipificación de hoy</h2>
+        <div class="perf-body">
+          <div class="donut" id="perfDonut"><span id="perfRatio">0%</span><em>Contacto</em></div>
+          <dl class="perf-kpis" id="perfKpis"></dl>
+        </div>
+        <div class="perf-tip" id="perfTip"></div>
+      </div>
+    </div>
+  </aside>
+
   <!-- Barra superior: búsqueda global, estado de la llamada e identidad. -->
   <header class="topbar">
-    <div class="brand"><i></i> ZYNERVOX <b>CRM</b></div>
+    <button class="topbar-toggle" id="sideToggle" type="button"
+            aria-expanded="true" aria-controls="side" title="Plegar el menú">
+      <svg viewBox="0 0 24 24" class="ico"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
 
     <div class="search">
       <svg viewBox="0 0 24 24" class="ico"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -420,7 +474,6 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
       <span class="avatar avatar--sm" id="whoAv">—</span>
       <span class="who-txt"><b id="opName">—</b><em id="opRole">—</em></span>
     </div>
-    <button id="exit" class="topbar-exit" type="button" title="Volver al panel">Salir</button>
   </header>
 
   <!-- Columna 1: cartera del asesor. -->
@@ -517,15 +570,6 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
       </div>
     </div>
 
-    <!-- Resumen del turno: sale de las llamadas que el agente ya tipificó. -->
-    <div class="perf">
-      <h2>Tipificación de hoy</h2>
-      <div class="perf-body">
-        <div class="donut" id="perfDonut"><span id="perfRatio">0%</span><em>Contacto</em></div>
-        <dl class="perf-kpis" id="perfKpis"></dl>
-      </div>
-      <div class="perf-tip" id="perfTip"></div>
-    </div>
   </aside>
 
   <footer class="statusbar">

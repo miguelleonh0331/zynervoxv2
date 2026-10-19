@@ -417,6 +417,10 @@ function pintarCartera() {
       ? 'Ninguna llamada coincide con el filtro.'
       : 'Todavía no has llamado a nadie hoy. Usa «Marcar siguiente lead».'})]));
   $('listCount').textContent = lista.length + ' de ' + S.contactos.length + ' llamadas';
+  // El contador del menú muestra la cartera entera, no el filtro: es cuánta
+  // gente trabajó el asesor hoy, no cuánta está viendo en este momento.
+  const cuenta = $('sideCount');
+  if (cuenta) cuenta.textContent = String(S.contactos.length);
 }
 
 // Convierte una llamada del discador en la ficha que maneja la consola.
@@ -1676,6 +1680,27 @@ function init() {
   $('whoAv').textContent = iniciales(S.operador);
 
   $('search').addEventListener('input', e => { S.busqueda = e.target.value; pintarCartera(); });
+
+  // Plegar el menú. La preferencia se guarda en el propio navegador del
+  // puesto: es una comodidad de pantalla, no un dato del agente, y no
+  // justifica ni una consulta ni una columna en la base.
+  if ($('sideToggle')) {
+    const app = document.getElementById('app'), bot = $('sideToggle');
+    const aplicar = plegado => {
+      app.classList.toggle('is-plegado', plegado);
+      bot.setAttribute('aria-expanded', String(!plegado));
+      bot.title = plegado ? 'Desplegar el menú' : 'Plegar el menú';
+    };
+    let guardado = false;
+    try { guardado = localStorage.getItem('zv_menu_plegado') === '1'; } catch (e) {}
+    aplicar(guardado);
+    bot.addEventListener('click', () => {
+      const plegado = !app.classList.contains('is-plegado');
+      aplicar(plegado);
+      try { localStorage.setItem('zv_menu_plegado', plegado ? '1' : '0'); } catch (e) {}
+    });
+  }
+
   $('exit').addEventListener('click', () => {
     if (S.llamada) { aviso('Salir', 'Hay una llamada en curso. Cuélgala antes de salir.'); return; }
     top.location.href = S.salida;

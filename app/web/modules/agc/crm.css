@@ -27,9 +27,15 @@ button{cursor:pointer}
 .ico{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 /* ------------------------------------------------- esqueleto de pantalla */
-#app{display:grid;grid-template-columns:286px minmax(0,1fr) 300px;grid-template-rows:38px minmax(0,1fr) 20px;height:100dvh}
-.topbar{grid-column:1/-1;background:var(--dark);color:#fff;display:flex;align-items:center;gap:0}
-.statusbar{grid-column:1/-1;background:var(--bg-card);border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 8px;font-size:11px;color:var(--text-muted)}
+/* Cuatro columnas: menú · cartera · expediente · trabajo. El menú se
+   pliega a una franja de iconos y le devuelve el ancho al expediente, que
+   es donde el asesor lee. El plegado se recuerda en el navegador. */
+#app{display:grid;grid-template-columns:var(--side-w,200px) 286px minmax(0,1fr) 300px;
+  grid-template-rows:38px minmax(0,1fr) 20px;height:100dvh}
+#app.is-plegado{--side-w:52px}
+@media(max-width:1500px){#app{grid-template-columns:var(--side-w,180px) 260px minmax(0,1fr) 280px}}
+.topbar{grid-column:2/-1;background:var(--dark);color:#fff;display:flex;align-items:center;gap:0}
+.statusbar{grid-column:2/-1;background:var(--bg-card);border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 8px;font-size:11px;color:var(--text-muted)}
 .col{min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg-card)}
 .col--list{border-right:1px solid var(--border)}
 .col--detail{background:var(--bg-main);overflow:hidden}
@@ -63,6 +69,45 @@ button{cursor:pointer}
 .who-txt em{font-size:10px;color:#9CA0AC;font-style:normal}
 .topbar-exit{border:0;border-radius:0;background:transparent;color:#CBD5E1;padding:0 12px;height:100%;font-size:11px;border-left:1px solid rgba(255,255,255,.14)}
 .topbar-exit:hover{background:var(--danger);color:#fff}
+
+/* ------------------------------------------------------- barra lateral */
+.side{grid-row:1/-1;display:flex;flex-direction:column;min-height:0;overflow:hidden;
+  background:var(--dark);color:#CBD5E1;border-right:1px solid rgba(255,255,255,.07)}
+.side-brand{flex:none;display:flex;align-items:center;gap:9px;height:38px;padding:0 14px;
+  font-size:11px;letter-spacing:.5px;color:#fff;white-space:nowrap;background:rgba(0,0,0,.22)}
+.side-brand i{width:9px;height:9px;border-radius:50%;background:var(--primary);flex:none}
+.side-brand b{font-weight:700}
+.side-nav{flex:1;min-height:0;overflow:auto;padding:8px 8px 0}
+.side-foot{flex:none;padding:0 8px 8px;display:flex;flex-direction:column;gap:2px}
+
+/* Un solo tipo de fila para navegación y pie: mismo alto, mismo gesto. */
+.side-link{display:flex;align-items:center;gap:10px;width:100%;height:32px;padding:0 10px;
+  border:0;border-radius:var(--radius-sm);background:transparent;color:#CBD5E1;
+  font-size:12px;font-weight:400;text-align:left;white-space:nowrap}
+.side-link .ico{width:16px;height:16px;flex:none;stroke-width:1.9}
+.side-link>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.side-link:hover:not([disabled]){background:rgba(255,255,255,.08);color:#fff}
+.side-link.is-on{background:var(--primary);color:#fff;font-weight:700}
+.side-link.is-on .ico{stroke-width:2.2}
+/* Las entradas sin pantalla propia se ven, pero no mienten: no responden. */
+.side-link[disabled]{opacity:.42;cursor:default}
+.side-link--exit:hover:not([disabled]){background:var(--danger);color:#fff}
+.side-count{flex:none;min-width:20px;height:17px;padding:0 6px;border-radius:999px;
+  background:var(--primary);color:#fff;font-size:10px;font-weight:700;
+  display:inline-flex;align-items:center;justify-content:center}
+.side-link.is-on .side-count{background:rgba(255,255,255,.22)}
+
+/* Plegada: sólo iconos. El texto se va, el gesto se conserva. */
+.is-plegado .side-brand span,
+.is-plegado .side-link>span,
+.is-plegado .side-count,
+.is-plegado .perf{display:none}
+.is-plegado .side-brand{padding:0;justify-content:center}
+.is-plegado .side-link{padding:0;justify-content:center}
+
+.topbar-toggle{flex:none;width:38px;height:100%;border:0;border-radius:0;background:transparent;
+  color:#CBD5E1;display:flex;align-items:center;justify-content:center}
+.topbar-toggle:hover{background:rgba(255,255,255,.1);color:#fff}
 
 /* --------------------------------------------------------------- avatar */
 .avatar{display:inline-flex;align-items:center;justify-content:center;flex:none;overflow:hidden;
@@ -270,6 +315,22 @@ button{cursor:pointer}
 .perf-kpis dt{color:var(--text-muted);padding:2px 0;border-bottom:1px solid var(--rule)}
 .perf-kpis dd{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;padding:2px 0;border-bottom:1px solid var(--rule)}
 .perf-tip{border-top:1px solid var(--border);max-height:140px;overflow:auto}
+
+/* El resumen del turno vive ahora en la barra lateral, sobre fondo oscuro:
+   se vuelve tarjeta y apila dona sobre cifras, como la referencia. Los
+   estilos de arriba siguen sirviendo si alguna vez vuelve a una columna
+   clara, así que acá sólo se corrige lo que cambia con el fondo. */
+.side .perf{margin-top:8px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.09);
+  border-radius:var(--radius);overflow:hidden}
+.side .perf>h2{background:transparent;color:#fff;height:auto;padding:9px 11px 3px;letter-spacing:.5px}
+.side .perf-body{grid-template-columns:minmax(0,1fr);justify-items:center;gap:6px;padding:4px 11px 9px}
+.side .donut::after{background:#16213A}
+.side .donut span{color:#fff}
+.side .donut em,.side .perf-kpis dt{color:#94A3B8}
+.side .perf-kpis{width:100%}
+.side .perf-kpis dt,.side .perf-kpis dd{border-bottom-color:rgba(255,255,255,.08)}
+.side .perf-kpis dd{color:#fff}
+.side .perf-tip{border-top-color:rgba(255,255,255,.09);max-height:92px;padding:0 3px}
 .perf-row{display:flex;align-items:center;gap:6px;font-size:11px;padding:2px 8px;border-bottom:1px solid var(--rule)}
 .perf-row span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .perf-row b{font-variant-numeric:tabular-nums}
