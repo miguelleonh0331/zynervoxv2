@@ -692,6 +692,13 @@ function seguir() {
     // Ninguna sección puede dejar restos de programación a la vista.
     for (const sec of ['tareas', 'reportes', 'conocimiento']) {
       sandbox.__fn.irA(sec);
+      // Un icono que no existe se dibuja vacío y nadie lo nota hasta la demo.
+      // Vacío de verdad: ni marcado ni nodos hijos. El anillo de progreso se
+      // arma con nodos, así que tiene innerHTML vacío y no es un error.
+      const svgVacios = () => $('vista').querySelectorAll('svg')
+        .filter(n => !n.innerHTML && n.children.length === 0);
+      check('«' + sec + '» no pide iconos inexistentes', svgVacios().length === 0,
+        String(svgVacios().length));
       check('«' + sec + '» no deja null, undefined ni NaN',
         !/null|undefined|NaN/.test(txt('vista')),
         (txt('vista').match(/.{0,25}(null|undefined|NaN).{0,25}/) || [''])[0]);
