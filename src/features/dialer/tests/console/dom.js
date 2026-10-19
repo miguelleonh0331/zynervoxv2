@@ -19,7 +19,19 @@ class El {
     this._text = ''; this.checked = false; this.disabled = false; this.hidden = false; this.selected = false;
   }
   _adopt(n) { const x = (n instanceof El || n instanceof TextNode) ? n : new TextNode(n); x.parentNode = this; return x; }
-  append(...nodes) { for (const n of nodes) if (n !== null && n !== undefined && n !== false) this.childNodes.push(this._adopt(n)); }
+  // Insertar un nodo que ya tiene padre lo MUEVE, como en el navegador. Sin
+  // esto quedaba duplicado en los dos sitios y las pruebas no veían los
+  // traslados (p. ej. la hoja de tipificación yendo y viniendo de la capa).
+  append(...nodes) {
+    for (const n of nodes) {
+      if (n === null || n === undefined || n === false) continue;
+      if (n && n.parentNode && Array.isArray(n.parentNode.childNodes)) {
+        const i = n.parentNode.childNodes.indexOf(n);
+        if (i >= 0) n.parentNode.childNodes.splice(i, 1);
+      }
+      this.childNodes.push(this._adopt(n));
+    }
+  }
   replaceChildren(...nodes) {
     // Los hijos que salen quedan desvinculados, como en el DOM real.
     for (const viejo of this.childNodes) if (viejo.parentNode === this) viejo.parentNode = null;
@@ -74,10 +86,14 @@ class El {
   matches(sel) {
     return sel.split(',').map(s => s.trim()).some(part => {
       const simple = part.split(/\s+/).pop();
-      const m = simple.match(/^([a-zA-Z][\w-]*)?((?:\.[\w-]+)*)((?:\[[^\]]+\])*)$/);
+      // Se admite #id: el navegador lo entiende y el código de la consola lo
+      // usa (closest('#gestionHost')); sin esto las pruebas daban por falso
+      // algo que en el navegador es cierto.
+      const m = simple.match(/^([a-zA-Z][\w-]*)?(#[\w-]+)?((?:\.[\w-]+)*)((?:\[[^\]]+\])*)$/);
       if (!m) return false;
-      const [, tag, classes, attrs] = m;
+      const [, tag, id, classes, attrs] = m;
       if (tag && this.tagName !== tag.toUpperCase()) return false;
+      if (id && this.getAttribute('id') !== id.slice(1)) return false;
       for (const c of (classes.match(/\.[\w-]+/g) || [])) if (!this._cls.has(c.slice(1))) return false;
       for (const a of (attrs.match(/\[[^\]]+\]/g) || [])) {
         const am = a.slice(1, -1).match(/^([\w-]+)(?:=["']?([^"'\]]*)["']?)?$/);

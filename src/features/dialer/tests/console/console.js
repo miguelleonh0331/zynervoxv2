@@ -63,7 +63,7 @@ sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 
 const code = fs.readFileSync(path.join(WEB, 'modules/agc/crm.js'), 'utf8')
-  + '\n;globalThis.__S=S;globalThis.__fn={abrirCliente,pintarDetalle,pintarCartera,pintarControl,accionDiscador,armarArbol,RITMO_ACTIVO,RITMO_REPOSO};globalThis.__arbol=()=>TIPIFICACION;\n';
+  + '\n;globalThis.__S=S;globalThis.__fn={abrirCliente,pintarDetalle,pintarCartera,pintarControl,cerrarGestion,quizaAbrirGestion,accionDiscador,armarArbol,RITMO_ACTIVO,RITMO_REPOSO};globalThis.__arbol=()=>TIPIFICACION;\n';
 try { vm.runInContext(code, sandbox, {filename:'crm.js'}); }
 catch (e) { console.log('FALLO al ejecutar: ' + e.message + '\n' + e.stack); process.exit(1); }
 
@@ -241,7 +241,11 @@ setTimeout(() => {
         // El discador confirmó: no puede salir un aviso de fallo. Vaciar la
         // cascada al cerrarse el ciclo llegó a romper el registro posterior y
         // eso se anunciaba como «no se pudo contactar el discador».
-        check('no avisa de ningún fallo', $('layer').hidden === true, txt('layer'));
+        // La hoja de tipificación puede estar abierta: lo que no puede haber
+        // es un aviso de error encima.
+        check('no avisa de ningún fallo',
+          $('layer').hidden === true || $('layer').querySelector('.sheet--gestion') !== null,
+          txt('layer'));
         const g = S.gestiones.slice(-1)[0];
         check('la gestión queda en el expediente', !!g && g.contacto === 424, JSON.stringify(g || null));
         check('con los tres niveles que eligió el agente',
@@ -372,21 +376,13 @@ function seguir() {
       hijos.length === 2 && hijos[0].id === 'callCtl' && hijos[1].id === 'trx',
       hijos.map(n => n.id || n.className).join(' · '));
   }
-  // La tipificación pasó al expediente, al costado de la ficha, y sigue fuera
-  // de #detBody: ese contenedor se repinta entero y borraría la nota a medio
-  // escribir junto con las escuchas, que se enlazan una sola vez.
-  check('tipificar vive junto a la ficha del cliente',
-    $('tip0').closest('.det-split') !== null
-    && $('tip0').closest('.det-split') === $('detBody').closest('.det-split'));
-  check('y fuera del cuerpo que se repinta', $('tip0').closest('.det-body') === null);
-  // Las dos tarjetas de esa fila se dibujan igual: mismo borde, mismo
-  // redondeo, misma sombra. Si alguien deja una plana, esto lo marca.
-  check('ficha y tipificación se dibujan igual', (() => {
-    const css = fs.readFileSync(path.join(WEB, 'modules/agc/crm.css'), 'utf8');
-    const regla = /\.det-split>\.block\{([^}]*)\}/.exec(css);
-    return !!regla && ['border-radius', 'box-shadow', 'border:1px solid']
-      .every(k => regla[1].includes(k));
-  })());
+  // La tipificación ya no ocupa sitio en pantalla: espera en su depósito y
+  // sale como hoja cuando hace falta. Nunca dentro de los contenedores que
+  // el JS repinta, que borrarían la nota a medio escribir y sus escuchas.
+  check('tipificar espera fuera de la pantalla',
+    $('tip0').closest('#gestionHost') !== null || $('tip0').closest('.sheet--gestion') !== null);
+  check('y nunca en los contenedores que se repintan',
+    $('tip0').closest('.det-body') === null && $('tip0').closest('.det-foot') === null);
   check('el CSS les da el mismo alto',
     /\.trx\{flex:1 1 0/.test(fs.readFileSync(path.join(WEB, 'modules/agc/crm.css'), 'utf8')));
   check('la API queda expuesta', !!ZVT && typeof ZVT.linea === 'function' && typeof ZVT.parcial === 'function');
@@ -442,7 +438,43 @@ function seguir() {
              return /\.trx-body:empty::before/.test(c) && /\.trx-body\{[^}]*white-space:pre-wrap/.test(c); })());
   ZVT.limpiar();
 
-    console.log('\n== Resumen partido en dos ==');
+    console.log('\n== La hoja de tipificar salta al colgar ==');
+  {
+    const hoja = () => $('layer').querySelector('.sheet--gestion');
+    const avisoPend = () => $('detFoot').querySelector('.pendiente');
+    // Se parte de una llamada colgada y sin tipificar, que es el caso que
+    // debe hacer saltar la hoja.
+    sandbox.__fn.cerrarGestion();
+    sandbox.__estado.pending = {call_id:424, phone:'987000111', campaign:'carsa0001'};
+    S.gestionCerrada = null;
+    sandbox.__fn.quizaAbrirGestion();
+    check('sale sola cuando hay algo que tipificar', !!hoja() && $('layer').hidden === false);
+    check('y se lleva el bloque consigo, no una copia',
+      $('tip0').closest('.sheet--gestion') !== null
+      && $('tip0').closest('#gestionHost') === null);
+    // Se escribe una nota y se cierra: no puede perderse.
+    $('tipNota').value = 'cliente pidió volver a llamar';
+    sandbox.__fn.cerrarGestion();
+    check('cerrarla la devuelve al depósito',
+      $('tip0').closest('#gestionHost') !== null && $('layer').hidden === true);
+    check('y conserva lo escrito', $('tipNota').value === 'cliente pidió volver a llamar');
+    check('no vuelve a saltar sola tras cerrarla',
+      (sandbox.__fn.quizaAbrirGestion(), $('layer').hidden === true));
+    // El aviso del pie es el camino de vuelta.
+    sandbox.__fn.pintarDetalle();
+    check('queda el aviso para volver a abrirla', !!avisoPend());
+    avisoPend().querySelectorAll('button')[0].dispatch('click', {});
+    check('y vuelve a abrirse desde ahí', !!hoja());
+    check('con la nota intacta', $('tipNota').value === 'cliente pidió volver a llamar');
+    // Se deja el puesto como estaba para no contaminar lo que sigue.
+    $('tipNota').value = '';
+    sandbox.__fn.cerrarGestion();
+    sandbox.__estado.pending = null;
+    S.gestionCerrada = null;
+    sandbox.__fn.pintarDetalle();
+  }
+
+  console.log('\n== Resumen partido en dos ==');
   {
     const bloques = () => $('detBody').children.filter(n => n.tagName);
     const pie = () => $('detFoot').children.filter(n => n.tagName);

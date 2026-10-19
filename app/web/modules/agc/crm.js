@@ -177,6 +177,7 @@ const S = {
   busqueda: '',
   chip: 'todas',
   chat: null,                // 'whatsapp' mientras la ventana de chat esté abierta
+  gestionCerrada: null,      // llamada cuya hoja de tipificación cerró el asesor
   waPhones: null,            // números con conversación; null = sin dato fiable
   actual: -1,            // ninguna ficha abierta al entrar
   tip: [null, null, null],
@@ -344,7 +345,12 @@ function abrirCapa(hoja) {
   capa.replaceChildren(hoja); capa.hidden = false;
   capa.querySelector('input,select,textarea,button')?.focus();
 }
-function cerrarCapa() { const c = $('layer'); c.hidden = true; c.replaceChildren(); }
+function cerrarCapa() {
+  // La hoja de tipificación no se tira: se devuelve a su depósito con todo
+  // lo que el asesor tenga escrito. Cualquier otra hoja sí se descarta.
+  guardarGestion();
+  const c = $('layer'); c.hidden = true; c.replaceChildren();
+}
 
 function aviso(titulo, texto, acciones) {
   const btns = acciones || [['Aceptar', () => {}]];
@@ -352,10 +358,15 @@ function aviso(titulo, texto, acciones) {
   // Un aviso puede saltar encima de una hoja abierta (p. ej. al validar un
   // teléfono): se guarda lo que había para devolverlo al cerrarlo, en vez de
   // tirar abajo la hoja en la que el usuario estaba trabajando.
-  const previo = capa.hidden ? null : Array.from(capa.childNodes);
+  // Si lo que había abierto era la hoja de tipificación, se devuelve al
+  // depósito antes de tapar la capa: un nodo fuera del documento no se
+  // encuentra por id, y pintarGestion dejaría de hallar sus selectores.
+  const eraGestion = !capa.hidden && capa.querySelector('.sheet--gestion') !== null;
+  if (eraGestion) guardarGestion();
+  const previo = (capa.hidden || eraGestion) ? null : Array.from(capa.childNodes);
   const volver = () => {
     if (previo && previo.length) { capa.replaceChildren(...previo); capa.hidden = false; }
-    else cerrarCapa();
+    else { cerrarCapa(); if (eraGestion) abrirGestion(); }
   };
   capa.replaceChildren(el('div', {cls:'sheet'},
     el('header', null, el('span', {txt:titulo})),
@@ -611,6 +622,7 @@ function pintarDetalle() {
     } else {
       body.replaceChildren(leadVivo() ? panelLead(PUESTO.lead) : panelInfo(c));
       pie.replaceChildren(
+        avisoPendiente(),
         botoneraCanales(c),
         // Sin filtros ni chips: es un vistazo. La pestaña "Interacciones"
         // sigue siendo la vista completa, con su filtrado por canal.
@@ -655,7 +667,7 @@ function pintarDetalle() {
 // Con llamada en curso (o pendiente de tipificar) la ficha muestra al lead
 // que entregó el discador, no un contacto de la maqueta.
 function panelLead(lead) {
-  const dl = el('dl', {cls:'kv'});
+  const dl = el('dl', {cls:'kv kv--doble'});
   const filas = [
     ['Intento', '#' + lead.call_id],
     ['Teléfono', lead.phone || '—'],
@@ -684,7 +696,7 @@ function panelInfo(c) {
     ['Origen', c.origen], ['Campaña', c.campania],
     ['Base', c.base], ['Póliza', c.poliza], ['Vigencia', c.vigencia]
   ];
-  const dl = el('dl', {cls:'kv'});
+  const dl = el('dl', {cls:'kv kv--doble'});
   for (const [k, v] of datos) {
     dl.append(el('dt', {txt:k}));
     if (k === 'Teléfono') {
@@ -1036,7 +1048,60 @@ function hojaTelefonos() {
     el('div', {cls:'bar bar--end'}, el('button', {cls:'btn-sm', txt:'Cerrar', onclick:() => { telEdit = null; cerrarCapa(); }}))));
 }
 
-/* --------------------------------------- columna 3: tipificar gestión */
+/* ------------------------------------------- hoja de tipificar gestión
+
+   El bloque de tipificación es único y no se recrea nunca: espera en
+   #gestionHost y se traslada a la capa cuando hace falta. Recrearlo
+   perdería la nota a medio escribir y dejaría muertas las escuchas, que se
+   enlazan una sola vez al arrancar.
+
+   Se abre sola al terminar la llamada, pero se puede cerrar: la regla de
+   que hay que tipificar la impone el discador, no esta ventana. Si se
+   cierra, el aviso del pie de la ficha la vuelve a abrir.                 */
+
+const bloqueGestion = () => document.getElementById('gestionHost').querySelector('.block');
+
+// Devuelve la hoja a su depósito si está en la capa.
+function guardarGestion() {
+  const hoja = document.getElementById('layer').querySelector('.sheet--gestion');
+  if (!hoja) return;
+  const bloque = hoja.querySelector('.block');
+  if (bloque) document.getElementById('gestionHost').append(bloque);
+}
+
+function abrirGestion() {
+  if (!hayQueTipificar()) return;
+  const bloque = bloqueGestion();
+  if (!bloque) return;                       // ya está abierta
+  abrirCapa(el('div', {cls:'sheet sheet--gestion'}, bloque));
+  pintarGestion();
+}
+
+function cerrarGestion() {
+  // Recordar para cuál llamada se cerró, para no reabrirla en cada sondeo.
+  S.gestionCerrada = idTipificable();
+  cerrarCapa();
+  pintarGestion();
+}
+
+// Identificador de lo que hay que tipificar ahora mismo, o null.
+function idTipificable() {
+  if (PUESTO && PUESTO.pending) return PUESTO.pending.call_id;
+  const lead = PUESTO && PUESTO.lead;
+  return (lead && lead.ended && !lead.disposition) ? lead.call_id : null;
+}
+
+/* La hoja salta sola cuando una llamada termina sin tipificar, una vez por
+   llamada: si el asesor la cerró, no vuelve a aparecérsele encima. */
+function quizaAbrirGestion() {
+  const id = idTipificable();
+  if (id === null) { S.gestionCerrada = null; return; }
+  if (S.gestionCerrada === id) return;
+  if (!$('layer').hidden) return;            // hay otra hoja abierta
+  abrirGestion();
+}
+
+/* --------------------------------------- tipificar gestión */
 
 function nivel(i) {
   if (i === 0) return TIPIFICACION;
@@ -1051,6 +1116,9 @@ const hoja = () => (S.tip[2] !== null ? nivel(2)[S.tip[2]] : null);
 function hayQueTipificar() { return leadVivo() || tipificacionPendiente(); }
 
 function pintarGestion() {
+  // La hoja puede estar momentáneamente fuera del documento (un aviso encima);
+  // sin sus nodos no hay nada que pintar y se vuelve en el siguiente repintado.
+  if (!$('tip0')) return;
   const activa = hayQueTipificar();
   for (let i = 0; i < 3; i++) {
     const sel = $('tip' + i), ops = nivel(i);
@@ -1088,12 +1156,25 @@ function pintarGestion() {
     btn.onclick = abrirAgenda; btn.hidden = false;
   } else { pend.hidden = true; btn.hidden = true; }
   $('btnGrabar').disabled = !h;
+  // Cerrar la hoja en cuanto ya no hay nada que tipificar.
+  if (!activa && $('layer').querySelector('.sheet--gestion')) cerrarCapa();
   // Aviso visible de que el discador espera la tipificación.
   if (!h && tipificacionPendiente()) {
     pend.hidden = false;
     pend.innerHTML = 'El discador espera la <b>tipificación</b> de la llamada #' + PUESTO.pending.call_id + '.';
     btn.hidden = true;
   }
+}
+
+/* Aviso bajo la ficha: es el camino de vuelta a la hoja cuando se cerró, y
+   la razón por la que cerrarla no deja al asesor sin salida. */
+function avisoPendiente() {
+  const id = idTipificable();
+  if (id === null || bloqueGestion() === null) return null;
+  return el('div', {cls:'pendiente'},
+    el('span', null, el('b', {txt:'Falta tipificar'}), ' la llamada #' + id + '.'),
+    el('button', {cls:'btn-sm btn-sm--primary', type:'button', txt:'Tipificar ahora',
+      onclick:abrirGestion}));
 }
 
 function elegirNivel(i, valor) {
@@ -1374,7 +1455,12 @@ function aplicarPuesto() {
     ultimoCiclo = ciclo;
     if (!ciclo) limpiarGestion();
     pintarGestion();
+    pintarDetalle();          // el aviso de pendiente aparece o se va
   }
+  // La hoja salta al terminar la llamada. Va acá y no dentro del cambio de
+  // ciclo porque una llamada puede quedar pendiente sin que el ciclo cambie
+  // de letra (p. ej. al entrar con una tipificación ya trabada).
+  quizaAbrirGestion();
   ajustarRitmo();
 }
 
@@ -1435,7 +1521,7 @@ function pintarControl() {
   const motivos = $('ctlPauseType');
   if (document.activeElement !== motivos) {
     motivos.replaceChildren(
-      el('option', {value:'', txt:'Selecciona un motivo…'}),
+      el('option', {value:'', txt:'PAUSA'}),
       ...FIJO.pauseTypes.map(t => el('option', {value:String(t.id), txt:t.label})));
   }
 
@@ -1761,7 +1847,10 @@ function init() {
   $('btnGrabar').addEventListener('click', grabarGestion);
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !$('layer').hidden) { cerrarCapa(); return; }
+    if (e.key === 'Escape' && !$('layer').hidden) {
+      if ($('layer').querySelector('.sheet--gestion')) cerrarGestion(); else cerrarCapa();
+      return;
+    }
     // Atajo "/" para saltar al buscador, como el ⌘K del modelo.
     if (e.key === '/' && $('layer').hidden && document.activeElement !== $('search')
         && !['INPUT', 'TEXTAREA', 'SELECT'].includes((document.activeElement || {}).tagName)) {

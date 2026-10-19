@@ -183,19 +183,26 @@ button{cursor:pointer}
    tipificación en una columna fija a su derecha. Tipificar es la tarea que
    cierra cada llamada, así que va al lado de lo que el asesor está leyendo
    y no en otra columna. */
-.det-split{flex:0 0 46%;min-height:220px;display:grid;grid-template-columns:minmax(0,1fr) 300px;
-  gap:8px;padding:8px 8px 0}
-@media(max-width:1500px){.det-split{grid-template-columns:minmax(0,1fr) 270px}}
+.det-body{flex:1;padding:8px 8px 0}
 /* Pie del expediente: botonera y historial a todo el ancho, bajo la fila que
    comparten la ficha y la tipificación. Se queda con el alto sobrante. */
 .det-foot{flex:1;min-height:0;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
 .det-foot>.panel{flex:1;min-height:160px}
+/* Aviso de tipificación pendiente: el camino de vuelta a la hoja cerrada.
+   Va arriba del todo en el pie, donde no se puede pasar por alto. */
+.pendiente{flex:none;display:flex;align-items:center;gap:10px;padding:7px 11px;
+  background:#FFF7ED;border:1px solid #FDBA74;border-radius:var(--radius);
+  color:#9A3412;font-size:12px}
+.pendiente>span{flex:1;min-width:0}
 /* Con el chat abierto la conversación se queda con la fila entera. */
-.col--detail.is-chat .det-split{flex:1}
 .col--detail.is-chat .det-foot{display:none}
-.det-split>.block{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
-  box-shadow:var(--shadow);overflow:hidden}
-.det-split>.block>h2{height:26px;font-size:11px;letter-spacing:.6px;padding:0 5px 0 11px}
+
+/* Hoja de tipificación: el mismo bloque de siempre, trasladado a la capa.
+   Se le da ancho de hoja y el aspecto de tarjeta que tienen los paneles. */
+.sheet--gestion{width:min(420px,92vw);max-height:86vh;display:flex;flex-direction:column}
+.sheet--gestion>.block{min-height:0;border:0;border-radius:var(--radius);overflow:hidden}
+.sheet--gestion>.block>h2{height:30px;font-size:11px;letter-spacing:.6px;padding:0 6px 0 12px}
+.sheet--gestion .block-body{max-height:none}
 .det-body{min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px}
 /* Los bloques de cada pestaña se estiran hasta el pie del expediente, para
    no dejar hueco muerto. En el resumen hay dos —ficha arriba, historial
@@ -234,6 +241,12 @@ button{cursor:pointer}
    dato es lo que el asesor lee mientras habla, así que va más grande y con
    el contraste alto; la etiqueta alcanza con que se distinga. */
 .kv{display:grid;grid-template-columns:148px minmax(0,1fr);font-size:12.5px}
+/* Con la ficha a todo el ancho entran dos pares por renglón: los doce campos
+   del lead se ven de una vez, sin desplazar. Por debajo de 1100px vuelve a
+   una columna, que si no los valores quedan ilegibles. */
+@media(min-width:1100px){
+  .kv--doble{grid-template-columns:148px minmax(0,1fr) 148px minmax(0,1fr)}
+}
 .kv dt{background:var(--bg-main);color:#5A6B82;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
   padding:7px 10px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);display:flex;align-items:center;line-height:1.25}
 .kv dd{padding:7px 12px;color:var(--text);font-weight:600;border-bottom:1px solid var(--rule);

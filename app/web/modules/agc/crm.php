@@ -469,7 +469,7 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
          el motivo pausa en el acto; el botón sólo aparece para reanudar. -->
     <div class="topbar-pause" id="ctlPauseWrap">
       <label class="sr-only" for="ctlPauseType">Motivo de pausa</label>
-      <select id="ctlPauseType"><option value="">Pausar…</option></select>
+      <select id="ctlPauseType"><option value="">PAUSA</option></select>
     </div>
     <button class="btn-sm btn-sm--primary topbar-resume" id="ctlPause" type="button" hidden>Reanudar</button>
 
@@ -497,49 +497,12 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
     <header class="det-head" id="detHead"></header>
     <nav class="det-tabs" id="detTabs"></nav>
 
-    <!-- Expediente y tipificación comparten la fila. El bloque de
-         tipificación vive FUERA de #detBody a propósito: ese contenedor se
-         reconstruye entero en cada repintado y se llevaría por delante los
-         selectores, la nota a medio escribir y sus escuchas, que se enlazan
-         una sola vez al arrancar. -->
-    <div class="det-split">
-      <div class="det-body" id="detBody"></div>
+    <!-- Ficha del cliente, a todo el ancho de la columna. -->
+    <div class="det-body" id="detBody"></div>
 
-      <div class="block block--grow">
-        <h2>Tipificar gestión</h2>
-        <div class="block-body block-body--pad">
-
-          <div class="field field--step">
-            <label for="tip0" data-step="1">Nivel 1 · Resultado</label>
-            <select id="tip0"></select>
-          </div>
-          <div class="field field--step">
-            <label for="tip1" data-step="2">Nivel 2 · Motivo</label>
-            <select id="tip1"></select>
-          </div>
-          <div class="field field--step">
-            <label for="tip2" data-step="3">Nivel 3 · Desenlace</label>
-            <select id="tip2"></select>
-          </div>
-
-          <div class="outcome" id="tipOut">Elige los tres niveles para habilitar el registro.</div>
-          <div class="note" id="tipPend" hidden></div>
-          <button class="btn-sm btn-sm--primary" id="tipPendBtn" type="button" style="width:100%;margin-bottom:8px" hidden></button>
-
-          <div class="field">
-            <label for="tipNota">Nota de la gestión</label>
-            <textarea id="tipNota" maxlength="2000" placeholder="Observaciones de la llamada…"></textarea>
-          </div>
-        </div>
-        <div class="actions">
-          <button class="btn btn--primary btn--wide" id="btnGrabar" type="button" disabled>Grabar gestión</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Pie del expediente: la botonera y el historial van a todo el ancho,
-         bajo la fila que comparten la ficha y la tipificación. Lo repinta el
-         JS junto con el cuerpo; no debe alojar nada con estado propio. -->
+    <!-- Pie del expediente: la botonera y el historial, a todo el ancho. Lo
+         repinta el JS junto con el cuerpo; no debe alojar nada con estado
+         propio, que por eso la tipificación vive en su propio depósito. -->
     <div class="det-foot" id="detFoot"></div>
   </section>
 
@@ -588,6 +551,42 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
     <span style="margin-left:auto">Llamadas y tipificación en vivo · el resto de la ficha es maqueta</span>
   </footer>
 
+</div>
+
+<!-- Depósito de la hoja de tipificación. Vive fuera de la pantalla y se
+     traslada a la capa cuando hace falta; nunca se recrea, para no perder
+     lo que el asesor tenga escrito ni sus escuchas. -->
+<div id="gestionHost" hidden>
+    <div class="block block--grow">
+      <h2>Tipificar gestión</h2>
+      <div class="block-body block-body--pad">
+
+        <div class="field field--step">
+          <label for="tip0" data-step="1">Nivel 1 · Resultado</label>
+          <select id="tip0"></select>
+        </div>
+        <div class="field field--step">
+          <label for="tip1" data-step="2">Nivel 2 · Motivo</label>
+          <select id="tip1"></select>
+        </div>
+        <div class="field field--step">
+          <label for="tip2" data-step="3">Nivel 3 · Desenlace</label>
+          <select id="tip2"></select>
+        </div>
+
+        <div class="outcome" id="tipOut">Elige los tres niveles para habilitar el registro.</div>
+        <div class="note" id="tipPend" hidden></div>
+        <button class="btn-sm btn-sm--primary" id="tipPendBtn" type="button" style="width:100%;margin-bottom:8px" hidden></button>
+
+        <div class="field">
+          <label for="tipNota">Nota de la gestión</label>
+          <textarea id="tipNota" maxlength="2000" placeholder="Observaciones de la llamada…"></textarea>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn--primary btn--wide" id="btnGrabar" type="button" disabled>Grabar gestión</button>
+      </div>
+    </div>
 </div>
 
 <div id="layer" hidden></div>
