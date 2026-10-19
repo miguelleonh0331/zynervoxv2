@@ -67,7 +67,7 @@ sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 
 const code = fs.readFileSync(path.join(WEB, 'modules/agc/crm.js'), 'utf8')
-  + '\n;globalThis.__S=S;globalThis.__fn={abrirCliente,pintarDetalle,pintarCartera,pintarControl,cerrarGestion,quizaAbrirGestion,accionDiscador,armarArbol,RITMO_ACTIVO,RITMO_REPOSO};globalThis.__arbol=()=>TIPIFICACION;\n';
+  + '\n;globalThis.__S=S;globalThis.__fn={abrirCliente,asisPreguntar,pintarDetalle,pintarCartera,pintarControl,cerrarGestion,quizaAbrirGestion,accionDiscador,armarArbol,RITMO_ACTIVO,RITMO_REPOSO};globalThis.__arbol=()=>TIPIFICACION;\n';
 try { vm.runInContext(code, sandbox, {filename:'crm.js'}); }
 catch (e) { console.log('FALLO al ejecutar: ' + e.message + '\n' + e.stack); process.exit(1); }
 
@@ -414,11 +414,12 @@ function seguir() {
   // el alto con ella. Si alguien la devuelve al expediente, esto lo marca.
   check('vive en la columna de trabajo', $('trx').closest('.col--work') !== null);
   {
-    // La columna es de la transcripción: lo único que la acompaña es el
-    // aviso del ciclo, que se oculta cuando no tiene nada que decir.
+    // La columna se reparte entre transcripción y asistente, con el aviso
+    // del ciclo arriba cuando tiene algo que decir.
     const hijos = $('trx').closest('.col--work').children.filter(n => n.tagName);
-    check('la columna es de la transcripción',
-      hijos.length === 2 && hijos[0].id === 'ctlLead' && hijos[1].id === 'trx',
+    check('transcripción arriba y asistente abajo',
+      hijos.length === 3 && hijos[0].id === 'ctlLead'
+      && hijos[1].id === 'trx' && hijos[2].id === 'asis',
       hijos.map(n => n.id || n.className).join(' · '));
     // Colgar y el estado del puesto viven ahora en la barra, junto a la pausa.
     check('colgar está junto a reanudar',
@@ -593,6 +594,30 @@ function seguir() {
   check('y vuelve', !app.classList.contains('is-plegado'));
   check('plegar no consulta al discador',
     (sandbox.__acciones || []).filter(a => /sideToggle|menu/.test(a)).length === 0);
+
+  console.log('\n== Onda y asistente ==');
+  {
+    // La onda es decorativa y debe decirlo en el código: si alguien la
+    // presenta como medición del audio, acá queda el recordatorio.
+    const js = fs.readFileSync(path.join(WEB, 'modules/agc/crm.js'), 'utf8');
+    check('la onda se monta con sus barras', $('onda').children.length === 26,
+      String($('onda').children.length));
+    check('y declara que no mide el audio', /NO mide la llamada/.test(js));
+    check('tiene una entrada única para el nivel real',
+      typeof sandbox.window.ZVT.nivel === 'function');
+
+    // Asistente: el ciclo pregunta → espera → respuesta.
+    const burbujas = () => $('asisBody').querySelectorAll('.bur');
+    check('ofrece preguntas sugeridas', $('asisChips').children.length === 3);
+    check('arranca sin conversación', burbujas().length === 0, String(burbujas().length));
+    sandbox.__fn.asisPreguntar('¿Cuáles son las tasas vigentes?');
+    check('la pregunta del asesor se ve enseguida',
+      burbujas().length === 2 && burbujas()[0].matches('.bur--yo'), String(burbujas().length));
+    check('y el asistente muestra que está pensando', burbujas()[1].matches('.bur--pensando'));
+    check('la caja queda vacía para la siguiente', $('asisTexto').value === '');
+    // El texto llega del RAG, que es un tercero: nunca como marcado.
+    check('las respuestas no se pegan como HTML', !/burbuja\.innerHTML/.test(js));
+  }
 
 console.log('\n== Salida ==');
   $('exit').dispatch('click');

@@ -542,7 +542,39 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
         <button class="btn-sm btn-sm--ghost" type="button" id="trxClear">Limpiar</button>
         <button class="btn-sm btn-sm--ghost" type="button" id="trxToggle" aria-expanded="true">Ocultar</button>
       </header>
+
+      <!-- Onda de actividad. DECORATIVA: no mide el audio de la llamada, que
+           vive en el softphone y nunca pasa por el navegador. Se agita con el
+           texto que llega y se aquieta en el silencio. El día que exista un
+           medidor de verdad, basta con llamar a ZVT.nivel(0..1). -->
+      <div class="onda" id="onda" aria-hidden="true"></div>
+
       <div class="trx-body" id="trxBody"></div>
+    </section>
+
+    <!-- Asistente. Hoy responde con respuestas preparadas: la base de
+         conocimiento todavía no existe. Se apaga con ASISTENTE_DEMO en
+         crm.js; apagado, avisa que no está conectado en vez de inventar. -->
+    <section class="asis" id="asis">
+      <header class="asis-head">
+        <svg viewBox="0 0 24 24" class="ico ico--fill"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 5V5a2 2 0 0 1 2-2z"/></svg>
+        <span>Pregúntale a tu asistente</span>
+        <span class="spacer"></span>
+        <button class="asis-link" type="button" id="asisEjemplos">Ver ejemplos</button>
+      </header>
+
+      <div class="asis-body" id="asisBody"></div>
+
+      <div class="asis-chips" id="asisChips"></div>
+
+      <form class="asis-form" id="asisForm">
+        <label class="sr-only" for="asisTexto">Pregunta para el asistente</label>
+        <textarea id="asisTexto" rows="2" maxlength="500"
+                  placeholder="Escribe tu pregunta sobre el producto, campañas, objeciones…"></textarea>
+        <button class="asis-enviar" type="submit" id="asisEnviar" title="Enviar">
+          <svg viewBox="0 0 24 24" class="ico ico--fill"><path d="M3 3l18 9-18 9 4-9z"/></svg>
+        </button>
+      </form>
     </section>
 
   </aside>

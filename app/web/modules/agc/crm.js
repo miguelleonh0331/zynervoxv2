@@ -1813,6 +1813,7 @@ const ZVT = {
   linea(texto, quien) {
     const t = String(texto === null || texto === undefined ? '' : texto).trim();
     if (!t) return;
+    ondaHabla(t.length);
     S.transcripcion.push({quien:trxQuien(quien), texto:t, hora:trxHora()});
     if (S.transcripcion.length > TRX_MAX) S.transcripcion.splice(0, S.transcripcion.length - TRX_MAX);
     S.trxParcial = null;
@@ -1820,14 +1821,200 @@ const ZVT = {
   },
   parcial(texto, quien) {
     const t = String(texto === null || texto === undefined ? '' : texto);
+    if (t.trim()) ondaHabla(t.length);
     S.trxParcial = t.trim() ? {quien:trxQuien(quien), texto:t} : null;
     pintarTranscripcion();
   },
   estado(txt) { if ($('trxEstado')) $('trxEstado').textContent = String(txt === undefined ? '' : txt); },
   limpiar() { S.transcripcion = []; S.trxParcial = null; pintarTranscripcion(); },
-  volcado() { return S.transcripcion.slice(); }
+  volcado() { return S.transcripcion.slice(); },
+  // Entrada única de la onda. Hoy la mueve el propio texto; el día que haya
+  // un medidor de verdad, llama acá con 0..1 y el dibujo no cambia.
+  nivel(n) { ondaNivel(n); }
 };
 if (typeof window !== 'undefined') window.ZVT = ZVT;
+
+/* ---------------------------------------------- onda de actividad (demo)
+
+   IMPORTANTE: esta onda NO mide la llamada. El audio vive en el softphone y
+   nunca llega al navegador. Lo que se ve es una animación que reacciona al
+   texto transcrito: sube cuando llega una frase y decae sola en el silencio.
+
+   Se dibuja con transform:scaleY, que el navegador resuelve sin recalcular
+   el diseño, y el bucle se detiene por completo al quedar en reposo: una
+   consola abierta ocho horas no puede estar animando contra el vacío.      */
+
+const ONDA_BARRAS = 26;
+let ondaBarras = null, ondaAlturas = null, ondaEnergia = 0, ondaLazo = null, ondaFase = 0;
+
+function ondaMontar() {
+  const caja = $('onda');
+  if (!caja || ondaBarras) return;
+  ondaAlturas = new Array(ONDA_BARRAS).fill(0.12);
+  caja.replaceChildren(...ondaAlturas.map(() => el('i')));
+  ondaBarras = caja.children;
+}
+
+// Energía que inyecta una frase. Una frase larga agita más que un monosílabo.
+function ondaHabla(largo) {
+  ondaEnergia = Math.min(1, 0.45 + Math.min(1, largo / 90) * 0.55);
+  ondaArrancar();
+}
+
+// Entrada pública: 0 en silencio, 1 a todo volumen.
+function ondaNivel(n) {
+  const v = Math.max(0, Math.min(1, Number(n) || 0));
+  ondaEnergia = v;
+  if (v > 0) ondaArrancar();
+}
+
+function ondaArrancar() {
+  if (ondaLazo || !$('onda')) return;
+  $('onda').classList.add('is-viva');
+  const paso = () => {
+    ondaFase += 0.35;
+    // La energía cae sola: sin frases nuevas, la onda vuelve al reposo.
+    ondaEnergia *= 0.94;
+    for (let i = 0; i < ONDA_BARRAS; i++) {
+      // Dos senos desfasados dan un vaivén irregular, más parecido a una voz
+      // que una onda limpia; el centro se mueve más que los extremos.
+      const centro = 1 - Math.abs(i - (ONDA_BARRAS - 1) / 2) / ((ONDA_BARRAS - 1) / 2);
+      const forma = (Math.sin(ondaFase + i * 0.55) + Math.sin(ondaFase * 0.7 + i * 0.23)) / 2;
+      const alto = 0.12 + ondaEnergia * (0.25 + 0.75 * centro) * Math.abs(forma);
+      ondaAlturas[i] = alto;
+      ondaBarras[i].style.transform = 'scaleY(' + alto.toFixed(3) + ')';
+    }
+    if (ondaEnergia < 0.02) {
+      // Reposo: se apaga el bucle y las barras quedan quietas abajo.
+      ondaEnergia = 0;
+      for (const b of ondaBarras) b.style.transform = 'scaleY(0.12)';
+      $('onda').classList.remove('is-viva');
+      clearInterval(ondaLazo); ondaLazo = null;
+      return;
+    }
+  };
+  ondaLazo = setInterval(paso, 90);
+  paso();
+}
+
+/* ------------------------------------------------------ asistente (demo)
+
+   DEMO. No hay base de conocimiento todavía: las respuestas de abajo están
+   escritas a mano y se eligen por palabras clave. Sirven para mostrar el
+   flujo completo —pregunta, espera, respuesta, fuentes— sin backend.
+
+   Poner ASISTENTE_DEMO en false deja la carcasa igual pero respondiendo que
+   el asistente no está conectado, que es la verdad mientras no exista el
+   RAG. Cuando exista, se reemplaza responderDemo() por la consulta real y
+   lo demás no se toca.                                                     */
+
+const ASISTENTE_DEMO = true;
+
+// Las sugerencias saldrán del RAG según la campaña; por ahora son fijas.
+const ASIS_SUGERENCIAS = [
+  '¿Cuáles son las tasas vigentes?',
+  '¿Qué documentos necesita?',
+  '¿Cuál es el plazo máximo?'
+];
+
+const ASIS_RESPUESTAS = [
+  {claves:['tasa', 'interés', 'interes', 'tea', 'tcea'],
+   texto:'Para **compra de deuda** la TEA vigente arranca en **38,9 %** y baja a **32,5 %** si el cliente domicilia su haber.\n'
+       + 'En **crédito personal** la TEA va de **45 %** a **59 %** según evaluación.\n\n'
+       + 'La TCEA incluye el seguro de desgravamen: siempre menciónala antes de cerrar.',
+   fuente:'Tarifario vigente · carsa0001'},
+  {claves:['documento', 'requisito', 'papel', 'dni', 'sustent'],
+   texto:'Para montos hasta **S/ 15 000**:\n'
+       + '• DNI vigente\n• Recibo de servicio del domicilio, no mayor a 2 meses\n\n'
+       + 'Por encima de ese monto se suma **sustento de ingresos**: tres últimas boletas, o los seis últimos recibos por honorarios.',
+   fuente:'Manual de originación · cap. 3'},
+  {claves:['plazo', 'cuota', 'meses', 'financi'],
+   texto:'El plazo va de **6 a 48 meses**. Hasta 36 sin requisitos adicionales; de 37 a 48 requiere aprobación del supervisor.\n\n'
+       + 'La cuota no puede superar el **30 % del ingreso neto** declarado.',
+   fuente:'Política de riesgos · v4'},
+  {claves:['evaluar', 'equipo', 'pensarlo', 'consultar', 'esposa', 'esposo'],
+   texto:'Objeción de postergación. Reconócela y acotá el tiempo:\n\n'
+       + '«Me parece prudente. ¿Le parece si le dejo la cotización por WhatsApp y lo llamo mañana a esta misma hora?»\n\n'
+       + 'Dejá siempre fecha y hora concretas: una rellamada sin agenda se pierde.',
+   fuente:'Guía de objeciones · postergación'},
+  {claves:['caro', 'otro banco', 'comparar', 'competencia'],
+   texto:'No discutas el precio: cambiá el eje a la cuota y al plazo.\n\n'
+       + '«¿Con cuánto estaba contando mensualmente? Veamos si entra.»\n\n'
+       + 'Si insiste en comparar, ofrecé la cotización escrita: el cliente que compara con papel en mano vuelve.',
+   fuente:'Guía de objeciones · precio'},
+  {claves:['seguro', 'desgravamen', 'exclusion', 'exclusión'],
+   texto:'El **desgravamen** es obligatorio y ya está dentro de la cuota.\n\n'
+       + 'Quedan excluidas las preexistencias declaradas y los siniestros por actividades de riesgo. No ofrezcas cobertura que no figure en el contrato.',
+   fuente:'Condicionado de seguro · anexo 2'}
+];
+
+function asisBurbuja(cls, nodos) {
+  return el('div', {cls:'bur ' + cls}, nodos);
+}
+
+/* Convierte **negritas** y saltos en nodos. Nunca innerHTML: el texto puede
+   venir del RAG, que es un tercero, y pegarlo como marcado sería una vía de
+   inyección en la pantalla del asesor. */
+function asisTexto(txt) {
+  const salida = [];
+  String(txt).split('\n').forEach((linea, i) => {
+    if (i) salida.push(el('br'));
+    linea.split(/\*\*(.+?)\*\*/).forEach((trozo, k) => {
+      if (!trozo) return;
+      salida.push(k % 2 ? el('b', {txt:trozo}) : trozo);
+    });
+  });
+  return salida;
+}
+
+function asisResponder(pregunta) {
+  const caja = $('asisBody');
+  const pensando = asisBurbuja('bur--ia bur--pensando', [el('i'), el('i'), el('i')]);
+  caja.append(pensando);
+  caja.scrollTop = caja.scrollHeight;
+
+  const resolver = () => {
+    pensando.remove();
+    if (!ASISTENTE_DEMO) {
+      caja.append(asisBurbuja('bur--aviso',
+        asisTexto('El asistente todavía no está conectado a la base de conocimiento.')));
+    } else {
+      const q = pregunta.toLowerCase();
+      const hit = ASIS_RESPUESTAS.find(r => r.claves.some(k => q.includes(k)));
+      const burbuja = asisBurbuja('bur--ia', asisTexto(hit
+        ? hit.texto
+        : 'No encuentro eso en el material de la campaña.\n\n'
+        + 'Probá con una pregunta más concreta —tasas, documentos, plazos u objeciones— o consultá con tu supervisor antes de afirmarle algo al cliente.'));
+      if (hit) burbuja.append(el('div', {cls:'bur-fuente', txt:'Fuente: ' + hit.fuente}));
+      caja.append(burbuja);
+    }
+    caja.scrollTop = caja.scrollHeight;
+  };
+  // La espera es deliberada: una respuesta instantánea se lee como un truco.
+  setTimeout(resolver, 650 + Math.min(900, pregunta.length * 18));
+}
+
+function asisPreguntar(texto) {
+  const q = String(texto || '').trim();
+  if (!q) return;
+  $('asisBody').append(asisBurbuja('bur--yo', [q]));
+  $('asisTexto').value = '';
+  asisResponder(q);
+}
+
+function asisMontar() {
+  if (!$('asisForm')) return;
+  $('asisChips').replaceChildren(...ASIS_SUGERENCIAS.map(t =>
+    el('button', {type:'button', txt:t, title:t, onclick:() => asisPreguntar(t)})));
+  $('asisForm').addEventListener('submit', e => { e.preventDefault(); asisPreguntar($('asisTexto').value); });
+  // Enter envía; Shift+Enter hace salto de línea, como en cualquier chat.
+  $('asisTexto').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); asisPreguntar($('asisTexto').value); }
+  });
+  $('asisEjemplos').addEventListener('click', () => aviso('Asistente',
+    'Podés preguntarle por tasas, requisitos, plazos y cómo responder a una objeción. '
+    + 'Mientras no esté conectada la base de conocimiento, responde con material de ejemplo de la campaña.'));
+}
 
 // Puente para quien no comparte contexto con esta página.
 function trxMensaje(ev) {
@@ -1912,6 +2099,8 @@ function init() {
     .catch(() => {});
 
   if ($('trx')) {
+    ondaMontar();
+    asisMontar();
     pintarTranscripcion();
     $('trxClear').addEventListener('click', () => { ZVT.limpiar(); estado('Transcripción vaciada.'); });
     $('trxToggle').addEventListener('click', () => {
