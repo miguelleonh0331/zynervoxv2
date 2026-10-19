@@ -481,6 +481,8 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
       <select id="ctlPauseType"><option value="">PAUSA</option></select>
     </div>
     <button class="btn-sm btn-sm--primary topbar-resume" id="ctlPause" type="button" hidden>Reanudar</button>
+    <button class="btn-sm btn-sm--danger topbar-resume" id="ctlHangup" type="button" hidden>Colgar</button>
+    <span class="topbar-agent" id="agentState">—</span>
 
     <div class="call-state" id="callState" data-on="false">
       <span class="dot"></span>
@@ -518,18 +520,10 @@ $rol = $nivel >= 8 ? 'Administrador' : ($nivel >= 6 ? 'Supervisor' : 'Asesor de 
   <!-- Columna 3: trabajo del asesor sobre la llamada en curso. -->
   <aside class="col col--work">
 
-    <!-- Control de llamada: las funciones del panel de agente (campaña,
-         marcar, pausa y colgar), que el JS mantiene al día con el discador. -->
-    <div class="block" id="callCtl">
-      <h2>Control de llamada <span class="h-count" id="agentState">—</span></h2>
-      <div class="block-body block-body--pad">
-        <div class="ctl-row">
-          <button class="btn-sm btn-sm--danger" id="ctlHangup" type="button" hidden>Colgar</button>
-        </div>
-
-        <div class="note" id="ctlLead" hidden></div>
-      </div>
-    </div>
+    <!-- Aviso del ciclo: cuenta atrás de la próxima llamada y poco más. Se
+         oculta solo cuando no tiene nada que decir, y entonces la
+         transcripción se queda con la columna entera. -->
+    <div class="note" id="ctlLead" hidden></div>
 
     <!-- Área de pruebas: transcripción en vivo de la voz del agente.
          Vive fuera de #detBody a propósito: ese contenedor se reconstruye

@@ -385,12 +385,23 @@ function seguir() {
   // el alto con ella. Si alguien la devuelve al expediente, esto lo marca.
   check('vive en la columna de trabajo', $('trx').closest('.col--work') !== null);
   {
-    // En esta columna sólo quedan el control de llamada y la transcripción:
-    // la tipificación se mudó al expediente para dejarle el alto.
+    // La columna es de la transcripción: lo único que la acompaña es el
+    // aviso del ciclo, que se oculta cuando no tiene nada que decir.
     const hijos = $('trx').closest('.col--work').children.filter(n => n.tagName);
-    check('comparte columna sólo con el control de llamada',
-      hijos.length === 2 && hijos[0].id === 'callCtl' && hijos[1].id === 'trx',
+    check('la columna es de la transcripción',
+      hijos.length === 2 && hijos[0].id === 'ctlLead' && hijos[1].id === 'trx',
       hijos.map(n => n.id || n.className).join(' · '));
+    // Colgar y el estado del puesto viven ahora en la barra, junto a la pausa.
+    check('colgar está junto a reanudar',
+      $('ctlHangup').closest('.topbar') !== null
+      && (() => { const h = $('ctlPause').closest('.topbar').children.filter(n => n.tagName);
+                  return h.indexOf($('ctlHangup')) === h.indexOf($('ctlPause')) + 1; })());
+    check('y el estado del puesto con ellos', $('agentState').closest('.topbar') !== null);
+    // El nombre de campaña y el teléfono vienen de la base: pegarlos como
+    // marcado es una vía de inyección. Ningún innerHTML puede tocarlos.
+    check('ningún dato de la base se pega como marcado',
+      !fs.readFileSync(path.join(WEB, 'modules/agc/crm.js'), 'utf8')
+        .split('\n').some(l => /innerHTML/.test(l) && /\.campaign|\.phone|\.name\b/.test(l)));
   }
   // La tipificación ya no ocupa sitio en pantalla: espera en su depósito y
   // sale como hoja cuando hace falta. Nunca dentro de los contenedores que

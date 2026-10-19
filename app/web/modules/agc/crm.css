@@ -87,6 +87,12 @@ button{cursor:pointer}
 .topbar-pause select option{background:var(--dark);color:#fff}
 .topbar-pause select:disabled{opacity:.5}
 .topbar-resume{flex:none;margin-left:8px;height:24px;border-radius:999px;padding:0 14px}
+/* Estado del puesto, junto a los controles que lo cambian. */
+.topbar-agent{flex:none;margin-left:10px;font-size:11px;font-weight:700;color:#CBD5E1;white-space:nowrap}
+
+/* Aviso del ciclo, al pie de la columna de trabajo. Oculto no ocupa nada y
+   la transcripción se queda con la columna entera. */
+#ctlLead{flex:none;margin:8px 8px 0}
 /* Etiqueta sólo para lectores de pantalla: el selector ya se explica solo. */
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
   clip:rect(0 0 0 0);white-space:nowrap;border:0}

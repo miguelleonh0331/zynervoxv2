@@ -1548,19 +1548,24 @@ function pintarControl() {
   const lead = PUESTO.lead;
   const activa = !!lead && !lead.ended;
   $('ctlHangup').hidden = !activa;
+  /* Aviso del ciclo. Sólo dice lo que no está ya en la ficha: antes repetía
+     intento, teléfono, campaña y estado, que son cuatro renglones de la
+     ficha abierta. Se arma con nodos de texto, no con innerHTML: el nombre
+     de campaña viene de la base y pegarlo como marcado era una vía de
+     inyección. */
   const caja = $('ctlLead');
   const prox = PUESTO.autodial || {};
+  const linea = (...partes) => {
+    caja.replaceChildren(...partes.filter(Boolean));
+    caja.hidden = false;
+  };
   if (tipificacionPendiente()) {
-    caja.hidden = false;
-    caja.innerHTML = 'Llamada <b>#' + PUESTO.pending.call_id + '</b> cerrada · <b>tipifica para continuar</b>';
+    linea(el('b', {txt:'Tipifica'}), ' la llamada #' + PUESTO.pending.call_id + ' para continuar.');
   } else if (prox.waiting) {
-    caja.hidden = false;
-    caja.innerHTML = 'Siguiente llamada en <b>' + (prox.seconds === null ? '…' : prox.seconds + ' s') + '</b>';
-  } else if (lead) {
-    caja.hidden = false;
-    caja.innerHTML = 'Intento <b>#' + lead.call_id + '</b> · ' + (lead.phone || 's/n')
-      + (lead.campaign ? ' · ' + lead.campaign : '')
-      + (lead.ended ? ' · finalizada' : (lead.bridged ? ' · en conversación' : ' · timbrando'));
+    linea('Siguiente llamada en ', el('b', {txt:prox.seconds === null ? '…' : prox.seconds + ' s'}));
+  } else if (lead && !lead.ended) {
+    linea(el('b', {txt:lead.bridged ? 'En conversación' : 'Timbrando'}),
+      ' · intento #' + lead.call_id);
   } else {
     caja.hidden = true;
   }
