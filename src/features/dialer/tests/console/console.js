@@ -101,6 +101,10 @@ check('hoja y script propios', /href="crm\.css"/.test(html) && /src="crm\.js"/.t
 check('salida al logout del agente', S.salida === 'logout.php', S.salida);
 check('puente de WhatsApp propio', S.waEndpoint === 'crm_wa_session.php');
 check('operador tomado de la sesión', txt('opName') === 'Agente 5000');
+check('con su rol', txt('opRole') === 'Asesor de ventas', txt('opRole'));
+// Con usuarios numéricos las iniciales daban un dígito suelto: va el rostro.
+check('y su chapa lleva rostro, no iniciales',
+  /^<svg[\s>]/.test($('whoAv').innerHTML) && $('whoAv').getAttribute('title') === 'Agente 5000');
 
 console.log('\n== Lo que se quitó de la maqueta ==');
 check('sin botón "Terminar atención"', $('btnTerminar') === null);

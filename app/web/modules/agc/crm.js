@@ -1828,7 +1828,13 @@ function pintarTodo() {
 function init() {
   $('opName').textContent = S.operador;
   $('opRole').textContent = S.rol;
-  $('whoAv').textContent = iniciales(S.operador);
+  // El mismo rostro generado que llevan los clientes. Con usuarios numéricos
+  // las iniciales daban un dígito suelto ("5000" -> "5"), que no identifica a
+  // nadie; la figura al menos distingue un puesto de otro de un vistazo.
+  const chapa = $('whoAv');
+  chapa.textContent = '';
+  chapa.innerHTML = caraSVG(S.operador);
+  chapa.title = S.operador;
 
   $('search').addEventListener('input', e => { S.busqueda = e.target.value; pintarCartera(); });
 
