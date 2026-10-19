@@ -283,7 +283,16 @@ const estado = t => { $('msg').textContent = t; };
 // del otro (prefijo de país). Se replica ese criterio para saber de antemano
 // si el cliente tiene conversación.
 function numeroDe(c) { return ((c.telefonos[0] || {}).n || '').replace(/\D/g, ''); }
+// DEMO — temporal. Con esto en true el botón de WhatsApp queda siempre
+// habilitado, tenga o no conversación abierta el cliente. Existe sólo para
+// poder mostrar la pantalla sin depender de la bandeja de Zynerwaba.
+// Volver a false (o revertir el commit) en cuanto termine la demostración:
+// abrir un chat inexistente no crea la conversación, sólo muestra la bandeja
+// vacía.
+const WA_DEMO_SIN_FILTRO = true;
+
 function tieneChat(c) {
+  if (WA_DEMO_SIN_FILTRO) return true;    // DEMO: quitar
   if (S.waPhones === null) return true;   // sin dato: no se bloquea
   const n = numeroDe(c);
   if (!n) return false;
