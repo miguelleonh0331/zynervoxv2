@@ -412,6 +412,13 @@ function seguir() {
     check('con el chat abierto el historial se retira', c.length === 2, String(c.length));
     check('y la conversación toma todo el alto', !!$('detBody').querySelector('.chat-body'));
     check('la botonera sigue, para poder cerrarlo', c[1].matches('.channels'));
+    // Cada canal se reconoce por su símbolo, no sólo por el color.
+    sandbox.__fn.pintarDetalle();
+    const ico = i => canal(i).querySelector('svg');
+    check('los cuatro canales llevan icono macizo',
+      [0, 1, 2, 3].every(i => ico(i) && /ico--fill/.test(ico(i).className)));
+    check('y el dibujo no quedó vacío',
+      [0, 1, 2, 3].every(i => /^<path|^<circle/.test(ico(i).innerHTML)));
     sandbox.__fn.pintarDetalle();
     canal(1).dispatch('click', {});
     check('al cerrarlo vuelve el historial',

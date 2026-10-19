@@ -25,6 +25,9 @@ button{cursor:pointer}
 :focus-visible{outline:1px solid var(--primary);outline-offset:-1px}
 [hidden]{display:none!important}
 .ico{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* Variante maciza: a tamaño chico sobre fondo de color, el trazo fino se
+   deshace. Se rellena con el color del texto y se apaga el contorno. */
+.ico--fill{fill:currentColor;stroke:none}
 
 /* ------------------------------------------------- esqueleto de pantalla */
 /* Cuatro columnas: menú · cartera · expediente · trabajo. El menú se
@@ -222,7 +225,7 @@ button{cursor:pointer}
   border:0;border-radius:var(--radius);background:var(--ch,var(--primary));color:#fff;
   font-size:12px;font-weight:700;box-shadow:var(--shadow);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ch .ico{width:15px;height:15px;stroke-width:2.1}
+.ch .ico{width:17px;height:17px;stroke-width:2.1}
 .ch:hover{filter:brightness(1.08)}
 .ch:active{transform:translateY(1px)}
 .ch--call{--ch:var(--ok)}

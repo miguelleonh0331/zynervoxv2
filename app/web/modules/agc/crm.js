@@ -146,6 +146,16 @@ const ICO = {
   pin:'<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
   doc:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/>',
   mas:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>'
+,
+  /* Versiones macizas para los botones de canal: a 15px el trazo fino se
+     deshace sobre un fondo de color. Llevan el sufijo -f y se piden con la
+     clase 'ico ico--fill', que cambia relleno por trazo. */
+  'tel-f':'<path d="M6.6 2.5a1.8 1.8 0 0 1 2.4.6l1.8 2.7a1.8 1.8 0 0 1-.3 2.3L9.2 9.3a12.3 12.3 0 0 0 5.5 5.5l1.2-1.3a1.8 1.8 0 0 1 2.3-.3l2.7 1.8a1.8 1.8 0 0 1 .6 2.4l-1 1.7a2.6 2.6 0 0 1-2.9 1.2C12.2 19.1 4.9 11.8 3.7 5.4A2.6 2.6 0 0 1 4.9 2.5z"/>',
+  /* WhatsApp: el globo con la muesca y el auricular calado, no un bocadillo
+     genérico. El agujero sale con fill-rule, sin segundo trazo. */
+  'wa-f':'<path fill-rule="evenodd" clip-rule="evenodd" d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.8 5-1.3A10 10 0 1 0 12 2zm5.1 13.9c-.2.6-1.2 1.2-1.7 1.2-.5.1-1 .1-1.6-.1a14 14 0 0 1-2.8-1.3 11 11 0 0 1-3.4-4.2c-.4-.8-.5-1.6-.3-2.3.1-.5.6-1.2 1-1.4.2-.1.5-.1.7-.1h.5c.2 0 .4 0 .6.5l.8 1.9c0 .2 0 .3-.1.5l-.4.5c-.1.2-.3.3-.1.6a9 9 0 0 0 1.4 1.8c.7.6 1.3.9 1.6 1 .2.1.4.1.5-.1l.7-.8c.2-.2.3-.2.5-.1l1.8.9c.2.1.4.2.4.3s0 .7-.2 1.3z"/>',
+  'mail-f':'<path d="M3 5h18a1 1 0 0 1 1 1v.4l-10 5.8-10-5.8V6a1 1 0 0 1 1-1z"/><path d="M2 8.5V18a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V8.5l-9.5 5.5a1 1 0 0 1-1 0z"/>',
+  'sms-f':'<path d="M4 3h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 5V5a2 2 0 0 1 2-2z"/><circle cx="8.5" cy="9.5" r="1.1" fill="#fff"/><circle cx="12" cy="9.5" r="1.1" fill="#fff"/><circle cx="15.5" cy="9.5" r="1.1" fill="#fff"/>'
 };
 const CANALES = {
   llamada:{et:'Llamada', ico:'tel'}, whatsapp:{et:'WhatsApp', ico:'wa'},
@@ -820,17 +830,17 @@ function botoneraCanales(c) {
             : (viva ? 'Hay una llamada en curso'
             : (!c.leadId ? 'Este contacto no viene del discador'
             : ((PUESTO && PUESTO.pause) ? 'Volver a llamar (finaliza tu pausa)' : 'Volver a llamar a este cliente')))),
-      onclick:() => esEste ? colgar() : llamar()}, svg('tel'), esEste ? 'Colgar' : 'Llamar'),
+      onclick:() => esEste ? colgar() : llamar()}, svg('tel-f', 'ico ico--fill'), esEste ? 'Colgar' : 'Llamar'),
     (() => {
       const hay = tieneChat(c);
       return el('button', {cls:'ch ch--wa' + (S.chat ? ' is-on' : ''), type:'button',
         disabled:!hay && !S.chat,
         title:hay ? 'Abrir la conversación de WhatsApp'
                   : 'Este cliente todavía no tiene conversación de WhatsApp',
-        onclick:() => S.chat ? cerrarChat() : abrirChat()}, svg('wa'), S.chat ? 'Cerrar chat' : 'WhatsApp');
+        onclick:() => S.chat ? cerrarChat() : abrirChat()}, svg('wa-f', 'ico ico--fill'), S.chat ? 'Cerrar chat' : 'WhatsApp');
     })(),
-    el('button', {cls:'ch ch--mail', type:'button', onclick:() => enviarPor('email')}, svg('mail'), 'Email'),
-    el('button', {cls:'ch ch--sms', type:'button', onclick:() => enviarPor('sms')}, svg('sms'), 'SMS'),
+    el('button', {cls:'ch ch--mail', type:'button', onclick:() => enviarPor('email')}, svg('mail-f', 'ico ico--fill'), 'Email'),
+    el('button', {cls:'ch ch--sms', type:'button', onclick:() => enviarPor('sms')}, svg('sms-f', 'ico ico--fill'), 'SMS'),
     el('button', {cls:'ch ch--more', type:'button', onclick:menuCliente}, svg('mas'), 'Más acciones'));
 }
 
