@@ -32,7 +32,11 @@ const ARBOL55 = [
 const FIJO = {campaigns:[{id:55, name:'carsa0001'}], pauseTypes:[{id:1, label:'Almuerzo'}, {id:2, label:'Baño'}],
   trees:{'55':ARBOL55}};
 const HISTORIAL = [
-  {lead_id:267, call_id:423, campaign_id:55, campaign:'carsa0001', phone:'981641706', name:'alexander', at:'2026-10-17 09:54:13', ended:true, disposition:'01', status:'CONTACTED'},
+  {lead_id:267, call_id:423, campaign_id:55, campaign:'carsa0001', phone:'981641706', name:'alexander', at:'2026-10-17 09:54:13', ended:true, disposition:'01', status:'CONTACTED',
+   variables:{apellidos:'Ipanaqué Nizama', documento:'44012345', correo:'alexander.ipanaque@gmail.com',
+              profesion:'Comerciante', empresa:'Ferretería El Sol', ciudad:'Piura',
+              direccion:'Av. Grau 450, Piura', producto:'Crédito personal', monto:'12000',
+              origen:'Base propia', poliza:'Vigente', vigencia:'10/03/2027', local:'carsa_piura'}},
   {lead_id:266, call_id:422, campaign_id:55, campaign:'carsa0001', phone:'994683441', name:'maria',     at:'2026-10-17 09:53:52', ended:true, disposition:'01', status:'CONTACTED'},
   {lead_id:265, call_id:421, campaign_id:55, campaign:'carsa0001', phone:'960592479', name:'percy',     at:'2026-10-17 09:50:00', ended:true, disposition:null, status:'NEW'},
 ];
@@ -138,6 +142,27 @@ setTimeout(() => {
     check('el nombre no se interpola en el dibujo', !/alexander/i.test(antes));
     check('y queda accesible por texto', av().getAttribute('title') !== null
       && /alexander/i.test(filas()[0].textContent));
+  }
+
+  console.log('\n== La ficha muestra los datos del lead ==');
+  {
+    // abrirCliente recibe el id de la llamada, no un índice.
+    sandbox.__fn.abrirCliente(423);
+    const ficha = txt('detBody');
+    // Antes deLlamada descartaba custom_fields y la ficha salía con rayas
+    // aunque la base tuviera el dato cargado.
+    for (const [et, val] of [['documento', '44012345'], ['correo', 'alexander.ipanaque@gmail.com'],
+                             ['profesión', 'Comerciante'], ['empresa', 'Ferretería El Sol'],
+                             ['ubicación', 'Piura'], ['dirección', 'Av. Grau 450'],
+                             ['origen', 'Base propia'], ['póliza', 'Vigente']]) {
+      check('muestra ' + et, ficha.includes(val), val);
+    }
+    check('junta nombre y apellidos', /alexander Ipanaqué Nizama/.test(ficha));
+    check('y el monto con su moneda', /12.000|12,000/.test(ficha), 'monto');
+    // Se vuelve a la bienvenida: lo que sigue comprueba cómo se entra.
+    S.actual = -1;
+    sandbox.__fn.pintarDetalle();
+    sandbox.__fn.pintarCartera();   // la fila deja de figurar como abierta
   }
 
   console.log('\n== Al entrar: bienvenida, no la última llamada ==');

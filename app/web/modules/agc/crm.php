@@ -178,7 +178,7 @@ function agc_fijo(string $u): array {
  */
 function agc_historial(string $u, int $limite = 50): array {
     $sql = 'SELECT l.call_id,l.campaign_id,l.lead_id,l.phone_number,l.originated_at,l.ended_at,l.disposition_code,
-                   c.name campaign_name,d.first_name,d.last_name,d.status
+                   c.name campaign_name,d.first_name,d.last_name,d.status,d.custom_fields
             FROM v2_dialer_call_log l
             JOIN v2_dialer_campaigns c ON c.campaign_id=l.campaign_id
             LEFT JOIN v2_dialer_leads d ON d.lead_id=l.lead_id
@@ -200,6 +200,10 @@ function agc_historial(string $u, int $limite = 50): array {
             'ended' => $r['ended_at'] !== null,
             'disposition' => $r['disposition_code'],
             'status' => (string)($r['status'] ?? ''),
+            // Mismos datos de negocio que trae el sondeo, en la misma consulta
+            // del historial: la ficha de una llamada vieja se ve igual que la
+            // de la que acaba de entrar, sin pedir nada extra.
+            'variables' => json_decode((string)($r['custom_fields'] ?? '{}'), true) ?: [],
         ];
     }
     return $filas;

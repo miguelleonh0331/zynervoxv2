@@ -456,21 +456,46 @@ function pintarCartera() {
 
 // Convierte una llamada del discador en la ficha que maneja la consola.
 function deLlamada(x) {
+  /* Los campos del negocio viajan en custom_fields del lead, que el discador
+     entrega como `variables`. Antes se descartaban y la ficha salía con doce
+     rayas aunque la base tuviera el dato cargado. Los nombres de clave los
+     pone quien arma la lista, así que se aceptan los habituales y sus
+     sinónimos; lo que no se reconoce queda disponible en `variables`. */
+  const v = x.variables || {};
+  const tomar = (...claves) => {
+    for (const k of claves) {
+      const val = v[k];
+      if (val !== undefined && val !== null && String(val).trim() !== '') return String(val).trim();
+    }
+    return '';
+  };
+  const nombre = [x.name || tomar('nombre'), tomar('apellidos', 'apellido')]
+    .filter(Boolean).join(' ').trim();
+  const monto = Number(String(tomar('monto', 'monto_estimado')).replace(/[^\d.-]/g, '')) || 0;
   return {
     id: x.call_id,
     leadId: x.lead_id || 0,
-    nombre: x.name || '',
+    nombre: nombre,
     telefono: x.phone || '',
     campania: x.campaign || '',
     campaignId: x.campaign_id || 0,
     cuando: x.at ? String(x.at).replace(' ', 'T') : '',
     disposition: x.disposition || null,
     estadoLead: x.status || '',
-    variables: x.variables || {},
-    // Compatibilidad con el resto de la consola
-    documento: '', correo: '', direccion: '', poliza: '', base: '', vigencia: '',
-    producto: x.campaign || '', prioridad: 'Media', monto: 0, moneda: 'S/',
-    origen: '', profesion: '', empresa: '', ubicacion: '',
+    variables: v,
+    documento: tomar('documento', 'dni', 'doc'),
+    correo: tomar('correo', 'email', 'mail'),
+    direccion: tomar('direccion', 'dirección'),
+    poliza: tomar('poliza', 'póliza'),
+    base: tomar('base', 'local', 'lista'),
+    vigencia: tomar('vigencia'),
+    producto: tomar('producto', 'producto_interes') || x.campaign || '',
+    prioridad: tomar('prioridad') || 'Media',
+    monto: monto, moneda: tomar('moneda') || 'S/',
+    origen: tomar('origen'),
+    profesion: tomar('profesion', 'profesión', 'ocupacion'),
+    empresa: tomar('empresa'),
+    ubicacion: tomar('ciudad', 'ubicacion', 'ubicación', 'distrito'),
     telefonos: x.phone ? [{n:x.phone, t:'MÓVIL'}] : [],
     notas: []
   };
