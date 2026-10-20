@@ -414,6 +414,9 @@ function ondaHabla(largo) {
 }
 
 function trxLinea(quien, texto) {
+  // Guarda contra repeticiones: si la última línea es idéntica, no se suma.
+  const ult = $('trxBody').lastChild;
+  if (ult && ult.textContent && ult.textContent.indexOf(texto) >= 0) return;
   const et = {agente:'AG', cliente:'CLI', sistema:'··'}[quien];
   const hora = new Date();
   $('trxBody').append(el('div', {cls:'trx-line trx-line--' + quien},
@@ -453,12 +456,32 @@ function asisScroll() { $('asisBody').scrollTop = $('asisBody').scrollHeight; }
 /*  MOTOR DEL RECORRIDO                                                   */
 /* ====================================================================== */
 
-const P = {i:0, corriendo:false, t0:0, transcurrido:0, timer:null, cancelar:null};
+/* `gen` es el número de pasada. Cada vez que alguien salta de capítulo o
+   reinicia, sube. Un capítulo que venía corriendo con un número viejo se
+   abandona en su siguiente espera, en vez de seguir escribiendo encima del
+   nuevo — que es lo que duplicaba las líneas de la transcripción. */
+const P = {i:0, corriendo:false, gen:0, lazo:false};
 
-const dormir = ms => new Promise(res => {
-  P.timer = setTimeout(res, ms);
-  P.cancelar = res;
-});
+const NUNCA = () => new Promise(() => {});   // abandona la pasada vieja
+
+/* Espera que respeta la pausa de verdad: no consume el tiempo mientras el
+   recorrido está detenido, y se abandona sola si cambió la pasada. */
+async function dormir(ms) {
+  const gen = P.gen;
+  let resta = ms;
+  while (resta > 0) {
+    if (gen !== P.gen) return NUNCA();
+    if (!P.corriendo) { await new Promise(r => setTimeout(r, 100)); continue; }
+    const paso = Math.min(100, resta);
+    await new Promise(r => setTimeout(r, paso));
+    resta -= paso;
+  }
+  // Y además se espera a que la frase termine de decirse: los tiempos
+  // escritos son el mínimo, no el total. Sin esto la voz quedaría cortada
+  // a mitad de frase cada vez que la escena cambia.
+  await VOZ.promesa;
+  return gen === P.gen ? undefined : NUNCA();
+}
 
 /* Mueve el puntero hasta un elemento y simula el clic. Sin esto el
    recorrido se ve como una pantalla que cambia sola; con esto se entiende
@@ -497,12 +520,49 @@ async function escribir(id, texto, ms) {
   for (const ch of texto) { n.value += ch; await dormir(ms || 45); }
 }
 
+/* --------------------------------------------------------------- voz
+
+   La narración está grabada: son archivos sueltos en demo/audio, uno por
+   frase. La página NO llama a ningún servicio — funciona sin internet y no
+   gasta créditos cada vez que alguien la mira.
+
+   El nombre del archivo sale del propio texto, con la misma cuenta que usa
+   el generador. Así no hay una lista de correspondencias que mantener al
+   día: si la frase cambia, cambia el archivo, y si falta, la escena sigue
+   muda en vez de romperse.                                               */
+
+const VOZ = {audio:null, promesa:Promise.resolve(), silencio:false};
+
+function hashTexto(t) {
+  let h = 0;
+  for (const c of String(t)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return h.toString(36);
+}
+
+function decir(texto) {
+  if (VOZ.audio) { VOZ.audio.pause(); VOZ.audio = null; }
+  if (VOZ.silencio) { VOZ.promesa = Promise.resolve(); return; }
+  const a = new Audio('audio/v' + hashTexto(texto) + '.mp3');
+  VOZ.audio = a;
+  VOZ.promesa = new Promise(res => {
+    let listo = false;
+    const fin = () => { if (!listo) { listo = true; res(); } };
+    a.addEventListener('ended', fin);
+    a.addEventListener('error', fin);          // sin archivo, la escena sigue
+    // Red de seguridad: un audio que nunca dispara 'ended' no puede dejar
+    // la presentación colgada delante de un cliente.
+    setTimeout(fin, 30000);
+    a.play().catch(fin);                       // el navegador puede negarlo
+  });
+}
+
 function narrar(txt, puntos, activo) {
   $('narraTxt').textContent = txt;
   if (puntos) {
     $('narraPuntos').replaceChildren(...puntos.map((p, i) =>
       el('li', {cls:i === activo ? 'is-on' : '', txt:p})));
   }
+  decir(txt);
 }
 
 /* ====================================================================== */
@@ -910,23 +970,33 @@ function pintarCabeceraCap() {
   pintarIndice();
 }
 
+/* Un solo lazo en toda la presentación. Antes, el botón de reanudar
+   arrancaba otro encima del que ya estaba corriendo y los dos escribían a
+   la vez: de ahí las frases repetidas. */
 async function correr() {
-  while (P.corriendo && P.i < CAPITULOS.length) {
-    pintarCabeceraCap();
-    const actual = P.i;
-    await CAPITULOS[P.i].corre();
-    if (!P.corriendo) return;
-    if (P.i === actual) P.i++;       // si alguien saltó, no se pisa
-  }
-  if (P.i >= CAPITULOS.length) { P.corriendo = false; $('btnPausa').textContent = '⏵'; }
+  if (P.lazo) return;
+  P.lazo = true;
+  try {
+    while (P.i < CAPITULOS.length) {
+      if (!P.corriendo) { await new Promise(r => setTimeout(r, 120)); continue; }
+      pintarCabeceraCap();
+      const actual = P.i, gen = P.gen;
+      await CAPITULOS[P.i].corre();
+      if (gen !== P.gen) continue;      // alguien saltó mientras corría
+      if (P.i === actual) P.i++;
+    }
+    P.corriendo = false;
+    $('btnPausa').textContent = '⏵';
+  } finally { P.lazo = false; }
 }
 
 function saltarA(i) {
+  P.gen++;                              // la pasada anterior queda abandonada
+  if (VOZ.audio) { VOZ.audio.pause(); VOZ.audio = null; VOZ.promesa = Promise.resolve(); }
   P.i = Math.max(0, Math.min(CAPITULOS.length - 1, i));
   reiniciarEscena();
-  if (P.cancelar) P.cancelar();
-  clearTimeout(P.timer);
-  if (!P.corriendo) { P.corriendo = true; $('btnPausa').textContent = '⏸'; }
+  P.corriendo = true;
+  $('btnPausa').textContent = '⏸';
   correr();
 }
 
@@ -960,13 +1030,13 @@ function reiniciarEscena() {
   else { pintarCartera(); pintarBienvenida(); }
 }
 
-function reiniciar() { P.i = 0; CARTERA[0].cod = null; saltarA(0); }
+function reiniciar() { CARTERA[0].cod = null; saltarA(0); }
 
 function arrancar() {
   $('portada').classList.add('is-ido');
   setTimeout(() => { $('portada').hidden = true; }, 500);
   $('escena').hidden = false;
-  requestAnimationFrame(() => { P.corriendo = true; correr(); });
+  requestAnimationFrame(() => saltarA(0));
 }
 
 /* ---------------------------------------------------------- arranque */
@@ -982,10 +1052,22 @@ document.addEventListener('DOMContentLoaded', () => {
   $('pantalla').append(el('span', {cls:'sello', txt:'Demostración'}));
 
   $('btnPlay').addEventListener('click', arrancar);
+  // Pausar sólo levanta la bandera: el lazo ya está corriendo y la espera
+  // la respeta. Arrancar otro acá fue lo que duplicó las líneas.
   $('btnPausa').addEventListener('click', () => {
     P.corriendo = !P.corriendo;
     $('btnPausa').textContent = P.corriendo ? '⏸' : '⏵';
-    if (P.corriendo) correr(); else { clearTimeout(P.timer); }
+    if (VOZ.audio) { if (P.corriendo) VOZ.audio.play().catch(() => {}); else VOZ.audio.pause(); }
+    estado(P.corriendo ? '' : 'Recorrido en pausa.');
+  });
+
+  // Silencio: para quien prefiera narrar en vivo. Sin voz, los tiempos
+  // escritos mandan y el recorrido dura lo mismo que antes de grabarla.
+  $('btnVoz').addEventListener('click', () => {
+    VOZ.silencio = !VOZ.silencio;
+    $('btnVoz').textContent = VOZ.silencio ? '🔇' : '🔊';
+    $('btnVoz').title = VOZ.silencio ? 'Activar la voz' : 'Silenciar';
+    if (VOZ.silencio && VOZ.audio) { VOZ.audio.pause(); VOZ.audio = null; VOZ.promesa = Promise.resolve(); }
   });
   $('btnPrev').addEventListener('click', () => saltarA(P.i - 1));
   $('btnNext').addEventListener('click', () => saltarA(P.i + 1));

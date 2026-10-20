@@ -44,6 +44,15 @@ const sandbox = {
   document, console, Math, Date, JSON, Number, String, Boolean, Array, Object, Set, Map,
   RegExp, isFinite, parseInt, parseFloat, Promise, Error,
   Event: class { constructor(t) { this.type = t; } },
+  // La narración grabada: acá no suena nada, pero el guion la espera, así
+  // que el doble termina de inmediato. Así se comprueba que el recorrido no
+  // dependa del audio para avanzar.
+  Audio: class {
+    constructor(src) { this.src = src; this._l = {}; }
+    addEventListener(t, fn) { (this._l[t] ||= []).push(fn); }
+    pause() {}
+    play() { setTimeout(() => (this._l.ended || []).forEach(f => f()), 0); return Promise.resolve(); }
+  },
   requestAnimationFrame: fn => fn(),
   // Reloj acelerado: cada espera del guion se resuelve en el siguiente
   // turno, así los seis minutos de recorrido corren en segundos. Tiene que
@@ -71,6 +80,9 @@ const vista = () => $('vista');
 (document._l && document._l.DOMContentLoaded || []).forEach(fn => fn());
 
 (async () => {
+// El guion respeta la pausa: sin esto, las esperas no avanzarían nunca.
+sandbox.__P.corriendo = true;
+
 console.log('\n== La consola replicada se arma ==');
 check('el operador tiene nombre y rol', txt('opName') === 'Ana Torres' && txt('opRole') === 'Asesor de ventas');
 check('la cartera trae las llamadas del día', $('listBody').querySelectorAll('.cli').length === 5,
@@ -159,6 +171,70 @@ check('el cierre resume los canales', (() => {
   const c = document.querySelector('.cierre');
   return !!c && ['Llamadas', 'WhatsApp', 'Correo', 'SMS'].every(x => c.textContent.includes(x));
 })());
+
+console.log('\n== Nada se duplica ==');
+/* Pausar y reanudar llegó a lanzar una segunda copia del capítulo sobre la
+   primera, y la transcripción salía con cada frase repetida. */
+{
+  sandbox.__P.i = 4;
+  sandbox.__fn.reiniciarEscena();
+  const correrCap = CAP[4].corre();
+  sandbox.__P.corriendo = false;            // pausa en medio
+  await new Promise(r => setTimeout(r, 60));
+  sandbox.__P.corriendo = true;             // y reanuda
+  await correrCap;
+  const lineas = $('trxBody').querySelectorAll('.trx-line').map(n => n.textContent);
+  const repetidas = lineas.filter((t, i) => lineas.indexOf(t) !== i);
+  check('pausar y reanudar no repite líneas', repetidas.length === 0,
+    repetidas.length + ' repetidas');
+  check('la pausa no se come las líneas', lineas.length === 4, String(lineas.length));
+}
+{
+  // Saltar de capítulo abandona la pasada anterior en vez de encimarla.
+  sandbox.__P.i = 4;
+  sandbox.__fn.reiniciarEscena();
+  CAP[4].corre();
+  sandbox.__P.gen++;                        // como hace saltarA
+  await new Promise(r => setTimeout(r, 400));
+  const n = $('trxBody').querySelectorAll('.trx-line').length;
+  await new Promise(r => setTimeout(r, 400));
+  check('saltar detiene la pasada anterior',
+    $('trxBody').querySelectorAll('.trx-line').length === n,
+    n + ' -> ' + $('trxBody').querySelectorAll('.trx-line').length);
+}
+
+console.log('\n== La voz ==');
+/* Los audios se generan aparte, con scripts/demo_voz.py. Acá sólo se
+   comprueba que cada frase tenga el suyo y que el nombre coincida con el
+   que la página va a pedir: si no coinciden, la presentación corre muda y
+   nadie se entera hasta la reunión. */
+{
+  const hashTexto = t => {
+    let h = 0;
+    for (const c of String(t)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    return h.toString(36);
+  };
+  const js = fs.readFileSync(path.join(DEMO, 'demo.js'), 'utf8');
+  const textos = [...js.matchAll(/narrar\(\s*'((?:[^'\\]|\\.)*)'/g)]
+    .map(m => m[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\'));
+  check('hay una frase de narración por escena', textos.length === 45, String(textos.length));
+
+  const dirAudio = path.join(DEMO, 'audio');
+  const faltan = textos.filter(t => !fs.existsSync(path.join(dirAudio, 'v' + hashTexto(t) + '.mp3')));
+  check('cada frase tiene su audio', faltan.length === 0,
+    faltan.length ? faltan.length + ' sin audio: ' + faltan[0].slice(0, 40) : '');
+
+  const vacios = textos.filter(t => {
+    const f = path.join(dirAudio, 'v' + hashTexto(t) + '.mp3');
+    return fs.existsSync(f) && fs.statSync(f).size < 4000;
+  });
+  check('ninguno quedó vacío o cortado', vacios.length === 0, String(vacios.length));
+
+  check('la página no llama a la API de voz',
+    !/elevenlabs|xi-api-key/i.test(js + fs.readFileSync(path.join(DEMO, 'index.html'), 'utf8')));
+  check('se puede silenciar', /btnVoz/.test(js));
+  check('y una frase sin audio no detiene el recorrido', /addEventListener\('error'/.test(js));
+}
 
 console.log('\n== Higiene ==');
 for (const [et, id] of [['narración', 'narraTxt'], ['expediente', 'detBody'], ['asistente', 'asisBody']]) {
