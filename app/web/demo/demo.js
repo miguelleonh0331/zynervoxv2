@@ -476,10 +476,6 @@ async function dormir(ms) {
     await new Promise(r => setTimeout(r, paso));
     resta -= paso;
   }
-  // Y además se espera a que la frase termine de decirse: los tiempos
-  // escritos son el mínimo, no el total. Sin esto la voz quedaría cortada
-  // a mitad de frase cada vez que la escena cambia.
-  await VOZ.promesa;
   return gen === P.gen ? undefined : NUNCA();
 }
 
@@ -531,7 +527,16 @@ async function escribir(id, texto, ms) {
    día: si la frase cambia, cambia el archivo, y si falta, la escena sigue
    muda en vez de romperse.                                               */
 
-const VOZ = {audio:null, promesa:Promise.resolve(), silencio:false, ritmo:1.3};
+/* La voz corre en su propia fila, en paralelo con la escena.
+
+   Antes la escena esperaba a que terminara cada frase para recién mover el
+   puntero: se oía narración y después acción muda, como dos películas
+   pegadas. Un expositor habla MIENTRAS opera.
+
+   Ahora las frases se encolan —nunca se pisan— y la escena avanza por su
+   cuenta. Lo único que se espera es el final del capítulo: ahí sí hay que
+   dejar que termine de hablar antes de cambiar de tema.                  */
+const VOZ = {cola:Promise.resolve(), audio:null, silencio:false, ritmo:1.3};
 
 function hashTexto(t) {
   let h = 0;
@@ -539,20 +544,19 @@ function hashTexto(t) {
   return h.toString(36);
 }
 
-function decir(texto) {
-  if (VOZ.audio) { VOZ.audio.pause(); VOZ.audio = null; }
-  if (VOZ.silencio) { VOZ.promesa = Promise.resolve(); return; }
-  const a = new Audio('audio/v' + hashTexto(texto) + '.mp3');
-  a.playbackRate = VOZ.ritmo;
-  // El navegador conserva el tono al acelerar; sin esto la voz subiría de
-  // registro y sonaría a dibujo animado.
-  a.preservesPitch = true;
-  a.mozPreservesPitch = true;
-  a.webkitPreservesPitch = true;
-  VOZ.audio = a;
-  VOZ.promesa = new Promise(res => {
+function reproducir(texto, gen) {
+  return new Promise(res => {
+    if (VOZ.silencio || gen !== P.gen) return res();
+    const a = new Audio('audio/v' + hashTexto(texto) + '.mp3');
+    a.playbackRate = VOZ.ritmo;
+    // El navegador conserva el tono al acelerar; sin esto la voz subiría de
+    // registro y sonaría a dibujo animado.
+    a.preservesPitch = true;
+    a.mozPreservesPitch = true;
+    a.webkitPreservesPitch = true;
+    VOZ.audio = a;
     let listo = false;
-    const fin = () => { if (!listo) { listo = true; res(); } };
+    const fin = () => { if (!listo) { listo = true; VOZ.audio = null; res(); } };
     a.addEventListener('ended', fin);
     a.addEventListener('error', fin);          // sin archivo, la escena sigue
     // Red de seguridad: un audio que nunca dispara 'ended' no puede dejar
@@ -562,7 +566,25 @@ function decir(texto) {
   });
 }
 
-function narrar(txt, puntos, activo) {
+// Encola la frase detrás de la anterior. No devuelve espera: la escena
+// sigue su curso mientras se dice.
+function decir(texto) {
+  const gen = P.gen;
+  VOZ.cola = VOZ.cola.then(() => reproducir(texto, gen));
+}
+
+// Lo que se espera al cerrar un capítulo, para no cambiar de tema a media
+// frase.
+const vozAlDia = () => VOZ.cola;
+
+/* Cambiar de frase espera a que termine la anterior, pero NO espera a la
+   propia: el texto y el foco se sincronizan con lo que se está diciendo,
+   mientras las acciones de ese tramo —el puntero, lo que se escribe, la
+   transcripción— ocurren en paralelo. Eso es un expositor operando. */
+async function narrar(txt, puntos, activo) {
+  const gen = P.gen;
+  await vozAlDia();
+  if (gen !== P.gen) return NUNCA();
   $('narraTxt').textContent = txt;
   if (puntos) {
     $('narraPuntos').replaceChildren(...puntos.map((p, i) =>
@@ -581,7 +603,7 @@ function narrar(txt, puntos, activo) {
 const CAPITULOS = [
 
 { n:'Acceso', titulo:'Un solo inicio de sesión', corre: async () => {
-  narrar('El asesor abre una sola aplicación y entra. Esa aplicación trae el teléfono adentro: no hay un programa para llamar, otro para WhatsApp y otro para el correo. Una instalación, una pantalla.',
+  await narrar('El asesor abre una sola aplicación y entra. Esa aplicación trae el teléfono adentro: no hay un programa para llamar, otro para WhatsApp y otro para el correo. Una instalación, una pantalla.',
     ['Una sola aplicación instalada', 'El teléfono viene incluido', 'Un usuario y una contraseña'], 0);
   $('loginDemo').classList.remove('is-ido');
   $('loginDemo').hidden = false;
@@ -601,38 +623,38 @@ const CAPITULOS = [
 }},
 
 { n:'La pantalla', titulo:'Todo a la vista, sin pestañas', corre: async () => {
-  narrar('Al entrar ya está todo. A la izquierda su cartera del día; al centro el expediente del cliente; a la derecha lo que pasa en la llamada. Nada de esto obliga a cambiar de ventana.',
+  await narrar('Al entrar ya está todo. A la izquierda su cartera del día; al centro el expediente del cliente; a la derecha lo que pasa en la llamada. Nada de esto obliga a cambiar de ventana.',
     ['Cartera del día', 'Expediente completo', 'Transcripción y asistente'], 0);
   await dormir(1500);
   enfocar('.col--list');
-  narrar('La cartera: cada persona con la que habló hoy, con la hora y el resultado. Lo que todavía no cerró queda marcado en rojo para que no se le pase.',
+  await narrar('La cartera: cada persona con la que habló hoy, con la hora y el resultado. Lo que todavía no cerró queda marcado en rojo para que no se le pase.',
     ['Cartera del día', 'Expediente completo', 'Transcripción y asistente'], 0);
   await dormir(3200);
   enfocar('.col--detail');
-  narrar('El expediente: quién es el cliente, qué se habló antes y por qué canal. Todo en la misma pantalla.',
+  await narrar('El expediente: quién es el cliente, qué se habló antes y por qué canal. Todo en la misma pantalla.',
     ['Cartera del día', 'Expediente completo', 'Transcripción y asistente'], 1);
   await dormir(3000);
   enfocar('.col--work');
-  narrar('Y la columna de la derecha, que es la novedad: lo que se está diciendo en la llamada, transcrito en vivo, y un asistente con inteligencia artificial listo para ayudar.',
+  await narrar('Y la columna de la derecha, que es la novedad: lo que se está diciendo en la llamada, transcrito en vivo, y un asistente con inteligencia artificial listo para ayudar.',
     ['Cartera del día', 'Expediente completo', 'Transcripción y asistente'], 2);
   await dormir(3400);
   enfocar(null);
 }},
 
 { n:'Campañas', titulo:'Elige campaña y el sistema marca', corre: async () => {
-  narrar('El asesor no disca números. Elige la campaña y el sistema le entrega el siguiente cliente que corresponde llamar, respetando horarios e intentos permitidos.',
+  await narrar('El asesor no disca números. Elige la campaña y el sistema le entrega el siguiente cliente que corresponde llamar, respetando horarios e intentos permitidos.',
     ['Varias campañas por asesor', 'El sistema elige a quién llamar', 'Nadie marca a mano'], 0);
   enfocar('.topbar-dial');
   await dormir(1600);
   await clicEn('#ctlCampaign');
   $('ctlCampaign').value = '55';
   $('ctlCampaign').classList.add('resalta');
-  narrar('Tiene tres campañas asignadas. Elige "compra de deuda" y a partir de ahí el sistema solo le va a entregar clientes de esa campaña.',
+  await narrar('Tiene tres campañas asignadas. Elige "compra de deuda" y a partir de ahí el sistema solo le va a entregar clientes de esa campaña.',
     ['Varias campañas por asesor', 'El sistema elige a quién llamar', 'Nadie marca a mano'], 1);
   await dormir(2600);
   $('ctlCampaign').classList.remove('resalta');
   await clicEn('#ctlDial');
-  narrar('Pulsa una sola vez. De acá en adelante, el sistema encadena las llamadas: al cerrar una, sale la siguiente sin que nadie haga nada.',
+  await narrar('Pulsa una sola vez. De acá en adelante, el sistema encadena las llamadas: al cerrar una, sale la siguiente sin que nadie haga nada.',
     ['Varias campañas por asesor', 'El sistema elige a quién llamar', 'Nadie marca a mano'], 2);
   enfocar(null);
   await dormir(1800);
@@ -642,7 +664,7 @@ const CAPITULOS = [
   $('dialerLabel').textContent = 'Marcando 980910856…';
   $('callState').dataset.on = 'false';
   $('callLabel').textContent = 'Timbrando';
-  narrar('El sistema marca. Mientras timbra, el asesor no hace nada: ya está buscando la ficha.',
+  await narrar('El sistema marca. Mientras timbra, el asesor no hace nada: ya está buscando la ficha.',
     ['Marca el sistema', 'La ficha se abre sola', 'Habla con el nombre en pantalla'], 0);
   await dormir(2200);
 
@@ -652,40 +674,40 @@ const CAPITULOS = [
   cronoArrancar();
   pintarCartera(CLIENTE.id);
   pintarFicha('Resumen');
-  narrar('Contestó. Y antes de decir una palabra, el asesor ya tiene en pantalla quién es, cuánto debe, dónde vive y todo lo que se conversó antes.',
+  await narrar('Contestó. Y antes de decir una palabra, el asesor ya tiene en pantalla quién es, cuánto debe, dónde vive y todo lo que se conversó antes.',
     ['Marca el sistema', 'La ficha se abre sola', 'Habla con el nombre en pantalla'], 1);
   enfocar('.det-head');
   await dormir(3000);
   enfocar('.kv');
-  narrar('Nombre, documento, teléfono, correo, dirección, producto de interés y monto. Sin buscar en otro sistema, sin pedirle los datos al cliente.',
+  await narrar('Nombre, documento, teléfono, correo, dirección, producto de interés y monto. Sin buscar en otro sistema, sin pedirle los datos al cliente.',
     ['Marca el sistema', 'La ficha se abre sola', 'Habla con el nombre en pantalla'], 2);
   await dormir(3600);
   enfocar(null);
 }},
 
 { n:'Transcripción', titulo:'La conversación se escribe sola', corre: async () => {
-  narrar('Mientras hablan, el sistema transcribe en vivo. El asesor no toma notas: queda registrado solo.',
+  await narrar('Mientras hablan, el sistema transcribe en vivo. El asesor no toma notas: queda registrado solo.',
     ['Transcripción en vivo', 'Queda guardada', 'El supervisor puede revisarla'], 0);
   enfocar('#trx');
   $('trxEstado').textContent = 'escuchando';
   for (let i = 0; i < 4; i++) {
     await dormir(DIALOGO[i].espera);
     trxLinea(DIALOGO[i].q, DIALOGO[i].t);
-    if (i === 2) narrar('El asesor presenta el producto. Cada frase queda escrita, de los dos lados de la línea.',
+    if (i === 2) await narrar('El asesor presenta el producto. Cada frase queda escrita, de los dos lados de la línea.',
       ['Transcripción en vivo', 'Queda guardada', 'El supervisor puede revisarla'], 1);
   }
   enfocar(null);
 }},
 
 { n:'La objeción', titulo:'El cliente dice que no, y la IA ayuda', corre: async () => {
-  narrar('Acá está lo importante. La clienta acaba de decir que no le interesa. En cualquier otro sistema, el asesor queda solo con su experiencia.',
+  await narrar('Acá está lo importante. La clienta acaba de decir que no le interesa. En cualquier otro sistema, el asesor queda solo con su experiencia.',
     ['Detecta la objeción sola', 'Sugiere qué decir', 'Con material aprobado'], 0);
   enfocar('.trx-line--cliente:last-child');
   await dormir(2600);
 
   enfocar('#asis');
   const p1 = asisPensando();
-  narrar('El asistente escuchó lo mismo que el asesor, reconoció la objeción y le está preparando una respuesta.',
+  await narrar('El asistente escuchó lo mismo que el asesor, reconoció la objeción y le está preparando una respuesta.',
     ['Detecta la objeción sola', 'Sugiere qué decir', 'Con material aprobado'], 1);
   await dormir(2000);
   asisRespuesta(
@@ -693,21 +715,21 @@ const CAPITULOS = [
     + 'Eso no es una objeción: es el argumento de venta.\n\n'
     + 'Diga: «La entiendo. Justamente por eso la llamo: no es una deuda nueva, es juntar las que ya tiene en una sola cuota más baja.»',
     'Guía de objeciones · compra de deuda', p1);
-  narrar('Le dice exactamente qué responder, con material aprobado por la empresa. No es una idea del asesor: es el guion de la compañía.',
+  await narrar('Le dice exactamente qué responder, con material aprobado por la empresa. No es una idea del asesor: es el guion de la compañía.',
     ['Detecta la objeción sola', 'Sugiere qué decir', 'Con material aprobado'], 2);
   await dormir(4200);
 
   trxLinea('agente', DIALOGO[4].t);
   await dormir(1800);
   trxLinea('cliente', DIALOGO[5].t);
-  narrar('El asesor usa la respuesta sugerida y la conversación sigue. La clienta ahora pregunta por la cuota.',
+  await narrar('El asesor usa la respuesta sugerida y la conversación sigue. La clienta ahora pregunta por la cuota.',
     ['Detecta la objeción sola', 'Sugiere qué decir', 'Con material aprobado'], 2);
   await dormir(2400);
   enfocar(null);
 }},
 
 { n:'Consulta a la IA', titulo:'Pregunta y responde al instante', corre: async () => {
-  narrar('La clienta pregunta por la tasa. En vez de pedirle que espere mientras busca, el asesor le pregunta al asistente.',
+  await narrar('La clienta pregunta por la tasa. En vez de pedirle que espere mientras busca, el asesor le pregunta al asistente.',
     ['Pregunta en lenguaje normal', 'Responde en segundos', 'Cita la fuente'], 0);
   enfocar('.asis-form');
   await dormir(1600);
@@ -725,7 +747,7 @@ const CAPITULOS = [
     + 'Por **S/ 12 000 a 24 meses**, la cuota queda en **S/ 730**.\n'
     + 'Mencione la TCEA antes de cerrar: incluye el desgravamen.',
     'Tarifario vigente · carsa0001', p);
-  narrar('Dos segundos. Con el número exacto, la cuota ya calculada y de dónde salió el dato. El cliente no escuchó ni un silencio.',
+  await narrar('Dos segundos. Con el número exacto, la cuota ya calculada y de dónde salió el dato. El cliente no escuchó ni un silencio.',
     ['Pregunta en lenguaje normal', 'Responde en segundos', 'Cita la fuente'], 2);
   await dormir(4200);
 
@@ -734,18 +756,18 @@ const CAPITULOS = [
 }},
 
 { n:'WhatsApp', titulo:'El mismo cliente, sin cambiar de ventana', corre: async () => {
-  narrar('La clienta pidió la cotización por WhatsApp. El asesor no abre el teléfono ni otra aplicación: la conversación está acá, en la misma pantalla.',
+  await narrar('La clienta pidió la cotización por WhatsApp. El asesor no abre el teléfono ni otra aplicación: la conversación está acá, en la misma pantalla.',
     ['WhatsApp dentro del CRM', 'El historial queda en la ficha', 'Un solo lugar'], 0);
   enfocar('.channels');
   await dormir(2200);
   await clicEn('#dWa');
   pintarChat(WHATSAPP.slice(0, 3));
   enfocar('.wa-body');
-  narrar('Le envía la cotización. El mensaje sale desde el sistema y queda pegado al expediente de la clienta.',
+  await narrar('Le envía la cotización. El mensaje sale desde el sistema y queda pegado al expediente de la clienta.',
     ['WhatsApp dentro del CRM', 'El historial queda en la ficha', 'Un solo lugar'], 1);
   await dormir(3000);
   pintarChat(WHATSAPP.slice(0, 5));
-  narrar('Y la clienta responde. Sin salir de la pantalla, el asesor ve la respuesta y sigue la conversación por escrito.',
+  await narrar('Y la clienta responde. Sin salir de la pantalla, el asesor ve la respuesta y sigue la conversación por escrito.',
     ['WhatsApp dentro del CRM', 'El historial queda en la ficha', 'Un solo lugar'], 2);
   await dormir(3000);
   pintarChat(WHATSAPP);
@@ -756,43 +778,43 @@ const CAPITULOS = [
 { n:'Correo y SMS', titulo:'Los otros canales, en el mismo lugar', corre: async () => {
   await clicEn('#dWa');          // cierra el chat con el que terminó el capítulo anterior
   pintarFicha('Resumen');
-  narrar('Lo mismo con el correo. Todo lo que se le envió a esta clienta está acá, con fecha y estado.',
+  await narrar('Lo mismo con el correo. Todo lo que se le envió a esta clienta está acá, con fecha y estado.',
     ['Correos enviados', 'SMS enviados', 'Todo contra la misma ficha'], 0);
   await clicEn('#dMail');
   pintarCorreos();
   enfocar('.bandeja');
   await dormir(3400);
-  narrar('Y los mensajes de texto: los avisos, el recordatorio de la llamada, el código de verificación. Nada de esto vive en otro sistema.',
+  await narrar('Y los mensajes de texto: los avisos, el recordatorio de la llamada, el código de verificación. Nada de esto vive en otro sistema.',
     ['Correos enviados', 'SMS enviados', 'Todo contra la misma ficha'], 1);
   await clicEn('#dSms');
   pintarSms();
   await dormir(3400);
-  narrar('Llamada, WhatsApp, correo y SMS: cuatro canales, una sola ficha, una sola pantalla. Eso es lo que cambia el día del asesor.',
+  await narrar('Llamada, WhatsApp, correo y SMS: cuatro canales, una sola ficha, una sola pantalla. Eso es lo que cambia el día del asesor.',
     ['Correos enviados', 'SMS enviados', 'Todo contra la misma ficha'], 2);
   await dormir(2600);
   enfocar(null);
 }},
 
 { n:'Historial', titulo:'Todo lo que pasó con este cliente', corre: async () => {
-  narrar('Y si alguien quiere ver la historia completa, está en una pestaña: cada llamada, cada mensaje, cada correo y cada nota, en orden.',
+  await narrar('Y si alguien quiere ver la historia completa, está en una pestaña: cada llamada, cada mensaje, cada correo y cada nota, en orden.',
     ['Un solo historial', 'Sin importar el canal', 'Con quién lo atendió'], 0);
   await clicEn('.det-tabs button:nth-child(2)');
   pintarFicha('Interacciones');
   enfocar('.tl');
   await dormir(4000);
-  narrar('Si mañana atiende otro asesor, no empieza de cero: ve exactamente lo que se conversó y por dónde.',
+  await narrar('Si mañana atiende otro asesor, no empieza de cero: ve exactamente lo que se conversó y por dónde.',
     ['Un solo historial', 'Sin importar el canal', 'Con quién lo atendió'], 2);
   await dormir(3000);
   enfocar(null);
 }},
 
 { n:'Pausas', titulo:'Los estados del asesor, medidos', corre: async () => {
-  narrar('El asesor necesita parar. Lo hace desde la barra superior, y el sistema registra en qué estado está en cada momento.',
+  await narrar('El asesor necesita parar. Lo hace desde la barra superior, y el sistema registra en qué estado está en cada momento.',
     ['Un clic para pausar', 'Motivos configurables', 'Todo queda medido'], 0);
   enfocar('.topbar-pause');
   await dormir(2200);
   await clicEn('#ctlPauseType');
-  narrar('Elige el motivo y la pausa se aplica sola. Estos motivos los configura el supervisor: almuerzo, baño, reunión, capacitación, soporte. Cada empresa define los suyos.',
+  await narrar('Elige el motivo y la pausa se aplica sola. Estos motivos los configura el supervisor: almuerzo, baño, reunión, capacitación, soporte. Cada empresa define los suyos.',
     ['Un clic para pausar', 'Motivos configurables', 'Todo queda medido'], 1);
   await dormir(3600);
   $('ctlPauseType').value = '1';
@@ -800,7 +822,7 @@ const CAPITULOS = [
   $('ctlPause').hidden = false;
   $('agentState').textContent = 'Pausado · Almuerzo';
   enfocar('#agentState');
-  narrar('Queda en pausa, y el estado se ve en la barra. Mientras esté así, el sistema no le entrega llamadas — y el tiempo se contabiliza para el reporte del supervisor.',
+  await narrar('Queda en pausa, y el estado se ve en la barra. Mientras esté así, el sistema no le entrega llamadas — y el tiempo se contabiliza para el reporte del supervisor.',
     ['Un clic para pausar', 'Motivos configurables', 'Todo queda medido'], 2);
   await dormir(4000);
   await clicEn('#ctlPause');
@@ -808,7 +830,7 @@ const CAPITULOS = [
   $('ctlPauseWrap').hidden = false;
   $('ctlPauseType').value = '';
   $('agentState').textContent = 'Disponible';
-  narrar('Vuelve a estar disponible con un clic, y las llamadas se reanudan.',
+  await narrar('Vuelve a estar disponible con un clic, y las llamadas se reanudan.',
     ['Un clic para pausar', 'Motivos configurables', 'Todo queda medido'], 2);
   await dormir(2200);
   enfocar(null);
@@ -816,7 +838,7 @@ const CAPITULOS = [
 
 { n:'Cierre', titulo:'Tipifica y entra la siguiente', corre: async () => {
   pintarFicha('Resumen');        // vuelve del historial a la ficha
-  narrar('Termina la llamada. Acá es donde la mayoría de los sistemas pierden información: el asesor cuelga y se olvida de registrar.',
+  await narrar('Termina la llamada. Acá es donde la mayoría de los sistemas pierden información: el asesor cuelga y se olvida de registrar.',
     ['No se puede saltear', 'Tres niveles', 'La siguiente sale sola'], 0);
   enfocar('#ctlHangup');
   $('ctlHangup').hidden = false;
@@ -830,11 +852,11 @@ const CAPITULOS = [
 
   abrirHojaGestion();
   enfocar('.sheet--gestion');
-  narrar('Al colgar, el sistema le pide el resultado. No es opcional: hasta que no lo registre, no recibe la siguiente llamada.',
+  await narrar('Al colgar, el sistema le pide el resultado. No es opcional: hasta que no lo registre, no recibe la siguiente llamada.',
     ['No se puede saltear', 'Tres niveles', 'La siguiente sale sola'], 0);
   await dormir(3000);
 
-  narrar('Tres niveles, de lo general a lo concreto. Contactado… seguimiento… interesado. El árbol lo define cada campaña.',
+  await narrar('Tres niveles, de lo general a lo concreto. Contactado… seguimiento… interesado. El árbol lo define cada campaña.',
     ['No se puede saltear', 'Tres niveles', 'La siguiente sale sola'], 1);
   await clicEn('#tip0');
   pintarGestionArbol('CONTACTADO');
@@ -854,7 +876,7 @@ const CAPITULOS = [
   enfocar(null);
   CARTERA[0].cod = '010101';
   pintarCartera(CLIENTE.id);
-  narrar('Registrado. La gestión queda en el expediente, la rellamada se agenda sola como tarea, y el sistema ya está marcando al siguiente cliente.',
+  await narrar('Registrado. La gestión queda en el expediente, la rellamada se agenda sola como tarea, y el sistema ya está marcando al siguiente cliente.',
     ['No se puede saltear', 'Tres niveles', 'La siguiente sale sola'], 2);
   $('ctlLead').hidden = false;
   $('ctlLead').replaceChildren(el('b', {txt:'Siguiente llamada en 5 s'}));
@@ -863,13 +885,13 @@ const CAPITULOS = [
 }},
 
 { n:'Tareas', titulo:'Nada se pierde entre llamada y llamada', corre: async () => {
-  narrar('Lo que el asesor prometió, queda. Las rellamadas comprometidas, los documentos que faltan, los cierres pendientes: todo en una lista con vencimiento.',
+  await narrar('Lo que el asesor prometió, queda. Las rellamadas comprometidas, los documentos que faltan, los cierres pendientes: todo en una lista con vencimiento.',
     ['Compromisos con el cliente', 'Ordenadas por vencimiento', 'Lo vencido, en rojo'], 0);
   await clicEn('#navTareas');
   irA('tareas');
   await dormir(2600);
   enfocar('.tarea--vencida');
-  narrar('Lo vencido salta a la vista. El supervisor no tiene que perseguir a nadie: el sistema lo muestra.',
+  await narrar('Lo vencido salta a la vista. El supervisor no tiene que perseguir a nadie: el sistema lo muestra.',
     ['Compromisos con el cliente', 'Ordenadas por vencimiento', 'Lo vencido, en rojo'], 2);
   await dormir(3200);
   enfocar(null);
@@ -877,34 +899,34 @@ const CAPITULOS = [
 }},
 
 { n:'Reportes', titulo:'Su comisión, en tiempo real', corre: async () => {
-  narrar('El asesor ve cuánto lleva ganado sin preguntarle a nadie. Y, sobre todo, cuánto le falta para el siguiente tramo.',
+  await narrar('El asesor ve cuánto lleva ganado sin preguntarle a nadie. Y, sobre todo, cuánto le falta para el siguiente tramo.',
     ['Comisión al día', 'Cuánto falta para el próximo tramo', 'Tabla del equipo'], 0);
   await clicEn('#navReportes');
   irA('reportes');
   await dormir(2200);
   enfocar('.hero-salto');
-  narrar('«Le falta una venta para el tramo Oro, y eso suma cuatro mil soles más.» Un asesor que ve ese número, llama una vez más.',
+  await narrar('«Le falta una venta para el tramo Oro, y eso suma cuatro mil soles más.» Un asesor que ve ese número, llama una vez más.',
     ['Comisión al día', 'Cuánto falta para el próximo tramo', 'Tabla del equipo'], 1);
   await dormir(4000);
   enfocar('.ranking');
-  narrar('Y se ve en la tabla del equipo. En un piso de ventas, eso mueve más que cualquier reunión.',
+  await narrar('Y se ve en la tabla del equipo. En un piso de ventas, eso mueve más que cualquier reunión.',
     ['Comisión al día', 'Cuánto falta para el próximo tramo', 'Tabla del equipo'], 2);
   await dormir(3400);
   enfocar(null);
 }},
 
 { n:'Conocimiento', titulo:'La respuesta, siempre a mano', corre: async () => {
-  narrar('Todo lo que el asesor necesita saber está adentro: productos, tasas, requisitos, objeciones y procesos.',
+  await narrar('Todo lo que el asesor necesita saber está adentro: productos, tasas, requisitos, objeciones y procesos.',
     ['Buscador', 'Fichas de una sola mirada', 'Conectado con el asistente'], 0);
   await clicEn('#navWiki');
   irA('conocimiento');
   await dormir(2400);
   enfocar('.battle');
-  narrar('Cada producto tiene su ficha de combate: por qué ganamos, qué objeciones esperar, dónde no aplica y cuál es el paso siguiente. Se lee en menos de un minuto, que es lo que dura la atención en medio de una llamada.',
+  await narrar('Cada producto tiene su ficha de combate: por qué ganamos, qué objeciones esperar, dónde no aplica y cuál es el paso siguiente. Se lee en menos de un minuto, que es lo que dura la atención en medio de una llamada.',
     ['Buscador', 'Fichas de una sola mirada', 'Conectado con el asistente'], 1);
   await dormir(5000);
   enfocar('.wiki-busca');
-  narrar('Y se busca escribiendo. Lo que encuentra, lo resalta.',
+  await narrar('Y se busca escribiendo. Lo que encuentra, lo resalta.',
     ['Buscador', 'Fichas de una sola mirada', 'Conectado con el asistente'], 1);
   await clicEn('#wikiQ');
   for (const ch of 'desgravamen') {
@@ -913,7 +935,7 @@ const CAPITULOS = [
     await dormir(110);
   }
   await dormir(2600);
-  narrar('Y lo mejor: desde cualquier artículo el asesor se lo puede pedir resumido al asistente, para explicárselo al cliente con sus palabras.',
+  await narrar('Y lo mejor: desde cualquier artículo el asesor se lo puede pedir resumido al asistente, para explicárselo al cliente con sus palabras.',
     ['Buscador', 'Fichas de una sola mirada', 'Conectado con el asistente'], 2);
   await dormir(3000);
   enfocar(null);
@@ -921,7 +943,7 @@ const CAPITULOS = [
 
 { n:'Cierre', titulo:'Todo conectado, en un solo lugar', corre: async () => {
   irA('clientes');               // vuelve a la consola para el cartel final
-  narrar('Eso es la consola. Un asesor, una pantalla, y todo lo que necesita para vender sin salir de ella.',
+  await narrar('Eso es la consola. Un asesor, una pantalla, y todo lo que necesita para vender sin salir de ella.',
     ['Un solo inicio de sesión', 'Cuatro canales y una ficha', 'Con IA que lo acompaña'], 0);
   mostrarCierre();
   await dormir(9000);
@@ -988,6 +1010,7 @@ async function correr() {
       pintarCabeceraCap();
       const actual = P.i, gen = P.gen;
       await CAPITULOS[P.i].corre();
+      await vozAlDia();                 // que termine de hablar antes de pasar
       if (gen !== P.gen) continue;      // alguien saltó mientras corría
       if (P.i === actual) P.i++;
     }
@@ -998,7 +1021,8 @@ async function correr() {
 
 function saltarA(i) {
   P.gen++;                              // la pasada anterior queda abandonada
-  if (VOZ.audio) { VOZ.audio.pause(); VOZ.audio = null; VOZ.promesa = Promise.resolve(); }
+  if (VOZ.audio) { VOZ.audio.pause(); VOZ.audio = null; }
+  VOZ.cola = Promise.resolve();         // lo encolado de la pasada anterior se descarta
   P.i = Math.max(0, Math.min(CAPITULOS.length - 1, i));
   reiniciarEscena();
   P.corriendo = true;
@@ -1073,7 +1097,7 @@ document.addEventListener('DOMContentLoaded', () => {
     VOZ.silencio = !VOZ.silencio;
     $('btnVoz').textContent = VOZ.silencio ? '🔇' : '🔊';
     $('btnVoz').title = VOZ.silencio ? 'Activar la voz' : 'Silenciar';
-    if (VOZ.silencio && VOZ.audio) { VOZ.audio.pause(); VOZ.audio = null; VOZ.promesa = Promise.resolve(); }
+    if (VOZ.silencio && VOZ.audio) { VOZ.audio.pause(); VOZ.audio = null; }
   });
   $('btnPrev').addEventListener('click', () => saltarA(P.i - 1));
   $('btnNext').addEventListener('click', () => saltarA(P.i + 1));

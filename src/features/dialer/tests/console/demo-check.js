@@ -241,6 +241,21 @@ console.log('\n== La voz ==');
   check('no promete que no haya que instalar nada', !/Sin instalar nada/.test(js));
   check('y dice que el teléfono viene incluido', /El teléfono viene incluido/.test(js));
   check('y una frase sin audio no detiene el recorrido', /addEventListener\('error'/.test(js));
+  /* La voz tiene que acompañar la acción, no turnarse con ella: las frases
+     se encolan para no pisarse, el texto en pantalla espera a la anterior
+     —así el foco no se adelanta a lo que se está diciendo— y las acciones
+     del tramo corren en paralelo. */
+  check('las frases se encolan, no se pisan', /VOZ\.cola = VOZ\.cola\.then/.test(js));
+  check('el texto no se adelanta a la voz',
+    /async function narrar/.test(js) && /await vozAlDia\(\);/.test(js));
+  check('la escena no espera a la voz para moverse',
+    !/await VOZ\.promesa/.test(js));
+  check('y el capítulo no cambia a media frase',
+    /await vozAlDia\(\);\s*\/\/ que termine de hablar/.test(js));
+  const sinAwait = (js.match(/(?<!await )(?<![.\w])narrar\(/g) || [])
+    .filter(x => true).length;
+  check('todas las narraciones se esperan',
+    (js.match(/await narrar\(/g) || []).length === 45, String((js.match(/await narrar\(/g) || []).length));
 }
 
 console.log('\n== Higiene ==');
