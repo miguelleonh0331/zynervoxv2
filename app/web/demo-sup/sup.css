@@ -325,6 +325,43 @@ button{cursor:pointer;border:0;background:transparent}
 .banco{display:flex;gap:6px;flex-wrap:wrap;padding:9px;background:#FBFCFE;
   border:1px solid var(--border);border-radius:var(--radius)}
 
+/* --- panel de asignación: agentes × campañas --- */
+.asig{width:100%;border-collapse:collapse;font-size:11.5px}
+.asig th{padding:7px 6px;border-bottom:1px solid var(--border);background:#FBFCFE;
+  font-size:10px;font-weight:700;color:var(--text-muted);text-align:center;vertical-align:bottom}
+.asig th:first-child{text-align:left;padding-left:12px;min-width:168px}
+.asig th .ct{display:block;font-size:8.5px;letter-spacing:.4px;margin-top:2px;font-weight:700}
+.asig th .ct--out{color:#1D4ED8}
+.asig th .ct--in{color:#0369A1}
+.asig td{padding:5px 6px;border-bottom:1px solid var(--rule);text-align:center}
+.asig td:first-child{text-align:left;padding-left:12px}
+.asig tbody tr:hover{background:var(--primary-soft)}
+.asig-cel{width:28px;height:28px;border-radius:7px;display:inline-grid;place-items:center;
+  border:1.5px solid var(--border);background:var(--bg-card);color:transparent;font-size:12px;
+  line-height:1;transition:background .12s,border-color .12s}
+.asig-cel:hover{border-color:var(--primary);background:var(--primary-soft)}
+.asig-cel.is-on{background:var(--primary-soft2);border-color:var(--primary);color:var(--primary)}
+.asig-cel.is-activa{background:var(--primary);border-color:var(--primary);color:#fff;
+  box-shadow:0 0 0 3px rgba(37,99,235,.18)}
+.asig-leyenda{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:10.5px;color:var(--text-muted)}
+.asig-leyenda span{display:flex;align-items:center;gap:6px}
+.asig-leyenda .asig-cel{width:20px;height:20px;font-size:10px;cursor:default}
+.pill--mixto{background:#EDE9FE;color:#6D28D9}
+.regla-mixto{display:flex;gap:10px;align-items:flex-start;margin-top:11px;padding:10px 12px;
+  border-radius:var(--radius-sm);background:#F5F3FF;border:1px solid #DDD6FE;font-size:11px;
+  line-height:1.55;color:#4C1D95}
+.regla-mixto .ico{color:#7C3AED;margin-top:1px}
+
+/* Quitar un agente desde su pastilla, y zona donde soltarlo. */
+.ag-chip .quitar{width:15px;height:15px;border-radius:50%;display:grid;place-items:center;
+  color:var(--text-muted);font-size:10px;line-height:1;margin-left:1px}
+.ag-chip .quitar:hover{background:var(--danger);color:#fff}
+.ag-chip--activa{border-color:var(--primary);background:var(--primary-soft);font-weight:700}
+.sin-asignar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-height:40px;padding:9px;
+  border:1px dashed #CBD5E1;border-radius:var(--radius);background:#FBFCFE}
+.sin-asignar.is-drop{border-color:var(--danger);background:#FEF2F2}
+.sin-asignar .rot{font-size:10.5px;color:var(--text-muted);margin-right:4px}
+
 .cola-in{display:flex;flex-direction:column}
 .cola-fila{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:9px;align-items:center;
   padding:8px 11px;border-bottom:1px solid var(--rule);font-size:11.5px}

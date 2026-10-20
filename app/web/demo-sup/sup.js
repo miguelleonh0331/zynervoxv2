@@ -369,7 +369,20 @@ function tablaEquipo() {
     const tx = el('div', 'quien-txt'); tx.append(el('b', null, a.nombre), el('em', null, 'Anexo ' + a.id));
     q.append(avatar(a.nombre), tx); td1.append(q);
 
-    const td2 = el('td', null, a.camp);
+    const td2 = el('td');
+    td2.append(document.createTextNode(a.activa || 'Sin asignar'));
+    if (a.camps.length > 1) {
+      const mas = el('span', 'pill pill--sin pill--wrap', '+' + (a.camps.length - 1));
+      mas.style.marginLeft = '5px';
+      mas.title = 'Habilitado en: ' + a.camps.map(nombreCamp).join(' · ');
+      td2.append(mas);
+    }
+    if (esMixto(a)) {
+      const mx = el('span', 'pill pill--sin pill--mixto', 'MIXTO');
+      mx.style.marginLeft = '4px';
+      mx.title = 'Atiende entrantes y salientes';
+      td2.append(mx);
+    }
     const td3 = el('td'); td3.append(pill(a.estado));
     if (a.estado === 'pausa') {
       const m = HOY.ahora - a.desde;
@@ -461,13 +474,42 @@ function vCampanas(c) {
   for (const k of CAMPANAS) g.append(tarjCampana(k));
   c.append(g);
 
-  // Banco de agentes sin asignar + cola de entrantes.
+  // Quién no está en ninguna. También es donde se suelta a quien se saca.
+  const libres = AGENTES.filter(a => !a.camps.length);
+  const sz = el('div', 'sin-asignar'); sz.id = 'sinAsignar';
+  sz.append(el('span', 'rot', 'Sin asignar:'));
+  if (!libres.length) sz.append(el('span', 'rot', 'nadie — arrastre aquí para sacar a alguien de su campaña'));
+  libres.forEach(a => sz.append(chipAgente(a, null)));
+  sz.ondragover = e => { e.preventDefault(); sz.classList.add('is-drop'); };
+  sz.ondragleave = () => sz.classList.remove('is-drop');
+  sz.ondrop = e => {
+    e.preventDefault(); sz.classList.remove('is-drop');
+    const [id, orig] = String(e.dataTransfer.getData('text/plain')).split('|');
+    const a = porId(id);
+    if (!a || !orig) return;
+    a.camps = a.camps.filter(x => x !== orig);
+    normalizar(a);
+    irA('campanas');
+    aviso(a.nombre + ' salió de ' + nombreCamp(orig));
+  };
+  const envoltorio = el('div'); envoltorio.style.margin = '12px 0';
+  envoltorio.append(sz);
+  c.append(envoltorio);
+
+  // El panel explícito: la grilla de agentes por campañas.
+  c.append(panelAsignacion());
+
   const abajo = el('div', 'piso'); abajo.style.marginTop = '12px';
 
-  const banco = tarjeta('Agentes disponibles para asignar', null, {id:'cardBanco'});
-  const bz = el('div', 'banco'); bz.id = 'banco';
-  AGENTES.filter(a => a.estado !== 'off').forEach(a => bz.append(chipAgente(a, null)));
-  banco.cuerpo.append(bz);
+  const banco = tarjeta('Cómo se asigna', null, {id:'cardBanco'});
+  const ayuda = el('div'); ayuda.style.cssText = 'font-size:11.5px;line-height:1.7';
+  ayuda.innerHTML =
+    '<b>Para moverlo de campaña:</b> arrastre su pastilla a otra tarjeta. Sale de una y entra en la otra.<br>' +
+    '<b>Para sacarlo:</b> la ✕ de su pastilla, o arrástrelo a «Sin asignar».<br>' +
+    '<b>Para que esté en dos a la vez:</b> use la grilla de arriba y marque las dos casillas.<br>' +
+    '<b>El punto lleno</b> ● es la campaña en la que está trabajando en este momento; ' +
+    'la elige el agente al entrar, entre las que usted le habilitó.';
+  banco.cuerpo.append(ayuda);
 
   const cola = tarjeta('Cola de entrantes', 'Nivel de servicio: 91 % atendidas en menos de 20 s', {plano:true, id:'cardCola'});
   const cl = el('div', 'cola-in');
@@ -487,12 +529,111 @@ function vCampanas(c) {
   c.append(abajo);
 }
 
+/* Si el agente deja de estar habilitado donde estaba trabajando, hay que
+   moverlo a otra o dejarlo sin ninguna: una «activa» que ya no figura en
+   camps es un estado imposible. */
+function normalizar(a) {
+  if (!a.camps.includes(a.activa)) a.activa = a.camps[0] || null;
+}
+
 function chipAgente(a, campId) {
-  const ch = el('div', 'ag-chip'); ch.draggable = true; ch.dataset.ag = a.id;
-  ch.append(avatar(a.nombre, 'ag-chip-cara'), el('span', null, a.nombre.split(' ')[0] + ' ' + a.nombre.split(' ')[1]));
+  const ch = el('div', 'ag-chip' + (campId && a.activa === campId ? ' ag-chip--activa' : ''));
+  ch.draggable = true; ch.dataset.ag = a.id;
+  ch.title = a.activa === campId ? 'Está trabajando en esta campaña ahora' : 'Habilitado, no es su campaña activa';
+  ch.append(avatar(a.nombre, 'ag-chip-cara'),
+            el('span', null, a.nombre.split(' ')[0] + ' ' + a.nombre.split(' ')[1]));
+  if (campId) {
+    const x = el('button', 'quitar', '✕'); x.type = 'button';
+    x.title = 'Quitar de esta campaña';
+    x.onclick = e => {
+      e.stopPropagation();
+      a.camps = a.camps.filter(c => c !== campId);
+      normalizar(a);
+      irA('campanas');
+      aviso(a.nombre + ' salió de ' + nombreCamp(campId));
+    };
+    ch.append(x);
+  }
   ch.ondragstart = e => { e.dataTransfer.setData('text/plain', a.id + '|' + (campId || '')); ch.classList.add('is-arrastre'); };
   ch.ondragend = () => ch.classList.remove('is-arrastre');
   return ch;
+}
+
+/* ---- panel de asignación: quién puede trabajar en qué ---- */
+function panelAsignacion() {
+  const t = tarjeta('Asignación de agentes',
+    'Marque en qué campañas puede trabajar cada uno', {plano:true, id:'cardAsignacion'});
+  const tb = el('table', 'asig');
+
+  const h = el('tr');
+  h.append(el('th', null, 'Asesor'));
+  for (const c of CAMPANAS) {
+    const th = el('th');
+    th.append(document.createTextNode(c.nombre.split(' — ')[0]));
+    th.append(el('span', 'ct ct--' + c.tipo, c.tipo === 'out' ? 'SALIENTE' : 'ENTRANTE'));
+    h.append(th);
+  }
+  h.append(el('th', null, ''));
+  const th0 = el('thead'); th0.append(h); tb.append(th0);
+
+  const body = el('tbody'); body.id = 'asigBody';
+  for (const a of AGENTES) {
+    const tr = el('tr'); tr.dataset.ag = a.id;
+    const td1 = el('td'); const q = el('div', 'quien');
+    const tx = el('div', 'quien-txt');
+    tx.append(el('b', null, a.nombre), el('em', null, 'Anexo ' + a.id));
+    q.append(avatar(a.nombre), tx); td1.append(q); tr.append(td1);
+
+    for (const c of CAMPANAS) {
+      const td = el('td');
+      const puesto = a.camps.includes(c.id);
+      const activa = a.activa === c.id;
+      const b = el('button', 'asig-cel' + (activa ? ' is-activa' : puesto ? ' is-on' : ''));
+      b.type = 'button';
+      b.id = 'asig-' + a.id + '-' + c.id;
+      b.textContent = activa ? '●' : puesto ? '✓' : '';
+      b.title = activa ? 'Trabajando aquí ahora' : puesto ? 'Habilitado' : 'Sin habilitar';
+      b.onclick = () => {
+        if (puesto) a.camps = a.camps.filter(x => x !== c.id);
+        else a.camps = a.camps.concat(c.id);
+        normalizar(a);
+        irA('campanas');
+        aviso(a.nombre + (puesto ? ' salió de ' : ' quedó habilitado en ') + nombreCamp(c.id) +
+              (!puesto && esMixto(a) ? ' · ahora es un agente mixto' : ''));
+      };
+      td.append(b); tr.append(td);
+    }
+
+    const td9 = el('td');
+    if (esMixto(a)) td9.append(el('span', 'pill pill--sin pill--mixto', 'MIXTO'));
+    else if (!a.camps.length) td9.append(el('span', 'pill pill--sin pill--off', 'Sin asignar'));
+    tr.append(td9);
+    body.append(tr);
+  }
+  tb.append(body);
+  t.cuerpo.append(tb);
+
+  const pie = el('div'); pie.style.padding = '11px 12px';
+  const ley = el('div', 'asig-leyenda');
+  const ej = (cls, car, txt2) => { const s = el('span');
+    const c0 = el('i', 'asig-cel ' + cls); c0.textContent = car; s.append(c0, document.createTextNode(txt2));
+    return s; };
+  ley.append(ej('', '', 'sin habilitar'), ej('is-on', '✓', 'habilitado'),
+             ej('is-activa', '●', 'trabajando ahí ahora'));
+  pie.append(ley);
+
+  const r = el('div', 'regla-mixto');
+  r.append(svg('alerta'));
+  const rw = el('div');
+  rw.innerHTML = '<b>Agente mixto.</b> Quien queda habilitado a la vez en una saliente y una ' +
+    'entrante atiende las dos. La regla es: <b>mientras haya alguien esperando en la cola ' +
+    'entrante, el marcador no le entrega llamadas salientes</b>; cuando la cola se vacía, ' +
+    'vuelve a marcar.';
+  r.append(rw);
+  r.append(el('span', 'sello', 'PRÓXIMAMENTE'));
+  pie.append(r);
+  t.cuerpo.append(pie);
+  return t;
 }
 
 function tarjCampana(k) {
@@ -534,24 +675,27 @@ function tarjCampana(k) {
   }
 
   const zona = el('div', 'camp-agentes'); zona.dataset.camp = k.id;
-  const repintar = () => {
-    zona.replaceChildren();
-    if (!k.agentes.length) { const v = el('span'); v.style.cssText = 'font-size:10.5px;color:var(--text-muted);padding:0 4px';
-      v.textContent = 'Sin agentes asignados'; zona.append(v); }
-    k.agentes.forEach(id => { const a = porId(id); if (a) zona.append(chipAgente(a, k.id)); });
-  };
-  repintar();
+  const suyos = agentesDe(k.id);
+  if (!suyos.length) {
+    const v = el('span'); v.style.cssText = 'font-size:10.5px;color:var(--text-muted);padding:0 4px';
+    v.textContent = 'Sin agentes asignados'; zona.append(v);
+  }
+  suyos.forEach(a => zona.append(chipAgente(a, k.id)));
   zona.ondragover = e => { e.preventDefault(); zona.classList.add('is-drop'); };
   zona.ondragleave = () => zona.classList.remove('is-drop');
+  /* Arrastrar MUEVE: sale de donde estaba y entra acá. Para que trabaje en
+     dos a la vez está el panel de asignación, que es explícito. */
   zona.ondrop = e => {
     e.preventDefault(); zona.classList.remove('is-drop');
     const [id, orig] = String(e.dataTransfer.getData('text/plain')).split('|');
-    if (!id || k.agentes.includes(id)) return;
-    if (orig) { const o = CAMPANAS.find(x => x.id === orig); if (o) o.agentes = o.agentes.filter(x => x !== id); }
-    k.agentes.push(id);
-    const a = porId(id); if (a) a.camp = k.id;
+    const a = porId(id);
+    if (!a || a.camps.includes(k.id)) return;
+    if (orig) a.camps = a.camps.filter(x => x !== orig);
+    a.camps = a.camps.concat(k.id);
+    if (orig ? a.activa === orig : !a.activa) a.activa = k.id;
+    normalizar(a);
     irA('campanas');
-    aviso((a ? a.nombre : 'El agente') + ' pasó a ' + k.nombre);
+    aviso(a.nombre + (orig ? ' pasó de ' + nombreCamp(orig) + ' a ' : ' entró a ') + k.nombre);
   };
   b.append(zona);
   t.append(b);
@@ -1614,9 +1758,20 @@ function fichaAgente(id) {
   const w = el('div');
   const b0 = el('b'); b0.style.fontSize = '16px'; b0.textContent = a.nombre; w.append(b0);
   const e0 = el('div'); e0.style.cssText = 'font-size:11.5px;color:var(--text-muted)';
-  e0.textContent = 'Anexo ' + a.id + ' · ' + a.camp + ' · entró a las ' + a.login;
-  w.append(e0); cab.append(w);
-  const p = pill(a.estado); p.style.marginLeft = 'auto'; cab.append(p);
+  e0.textContent = 'Anexo ' + a.id + ' · entró a las ' + a.login +
+    ' · trabajando en ' + (a.activa ? nombreCamp(a.activa) : 'ninguna campaña');
+  w.append(e0);
+  if (a.camps.length) {
+    const hab = el('div'); hab.style.cssText = 'font-size:10.5px;color:var(--text-muted);margin-top:2px';
+    hab.textContent = 'Habilitado en: ' + a.camps.map(nombreCamp).join(' · ');
+    w.append(hab);
+  }
+  cab.append(w);
+  if (esMixto(a)) {
+    const mx = el('span', 'pill pill--sin pill--mixto', 'MIXTO');
+    mx.style.marginLeft = 'auto'; cab.append(mx);
+  }
+  const p = pill(a.estado); p.style.marginLeft = esMixto(a) ? '6px' : 'auto'; cab.append(p);
   cu.append(cab);
 
   const k = el('div', 'kpis');

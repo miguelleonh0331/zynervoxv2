@@ -188,6 +188,11 @@ const CAPITULOS = [
   await narrar('Acá se arman las campañas, salientes y entrantes, en la misma pantalla.');
   enfocar('#cardCola');
   await narrar('Mover a alguien de una campaña a otra es arrastrarlo. Abajo, quién está esperando en la línea entrante.');
+  enfocar('#cardAsignacion');
+  await narrar('Acá se define en qué campañas puede trabajar cada uno. Quien cruza una saliente con una entrante queda mixto: atiende las dos.');
+  // Se marca una casilla de verdad: Jorge pasa a atender también entrantes
+  // y el aviso lo nombra. Es la demostración, no una captura.
+  await clicEn('#asig-5005-entrantes');
 }},
 
 {n:8, titulo:'Carga de base', sub:'Del archivo a la campaña', correr: async () => {

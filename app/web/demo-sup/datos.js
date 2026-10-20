@@ -23,15 +23,23 @@ function sembrar(s){ return function(){ s|=0; s=s+0x6D2B79F5|0;
   return ((t^t>>>14)>>>0)/4294967296; }; }
 
 /* ----------------------------------------------------------- equipo --- */
+/* Cada agente puede estar habilitado en VARIAS campañas (camps) y estar
+   trabajando en UNA a la vez (activa). Son dos cosas distintas y así
+   funciona de verdad: `v2_dialer_agent_campaigns` es una tabla de relación
+   —un agente, muchas campañas— y `agent_status.selected_campaign_id` guarda
+   en cuál entró hoy. El supervisor decide lo primero; el agente, lo segundo.
+
+   Cuando alguien queda habilitado a la vez en una saliente y una entrante
+   se le llama agente MIXTO. */
 const AGENTES = [
-  {id:'5000', nombre:'Ana Torres',      camp:'carsa0001',   estado:'call',  llam:58, cont:42, vent:6, monto:29800, ocup:78, login:'07:58', pausaMin:42, punt:'ok',    sem:'5001'},
-  {id:'5001', nombre:'Luis Ramírez',    camp:'carsa0001',   estado:'pausa', llam:52, cont:38, vent:5, monto:24500, ocup:71, login:'08:02', pausaMin:51, punt:'ok',    sem:'5002', motivo:'Refrigerio', desde:14*60+18},
-  {id:'5002', nombre:'María Chávez',    camp:'renovaciones',estado:'libre', llam:61, cont:40, vent:4, monto:18600, ocup:74, login:'07:55', pausaMin:38, punt:'ok',    sem:'5003'},
-  {id:'5003', nombre:'Carlos Díaz',     camp:'carsa0001',   estado:'call',  llam:47, cont:31, vent:4, monto:16800, ocup:69, login:'08:14', pausaMin:46, punt:'tarde', sem:'5004'},
-  {id:'5004', nombre:'Valeria Rojas',   camp:'renovaciones',estado:'wrap',  llam:39, cont:28, vent:3, monto:14200, ocup:66, login:'08:01', pausaMin:44, punt:'ok',    sem:'5005'},
-  {id:'5005', nombre:'Jorge Quispe',    camp:'carsa0001',   estado:'call',  llam:44, cont:29, vent:3, monto:12900, ocup:72, login:'07:59', pausaMin:40, punt:'ok',    sem:'5006'},
-  {id:'5006', nombre:'Diana Paredes',   camp:'renovaciones',estado:'pausa', llam:33, cont:19, vent:1, monto:4800,  ocup:54, login:'08:06', pausaMin:87, punt:'ok',    sem:'5007', motivo:'Baño', desde:14*60+19},
-  {id:'5007', nombre:'Marco Salinas',   camp:'carsa0001',   estado:'off',   llam:12, cont:7,  vent:0, monto:0,     ocup:31, login:'10:41', pausaMin:22, punt:'falta', sem:'5008'},
+  {id:'5000', nombre:'Ana Torres',    camps:['carsa0001','entrantes'],    activa:'carsa0001',    estado:'call',  llam:58, cont:42, vent:6, monto:29800, ocup:78, login:'07:58', pausaMin:42, punt:'ok'},
+  {id:'5001', nombre:'Luis Ramírez',  camps:['carsa0001'],                activa:'carsa0001',    estado:'pausa', llam:52, cont:38, vent:5, monto:24500, ocup:71, login:'08:02', pausaMin:51, punt:'ok',    motivo:'Refrigerio', desde:14*60+18},
+  {id:'5002', nombre:'María Chávez',  camps:['renovaciones','entrantes'], activa:'renovaciones', estado:'libre', llam:61, cont:40, vent:4, monto:18600, ocup:74, login:'07:55', pausaMin:38, punt:'ok'},
+  {id:'5003', nombre:'Carlos Díaz',   camps:['carsa0001','renovaciones'], activa:'carsa0001',    estado:'call',  llam:47, cont:31, vent:4, monto:16800, ocup:69, login:'08:14', pausaMin:46, punt:'tarde'},
+  {id:'5004', nombre:'Valeria Rojas', camps:['renovaciones'],             activa:'renovaciones', estado:'wrap',  llam:39, cont:28, vent:3, monto:14200, ocup:66, login:'08:01', pausaMin:44, punt:'ok'},
+  {id:'5005', nombre:'Jorge Quispe',  camps:['carsa0001'],                activa:'carsa0001',    estado:'call',  llam:44, cont:29, vent:3, monto:12900, ocup:72, login:'07:59', pausaMin:40, punt:'ok'},
+  {id:'5006', nombre:'Diana Paredes', camps:['renovaciones','postventa'], activa:'renovaciones', estado:'pausa', llam:33, cont:19, vent:1, monto:4800,  ocup:54, login:'08:06', pausaMin:87, punt:'ok',    motivo:'Baño', desde:14*60+19},
+  {id:'5007', nombre:'Marco Salinas', camps:[],                           activa:null,           estado:'off',   llam:12, cont:7,  vent:0, monto:0,     ocup:31, login:'10:41', pausaMin:22, punt:'falta'},
 ];
 const porId = id => AGENTES.find(a => a.id === id);
 const ESTADOS = {
@@ -103,22 +111,28 @@ const ALERTAS = [
 ];
 
 /* ------------------------------------------------------ campañas ------ */
+/* Las campañas ya no guardan su lista de agentes: la fuente única es
+   AGENTES[].camps y de ahí se deriva. Con dos listas había que mantenerlas
+   sincronizadas a mano, y en cuanto alguien esté en dos campañas se
+   desincronizan. */
 const CAMPANAS = [
   {id:'carsa0001', nombre:'Crédito personal — Carsa', tipo:'out', estado:'on', nivel:2.4,
-   leads:1000, pend:214, hechas:786, cont:512, vent:23, abandono:4.2, canales:12,
-   agentes:['5000','5003','5005','5007']},
+   leads:1000, pend:214, hechas:786, cont:512, vent:23, abandono:4.2, canales:12},
   {id:'renovaciones', nombre:'Renovación de póliza', tipo:'out', estado:'on', nivel:1.8,
-   leads:640, pend:388, hechas:252, cont:161, vent:8, abandono:1.9, canales:8,
-   agentes:['5002','5004','5006']},
+   leads:640, pend:388, hechas:252, cont:161, vent:8, abandono:1.9, canales:8},
   {id:'cobranza', nombre:'Cobranza temprana', tipo:'out', estado:'off', nivel:1.0,
-   leads:1420, pend:1420, hechas:0, cont:0, vent:0, abandono:0, canales:6, agentes:[]},
+   leads:1420, pend:1420, hechas:0, cont:0, vent:0, abandono:0, canales:6},
   {id:'entrantes', nombre:'Ventas — línea entrante', tipo:'in', estado:'on',
-   recibidas:148, atendidas:139, abandonadas:9, nivelServicio:91, esperaProm:18, canales:20,
-   agentes:['5002']},
+   recibidas:148, atendidas:139, abandonadas:9, nivelServicio:91, esperaProm:18, canales:20},
   {id:'postventa', nombre:'Soporte posventa', tipo:'in', estado:'on',
-   recibidas:63, atendidas:61, abandonadas:2, nivelServicio:96, esperaProm:11, canales:10,
-   agentes:[]},
+   recibidas:63, atendidas:61, abandonadas:2, nivelServicio:96, esperaProm:11, canales:10},
 ];
+const campPorId  = id => CAMPANAS.find(c => c.id === id);
+const nombreCamp = id => (campPorId(id) || {}).nombre || '—';
+const agentesDe  = id => AGENTES.filter(a => a.camps.includes(id));
+/* Mixto: habilitado a la vez en una saliente y una entrante. */
+const esMixto = a => a.camps.some(c => (campPorId(c) || {}).tipo === 'out')
+                  && a.camps.some(c => (campPorId(c) || {}).tipo === 'in');
 const COLA_IN = [
   {quien:'Pedro Luna Ascencio', tel:'943220871', esp:37, motivo:'Consulta de tasa'},
   {quien:'Número no registrado', tel:'929887340', esp:12, motivo:'Sin clasificar'},

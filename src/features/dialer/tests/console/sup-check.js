@@ -169,7 +169,21 @@ check('campañas: cinco campañas', cuantos('.camp') === 5, cuantos('.camp') + '
 check('campañas: hay salientes y entrantes',
   cuantos('.camp-tipo--out') === 3 && cuantos('.camp-tipo--in') === 2);
 check('campañas: zonas para soltar agentes', cuantos('.camp-agentes') === 5);
-check('campañas: banco de agentes disponible', !!$('banco'));
+check('campañas: hay panel de asignación', !!$('cardAsignacion'));
+check('campañas: la grilla es agentes por campañas',
+  cuantos('#asigBody tr') === 8 && cuantos('#asigBody .asig-cel') === 40,
+  cuantos('#asigBody tr') + ' filas, ' + cuantos('#asigBody .asig-cel') + ' casillas');
+check('campañas: marca dónde trabaja ahora cada uno',
+  cuantos('#asigBody .asig-cel.is-activa') === 7,
+  cuantos('#asigBody .asig-cel.is-activa') + ' activas');
+check('campañas: distingue habilitado de activo',
+  cuantos('#asigBody .asig-cel.is-on') === 4,
+  cuantos('#asigBody .asig-cel.is-on') + ' habilitados no activos');
+check('campañas: señala a los agentes mixtos', cuantos('.pill--mixto') >= 3);
+check('campañas: explica la regla del agente mixto',
+  /mientras haya alguien esperando en la cola/i.test(txt('cardAsignacion')));
+check('campañas: hay zona de sin asignar', !!$('sinAsignar'));
+check('campañas: explica cómo se asigna', /Para que esté en dos a la vez/.test(txt('cardBanco')));
 check('campañas: la cola de entrantes está', !!$('cardCola'));
 check('campañas: muestra el nivel de servicio', /91 %/.test(txt('cardCola')));
 
@@ -344,7 +358,7 @@ check('buscador: vacío no muestra nada', $('sugerencias').hidden);
 
   /* Cada frase narrada necesita su archivo de audio. */
   const frases = sandbox.__FRASES.map(f => f.t);
-  check('el recorrido narra 35 frases', frases.length === 35, frases.length + '');
+  check("el recorrido narra 36 frases", frases.length === 36, frases.length + "");
   const sinAudio = [];
   for (const f of new Set(frases)) {
     const n = 'v' + sandbox.__api.hashTexto(f) + '.mp3';

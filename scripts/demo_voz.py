@@ -187,9 +187,19 @@ def cmd_generar(forzar=False):
     fs = frases()
     for f in fs:
         f['archivo'] = nombre_archivo(f['texto']) + '.mp3'
+    # Falta lo que no tiene archivo, y nada más.
+    #
+    # El nombre del archivo SALE del texto (nombre_archivo), así que si el
+    # archivo existe, su contenido corresponde a ese texto: no hace falta
+    # comparar huellas para saberlo. Antes se comparaba contra el índice,
+    # que está ordenado por posición (n01, n02…), y entonces insertar una
+    # frase en el medio corría la numeración y marcaba como pendientes a
+    # todas las siguientes —ya grabadas— con el gasto que eso supone.
+    #
+    # Si lo que cambia es la VOZ, el texto es el mismo y el nombre también:
+    # ese caso se resuelve con --forzar, que es explícito.
     pendientes = [f for f in fs
-                  if forzar or indice.get(f['id'], {}).get('huella') != huella(f['texto'])
-                  or not os.path.exists(os.path.join(AUDIO, f['archivo']))]
+                  if forzar or not os.path.exists(os.path.join(AUDIO, f['archivo']))]
     gasto = sum(len(f['texto']) for f in pendientes)
 
     k = llave()
