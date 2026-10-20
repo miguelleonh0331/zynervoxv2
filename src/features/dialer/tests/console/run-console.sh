@@ -13,4 +13,8 @@ node "$here/console.js" || exit 1
 # La presentación de app/web/demo se verifica aparte: no tiene servidor ni
 # base, así que sin esto no habría forma de saber si el guion corre entero.
 echo
-node "$here/demo-check.js"
+node "$here/demo-check.js" || exit 1
+
+# Y la maqueta de supervisión de app/web/demo-sup, por lo mismo.
+echo
+node "$here/sup-check.js"

@@ -15,7 +15,14 @@ class El {
     this.tagName = String(tag).toUpperCase();
     this.childNodes = []; this.parentNode = null;
     this.style = {setProperty(k, v) { this[k] = v; }};
-    this.dataset = {}; this._attrs = {}; this._cls = new Set(); this._listeners = {};
+    this._attrs = {}; this._cls = new Set(); this._listeners = {};
+    // dataset escribe el atributo, como en el navegador: n.dataset.ag = '5000'
+    // deja data-ag="5000" y el selector [data-ag] lo encuentra.
+    this.dataset = new Proxy({}, {
+      set: (t, k, v) => { t[k] = String(v);
+        this._attrs['data-' + String(k).replace(/[A-Z]/g, c => '-' + c.toLowerCase())] = String(v);
+        return true; },
+    });
     this._text = ''; this.checked = false; this.disabled = false; this.hidden = false; this.selected = false;
   }
   _adopt(n) { const x = (n instanceof El || n instanceof TextNode) ? n : new TextNode(n); x.parentNode = this; return x; }
@@ -72,7 +79,17 @@ class El {
     if (k === 'checked') this.checked = true;
     if (k.startsWith('data-')) this.dataset[k.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = String(v);
   }
-  getAttribute(k) { return k in this._attrs ? this._attrs[k] : null; }
+  // El navegador mantiene juntos el atributo y la propiedad: poner n.id = 'x'
+  // hace que getAttribute('id') devuelva 'x', y classList.add deja el
+  // atributo class al día. Sin esto, matches('#x') y getAttribute('class')
+  // fallaban para todo lo que el código construye por propiedad, que es casi
+  // todo: las pruebas daban por ausente algo que en pantalla estaba.
+  get id() { return this._attrs.id || ''; }
+  set id(v) { this._attrs.id = String(v); }
+  getAttribute(k) {
+    if (k === 'class') return this._cls.size ? [...this._cls].join(' ') : (this._attrs.class || null);
+    return k in this._attrs ? this._attrs[k] : null;
+  }
   get title() { return this._attrs.title || ''; }
   set title(v) { this._attrs.title = String(v); }
   get className() { return [...this._cls].join(' '); }
@@ -130,7 +147,15 @@ class El {
     return ev;
   }
   focus() {}
-  click() { this.dispatch('click'); }
+  // El navegador dispara onclick además de los oyentes registrados. Sin
+  // esto, apretar un botón construido con n.onclick = … no hacía nada y la
+  // prueba concluía que el botón no servía.
+  click() {
+    if (typeof this.onclick === 'function') {
+      this.onclick({type:'click', target:this, preventDefault() {}, stopPropagation() {}});
+    }
+    this.dispatch('click');
+  }
   scrollIntoView() {}
   remove() {
     if (this.parentNode) this.parentNode.childNodes = this.parentNode.childNodes.filter(n => n !== this);
@@ -191,6 +216,7 @@ function makeDocument(html) {
     // createElement el navegador no los dibuja. Acá se registra el espacio
     // para poder comprobarlo desde las pruebas.
     createElementNS: (ns, t) => { const n = new El(t); n.namespaceURI = ns; return n; },
+    createTextNode: t => new TextNode(t),
     getElementById: id => {
       const n = byId[id];
       if (!n) return null;
