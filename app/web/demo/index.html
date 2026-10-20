@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0F172A">
+<title>Zynervox · Recorrido de la consola del asesor</title>
+
+<!--
+  PRESENTACIÓN. No es la consola: es una réplica que corre sola.
+
+  No hay PHP, ni base de datos, ni sesión, ni discador. Todo lo que se ve
+  acá está escrito en demo.js. La consola real de los asesores vive en
+  modules/agc/ y esta página no la toca ni la carga.
+
+  consola.css es una COPIA de modules/agc/crm.css, a propósito: así un
+  cambio de estilo en la consola no puede descolocar el guion el día de la
+  presentación. Si la consola cambia de aspecto, hay que volver a copiarla.
+-->
+<link rel="stylesheet" href="consola.css">
+<link rel="stylesheet" href="demo.css">
+</head>
+<body class="demo-body">
+
+<!-- ===================== PORTADA ===================== -->
+<section class="portada" id="portada">
+  <div class="portada-caja">
+    <span class="portada-marca"><i></i> ZYNERVOX</span>
+    <h1>Todo el contacto con su cliente,<br>en una sola pantalla</h1>
+    <p class="portada-bajada">
+      Llamadas, WhatsApp, correo, SMS, historial, tipificación y asistencia
+      con inteligencia artificial. Un solo inicio de sesión. El asesor no
+      sale nunca de esta ventana.
+    </p>
+    <button class="portada-play" id="btnPlay" type="button">
+      <svg viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" fill="currentColor"/></svg>
+      Ver el recorrido
+    </button>
+    <p class="portada-pie">Recorrido automático · <span id="portadaDur">6 minutos</span> · No requiere interacción</p>
+  </div>
+</section>
+
+<!-- ===================== ESCENARIO ===================== -->
+<div class="escena" id="escena" hidden>
+
+  <!-- La consola replicada. Marcado tomado de modules/agc/crm.php. -->
+  <div class="pantalla" id="pantalla">
+
+    <!-- Acceso: primer capítulo del recorrido. -->
+    <div class="login-body login-demo" id="loginDemo">
+      <main class="login-box">
+        <header class="login-head">
+          <span class="brand"><i></i> ZYNERVOX <b>CRM</b></span>
+          <span class="login-sub">Consola de atención</span>
+        </header>
+        <form class="login-form" onsubmit="return false">
+          <label for="dUser">Usuario</label>
+          <input id="dUser" type="text" value="" autocomplete="off">
+          <label for="dPass">Contraseña</label>
+          <input id="dPass" type="password" value="" autocomplete="off">
+          <button type="button" class="btn btn--primary" id="dEntrar">Entrar</button>
+        </form>
+        <footer class="login-foot">Acceso restringido a agentes de Zynervox</footer>
+      </main>
+    </div>
+
+  <div id="app">
+
+    <!-- Barra lateral del asesor.
+         Ojo: la consola del agente está aislada y NO navega al panel de
+         administración. Las entradas que todavía no tienen pantalla propia van
+         como maqueta (aria-disabled, sin destino): se ven, se entiende que
+         vienen después, y no abren nada que al asesor no le corresponda.
+         Cualquiera que les dé rumbo debe declarar antes la página en
+         IsolatedGate.php y revisar el permiso, no sólo poner un href. -->
+    <aside class="side" id="side">
+      <div class="side-brand"><i></i><span>ZYNERVOX <b>CRM</b></span></div>
+
+      <nav class="side-nav" aria-label="Secciones">
+        <button class="side-link" type="button" aria-disabled="true" disabled>
+          <svg viewBox="0 0 24 24" class="ico"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>
+          <span>Inicio</span></button>
+        <button class="side-link is-on" type="button" id="navClientes" data-vista="clientes" aria-current="page">
+          <svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+          <span>Mis clientes</span><b class="side-count" id="sideCount">0</b></button>
+        <button class="side-link" type="button" aria-disabled="true" disabled>
+          <svg viewBox="0 0 24 24" class="ico"><path d="M3 11l18-7-7 18-2.5-8z"/></svg>
+          <span>Campañas</span></button>
+        <button class="side-link" type="button" id="navTareas" data-vista="tareas">
+          <svg viewBox="0 0 24 24" class="ico"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
+          <span>Tareas</span><b class="side-count side-count--alerta" id="sideTareas">0</b></button>
+        <button class="side-link" type="button" id="navReportes" data-vista="reportes">
+          <svg viewBox="0 0 24 24" class="ico"><path d="M5 20V9m7 11V4m7 16v-7"/></svg>
+          <span>Reportes</span></button>
+        <button class="side-link" type="button" id="navWiki" data-vista="conocimiento">
+          <svg viewBox="0 0 24 24" class="ico"><path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2z"/><path d="M8 7h7"/></svg>
+          <span>Base de conocimiento</span></button>
+      </nav>
+
+      <div class="side-foot">
+        <button class="side-link" type="button" aria-disabled="true" disabled>
+          <svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.2 2.4c-.6.2-.7.6-.7 1.1v.5"/><path d="M12 17h.01"/></svg>
+          <span>Soporte</span></button>
+        <button class="side-link side-link--exit" id="exit" type="button" title="Volver al panel">
+          <svg viewBox="0 0 24 24" class="ico"><path d="M15 17l5-5-5-5"/><path d="M20 12H9"/><path d="M11 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/></svg>
+          <span>Cerrar sesión</span></button>
+
+        <!-- Resumen del turno: sale de las llamadas que el agente ya tipificó. -->
+        <div class="perf">
+          <h2>Tipificación de hoy</h2>
+          <div class="perf-body">
+            <div class="donut" id="perfDonut"><span id="perfRatio">0%</span><em>Contacto</em></div>
+            <dl class="perf-kpis" id="perfKpis"></dl>
+          </div>
+          <div class="perf-tip" id="perfTip"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Barra superior: búsqueda global, estado de la llamada e identidad. -->
+    <header class="topbar">
+      <button class="topbar-toggle" id="sideToggle" type="button"
+              aria-expanded="true" aria-controls="side" title="Plegar el menú">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+
+      <div class="search">
+        <svg viewBox="0 0 24 24" class="ico"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="search" type="search" autocomplete="off"
+               placeholder="Buscar cliente por nombre, documento o teléfono…">
+        <kbd>/</kbd>
+      </div>
+
+      <!-- Marcar: campaña y disparo, pegados al buscador. Es lo que el asesor
+           más usa en todo el turno, así que vive en la barra y no enterrado en
+           una columna. -->
+      <div class="topbar-dial">
+        <label class="sr-only" for="ctlCampaign">Campaña para marcar</label>
+        <select id="ctlCampaign"><option value="">Sin campañas manuales</option></select>
+        <button class="btn-sm btn-sm--primary" id="ctlDial" type="button">Marcar siguiente lead</button>
+      </div>
+
+      <div class="call-state" id="dialerState" data-on="wait" title="Conexión con el discador">
+        <span class="dot"></span>
+        <span id="dialerLabel">Discador…</span>
+      </div>
+
+      <!-- Pausa del puesto, al lado del estado del discador: pausar es cambiar
+           de estado en la cola, no una acción sobre la ficha abierta. Elegir
+           el motivo pausa en el acto; el botón sólo aparece para reanudar. -->
+      <div class="topbar-pause" id="ctlPauseWrap">
+        <label class="sr-only" for="ctlPauseType">Motivo de pausa</label>
+        <select id="ctlPauseType"><option value="">PAUSA</option></select>
+      </div>
+      <button class="btn-sm btn-sm--primary topbar-resume" id="ctlPause" type="button" hidden>Reanudar</button>
+      <button class="btn-sm btn-sm--danger topbar-resume" id="ctlHangup" type="button" hidden>Colgar</button>
+      <span class="topbar-agent" id="agentState">—</span>
+
+      <div class="call-state" id="callState" data-on="false">
+        <span class="dot"></span>
+        <span id="callLabel">Sin llamada</span>
+        <b id="callTimer">00:00</b>
+      </div>
+
+      <div class="who">
+        <span class="avatar avatar--sm" id="whoAv">—</span>
+        <span class="who-txt"><b id="opName">—</b><em id="opRole">—</em></span>
+      </div>
+    </header>
+
+    <!-- Columna 1: cartera del asesor. -->
+    <section class="col col--list">
+      <nav class="list-tabs" id="listTabs"></nav>
+      <div class="list-body" id="listBody"></div>
+      <div class="list-foot"><span id="listCount">—</span></div>
+    </section>
+
+    <!-- Columna 2: expediente del cliente. -->
+    <section class="col col--detail">
+      <header class="det-head" id="detHead"></header>
+      <nav class="det-tabs" id="detTabs"></nav>
+
+      <!-- Ficha del cliente, a todo el ancho de la columna. -->
+      <div class="det-body" id="detBody"></div>
+
+      <!-- Pie del expediente: la botonera y el historial, a todo el ancho. Lo
+           repinta el JS junto con el cuerpo; no debe alojar nada con estado
+           propio, que por eso la tipificación vive en su propio depósito. -->
+      <div class="det-foot" id="detFoot"></div>
+    </section>
+
+    <!-- Columna 3: trabajo del asesor sobre la llamada en curso. -->
+    <aside class="col col--work">
+
+      <!-- Aviso del ciclo: cuenta atrás de la próxima llamada y poco más. Se
+           oculta solo cuando no tiene nada que decir, y entonces la
+           transcripción se queda con la columna entera. -->
+      <div class="note" id="ctlLead" hidden></div>
+
+      <!-- Área de pruebas: transcripción en vivo de la voz del agente.
+           Vive fuera de #detBody a propósito: ese contenedor se reconstruye
+           entero en cada repintado del expediente y borraría lo transcrito.
+           El motor de voz escribe por window.ZVT o por postMessage; ver
+           docs/CRM_MODULE.md § Transcripción en vivo. -->
+      <section class="trx" id="trx">
+        <header class="trx-head">
+          <span>Transcripción en vivo</span>
+          <span class="trx-estado" id="trxEstado">en espera</span>
+          <span class="spacer"></span>
+          <button class="btn-sm btn-sm--ghost" type="button" id="trxClear">Limpiar</button>
+          <button class="btn-sm btn-sm--ghost" type="button" id="trxToggle" aria-expanded="true">Ocultar</button>
+        </header>
+
+        <!-- Onda de actividad. DECORATIVA: no mide el audio de la llamada, que
+             vive en el softphone y nunca pasa por el navegador. Se agita con el
+             texto que llega y se aquieta en el silencio. El día que exista un
+             medidor de verdad, basta con llamar a ZVT.nivel(0..1). -->
+        <div class="onda" id="onda" aria-hidden="true"></div>
+
+        <div class="trx-body" id="trxBody"></div>
+      </section>
+
+      <!-- Asistente. Hoy responde con respuestas preparadas: la base de
+           conocimiento todavía no existe. Se apaga con ASISTENTE_DEMO en
+           crm.js; apagado, avisa que no está conectado en vez de inventar. -->
+      <section class="asis" id="asis">
+        <header class="asis-head">
+          <svg viewBox="0 0 24 24" class="ico ico--fill"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 5V5a2 2 0 0 1 2-2z"/></svg>
+          <span>Pregúntale a tu asistente</span>
+          <span class="spacer"></span>
+          <button class="asis-link" type="button" id="asisEjemplos">Ver ejemplos</button>
+        </header>
+
+        <div class="asis-body" id="asisBody"></div>
+
+        <div class="asis-chips" id="asisChips"></div>
+
+        <form class="asis-form" id="asisForm">
+          <label class="sr-only" for="asisTexto">Pregunta para el asistente</label>
+          <textarea id="asisTexto" rows="2" maxlength="500"
+                    placeholder="Escribe tu pregunta sobre el producto, campañas, objeciones…"></textarea>
+          <button class="asis-enviar" type="submit" id="asisEnviar" title="Enviar">
+            <svg viewBox="0 0 24 24" class="ico ico--fill"><path d="M3 3l18 9-18 9 4-9z"/></svg>
+          </button>
+        </form>
+      </section>
+
+    </aside>
+
+    <!-- Secciones que no son la cartera. Ocupan el lugar de las tres columnas
+         centrales; éstas quedan en el documento, no se destruyen, para no
+         perder la transcripción ni lo que el asesor tenga a medio escribir. -->
+    <main class="vista" id="vista" hidden></main>
+
+    <footer class="statusbar">
+      <span id="msg">Cargando…</span>
+      <span style="margin-left:auto">Llamadas y tipificación en vivo · el resto de la ficha es maqueta</span>
+    </footer>
+
+  </div>
+
+  <!-- Depósito de la hoja de tipificación. Vive fuera de la pantalla y se
+       traslada a la capa cuando hace falta; nunca se recrea, para no perder
+       lo que el asesor tenga escrito ni sus escuchas. -->
+  <div id="gestionHost" hidden>
+      <div class="block block--grow">
+        <h2>Tipificar gestión</h2>
+        <div class="block-body block-body--pad">
+
+          <div class="field field--step">
+            <label for="tip0" data-step="1">Nivel 1 · Resultado</label>
+            <select id="tip0"></select>
+          </div>
+          <div class="field field--step">
+            <label for="tip1" data-step="2">Nivel 2 · Motivo</label>
+            <select id="tip1"></select>
+          </div>
+          <div class="field field--step">
+            <label for="tip2" data-step="3">Nivel 3 · Desenlace</label>
+            <select id="tip2"></select>
+          </div>
+
+          <div class="outcome" id="tipOut">Elige los tres niveles para habilitar el registro.</div>
+          <div class="note" id="tipPend" hidden></div>
+          <button class="btn-sm btn-sm--primary" id="tipPendBtn" type="button" style="width:100%;margin-bottom:8px" hidden></button>
+
+          <div class="field">
+            <label for="tipNota">Nota de la gestión</label>
+            <textarea id="tipNota" maxlength="2000" placeholder="Observaciones de la llamada…"></textarea>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn btn--primary btn--wide" id="btnGrabar" type="button" disabled>Grabar gestión</button>
+        </div>
+      </div>
+  </div>
+
+  <div id="layer" hidden></div>
+    <!-- Puntero del recorrido: se mueve y hace clic solo. -->
+    <div class="puntero" id="puntero" hidden>
+      <svg viewBox="0 0 24 24"><path d="M5 2l14 10-6 1 3.5 6.5-2.6 1.4L10.5 14 5 18z"/></svg>
+    </div>
+    <div class="foco" id="foco" hidden></div>
+  </div>
+
+  <!-- ===================== NARRACIÓN ===================== -->
+  <aside class="narra" id="narra">
+    <div class="narra-cap">
+      <span class="narra-n" id="narraN">1</span>
+      <div>
+        <b id="narraTitulo">—</b>
+        <span id="narraCap">—</span>
+      </div>
+    </div>
+    <p class="narra-txt" id="narraTxt">—</p>
+    <ul class="narra-puntos" id="narraPuntos"></ul>
+
+    <div class="narra-pie">
+      <div class="narra-barra"><i id="narraBarra"></i></div>
+      <div class="narra-ctl">
+        <button type="button" id="btnPrev" title="Capítulo anterior">⏮</button>
+        <button type="button" id="btnPausa" title="Pausar">⏸</button>
+        <button type="button" id="btnNext" title="Capítulo siguiente">⏭</button>
+        <span class="narra-reloj" id="narraReloj">0:00</span>
+      </div>
+    </div>
+
+    <nav class="narra-idx" id="narraIdx" aria-label="Capítulos"></nav>
+  </aside>
+</div>
+
+<script src="base.js" defer></script>
+<script src="secciones.js" defer></script>
+<script src="demo.js" defer></script>
+</body>
+</html>

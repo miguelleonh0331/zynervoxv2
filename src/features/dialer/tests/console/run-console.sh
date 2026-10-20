@@ -8,4 +8,9 @@
 set -euo pipefail
 here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 command -v node >/dev/null || { echo 'Falta node para ejecutar esta prueba.' >&2; exit 1; }
-exec node "$here/console.js"
+node "$here/console.js" || exit 1
+
+# La presentación de app/web/demo se verifica aparte: no tiene servidor ni
+# base, así que sin esto no habría forma de saber si el guion corre entero.
+echo
+node "$here/demo-check.js"

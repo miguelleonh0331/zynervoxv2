@@ -1,0 +1,754 @@
+/* Consola CRM de Atención Telefónica — Zynervox.
+   Estructura de tres columnas (cartera · expediente · panel de trabajo).
+
+   Estética: densa pero moderna. Se conserva la densidad —el asesor necesita
+   ver su cartera entera sin desplazarse— y se abandona la planitud del panel
+   admin: ahora hay esquinas suaves, sombras discretas y una paleta fría de
+   azules sobre gris muy claro. Todo el color sale de las variables de abajo:
+   cambiar la marca es cambiar este bloque, no rastrear la hoja entera. */
+:root{
+  --primary:#2563EB; --primary-hover:#1D4ED8; --dark:#0F172A;
+  --bg-main:#F4F7FB; --bg-card:#FFFFFF; --text:#0F172A; --text-muted:#64748B;
+  --border:#E2E8F0; --rule:#EEF2F7;
+  --ok:#16A34A; --warn:#D97706; --danger:#DC2626; --info:#2563EB; --wa:#22C55E; --sms:#7C3AED;
+  /* Tintes del primario, para fondos de selección sin opacidades sueltas. */
+  --primary-soft:#EFF6FF; --primary-soft2:#DBEAFE;
+  --radius:8px; --radius-sm:6px;
+  --shadow:0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.05);
+  --shadow-md:0 2px 10px rgba(15,23,42,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font:12px/1.3 Arial,Helvetica,sans-serif;color:var(--text);background:var(--bg-main)}
+button,input,select,textarea{font:inherit;color:inherit;border-radius:var(--radius-sm)}
+button{cursor:pointer}
+:focus-visible{outline:1px solid var(--primary);outline-offset:-1px}
+[hidden]{display:none!important}
+.ico{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* Variante maciza: a tamaño chico sobre fondo de color, el trazo fino se
+   deshace. Se rellena con el color del texto y se apaga el contorno. */
+.ico--fill{fill:currentColor;stroke:none}
+
+/* ------------------------------------------------- esqueleto de pantalla */
+/* Cuatro columnas: menú · cartera · expediente · trabajo. El menú se
+   pliega a una franja de iconos y le devuelve el ancho al expediente, que
+   es donde el asesor lee. El plegado se recuerda en el navegador. */
+#app{display:grid;grid-template-columns:var(--side-w,200px) 286px minmax(0,1fr) 300px;
+  grid-template-rows:38px minmax(0,1fr) 20px;height:100dvh}
+#app.is-plegado{--side-w:52px}
+@media(max-width:1500px){#app{grid-template-columns:var(--side-w,180px) 260px minmax(0,1fr) 280px}}
+.topbar{grid-column:2/-1;background:var(--dark);color:#fff;display:flex;align-items:center;gap:0}
+.statusbar{grid-column:2/-1;background:var(--bg-card);border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 8px;font-size:11px;color:var(--text-muted)}
+.col{min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg-card)}
+.col--list{border-right:1px solid var(--border)}
+.col--detail{background:var(--bg-main);overflow:hidden}
+.col--work{border-left:1px solid var(--border)}
+
+/* ------------------------------------------------------- barra superior */
+.brand{display:flex;align-items:center;gap:7px;padding:0 12px;font-weight:400;letter-spacing:.5px;font-size:11px;background:rgba(0,0,0,.18);align-self:stretch}
+.brand b{font-weight:700}
+.brand i{width:8px;height:8px;border-radius:50%;background:var(--primary);display:block;flex:none}
+.search{flex:1;max-width:260px;display:flex;align-items:center;gap:6px;margin:0 12px;padding:0 8px;height:26px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:999px}
+.search:focus-within{border-color:var(--primary)}
+.search .ico{color:#8E93A1}
+.search input{flex:1;min-width:0;height:100%;border:0;background:transparent;color:#fff;outline:none}
+.search input::placeholder{color:#8E93A1}
+.search kbd{font:10px Arial;color:#8E93A1;border:1px solid #4A4D5C;padding:0 4px;line-height:14px}
+.call-state{display:flex;align-items:center;gap:7px;margin-left:auto;padding:0 11px;height:24px;border:1px solid rgba(255,255,255,.18);border-radius:999px;font-size:11px;color:#CBD5E1}
+.call-state .dot{width:7px;height:7px;border-radius:50%;background:#6B7280;flex:none}
+.call-state b{color:#fff;font-variant-numeric:tabular-nums}
+.call-state[data-on=true]{border-color:var(--ok);background:rgba(21,128,61,.18);color:#D7F5E2}
+.call-state[data-on=true] .dot{background:#22C55E}
+/* Conexión con el discador: a la espera y en fallo. */
+.call-state[data-on=wait]{border-color:#6B7280;color:#9CA0AC}
+.call-state[data-on=wait] .dot{background:#9CA0AC}
+.call-state[data-on=false]#dialerState{border-color:var(--danger);background:rgba(185,28,28,.18);color:#FCA5A5}
+.call-state[data-on=false]#dialerState .dot{background:var(--danger)}
+#dialerState{margin-left:0;max-width:280px}
+
+/* Pausa del puesto, en la barra superior. Va pegada al estado del discador
+   porque habla de lo mismo: en qué situación está el agente frente a la
+   cola, no qué está haciendo con la ficha abierta. */
+/* Marcar, pegado al buscador: campaña y disparo. */
+.topbar-dial{flex:none;display:flex;align-items:center;gap:6px}
+.topbar-dial select{height:24px;max-width:150px;border:1px solid rgba(255,255,255,.2);border-radius:999px;
+  background:rgba(255,255,255,.08);color:#fff;padding:0 8px;font-size:11px}
+.topbar-dial select:hover{border-color:rgba(255,255,255,.4)}
+.topbar-dial select:focus{border-color:var(--primary);outline:none}
+.topbar-dial select option{background:var(--dark);color:#fff}
+.topbar-dial select:disabled{opacity:.5}
+.topbar-dial .btn-sm{height:24px;border-radius:999px;padding:0 14px;white-space:nowrap}
+
+.topbar-pause{flex:none;margin-left:8px}
+.topbar-pause select{height:24px;border:1px solid rgba(255,255,255,.2);border-radius:999px;
+  background:rgba(255,255,255,.08);color:#CBD5E1;padding:0 8px;font-size:11px;max-width:170px}
+.topbar-pause select:hover{border-color:rgba(255,255,255,.4);color:#fff}
+.topbar-pause select:focus{border-color:var(--primary);outline:none}
+.topbar-pause select option{background:var(--dark);color:#fff}
+.topbar-pause select:disabled{opacity:.5}
+.topbar-resume{flex:none;margin-left:8px;height:24px;border-radius:999px;padding:0 14px}
+/* Estado del puesto, junto a los controles que lo cambian. */
+.topbar-agent{flex:none;margin-left:10px;font-size:11px;font-weight:700;color:#CBD5E1;white-space:nowrap}
+
+/* Aviso del ciclo, al pie de la columna de trabajo. Oculto no ocupa nada y
+   la transcripción se queda con la columna entera. */
+#ctlLead{flex:none;margin:8px 8px 0}
+/* Etiqueta sólo para lectores de pantalla: el selector ya se explica solo. */
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0}
+#dialerLabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Chapa del operador: rostro, nombre y rol, en una pastilla propia. */
+.who{display:flex;align-items:center;gap:8px;margin-left:10px;padding:3px 12px 3px 4px;
+  background:rgba(255,255,255,.07);border-radius:999px}
+.who .avatar{width:26px;height:26px}
+.who-txt{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.who-txt b{font-size:11.5px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px}
+.who-txt em{font-size:9.5px;color:#94A3B8;font-style:normal}
+.topbar-exit{border:0;border-radius:0;background:transparent;color:#CBD5E1;padding:0 12px;height:100%;font-size:11px;border-left:1px solid rgba(255,255,255,.14)}
+.topbar-exit:hover{background:var(--danger);color:#fff}
+
+/* ------------------------------------------------------- barra lateral */
+.side{grid-row:1/-1;display:flex;flex-direction:column;min-height:0;overflow:hidden;
+  background:var(--dark);color:#CBD5E1;border-right:1px solid rgba(255,255,255,.07)}
+.side-brand{flex:none;display:flex;align-items:center;gap:9px;height:38px;padding:0 14px;
+  font-size:11px;letter-spacing:.5px;color:#fff;white-space:nowrap;background:rgba(0,0,0,.22)}
+.side-brand i{width:9px;height:9px;border-radius:50%;background:var(--primary);flex:none}
+.side-brand b{font-weight:700}
+.side-nav{flex:1;min-height:0;overflow:auto;padding:8px 8px 0}
+.side-foot{flex:none;padding:0 8px 8px;display:flex;flex-direction:column;gap:2px}
+
+/* Un solo tipo de fila para navegación y pie: mismo alto, mismo gesto. */
+.side-link{display:flex;align-items:center;gap:10px;width:100%;height:32px;padding:0 10px;
+  border:0;border-radius:var(--radius-sm);background:transparent;color:#CBD5E1;
+  font-size:12px;font-weight:400;text-align:left;white-space:nowrap}
+.side-link .ico{width:16px;height:16px;flex:none;stroke-width:1.9}
+.side-link>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.side-link:hover:not([disabled]){background:rgba(255,255,255,.08);color:#fff}
+.side-link.is-on{background:var(--primary);color:#fff;font-weight:700}
+.side-link.is-on .ico{stroke-width:2.2}
+/* Las entradas sin pantalla propia se ven, pero no mienten: no responden. */
+.side-link[disabled]{opacity:.42;cursor:default}
+.side-link--exit:hover:not([disabled]){background:var(--danger);color:#fff}
+.side-count{flex:none;min-width:20px;height:17px;padding:0 6px;border-radius:999px;
+  background:var(--primary);color:#fff;font-size:10px;font-weight:700;
+  display:inline-flex;align-items:center;justify-content:center}
+.side-link.is-on .side-count{background:rgba(255,255,255,.22)}
+
+/* Plegada: sólo iconos. El texto se va, el gesto se conserva. */
+.is-plegado .side-brand span,
+.is-plegado .side-link>span,
+.is-plegado .side-count,
+.is-plegado .perf{display:none}
+.is-plegado .side-brand{padding:0;justify-content:center}
+.is-plegado .side-link{padding:0;justify-content:center}
+
+.topbar-toggle{flex:none;width:38px;height:100%;border:0;border-radius:0;background:transparent;
+  color:#CBD5E1;display:flex;align-items:center;justify-content:center}
+.topbar-toggle:hover{background:rgba(255,255,255,.1);color:#fff}
+
+/* --------------------------------------------------------------- avatar */
+.avatar{display:inline-flex;align-items:center;justify-content:center;flex:none;overflow:hidden;
+  width:30px;height:30px;border-radius:50%;font-size:11px;font-weight:700;color:#fff;background:var(--dark);
+  letter-spacing:.3px;box-shadow:0 0 0 1px rgba(15,23,42,.06)}
+/* El rostro generado se dibuja como SVG dentro del círculo. */
+.avatar svg{width:100%;height:100%;display:block}
+.avatar--sm{width:22px;height:22px;font-size:9px}
+.avatar--lg{width:42px;height:42px;font-size:14px}
+
+/* ------------------------------------------------- columna 1: cartera */
+.list-tabs{flex:none;display:flex;border-bottom:1px solid var(--border)}
+.list-tabs button{flex:1;height:28px;border:0;border-right:1px solid var(--border);background:var(--bg-main);
+  color:var(--text-muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;padding:0 4px}
+.list-tabs button:hover{color:var(--primary)}
+.list-tabs button[aria-pressed=true]{background:var(--bg-card);color:var(--primary);box-shadow:inset 0 -2px 0 var(--primary)}
+.list-filters{flex:none;display:flex;border-bottom:1px solid var(--border)}
+.list-filters select{flex:1;min-width:0;height:23px;border:0;border-right:1px solid var(--border);background:var(--bg-card);padding:0 4px;font-size:11px;color:var(--text-muted)}
+.list-body{flex:1;min-height:0;overflow:auto}
+.list-foot{flex:none;height:20px;border-top:1px solid var(--border);background:var(--bg-main);display:flex;align-items:center;padding:0 8px;font-size:10px;color:var(--text-muted)}
+
+/* Tarjeta de cliente: avatar + datos + prioridad, en rejilla fija */
+.cli{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:0 8px;align-items:start;
+  padding:6px 8px;border-bottom:1px solid var(--rule);cursor:pointer;background:var(--bg-card)}
+.cli:hover{background:var(--primary-soft)}
+.cli[aria-current=true]{background:var(--primary-soft2);box-shadow:inset 3px 0 0 var(--primary)}
+.cli .avatar{grid-row:span 2}
+.cli-name{font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cli-tel{font-size:11px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+.cli-meta{grid-column:2/-1;display:flex;align-items:center;gap:6px;margin-top:2px;font-size:10px;color:var(--text-muted);min-width:0}
+.cli-meta .prod{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cli-meta .when{margin-left:auto;white-space:nowrap}
+.tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;padding:1px 7px;border:1px solid;border-radius:999px;white-space:nowrap}
+.tag--alta{color:var(--danger);border-color:var(--danger);background:#FEF2F2}
+.tag--media{color:var(--warn);border-color:var(--warn);background:#FFFBEB}
+.tag--baja{color:var(--text-muted);border-color:var(--border);background:var(--bg-main)}
+
+/* ------------------------------------------- columna 2: expediente */
+.det-head{flex:none;background:var(--bg-card);border-bottom:1px solid var(--border);padding:8px 12px;
+  display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:0 10px;align-items:center}
+.det-head .avatar{grid-row:span 2}
+.det-title{display:flex;align-items:center;gap:8px;min-width:0}
+.det-title h1{font-size:16px;font-weight:700;letter-spacing:.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.det-contact{grid-column:2;display:flex;flex-wrap:wrap;gap:0 14px;font-size:11px;color:var(--text-muted);margin-top:2px}
+.det-contact span{display:inline-flex;align-items:center;gap:4px;min-width:0}
+.det-contact b{color:var(--text);font-weight:400}
+.det-acts{grid-row:span 2;display:flex;gap:4px;align-items:center}
+
+.det-tabs{flex:none;display:flex;background:var(--bg-card);border-bottom:1px solid var(--border);overflow-x:auto}
+.det-tabs button{border:0;background:transparent;height:26px;padding:0 12px;font-size:11px;font-weight:700;color:var(--text-muted);white-space:nowrap}
+.det-tabs button:hover{color:var(--primary)}
+.det-tabs button[aria-pressed=true]{color:var(--text);box-shadow:inset 0 -2px 0 var(--primary)}
+.det-tabs .n{font-weight:400;color:var(--text-muted)}
+/* El expediente se parte en dos: la ficha del cliente a la izquierda y la
+   tipificación en una columna fija a su derecha. Tipificar es la tarea que
+   cierra cada llamada, así que va al lado de lo que el asesor está leyendo
+   y no en otra columna. */
+.det-body{flex:1;padding:8px 8px 0}
+/* Pie del expediente: botonera y historial a todo el ancho, bajo la fila que
+   comparten la ficha y la tipificación. Se queda con el alto sobrante. */
+.det-foot{flex:1;min-height:0;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
+.det-foot>.panel{flex:1;min-height:160px}
+/* Aviso de tipificación pendiente: el camino de vuelta a la hoja cerrada.
+   Va arriba del todo en el pie, donde no se puede pasar por alto. */
+.pendiente{flex:none;display:flex;align-items:center;gap:10px;padding:7px 11px;
+  background:#FFF7ED;border:1px solid #FDBA74;border-radius:var(--radius);
+  color:#9A3412;font-size:12px}
+.pendiente>span{flex:1;min-width:0}
+/* Con el chat abierto la conversación se queda con la fila entera. */
+.col--detail.is-chat .det-foot{display:none}
+
+/* Hoja de tipificación: el mismo bloque de siempre, trasladado a la capa.
+   Se le da ancho de hoja y el aspecto de tarjeta que tienen los paneles. */
+.sheet--gestion{width:min(420px,92vw);max-height:86vh;display:flex;flex-direction:column}
+.sheet--gestion>.block{min-height:0;border:0;border-radius:var(--radius);overflow:hidden}
+.sheet--gestion>.block>h2{height:30px;font-size:11px;letter-spacing:.6px;padding:0 6px 0 12px}
+.sheet--gestion .block-body{max-height:none}
+.det-body{min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px}
+/* Los bloques de cada pestaña se estiran hasta el pie del expediente, para
+   no dejar hueco muerto. En el resumen hay dos —ficha arriba, historial
+   abajo— y se reparten el alto por igual; el mínimo es bajo a propósito,
+   para que en pantallas cortas la botonera del medio no quede fuera de
+   vista. */
+.det-body>.duo,.det-body>.panel{flex:1;min-height:160px}
+.det-body>.duo{min-height:220px}
+/* Las notas no compiten por el alto con el bloque principal de la pestaña. */
+.det-body>.panel--notas{flex:none;min-height:0;max-height:34%}
+
+/* Panel genérico dentro del expediente */
+.panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);
+  display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.panel>h3{flex:none;height:26px;background:var(--dark);color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.6px;display:flex;align-items:center;gap:8px;padding:0 5px 0 11px}
+.panel>h3 .spacer{flex:1}
+.panel-body{flex:1;min-height:0;overflow:auto}
+.duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+@media(max-width:1500px){.duo{grid-template-columns:minmax(0,1fr)}}
+/* Con el chat abierto el bloque superior crece: la botonera y el historial
+   quedan más abajo y la conversación gana alto. */
+.duo--chat{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+@media(max-width:1500px){.duo--chat{grid-template-columns:minmax(0,1fr)}}
+.chat-body{background:var(--bg-card);overflow:hidden;display:flex;position:relative}
+/* El marco se revela cuando la conversación ya está montada, para no
+   mostrar la pantalla de acceso de Zynerwaba mientras tanto. */
+.chat-frame{flex:1;width:100%;border:0;display:block;background:var(--bg-card);visibility:hidden}
+.chat-frame.is-ready{visibility:visible}
+.chat-load{position:absolute;inset:0;display:grid;place-content:center;background:var(--bg-card);
+  font-size:11px;color:var(--text-muted)}
+
+/* Rejilla etiqueta/valor */
+/* Ficha del cliente. La etiqueta es señalización y el valor es el dato: la
+   etiqueta baja de peso visual y el valor sube, al revés de como estaba. El
+   dato es lo que el asesor lee mientras habla, así que va más grande y con
+   el contraste alto; la etiqueta alcanza con que se distinga. */
+/* Un 15% más chico que la primera versión: con dos pares por renglón ya no
+   hace falta tanto cuerpo, y así entran más campos sin desplazar. */
+.kv{display:grid;grid-template-columns:126px minmax(0,1fr);font-size:10.5px}
+/* Con la ficha a todo el ancho entran dos pares por renglón: los doce campos
+   del lead se ven de una vez, sin desplazar. Por debajo de 1100px vuelve a
+   una columna, que si no los valores quedan ilegibles. */
+@media(min-width:1100px){
+  .kv--doble{grid-template-columns:126px minmax(0,1fr) 126px minmax(0,1fr)}
+}
+.kv dt{background:var(--bg-main);color:#5A6B82;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.35px;
+  padding:6px 9px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);display:flex;align-items:center;line-height:1.25}
+.kv dd{padding:6px 10px;color:var(--text);font-weight:600;border-bottom:1px solid var(--rule);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:6px}
+/* Franjas alternas: a doce filas seguidas, el ojo pierde el renglón. */
+.kv dd:nth-of-type(even),.kv dt:nth-of-type(even){background:#FAFCFF}
+.kv dt:nth-of-type(even){background:#F2F6FB}
+
+/* Notas clave: viñetas compactas */
+.notes{list-style:none}
+.notes li{display:grid;grid-template-columns:7px minmax(0,1fr) auto;gap:7px;align-items:start;padding:5px 8px;border-bottom:1px solid var(--rule);font-size:11px;line-height:1.35}
+.notes li::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--primary);margin-top:3px}
+.notes .when{font-size:10px;color:var(--text-muted);white-space:nowrap}
+
+/* Botonera de canales */
+/* Botonera de canales: botones de verdad, con el color del canal puesto.
+   Antes eran celdas blancas que sólo se pintaban al pasar el mouse, así que
+   no se leían como acciones hasta tocarlas. */
+.channels{flex:none;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:2px 0}
+.ch{display:flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 6px;
+  border:0;border-radius:var(--radius);background:var(--ch,var(--primary));color:#fff;
+  font-size:12px;font-weight:700;box-shadow:var(--shadow);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch .ico{width:17px;height:17px;stroke-width:2.1}
+.ch:hover{filter:brightness(1.08)}
+.ch:active{transform:translateY(1px)}
+.ch--call{--ch:var(--ok)}
+.ch--wa{--ch:var(--wa)}
+.ch--mail{--ch:var(--info)}
+.ch--sms{--ch:var(--sms)}
+/* "Más acciones" no es un canal: queda en claro para no competir. */
+.ch--more{--ch:var(--bg-card);color:var(--text);box-shadow:inset 0 0 0 1px var(--border),var(--shadow)}
+.ch--more:hover{filter:none;background:var(--bg-main)}
+.ch:disabled{--ch:#E8EDF4;color:#9AA7B8;box-shadow:none;cursor:default}
+.ch:disabled:hover{filter:none}
+/* Chat abierto: el botón queda hundido para que se note que es un estado. */
+.ch.is-on{--ch:#0E7A3C;box-shadow:inset 0 2px 4px rgba(0,0,0,.28)}
+
+/* Chips de filtro del historial */
+.chips{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.chip{border:1px solid rgba(255,255,255,.3);background:transparent;color:#CBD5E1;font-size:10px;font-weight:700;padding:1px 7px;line-height:15px;border-radius:999px}
+.chip:hover{border-color:#fff;color:#fff}
+.chip[aria-pressed=true]{background:var(--primary);border-color:var(--primary);color:#fff}
+
+/* Línea de tiempo de interacciones */
+.tl{list-style:none}
+.tl li{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:0 8px;padding:6px 8px;border-bottom:1px solid var(--rule);align-items:start}
+.tl li:hover{background:var(--bg-main)}
+.tl .mark{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;grid-row:span 2}
+.tl .mark .ico{width:12px;height:12px}
+.tl .t{font-size:11px;font-weight:700}
+.tl .d{grid-column:2;font-size:11px;color:var(--text-muted);line-height:1.35;overflow-wrap:anywhere}
+.tl .w{font-size:10px;color:var(--text-muted);text-align:right;white-space:nowrap}
+.tl .who2{grid-column:3;font-size:10px;color:var(--text-muted);text-align:right;white-space:nowrap}
+.m-llamada{background:var(--ok)} .m-whatsapp{background:var(--wa)} .m-email{background:var(--info)}
+.m-sms{background:var(--sms)} .m-nota{background:var(--text-muted)} .m-gestion{background:var(--primary)}
+
+/* ------------------------------------------ columna 3: panel de trabajo */
+.block{display:flex;flex-direction:column;min-height:0;border-bottom:1px solid var(--border)}
+.block--grow{flex:1;min-height:0}
+.block>h2,.perf>h2{flex:none;height:22px;background:var(--dark);color:#fff;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center;gap:8px;padding:0 9px}
+.block-body{flex:1;min-height:0;overflow:auto}
+.block-body--pad{padding:6px 8px}
+.field{display:grid;gap:2px;margin-bottom:6px}
+.field>label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)}
+.field select,.field input,.field textarea{width:100%;height:24px;border:1px solid var(--border);background:var(--bg-card);padding:0 5px}
+.field textarea{height:50px;padding:4px 5px;resize:none;line-height:1.3}
+.field select:focus,.field input:focus,.field textarea:focus{border-color:var(--primary);outline:none}
+.field select:disabled{background:var(--bg-main);color:#A3A3A3}
+.field--step>label::before{content:attr(data-step);display:inline-block;width:13px;height:13px;line-height:13px;text-align:center;
+  background:var(--dark);color:#fff;font-size:9px;margin-right:5px}
+.field--on>label::before{background:var(--primary)}
+.outcome{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:3px 7px;margin-bottom:6px;
+  border-left:3px solid var(--border);background:var(--bg-main);color:var(--text-muted)}
+.outcome[data-kind=sale]{border-left-color:var(--ok);color:var(--ok)}
+.outcome[data-kind=recall]{border-left-color:var(--warn);color:var(--warn)}
+.outcome[data-kind=normal]{border-left-color:var(--primary);color:var(--primary)}
+.note{font-size:11px;line-height:1.35;padding:4px 7px;background:var(--bg-main);border-left:3px solid var(--primary);color:var(--text-muted);margin-bottom:6px}
+.note b{color:var(--text)}
+.actions{flex:none;display:grid;grid-template-columns:1fr;gap:1px;background:var(--border);border-top:1px solid var(--border)}
+.btn{border:0;height:28px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;background:var(--bg-card);color:var(--text)}
+.btn:hover{background:var(--bg-main)}
+.btn--primary{background:var(--primary);color:#fff}
+.btn--primary:hover{background:var(--primary-hover)}
+.btn--primary:disabled{background:#D9D5CE;color:#8A8A8A;cursor:default}
+
+/* Bienvenida: sin ficha abierta */
+.pasos{margin:0;padding:6px 8px 6px 26px;font-size:12px;line-height:1.7}
+.pasos li{padding:1px 0;border-bottom:1px solid var(--rule)}
+.pasos li:last-child{border-bottom:0}
+
+/* Transcripción en vivo (área de pruebas del motor de voz) */
+/* La transcripción se queda con todo lo que deja el control de llamada:
+   es lo único que vive bajo él en esta columna. */
+.trx{flex:1 1 0;min-width:0;min-height:120px;display:flex;flex-direction:column;
+  background:var(--bg-card);border-top:1px solid var(--border)}
+.trx--plegado{flex:none;min-height:0}
+.trx--plegado .trx-body{display:none}
+.trx-head{flex:none;display:flex;align-items:center;gap:8px;min-height:22px;padding:0 8px;background:var(--dark);color:#fff;
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;flex-wrap:wrap}
+.trx-head>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trx-head .spacer{flex:1}
+.trx-head .btn-sm{height:16px;padding:0 6px;font-size:10px;color:#fff;border-color:rgba(255,255,255,.35)}
+.trx-estado{font-weight:400;text-transform:none;letter-spacing:0;color:#CFCBC4}
+/* `white-space:pre-wrap` para que el texto crudo que vuelque un sistema
+   externo respete sus saltos de línea sin tener que construir nodos. */
+.trx-body{flex:1;min-height:0;overflow:auto;padding:2px 0;font-size:11px;white-space:pre-wrap;word-break:break-word}
+.trx-body:empty::before{content:'Sin transcripción todavía.';display:block;padding:4px 8px;color:var(--text-muted)}
+.trx-line{display:flex;gap:6px;align-items:baseline;padding:1px 8px}
+.trx-line:nth-child(even){background:rgba(45,47,59,.028)}
+.trx-quien{flex:none;width:26px;font-size:9px;font-weight:700;letter-spacing:.3px;color:var(--text-muted)}
+.trx-line--agente .trx-quien{color:var(--primary)}
+.trx-line--cliente .trx-quien{color:#2F6F4F}
+.trx-txt{flex:1;min-width:0;word-break:break-word}
+.trx-hora{flex:none;font-size:9px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+.trx-line--sistema{background:rgba(45,47,59,.06);color:var(--text-muted);font-size:10px}
+
+/* ------------------------------------------------- onda de actividad
+
+   Decorativa: ver el comentario del marcado. Las barras se escalan desde
+   la base con transform, que el navegador resuelve sin recalcular el
+   diseño; la animación se detiene sola cuando no hay nada que mostrar. */
+.onda{flex:none;display:flex;align-items:flex-end;justify-content:center;gap:2px;
+  height:30px;padding:4px 8px;background:var(--bg-card);border-bottom:1px solid var(--rule)}
+.onda i{display:block;width:3px;height:22px;border-radius:2px;background:var(--primary);
+  opacity:.28;transform:scaleY(.12);transform-origin:bottom;
+  transition:transform .12s linear,opacity .12s linear}
+.onda.is-viva i{opacity:.9}
+.trx--plegado .onda{display:none}
+
+/* ----------------------------------------------------- asistente IA */
+.asis{flex:1 1 0;min-height:150px;display:flex;flex-direction:column;
+  background:var(--bg-card);border-top:1px solid var(--border)}
+.asis-head{flex:none;display:flex;align-items:center;gap:7px;height:26px;padding:0 8px;
+  background:var(--dark);color:#fff;font-size:10.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.5px}
+.asis-head .ico{width:14px;height:14px;color:#60A5FA}
+.asis-head .spacer{flex:1}
+.asis-link{border:0;background:transparent;color:#93C5FD;font-size:10px;font-weight:700;
+  text-transform:none;letter-spacing:0;padding:0 2px}
+.asis-link:hover{color:#fff;text-decoration:underline}
+
+.asis-body{flex:1;min-height:0;overflow:auto;padding:7px;display:flex;flex-direction:column;gap:6px}
+.asis-body:empty::before{content:'Preguntá lo que necesites durante la llamada.';
+  display:block;padding:6px 2px;font-size:11px;color:var(--text-muted)}
+/* Burbujas: la del asesor a la derecha, la del asistente a la izquierda. */
+.bur{max-width:92%;padding:6px 9px;border-radius:var(--radius);font-size:11.5px;line-height:1.4;
+  white-space:pre-wrap;overflow-wrap:anywhere}
+.bur--yo{align-self:flex-end;background:var(--primary);color:#fff;border-bottom-right-radius:2px}
+.bur--ia{align-self:flex-start;background:#F1F5F9;border:1px solid var(--border);border-bottom-left-radius:2px}
+.bur--ia b{color:var(--dark)}
+.bur-fuente{margin-top:5px;padding-top:4px;border-top:1px solid var(--border);
+  font-size:9.5px;color:var(--text-muted)}
+.bur--aviso{align-self:stretch;background:#FFF7ED;border:1px solid #FDBA74;color:#9A3412;font-size:11px}
+/* Tres puntos mientras "piensa". */
+.bur--pensando{display:flex;gap:4px;align-items:center;padding:9px}
+.bur--pensando i{width:5px;height:5px;border-radius:50%;background:var(--text-muted);
+  animation:bote 1s infinite ease-in-out}
+.bur--pensando i:nth-child(2){animation-delay:.15s}
+.bur--pensando i:nth-child(3){animation-delay:.3s}
+@keyframes bote{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+
+.asis-chips{flex:none;display:flex;flex-wrap:wrap;gap:4px;padding:0 7px 6px}
+.asis-chips button{border:1px solid var(--border);background:var(--bg-main);border-radius:999px;
+  padding:3px 9px;font-size:10.5px;color:var(--text-muted);text-align:left;max-width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.asis-chips button:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
+
+.asis-form{flex:none;display:flex;align-items:flex-end;gap:6px;padding:7px;border-top:1px solid var(--rule)}
+.asis-form textarea{flex:1;min-width:0;height:46px;resize:none;padding:6px 8px;line-height:1.35;
+  border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);font-size:11.5px}
+.asis-form textarea:focus{border-color:var(--primary);outline:none}
+.asis-enviar{flex:none;width:30px;height:30px;border:0;border-radius:50%;background:var(--primary);
+  color:#fff;display:flex;align-items:center;justify-content:center}
+.asis-enviar:hover{background:var(--primary-hover)}
+.asis-enviar:disabled{background:#CBD5E1;cursor:default}
+.trx-line--parcial .trx-txt{color:var(--text-muted);font-style:italic}
+
+/* Rendimiento del día */
+.perf{flex:none}
+.perf-body{display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px;padding:8px;align-items:center}
+.donut{position:relative;width:72px;height:72px;border-radius:50%;display:grid;place-content:center;text-align:center;
+  background:conic-gradient(var(--primary) calc(var(--p,0)*1%),var(--border) 0)}
+.donut::after{content:'';position:absolute;inset:9px;background:var(--bg-card);border-radius:50%}
+.donut>*{position:relative;z-index:1}
+.donut span{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.donut em{font-size:9px;font-style:normal;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px}
+.perf-kpis{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0;font-size:11px;align-content:center}
+.perf-kpis dt{color:var(--text-muted);padding:2px 0;border-bottom:1px solid var(--rule)}
+.perf-kpis dd{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;padding:2px 0;border-bottom:1px solid var(--rule)}
+.perf-tip{border-top:1px solid var(--border);max-height:140px;overflow:auto}
+
+/* El resumen del turno vive ahora en la barra lateral, sobre fondo oscuro:
+   se vuelve tarjeta y apila dona sobre cifras, como la referencia. Los
+   estilos de arriba siguen sirviendo si alguna vez vuelve a una columna
+   clara, así que acá sólo se corrige lo que cambia con el fondo. */
+.side .perf{margin-top:8px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.09);
+  border-radius:var(--radius);overflow:hidden}
+.side .perf>h2{background:transparent;color:#fff;height:auto;padding:9px 11px 3px;letter-spacing:.5px}
+.side .perf-body{grid-template-columns:minmax(0,1fr);justify-items:center;gap:6px;padding:4px 11px 9px}
+.side .donut::after{background:#16213A}
+.side .donut span{color:#fff}
+.side .donut em,.side .perf-kpis dt{color:#94A3B8}
+.side .perf-kpis{width:100%}
+.side .perf-kpis dt,.side .perf-kpis dd{border-bottom-color:rgba(255,255,255,.08)}
+.side .perf-kpis dd{color:#fff}
+.side .perf-tip{border-top-color:rgba(255,255,255,.09);max-height:92px;padding:0 3px}
+.perf-row{display:flex;align-items:center;gap:6px;font-size:11px;padding:2px 8px;border-bottom:1px solid var(--rule)}
+.perf-row span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.perf-row b{font-variant-numeric:tabular-nums}
+.perf-row--vacio{color:var(--text-muted)}
+
+/* --------------------------------------------------- utilidades comunes */
+table{border-collapse:collapse;width:100%;font-size:11px;white-space:nowrap}
+thead th{position:sticky;top:0;z-index:1;background:#3A3D4B;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.3px;text-align:left;padding:3px 7px;height:20px;border-right:1px solid rgba(255,255,255,.12)}
+tbody td{padding:3px 7px;height:21px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);overflow:hidden;text-overflow:ellipsis;max-width:320px}
+tbody tr:nth-child(even){background:rgba(45,47,59,.028)}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+.empty{padding:12px;font-size:11px;color:var(--text-muted);background:var(--bg-card);text-align:center}
+.bar{display:flex;gap:4px;align-items:center;padding:4px 6px;background:var(--bg-main);border-bottom:1px solid var(--border);flex:none}
+.bar--end{justify-content:flex-end;border-bottom:0;border-top:1px solid var(--border)}
+.bar input,.bar select{height:22px;border:1px solid var(--border);background:var(--bg-card);padding:0 5px;min-width:0}
+.btn-sm{border:1px solid var(--border);background:var(--bg-card);color:var(--text);height:22px;padding:0 9px;font-size:11px}
+.btn-sm:hover{border-color:var(--primary);color:var(--primary)}
+.btn-sm--primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn-sm--primary:hover{background:var(--primary-hover);border-color:var(--primary-hover);color:#fff}
+.btn-sm--danger:hover{border-color:var(--danger);color:var(--danger)}
+.btn-sm--ghost{border-color:rgba(255,255,255,.3);background:transparent;color:#fff}
+.btn-sm--ghost:hover{background:var(--primary);border-color:var(--primary);color:#fff}
+
+/* --------------------------------------------------------- capa modal */
+#layer{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:rgba(45,47,59,.42)}
+.sheet{background:var(--bg-card);border:1px solid var(--dark);display:flex;flex-direction:column;max-width:calc(100vw - 20px);max-height:calc(100dvh - 20px);min-width:300px}
+.sheet>header{flex:none;height:24px;background:var(--dark);color:#fff;display:flex;align-items:center;gap:8px;padding:0 4px 0 9px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.sheet>header .spacer{flex:1}
+.sheet>header button{border:0;background:transparent;color:#fff;width:24px;height:24px;font-size:14px;line-height:1}
+.sheet>header button:hover{background:var(--danger)}
+.sheet-body{flex:1;min-height:0;overflow:auto}
+.sheet-msg{padding:14px 16px;font-size:12px;line-height:1.5;max-width:460px}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr))}
+.grid4>.f{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:3px 6px;min-width:0}
+.grid4>.f>label{display:block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted);margin-bottom:1px}
+.grid4>.f input,.grid4>.f select{width:100%;height:21px;border:1px solid var(--border);background:var(--bg-card);padding:0 4px;font-size:11px}
+.grid4>.f input:focus,.grid4>.f select:focus{border-color:var(--primary);outline:none}
+.grid4>.f--wide{grid-column:span 2}
+.grid4>.f--full{grid-column:1/-1}
+.grid4>.f--check{display:flex;align-items:center;gap:6px;grid-column:span 2}
+.grid4>.f--check input{width:13px;height:13px;accent-color:var(--primary);flex:none}
+.grid4>.f--check label{margin:0;font-size:10px;text-transform:none;letter-spacing:0;color:var(--text)}
+.grid4>.f textarea{width:100%;height:40px;border:1px solid var(--border);padding:3px 4px;font-size:11px;resize:none}
+.grid4 .f.is-bad input,.grid4 .f.is-bad select{border-color:var(--danger);background:#FEF2F2}
+.sec{grid-column:1/-1;background:var(--bg-main);border-bottom:1px solid var(--border);border-top:1px solid var(--border);
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);padding:3px 8px}
+.req{color:var(--danger)}
+.form-error{grid-column:1/-1;background:#FEF2F2;border-bottom:1px solid #FCA5A5;color:var(--danger);font-size:11px;padding:4px 8px}
+
+/* ----------------------------------------- control de llamada (agente) */
+.ctl-row{display:flex;gap:4px;margin-top:8px}
+.ctl-row .btn-sm{flex:1}
+#callCtl .block-body--pad{padding:7px 8px 9px}
+#agentState{font-weight:700;color:#CBD5E1}
+
+/* --------------------------------------------- acceso del agente */
+.login-body{display:grid;place-items:center;height:100dvh;background:var(--bg-main);overflow:auto}
+.login-box{width:min(340px,calc(100vw - 24px));background:var(--bg-card);border:1px solid var(--border)}
+.login-head{background:var(--dark);color:#fff;padding:12px 14px;display:flex;flex-direction:column;gap:3px}
+.login-head .brand{background:none;padding:0;font-size:12px}
+.login-sub{font-size:10px;color:#9CA0AC;text-transform:uppercase;letter-spacing:.5px}
+.login-form{display:flex;flex-direction:column;gap:3px;padding:14px}
+.login-form label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-top:8px}
+.login-form input{height:28px;border:1px solid var(--border);background:var(--bg-card);padding:0 7px}
+.login-form input:focus{border-color:var(--primary);outline:none}
+.login-form .btn{margin-top:14px;height:30px}
+.login-error{background:#FEF2F2;border:1px solid #FCA5A5;color:var(--danger);font-size:11px;padding:6px 8px}
+.login-foot{border-top:1px solid var(--border);background:var(--bg-main);padding:7px 14px;font-size:10px;color:var(--text-muted)}
+
+/* ====================================================================== */
+/*  SECCIONES: Tareas · Reportes · Base de conocimiento                    */
+/*  Se superponen a las tres columnas centrales; éstas se ocultan, no se   */
+/*  destruyen, para no perder la transcripción ni lo escrito a medias.     */
+/* ====================================================================== */
+
+.vista{grid-column:2/-1;grid-row:2;min-width:0;min-height:0;overflow:auto;
+  background:var(--bg-main);padding:12px 14px 20px;display:flex;flex-direction:column;gap:12px}
+body[data-vista]:not([data-vista=clientes]) .col{display:none}
+
+.v-head{flex:none;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.v-head h1{font-size:19px;font-weight:700;letter-spacing:.2px}
+.v-head p{font-size:12px;color:var(--text-muted);margin-top:2px}
+.v-head-acts{margin-left:auto;display:flex;align-items:center;gap:6px}
+.v-periodo{font-size:11px;color:var(--text-muted)}
+.v-nota{font-size:10.5px;color:var(--text-muted);text-align:center;padding:4px 0 2px}
+
+.v-bloque{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:12px}
+.v-bloque>h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
+  color:var(--text-muted);margin-bottom:10px}
+
+/* Tarjetas de indicador, compartidas por Tareas y Reportes. */
+.v-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.v-kpis--4{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.kpi{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi-et{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)}
+.kpi-v{font-size:22px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi-pie{font-size:10.5px;color:var(--text-muted)}
+.kpi--ok .kpi-v{color:var(--ok)}
+.kpi--mal .kpi-v{color:var(--danger)}
+.delta{font-size:10.5px;font-weight:700}
+.delta--sube{color:var(--ok)} .delta--baja{color:var(--danger)}
+
+.v-barra{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:9px 12px}
+.v-barra-txt{display:flex;align-items:baseline;gap:8px;font-size:11.5px;margin-bottom:6px}
+.v-barra-txt span{margin-left:auto;color:var(--text-muted)}
+.barra{height:7px;background:var(--rule);border-radius:999px;overflow:hidden}
+.barra>i{display:block;height:100%;background:var(--ok);border-radius:999px;transition:width .3s}
+
+.v-chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip--claro{border:1px solid var(--border);background:var(--bg-card);color:var(--text-muted);
+  border-radius:999px;padding:4px 11px;font-size:11px;display:inline-flex;align-items:center;gap:6px}
+.chip--claro b{font-size:10px;background:var(--bg-main);border-radius:999px;padding:0 5px;color:var(--text)}
+.chip--claro:hover{border-color:var(--primary);color:var(--primary)}
+.chip--claro[aria-pressed=true]{background:var(--primary);border-color:var(--primary);color:#fff}
+.chip--claro[aria-pressed=true] b{background:rgba(255,255,255,.25);color:#fff}
+
+/* ------------------------------------------------------------ tareas --- */
+.tareas{display:flex;flex-direction:column;gap:8px}
+.tarea{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:start;
+  background:var(--bg-card);border:1px solid var(--border);border-left:3px solid var(--border);
+  border-radius:var(--radius);box-shadow:var(--shadow);padding:10px 12px}
+.tarea--vencida{border-left-color:var(--danger);background:#FFFBFB}
+.tarea--urgente{border-left-color:var(--warn)}
+.tarea--hoy{border-left-color:var(--primary)}
+.tarea.is-hecha{opacity:.55}
+.tarea.is-hecha .tarea-titulo{text-decoration:line-through}
+.tarea-ico{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff}
+.tarea-ico .ico{width:16px;height:16px}
+.tarea-cuerpo{min-width:0;display:flex;flex-direction:column;gap:4px}
+.tarea-linea1{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.tarea-titulo{font-size:13px}
+.tarea-tipo{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px}
+.tarea-cliente{display:flex;align-items:center;gap:7px;font-size:12px;min-width:0}
+.tarea-cliente .avatar{width:20px;height:20px}
+.tarea-tel{color:var(--text-muted);font-variant-numeric:tabular-nums}
+.tarea-detalle{font-size:11.5px;line-height:1.45;color:#44506A}
+.tarea-pie{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--text-muted)}
+.tarea-sla{display:inline-flex;align-items:center;gap:5px;font-weight:700;color:var(--warn)}
+.tarea-sla .ico{width:12px;height:12px}
+.tarea-origen{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.tarea-dura{margin-left:auto;white-space:nowrap}
+.tarea-lado{display:flex;flex-direction:column;align-items:flex-end;gap:7px}
+.tarea-vence{font-size:11px;font-weight:700;white-space:nowrap;padding:2px 9px;border-radius:999px;
+  background:var(--bg-main);color:var(--text-muted)}
+.tarea-vence--vencida{background:#FEF2F2;color:var(--danger)}
+.tarea-vence--urgente{background:#FFFBEB;color:var(--warn)}
+.tarea-vence--hoy{background:var(--primary-soft);color:var(--primary)}
+.tarea-acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+
+.hechas{list-style:none;display:flex;flex-direction:column}
+.hechas li{display:flex;align-items:center;gap:7px;padding:5px 2px;border-bottom:1px solid var(--rule);font-size:11.5px}
+.hechas li:last-child{border-bottom:0}
+.hechas .ico{width:13px;height:13px;color:var(--ok);flex:none}
+.hechas .when{margin-left:auto;font-size:10.5px;color:var(--text-muted);text-align:right}
+
+/* ---------------------------------------------------------- reportes --- */
+.hero{display:grid;grid-template-columns:minmax(0,1.5fr) auto minmax(0,1fr);gap:14px;align-items:center;
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow-md);padding:14px 16px}
+@media(max-width:1100px){.hero{grid-template-columns:minmax(0,1fr)}}
+/* Columnas del encabezado de Reportes: sin min-width:0 un número largo
+   estira la rejilla y desplaza el anillo fuera de la tarjeta. */
+.hero-plata,.hero-ritmo{min-width:0}
+.hero-et{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)}
+.hero-v{display:block;font-size:34px;font-weight:700;line-height:1.05;color:var(--ok);font-variant-numeric:tabular-nums}
+.hero-v2{display:block;font-size:24px;font-weight:700;line-height:1.1}
+.hero-pie{font-size:11px;color:var(--text-muted)}
+.hero-salto{margin-top:9px;padding:8px 11px;background:#ECFDF5;border:1px solid #A7F3D0;
+  border-radius:var(--radius);font-size:11.5px;line-height:1.45}
+.hero-salto b{display:block;color:#065F46}
+.hero-ritmo-n{margin-top:7px;font-size:12px;color:var(--text-muted)}
+.hero-ritmo-n b{font-size:20px;color:var(--text);font-variant-numeric:tabular-nums}
+.anillo{position:relative;width:120px;height:120px;flex:none}
+.anillo-svg{width:120px;height:120px;display:block}
+.anillo-txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.anillo-txt b{font-size:19px;font-variant-numeric:tabular-nums}
+.anillo-txt span{font-size:9.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.3px}
+
+.escalera{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media(max-width:900px){.escalera{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.peldano{position:relative;border:1px solid var(--border);border-radius:var(--radius);padding:9px 11px;
+  background:var(--bg-main);display:flex;flex-direction:column;gap:1px}
+.peldano.is-logrado{background:#F0FDF4;border-color:#A7F3D0}
+.peldano.is-actual{background:var(--primary-soft);border-color:var(--primary);box-shadow:var(--shadow)}
+.peldano b{font-size:12.5px}
+.peldano-pct{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
+.peldano-req{font-size:10.5px;color:var(--text-muted)}
+.peldano-aqui{position:absolute;top:-8px;right:9px;background:var(--primary);color:#fff;
+  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:1px 7px;border-radius:999px}
+
+.grafico{display:flex;align-items:flex-end;gap:5px;height:140px;padding-top:14px}
+.gcol{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;
+  align-items:center;gap:3px;position:relative}
+.gcol>i{display:block;width:100%;max-width:26px;background:var(--primary);border-radius:3px 3px 0 0;min-height:2px}
+.gcol.is-hoy>i{background:var(--ok)}
+.gval{position:absolute;top:-13px;font-size:10px;font-weight:700;color:var(--text-muted)}
+.gdia{font-size:9.5px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+
+.ranking{list-style:none;display:flex;flex-direction:column}
+.ranking li{display:flex;align-items:center;gap:9px;padding:6px 8px;border-bottom:1px solid var(--rule);font-size:12px}
+.ranking li:last-child{border-bottom:0}
+.ranking li.is-yo{background:var(--primary-soft);border-radius:var(--radius)}
+.rank-pos{width:20px;font-weight:700;color:var(--text-muted);text-align:center}
+.ranking li.is-yo .rank-pos{color:var(--primary)}
+.rank-tu{font-size:9px;font-weight:700;text-transform:uppercase;background:var(--primary);color:#fff;
+  padding:1px 6px;border-radius:999px}
+.rank-n{margin-left:auto;color:var(--text-muted);font-size:11px}
+.rank-m{width:92px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+
+.logros{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.logro{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);
+  border-radius:var(--radius);background:var(--bg-main);font-size:11.5px;opacity:.6}
+.logro.is-hecho{opacity:1;background:#F0FDF4;border-color:#A7F3D0}
+.logro .ico{width:16px;height:16px;flex:none;color:var(--text-muted)}
+.logro.is-hecho .ico{color:var(--ok)}
+.logro b{display:block}
+.logro span{display:block;font-size:10.5px;color:var(--text-muted)}
+.logro>div{min-width:0}
+
+/* ------------------------------------------------------ conocimiento --- */
+.wiki{flex:1;min-height:0;display:grid;grid-template-columns:286px minmax(0,1fr);gap:12px;align-items:start}
+@media(max-width:1000px){.wiki{grid-template-columns:minmax(0,1fr)}}
+.wiki-idx{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);overflow:hidden;position:sticky;top:0}
+.wiki-busca{display:flex;align-items:center;gap:7px;padding:8px 10px;border-bottom:1px solid var(--rule)}
+.wiki-busca .ico{color:var(--text-muted);width:14px;height:14px}
+.wiki-busca input{flex:1;min-width:0;border:0;outline:none;font-size:12px;background:transparent}
+.wiki-cats{display:flex;flex-wrap:wrap;gap:4px;padding:8px 10px;border-bottom:1px solid var(--rule)}
+.wiki-cats .chip--claro{padding:2px 9px;font-size:10.5px}
+.wiki-lista{list-style:none;max-height:52vh;overflow:auto}
+.wiki-lista button{display:block;width:100%;text-align:left;border:0;background:transparent;
+  padding:8px 11px;border-bottom:1px solid var(--rule)}
+.wiki-lista button:hover{background:var(--primary-soft)}
+.wiki-lista button[aria-current=true]{background:var(--primary-soft2);box-shadow:inset 3px 0 0 var(--primary)}
+.wiki-lista b{display:block;font-size:12px;margin-bottom:1px}
+.wiki-cat{display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+  color:var(--text-muted)}
+.wiki-res{display:block;font-size:10.5px;color:var(--text-muted);line-height:1.35;margin-top:2px}
+mark{background:#FEF08A;color:inherit;border-radius:2px;padding:0 1px}
+
+.wiki-art{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:14px 16px}
+.wiki-art-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
+.wiki-art h2{font-size:21px;font-weight:700;letter-spacing:.2px}
+.wiki-art-res{font-size:13px;color:#44506A;margin-top:3px;line-height:1.5}
+.wiki-art-meta{display:flex;align-items:center;gap:7px;margin:10px 0 2px;padding-bottom:10px;
+  border-bottom:1px solid var(--rule);font-size:10.5px;color:var(--text-muted)}
+.wiki-art-meta .spacer{flex:1}
+
+/* Ficha de combate: lo que el asesor necesita leer en menos de un minuto. */
+.battle{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0}
+@media(max-width:900px){.battle{grid-template-columns:minmax(0,1fr)}}
+.battle-col{border:1px solid var(--border);border-radius:var(--radius);padding:9px 11px;background:var(--bg-main)}
+.battle-col h4{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.battle-col h4 .ico{width:13px;height:13px}
+.battle-col ul{list-style:none;display:flex;flex-direction:column;gap:5px}
+.battle-col li{font-size:11.5px;line-height:1.4;padding-left:11px;position:relative}
+.battle-col li::before{content:'';position:absolute;left:0;top:6px;width:4px;height:4px;border-radius:50%;
+  background:currentColor;opacity:.45}
+.battle-col li b{display:block}
+.battle-col p{font-size:11.5px;line-height:1.45}
+.battle-col--gana{background:#F0FDF4;border-color:#A7F3D0} .battle-col--gana h4{color:#15803D}
+.battle-col--obj{background:#EFF6FF;border-color:#BFDBFE} .battle-col--obj h4{color:#1D4ED8}
+.battle-col--lim{background:#FFF7ED;border-color:#FDBA74} .battle-col--lim h4{color:#9A3412}
+.battle-col--next{background:#FAF5FF;border-color:#DDD6FE} .battle-col--next h4{color:#6D28D9}
+
+.wiki-secs section{padding:9px 0;border-top:1px solid var(--rule)}
+.wiki-secs h3{font-size:12px;font-weight:700;margin-bottom:3px}
+.wiki-secs p{font-size:12.5px;line-height:1.55;color:#44506A}
+
+.side-count--alerta{background:var(--danger)}
