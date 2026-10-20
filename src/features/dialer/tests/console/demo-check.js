@@ -233,6 +233,13 @@ console.log('\n== La voz ==');
   check('la página no llama a la API de voz',
     !/elevenlabs|xi-api-key/i.test(js + fs.readFileSync(path.join(DEMO, 'index.html'), 'utf8')));
   check('se puede silenciar', /btnVoz/.test(js));
+  // La voz va acelerada al reproducir, no al grabar: no cuesta créditos y
+  // el tono tiene que mantenerse o suena a dibujo animado.
+  check('la voz va un 30% más rápida', /ritmo:1\.3/.test(js) && /playbackRate = VOZ\.ritmo/.test(js));
+  check('y conserva el tono', /preservesPitch = true/.test(js));
+  // El producto se instala: es una aplicación que trae el softphone dentro.
+  check('no promete que no haya que instalar nada', !/Sin instalar nada/.test(js));
+  check('y dice que el teléfono viene incluido', /El teléfono viene incluido/.test(js));
   check('y una frase sin audio no detiene el recorrido', /addEventListener\('error'/.test(js));
 }
 

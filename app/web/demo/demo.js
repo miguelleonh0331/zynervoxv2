@@ -531,7 +531,7 @@ async function escribir(id, texto, ms) {
    día: si la frase cambia, cambia el archivo, y si falta, la escena sigue
    muda en vez de romperse.                                               */
 
-const VOZ = {audio:null, promesa:Promise.resolve(), silencio:false};
+const VOZ = {audio:null, promesa:Promise.resolve(), silencio:false, ritmo:1.3};
 
 function hashTexto(t) {
   let h = 0;
@@ -543,6 +543,12 @@ function decir(texto) {
   if (VOZ.audio) { VOZ.audio.pause(); VOZ.audio = null; }
   if (VOZ.silencio) { VOZ.promesa = Promise.resolve(); return; }
   const a = new Audio('audio/v' + hashTexto(texto) + '.mp3');
+  a.playbackRate = VOZ.ritmo;
+  // El navegador conserva el tono al acelerar; sin esto la voz subiría de
+  // registro y sonaría a dibujo animado.
+  a.preservesPitch = true;
+  a.mozPreservesPitch = true;
+  a.webkitPreservesPitch = true;
   VOZ.audio = a;
   VOZ.promesa = new Promise(res => {
     let listo = false;
@@ -575,8 +581,8 @@ function narrar(txt, puntos, activo) {
 const CAPITULOS = [
 
 { n:'Acceso', titulo:'Un solo inicio de sesión', corre: async () => {
-  narrar('El asesor abre una dirección y entra. No hay un programa para llamar, otro para WhatsApp y otro para el correo: todo lo que necesita está detrás de esta única puerta.',
-    ['Un usuario, una contraseña', 'Sin instalar nada en la máquina', 'Funciona desde cualquier puesto'], 0);
+  narrar('El asesor abre una sola aplicación y entra. Esa aplicación trae el teléfono adentro: no hay un programa para llamar, otro para WhatsApp y otro para el correo. Una instalación, una pantalla.',
+    ['Una sola aplicación instalada', 'El teléfono viene incluido', 'Un usuario y una contraseña'], 0);
   $('loginDemo').classList.remove('is-ido');
   $('loginDemo').hidden = false;
   enfocar('#loginDemo .login-box');
