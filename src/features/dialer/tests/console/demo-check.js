@@ -108,6 +108,17 @@ check('ningún capítulo revienta', rotos.length === 0, rotos.join(' · '));
 console.log('\n== Cada capítulo deja lo que promete ==');
 const correr = async i => { sandbox.__P.i = i; sandbox.__fn.reiniciarEscena(); await CAP[i].corre(); };
 
+await correr(1);   // la pantalla: el expediente tiene que tener datos
+/* Antes se iluminaba el expediente mientras la voz describía los datos de
+   un cliente, pero no había ninguno abierto: se veía la bienvenida. */
+check('al hablar del expediente hay un cliente abierto',
+  !/Para empezar|Hola, Ana/.test(txt('detBody')), txt('detBody').slice(0, 40));
+check('con nombre, documento y monto',
+  /Héctor Chávez/.test(txt('detHead'))
+  && /43887120/.test(txt('detBody')) && /18.000|18,000/.test(txt('detBody')));
+check('y su historial de contactos debajo',
+  /Historial de interacciones/.test(txt('detFoot')) && /Llamada realizada/.test(txt('detFoot')));
+
 await correr(3);   // la llamada
 check('al contestar se abre la ficha del cliente', /Betty Ramírez/.test(txt('detHead')));
 check('con sus datos cargados',

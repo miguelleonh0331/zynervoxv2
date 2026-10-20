@@ -22,6 +22,28 @@ const CLIENTE = {
   estadoLead:'CONTACTED'
 };
 
+/* Cliente ya trabajado, para mostrar el expediente en el recorrido inicial.
+   No puede ser el mismo que llama después: abrir su ficha antes le quitaría
+   todo el efecto a «la ficha se abre sola» cuando entra la llamada. */
+const CLIENTE_PREVIO = {
+  id:4820, nombre:'Héctor Chávez Olaya', telefono:'987130189',
+  documento:'43887120', correo:'hector.chavez@gmail.com',
+  profesion:'Transportista', empresa:'Transportes Olmos EIRL', ubicacion:'Chiclayo',
+  direccion:'Av. Balta 1280, Chiclayo', producto:'Crédito personal',
+  monto:18000, moneda:'S/', origen:'Referido', campania:'carsa0001',
+  base:'carsa_chiclayo', poliza:'Vigente', vigencia:'12/04/2027', prioridad:'Alta',
+  estadoLead:'CONTACTED'
+};
+
+const INTERACCIONES_PREVIO = [
+  {tipo:'llamada',  t:'Llamada realizada', d:'Aprobado condicional por S/ 18 000. Falta la tercera boleta.', w:'Hoy 10:11', dur:'06:02'},
+  {tipo:'whatsapp', t:'WhatsApp enviado',  d:'Lista de documentos pendientes.',                               w:'Hoy 10:14'},
+  {tipo:'email',    t:'Correo enviado',    d:'Documentos para completar su solicitud.',                       w:'Ayer 16:05'},
+  {tipo:'llamada',  t:'Llamada realizada', d:'Primer contacto. Interesado en consolidar.',                    w:'Ayer 15:40', dur:'03:18'},
+  {tipo:'sms',      t:'SMS enviado',       d:'Código de verificación.',                                       w:'Ayer 16:02'},
+  {tipo:'nota',     t:'Nota del asesor',   d:'Trabaja de noche: llamar antes de las 11.',                     w:'Ayer 15:50'}
+];
+
 const CARTERA = [
   {id:4821, nombre:'Betty Ramírez Nizama', tel:'980910856', hora:'10:24 a. m.', cod:null},
   {id:4820, nombre:'Héctor Chávez Olaya',  tel:'987130189', hora:'10:11 a. m.', cod:'010101'},
@@ -204,9 +226,13 @@ function pintarBienvenida() {
 const TABS_DET = ['Resumen', 'Interacciones', 'Transacciones', 'Documentos', 'Notas'];
 let tabActual = 'Resumen';
 
-function pintarFicha(tab) {
+let clienteEnFicha = CLIENTE;
+
+function pintarFicha(tab, cliente) {
   tabActual = tab || tabActual;
-  const c = CLIENTE;
+  if (cliente) clienteEnFicha = cliente;
+  const c = clienteEnFicha;
+  const inter = c === CLIENTE_PREVIO ? INTERACCIONES_PREVIO : INTERACCIONES;
 
   $('detHead').replaceChildren(
     avatar(c.nombre, 'avatar--lg'),
@@ -241,7 +267,8 @@ function filaKv(dl, k, v, extra) {
 }
 
 function pintarResumen() {
-  const c = CLIENTE;
+  const c = clienteEnFicha;
+  const inter = c === CLIENTE_PREVIO ? INTERACCIONES_PREVIO : INTERACCIONES;
   const dl = el('dl', {cls:'kv kv--doble'});
   filaKv(dl, 'Nombre completo', c.nombre);
   filaKv(dl, 'Documento', c.documento);
@@ -266,7 +293,7 @@ function pintarResumen() {
   $('detFoot').replaceChildren(botonera(),
     el('div', {cls:'panel'},
       el('h3', null, el('span', {txt:'Historial de interacciones'})),
-      el('div', {cls:'panel-body'}, listaInteracciones(INTERACCIONES.slice(0, 3)))));
+      el('div', {cls:'panel-body'}, listaInteracciones(inter.slice(0, 3)))));
 }
 
 function pintarInteracciones() {
@@ -275,7 +302,8 @@ function pintarInteracciones() {
       el('span', {cls:'spacer'}),
       el('div', {cls:'chips'}, ['Todas', 'Llamadas', 'Mensajes', 'Correos', 'Notas'].map((k, i) =>
         el('button', {cls:'chip', type:'button', 'aria-pressed':String(i === 0), txt:k})))),
-    el('div', {cls:'panel-body'}, listaInteracciones(INTERACCIONES))));
+    el('div', {cls:'panel-body'},
+      listaInteracciones(clienteEnFicha === CLIENTE_PREVIO ? INTERACCIONES_PREVIO : INTERACCIONES))));
   $('detFoot').replaceChildren(botonera());
 }
 
@@ -309,7 +337,7 @@ function pintarChat(mensajes) {
       el('span', {txt:m.t}),
       el('em', {txt:m.hora}))));
   $('detBody').replaceChildren(el('div', {cls:'panel'},
-    el('h3', null, el('span', {txt:'WhatsApp · ' + CLIENTE.telefono}),
+    el('h3', null, el('span', {txt:'WhatsApp · ' + clienteEnFicha.telefono}),
       el('span', {cls:'spacer'}),
       el('span', {cls:'wa-en-linea', txt:'en línea'})),
     el('div', {cls:'panel-body wa-body'}, hilo,
@@ -641,9 +669,16 @@ const CAPITULOS = [
   enfocar('.col--list');
   await narrar('La cartera: cada persona con la que habló hoy, con la hora y el resultado. Lo que todavía no cerró queda marcado en rojo para que no se le pase.',
     ['Cartera del día', 'Expediente completo', 'Transcripción y asistente'], 0);
-  await dormir(3200);
+  await dormir(1200);
+  /* Antes se iluminaba el expediente vacío mientras la voz describía los
+     datos de un cliente: había que hacer clic en alguien para que hubiera
+     algo que mirar. Se abre uno ya trabajado hoy — no el que va a llamar
+     después, para no gastarle el efecto a «la ficha se abre sola». */
+  await clicEn('#listBody .cli:nth-child(2)');
+  pintarCartera(CLIENTE_PREVIO.id);
+  pintarFicha('Resumen', CLIENTE_PREVIO);
   enfocar('.col--detail');
-  await narrar('El expediente: quién es el cliente, qué se habló antes y por qué canal. Todo en la misma pantalla.',
+  await narrar('Si abre a cualquiera de ellos, ve el expediente completo: nombre, documento, teléfono, correo, dirección, el producto que le interesa y el monto. Debajo, todo lo que se habló antes y por qué canal.',
     ['Cartera del día', 'Expediente completo', 'Transcripción y asistente'], 1);
   await dormir(3000);
   enfocar('.col--work');
@@ -685,7 +720,7 @@ const CAPITULOS = [
   $('dialerLabel').textContent = 'Conectado · 1 campaña';
   cronoArrancar();
   pintarCartera(CLIENTE.id);
-  pintarFicha('Resumen');
+  pintarFicha('Resumen', CLIENTE);
   await narrar('Contestó. Y antes de decir una palabra, el asesor ya tiene en pantalla quién es, cuánto debe, dónde vive y todo lo que se conversó antes.',
     ['Marca el sistema', 'La ficha se abre sola', 'Habla con el nombre en pantalla'], 1);
   enfocar('.det-head');
@@ -1075,7 +1110,8 @@ function reiniciarEscena() {
   $('trxEstado').textContent = 'en espera';
   pintarGestionArbol();
   irA('clientes');
-  if (P.i >= 4) { pintarCartera(CLIENTE.id); pintarFicha('Resumen'); }
+  if (P.i >= 3) { pintarCartera(CLIENTE.id); pintarFicha('Resumen', CLIENTE); }
+  else if (P.i === 2) { pintarCartera(CLIENTE_PREVIO.id); pintarFicha('Resumen', CLIENTE_PREVIO); }
   else { pintarCartera(); pintarBienvenida(); }
 }
 
