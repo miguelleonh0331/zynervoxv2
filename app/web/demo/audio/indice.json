@@ -318,5 +318,19 @@
   "id": "XrExE9yKIg1WjnnlVkGX",
   "nombre": "Matilda (voz de cuenta, español multilingüe)",
   "modelo": "eleven_multilingual_v2"
+ },
+ "n46": {
+  "huella": "a157dda83eb23c20",
+  "archivo": "vuypbri.mp3",
+  "bytes": 214874,
+  "chars": 208,
+  "voz": "XrExE9yKIg1WjnnlVkGX"
+ },
+ "n47": {
+  "huella": "431a86abb990486c",
+  "archivo": "vqkxp6e.mp3",
+  "bytes": 172660,
+  "chars": 180,
+  "voz": "XrExE9yKIg1WjnnlVkGX"
  }
 }

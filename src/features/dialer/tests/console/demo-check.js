@@ -217,7 +217,7 @@ console.log('\n== La voz ==');
   const js = fs.readFileSync(path.join(DEMO, 'demo.js'), 'utf8');
   const textos = [...js.matchAll(/narrar\(\s*'((?:[^'\\]|\\.)*)'/g)]
     .map(m => m[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\'));
-  check('hay una frase de narración por escena', textos.length === 45, String(textos.length));
+  check('hay una frase de narración por escena', textos.length === 47, String(textos.length));
 
   const dirAudio = path.join(DEMO, 'audio');
   const faltan = textos.filter(t => !fs.existsSync(path.join(dirAudio, 'v' + hashTexto(t) + '.mp3')));
@@ -255,7 +255,14 @@ console.log('\n== La voz ==');
   const sinAwait = (js.match(/(?<!await )(?<![.\w])narrar\(/g) || [])
     .filter(x => true).length;
   check('todas las narraciones se esperan',
-    (js.match(/await narrar\(/g) || []).length === 45, String((js.match(/await narrar\(/g) || []).length));
+    (js.match(/await narrar\(/g) || []).length === textos.length,
+    (js.match(/await narrar\(/g) || []).length + ' de ' + textos.length);
+  // El foco va en la misma fila que la voz: si se aplicara al pedirlo,
+  // saltaría una frase antes de tiempo.
+  check('el foco se encola con la voz', /VOZ\.cola = VOZ\.cola\.then\(\(\) => \{ if \(gen === P\.gen\) aplicarFoco/.test(js));
+  // El cierre tiene que nombrar los canales, no sólo mostrarlos.
+  check('el cierre nombra los canales integrados',
+    /el WhatsApp, el correo y el mensaje de texto son el mismo expediente/.test(js));
 }
 
 console.log('\n== Higiene ==');

@@ -496,8 +496,20 @@ async function clicEn(sel, ms) {
   p.classList.remove('is-click');
 }
 
-// Recuadro que ilumina la zona de la que habla la narración.
+/* Recuadro que ilumina la zona de la que habla la narración.
+
+   Va en la MISMA fila que la voz. En el guion el foco se escribe antes de
+   su frase —se prepara la escena y después se habla— pero la frase espera
+   a que termine la anterior. Si el foco se aplicara en el acto, saltaría
+   una frase antes: la voz hablando de la cartera y el recuadro ya en el
+   expediente. Encolándolo, cada zona se ilumina justo cuando empieza la
+   frase que la explica. */
 function enfocar(sel) {
+  const gen = P.gen;
+  VOZ.cola = VOZ.cola.then(() => { if (gen === P.gen) aplicarFoco(sel); });
+}
+
+function aplicarFoco(sel) {
   const f = $('foco');
   if (!sel) { f.hidden = true; return; }
   const n = typeof sel === 'string' ? document.querySelector(sel) : sel;
@@ -935,6 +947,7 @@ const CAPITULOS = [
     await dormir(110);
   }
   await dormir(2600);
+  enfocar('.wiki-art-meta');
   await narrar('Y lo mejor: desde cualquier artículo el asesor se lo puede pedir resumido al asistente, para explicárselo al cliente con sus palabras.',
     ['Buscador', 'Fichas de una sola mirada', 'Conectado con el asistente'], 2);
   await dormir(3000);
@@ -946,7 +959,13 @@ const CAPITULOS = [
   await narrar('Eso es la consola. Un asesor, una pantalla, y todo lo que necesita para vender sin salir de ella.',
     ['Un solo inicio de sesión', 'Cuatro canales y una ficha', 'Con IA que lo acompaña'], 0);
   mostrarCierre();
-  await dormir(9000);
+  // El mensaje de toda la presentación, dicho con todas las letras: no
+  // alcanza con mostrar los íconos del cierre, hay que nombrarlos.
+  await narrar('La llamada, el WhatsApp, el correo y el mensaje de texto son el mismo expediente. Lo que se conversa por un canal queda a la vista en los otros, y cualquier asesor que atienda después ve la historia completa.',
+    ['Un solo inicio de sesión', 'Cuatro canales y una ficha', 'Con IA que lo acompaña'], 1);
+  await narrar('Y encima de todo eso, un asistente que escucha la llamada, sugiere qué responder y busca la respuesta en el material de la empresa, sin que el asesor deje de hablar con su cliente.',
+    ['Un solo inicio de sesión', 'Cuatro canales y una ficha', 'Con IA que lo acompaña'], 2);
+  await dormir(4000);
 }}
 
 ];
