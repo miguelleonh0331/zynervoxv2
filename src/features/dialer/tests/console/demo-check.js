@@ -95,7 +95,7 @@ check('con el aviso de demostración', !!document.querySelector('.sello'));
 
 console.log('\n== El guion corre entero ==');
 const CAP = sandbox.__CAP;
-check('tiene los capítulos esperados', CAP.length === 16, String(CAP.length));
+check('tiene los capítulos esperados', CAP.length === 17, String(CAP.length));
 
 const rotos = [];
 for (let i = 0; i < CAP.length; i++) {
@@ -172,12 +172,24 @@ await correr(13);  // reportes
 check('Reportes encabeza con la comisión', /Comisión acumulada/.test(txt('vista')));
 check('y dice cuánto falta para el tramo', /Te faltan/.test(txt('vista')));
 
-await correr(14);  // conocimiento
+await correr(14);  // aviso del supervisor
+check('el aviso del supervisor llegó a la consola',
+  /yapeamos 10 soles/.test(txt('bandejaAvisos')) || /yapeamos 10 soles/.test(txt('avisos')));
+check('y quedó guardado en la campanita tras confirmarlo',
+  /confirmado/.test(txt('bandejaAvisos')) && !/sin confirmar/.test(txt('bandejaAvisos')),
+  txt('bandejaAvisos').slice(0, 70));
+check('la campanita guarda también el aviso anterior',
+  /tasa preferente/.test(txt('bandejaAvisos')));
+check('la campanita no deja deuda pendiente', $('campanaN').hidden);
+check('el aviso dice a quién se le mandó',
+  /6 asesores/.test(txt('bandejaAvisos')) || /6 asesores/.test(txt('avisos')));
+
+await correr(15);  // conocimiento
 check('Conocimiento abre la base con sus fichas',
   vista().querySelectorAll('.battle-col').length === 4
   || vista().querySelectorAll('.wiki-lista li').length >= 10);
 
-await correr(15);  // cierre
+await correr(16);  // cierre
 check('el cierre resume los canales', (() => {
   const c = document.querySelector('.cierre');
   return !!c && ['Llamadas', 'WhatsApp', 'Correo', 'SMS'].every(x => c.textContent.includes(x));
@@ -228,7 +240,7 @@ console.log('\n== La voz ==');
   const js = fs.readFileSync(path.join(DEMO, 'demo.js'), 'utf8');
   const textos = [...js.matchAll(/narrar\(\s*'((?:[^'\\]|\\.)*)'/g)]
     .map(m => m[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\'));
-  check('hay una frase de narración por escena', textos.length === 47, String(textos.length));
+  check('hay una frase de narración por escena', textos.length === 50, String(textos.length));
 
   const dirAudio = path.join(DEMO, 'audio');
   const faltan = textos.filter(t => !fs.existsSync(path.join(dirAudio, 'v' + hashTexto(t) + '.mp3')));

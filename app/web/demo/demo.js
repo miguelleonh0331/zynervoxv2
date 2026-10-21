@@ -640,6 +640,114 @@ async function narrar(txt, puntos, activo) {
 /*  hilo conductor es siempre el mismo: el asesor NO SALE DE LA PANTALLA.  */
 /* ====================================================================== */
 
+/* ===================================== avisos del supervisor ========= */
+/* El supervisor manda un mensaje y le llega al asesor DENTRO de su consola.
+   No es un pop-up: entra abajo a la derecha, no tapa al cliente, no detiene
+   la llamada y no se va solo. Se queda hasta que el asesor lo confirma,
+   porque un incentivo que se desvanece a los cuatro segundos no sirve.
+
+   Es la otra mitad del redactor que ya está en la maqueta de supervisión
+   (app/web/demo-sup): allá se escribe y se ve «quién lo leyó», acá se
+   recibe y se confirma. Las dos pantallas cuentan la misma historia. */
+ICO.campana = '<path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 3h16z"/><path d="M9.8 21.4a2.5 2.5 0 0 0 4.4 0"/>';
+
+const SUPERVISOR = {nombre:'Rodrigo Valdez', rol:'Supervisor de piso'};
+
+const TONOS_AVISO = {
+  incentivo:{c:'#16A34A', f:'#F0FDF4', s:'rgba(22,163,74,.34)', r:'Incentivo'},
+  info:     {c:'#2563EB', f:'#EFF6FF', s:'rgba(37,99,235,.34)', r:'Aviso del supervisor'},
+  urgente:  {c:'#D97706', f:'#FFFBEB', s:'rgba(217,119,6,.34)', r:'Urgente'},
+};
+
+const AVISOS = [
+  {id:'a2', tono:'info', hora:'11:20',
+   txt:'Desde hoy la tasa preferente baja a 11,9 % para montos sobre S/ 15 000.',
+   destino:'Enviado a todo el piso'},
+  {id:'a1', tono:'incentivo', hora:'15:42',
+   txt:'A los que realicen más de 3 ventas les yapeamos 10 soles por cada venta siguiente. ¡Hasta las 6 de la tarde!',
+   destino:'Enviado a 6 asesores de carsa0001'},
+];
+
+/* El de las 11:20 ya llegó y ya fue confirmado: cuando arranca el recorrido
+   la campanita tiene historia, no está estrenada. */
+let AVISOS_LLEGADOS = ['a2'], AVISOS_VISTOS = ['a2'];
+const avisoPorId = id => AVISOS.find(a => a.id === id);
+
+function pintarCampana() {
+  const b = $('campana'); if (!b) return;
+  if (!b.querySelector('svg')) b.append(svg('campana'));
+  const sinVer = AVISOS_LLEGADOS.filter(id => !AVISOS_VISTOS.includes(id)).length;
+  const n = $('campanaN');
+  n.textContent = String(sinVer);
+  n.hidden = sinVer === 0;
+  b.classList.toggle('is-nuevo', sinVer > 0);
+}
+
+function mostrarAviso(id) {
+  const a = avisoPorId(id); if (!a || $('aviso-' + id)) return;
+  if (!AVISOS_LLEGADOS.includes(id)) AVISOS_LLEGADOS.push(id);
+  AVISOS_VISTOS = AVISOS_VISTOS.filter(x => x !== id);
+  const t = TONOS_AVISO[a.tono] || TONOS_AVISO.info;
+  const caja = el('div', {cls:'aviso aviso--nuevo', id:'aviso-' + a.id});
+  caja.style.setProperty('--tono', t.c);
+  caja.style.setProperty('--tono-fondo', t.f);
+  caja.style.setProperty('--tono-suave', t.s);
+  caja.append(
+    el('div', {cls:'aviso-head'},
+      svg('campana'),
+      el('span', {cls:'aviso-rot', txt:t.r}),
+      el('button', {cls:'aviso-x', type:'button', title:'Ocultar', txt:'✕',
+        onclick:() => sacarAviso(a.id)})),
+    el('div', {cls:'aviso-de'},
+      avatar(SUPERVISOR.nombre, 'avatar--sm'),
+      el('span', null,
+        el('b', {txt:SUPERVISOR.nombre}),
+        el('em', {txt:SUPERVISOR.rol + ' · ' + a.hora}))),
+    el('p', {cls:'aviso-txt', txt:a.txt}),
+    el('div', {cls:'aviso-pie'},
+      el('button', {cls:'aviso-ok', type:'button', txt:'Entendido',
+        onclick:() => confirmarAviso(a.id)}),
+      el('span', {cls:'aviso-destino', txt:a.destino})));
+  $('avisos').append(caja);
+  pintarCampana();
+}
+
+/* Ocultarlo no es haberlo leído: sigue contando como pendiente. */
+function sacarAviso(id) {
+  const caja = $('aviso-' + id);
+  if (!caja) return;
+  caja.classList.add('is-yendo');
+  setTimeout(() => caja.remove(), 320);
+  pintarCampana();
+}
+
+function confirmarAviso(id) {
+  if (!AVISOS_VISTOS.includes(id)) AVISOS_VISTOS.push(id);
+  sacarAviso(id);
+  estado('Confirmado. El supervisor ve quién lo leyó y quién no.');
+}
+
+function alternarBandeja() {
+  const caja = $('bandejaAvisos');
+  if (!caja.hidden) { caja.hidden = true; return; }
+  caja.replaceChildren(el('h4', {txt:'Avisos del supervisor'}));
+  const llegados = AVISOS.filter(a => AVISOS_LLEGADOS.includes(a.id));
+  if (!llegados.length) {
+    caja.append(el('div', {cls:'bandeja-vacia', txt:'Sin avisos todavía.'}));
+  }
+  for (const a of llegados.slice().reverse()) {
+    const t = TONOS_AVISO[a.tono] || TONOS_AVISO.info;
+    const f = el('div', {cls:'bavi'});
+    f.style.setProperty('--tono', t.c);
+    f.append(el('b', {txt:t.r}), el('p', {txt:a.txt}),
+      el('em', {txt:SUPERVISOR.nombre + ' · ' + a.hora +
+        (AVISOS_VISTOS.includes(a.id) ? ' · confirmado' : ' · sin confirmar')}),
+      el('em', {txt:a.destino}));
+    caja.append(f);
+  }
+  caja.hidden = false;
+}
+
 const CAPITULOS = [
 
 { n:'Acceso', titulo:'Un solo inicio de sesión', corre: async () => {
@@ -962,6 +1070,35 @@ const CAPITULOS = [
   enfocar(null);
 }},
 
+/* Va justo después de Reportes a propósito: el asesor acaba de ver cuánto
+   lleva ganado y cuánto le falta para el tramo siguiente. Es el momento
+   exacto en que un incentivo del supervisor pesa. */
+{ n:'Aviso del supervisor', titulo:'Le hablan sin interrumpirlo', corre: async () => {
+  const PUNTOS = ['Llega sin cortar la llamada', 'Se queda hasta que lo confirma',
+                  'El supervisor ve quién lo leyó'];
+  irA('reportes');
+  await dormir(700);
+  mostrarAviso('a1');
+  enfocar('#avisos');
+  await narrar('Mientras el asesor trabaja, el supervisor le puede hablar. El aviso entra abajo a la derecha, sin tapar al cliente ni cortar la llamada.',
+    PUNTOS, 0);
+  await narrar('«A los que realicen más de tres ventas les yapeamos diez soles por cada venta siguiente.» Llega justo cuando está decidiendo si llama una vez más.',
+    PUNTOS, 1);
+  await dormir(1200);
+  // clicEn sólo mueve el puntero; la acción se llama aparte, igual que en
+  // el resto del guion.
+  await clicEn('#aviso-a1 .aviso-ok');
+  confirmarAviso('a1');
+  enfocar('#campana');
+  await narrar('El asesor marca Entendido y el supervisor ve quién lo leyó. Y queda guardado en la campanita, por si entró en medio de una llamada.',
+    PUNTOS, 2);
+  await clicEn('#campana');
+  alternarBandeja();
+  await dormir(3000);
+  alternarBandeja();
+  enfocar(null);
+}},
+
 { n:'Conocimiento', titulo:'La respuesta, siempre a mano', corre: async () => {
   await narrar('Todo lo que el asesor necesita saber está adentro: productos, tasas, requisitos, objeciones y procesos.',
     ['Buscador', 'Fichas de una sola mirada', 'Conectado con el asistente'], 0);
@@ -1108,6 +1245,13 @@ function reiniciarEscena() {
   $('callLabel').textContent = 'Sin llamada';
   $('callTimer').textContent = '00:00';
   $('trxEstado').textContent = 'en espera';
+  // Los avisos vuelven al estado del arranque: sólo el de las 11:20, ya
+  // confirmado. El capítulo que corresponda volverá a traer el suyo.
+  $('avisos').replaceChildren();
+  $('bandejaAvisos').hidden = true;
+  AVISOS_LLEGADOS = ['a2'];
+  AVISOS_VISTOS = ['a2'];
+  pintarCampana();
   pintarGestionArbol();
   irA('clientes');
   if (P.i >= 3) { pintarCartera(CLIENTE.id); pintarFicha('Resumen', CLIENTE); }
@@ -1135,6 +1279,9 @@ document.addEventListener('DOMContentLoaded', () => {
   ].map(t => el('button', {type:'button', txt:t, title:t})));
 
   $('pantalla').append(el('span', {cls:'sello', txt:'Demostración'}));
+
+  $('campana').addEventListener('click', alternarBandeja);
+  pintarCampana();
 
   $('btnPlay').addEventListener('click', arrancar);
   // Pausar sólo levanta la bandera: el lazo ya está corriendo y la espera

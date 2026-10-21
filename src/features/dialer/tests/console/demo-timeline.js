@@ -172,7 +172,8 @@ async function correrHasta(promesa) {
       // ¿La frase habla de un lado y el foco está en otro?
       const t = e.dato.toLowerCase();
       const pistas = [
-        [/\bderecha\b|columna de la derecha/, ['col--work', 'trx', 'asis', 'topbar']],
+        // «abajo a la derecha» es el aviso del supervisor, que vive ahí.
+        [/\bderecha\b|columna de la derecha/, ['col--work', 'trx', 'asis', 'topbar', 'avisos', 'campana']],
         [/\bizquierda\b|cartera/,             ['col--list']],
         [/\bal centro\b|expediente/,          ['col--detail', 'det-', 'kv', 'wa-', 'tl']],
         [/barra superior/,                    ['topbar']],

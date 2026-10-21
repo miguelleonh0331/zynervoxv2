@@ -813,3 +813,29 @@ aislado con login y logout propios.
 
 `bash src/features/dialer/tests/console/run-console.sh` — 110 comprobaciones
 sobre el marcado real y el `crm.js` real, sin navegador ni base de datos.
+
+
+## Avisos del supervisor en la presentación (2026-10-21)
+
+`app/web/demo` suma un capítulo: el supervisor le manda un mensaje al asesor
+y le entra **dentro de la consola**, abajo a la derecha.
+
+No es un pop-up. No tapa al cliente, no corta la llamada y **no se va solo**:
+se queda hasta que el asesor aprieta «Entendido», porque un incentivo que se
+desvanece a los cuatro segundos no sirve. La ✕ lo oculta pero lo deja como
+pendiente; sólo «Entendido» lo marca como leído.
+
+Tres tonos: incentivo (verde), informativo (azul), urgente (ámbar). Y una
+campanita en la barra superior con el historial, por si el aviso entró en
+medio de una llamada.
+
+Es la **otra mitad** del redactor que ya está en `app/web/demo-sup`: allá se
+escribe, se segmenta y se ve «quién lo leyó: 5 de 8»; acá se recibe y se
+confirma. Las dos pantallas cuentan la misma historia.
+
+**Es escenografía.** En `modules/agc` no existe ningún canal entre supervisor
+y asesor: ni tabla, ni endpoint, ni sondeo. Nada de esto toca producción.
+
+El capítulo va justo después de *Reportes* a propósito: el asesor acaba de ver
+cuánto le falta para el tramo siguiente, y es el momento en que un incentivo
+pesa.

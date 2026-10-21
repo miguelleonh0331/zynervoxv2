@@ -142,3 +142,70 @@
 
 /* Resalte momentáneo de un control mientras se lo explica. */
 .resalta{box-shadow:0 0 0 3px rgba(37,99,235,.45);border-radius:999px}
+
+/* ------------------------------- avisos del supervisor ----------------
+   Entran abajo a la derecha, DENTRO de la consola. No son un pop-up: no
+   tapan al cliente, no detienen la llamada y no se van solos. Se quedan
+   hasta que el asesor dice que los vio, porque un incentivo que se
+   desvanece en cuatro segundos no sirve de nada.
+
+   El z-index queda por debajo del foco del recorrido (30) a propósito:
+   así el aviso se oscurece con el resto cuando se está hablando de otra
+   cosa, y se ilumina cuando el recuadro se posa encima. */
+.avisos{position:absolute;right:14px;bottom:30px;z-index:25;width:306px;
+  display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.aviso{pointer-events:auto;background:var(--bg-card);border-radius:10px;overflow:hidden;
+  box-shadow:0 16px 44px rgba(15,23,42,.3),0 0 0 1px rgba(15,23,42,.07);
+  border-left:4px solid var(--tono,#2563EB);
+  animation:avisoEntra .5s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes avisoEntra{
+  from{opacity:0;transform:translateY(26px) scale(.96)}
+  to  {opacity:1;transform:translateY(0) scale(1)}
+}
+.aviso.is-yendo{opacity:0;transform:translateX(26px);transition:opacity .3s,transform .3s}
+/* Un latido breve al llegar: llama la vista una vez y se queda quieto. */
+.aviso--nuevo{animation:avisoEntra .5s cubic-bezier(.2,.9,.3,1.2),
+  avisoLate 1.5s ease-out .5s 2}
+@keyframes avisoLate{
+  0%,100%{box-shadow:0 16px 44px rgba(15,23,42,.3),0 0 0 1px rgba(15,23,42,.07)}
+  50%    {box-shadow:0 16px 44px rgba(15,23,42,.3),0 0 0 5px var(--tono-suave,rgba(37,99,235,.3))}
+}
+.aviso-head{display:flex;align-items:center;gap:7px;padding:8px 10px;
+  background:var(--tono-fondo,#EFF6FF)}
+.aviso-head .ico{width:14px;height:14px;color:var(--tono,#2563EB)}
+.aviso-rot{font-size:9.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+  color:var(--tono,#2563EB)}
+.aviso-x{margin-left:auto;width:20px;height:20px;border:0;border-radius:50%;background:transparent;
+  color:var(--text-muted);font-size:12px;line-height:1;display:grid;place-items:center}
+.aviso-x:hover{background:rgba(15,23,42,.1);color:var(--text)}
+.aviso-de{display:flex;align-items:center;gap:8px;padding:9px 10px 0}
+.aviso-de .avatar{width:28px;height:28px;flex:none}
+.aviso-de b{font-size:11.5px;display:block;line-height:1.25}
+.aviso-de em{font-style:normal;font-size:10px;color:var(--text-muted)}
+.aviso-txt{padding:7px 11px 10px;font-size:12.5px;line-height:1.5;color:var(--text)}
+.aviso-pie{display:flex;align-items:center;gap:8px;padding:0 10px 10px}
+.aviso-ok{height:28px;padding:0 15px;border:0;border-radius:999px;
+  background:var(--tono,#2563EB);color:#fff;font-size:11.5px;font-weight:700}
+.aviso-ok:hover{filter:brightness(1.08)}
+.aviso-destino{font-size:9.5px;color:var(--text-muted);margin-left:auto;text-align:right;line-height:1.3}
+
+/* Campanita de la barra superior: lo que ya se leyó no se pierde. */
+.campana{position:relative;width:28px;height:28px;margin-left:6px;border:0;border-radius:50%;
+  background:transparent;color:#CBD5E1;display:grid;place-items:center;flex:none}
+.campana:hover{background:rgba(255,255,255,.14);color:#fff}
+.campana .ico{width:16px;height:16px}
+.campana.is-nuevo{color:#FDE047}
+.campana-n{position:absolute;top:-1px;right:-1px;min-width:14px;height:14px;padding:0 3px;
+  border-radius:999px;background:var(--danger);color:#fff;font-size:9px;font-weight:700;
+  display:grid;place-items:center}
+.bandeja-avisos{position:absolute;right:14px;top:44px;z-index:26;width:290px;max-height:290px;
+  overflow:auto;background:var(--bg-card);border-radius:10px;
+  box-shadow:0 16px 44px rgba(15,23,42,.3),0 0 0 1px rgba(15,23,42,.07)}
+.bandeja-avisos h4{padding:9px 11px;font-size:10px;letter-spacing:.7px;text-transform:uppercase;
+  color:var(--text-muted);border-bottom:1px solid var(--rule)}
+.bavi{padding:9px 11px;border-bottom:1px solid var(--rule);border-left:3px solid var(--tono,#2563EB)}
+.bavi:last-child{border-bottom:0}
+.bavi b{display:block;font-size:11px;color:var(--tono,#2563EB)}
+.bavi p{font-size:11.5px;line-height:1.45;margin-top:2px}
+.bavi em{display:block;font-style:normal;font-size:9.5px;color:var(--text-muted);margin-top:1px}
+.bandeja-vacia{padding:22px 11px;text-align:center;font-size:11.5px;color:var(--text-muted)}
