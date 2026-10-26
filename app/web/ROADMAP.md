@@ -69,8 +69,10 @@ Reportes propuestos (a definir alcance exacto con el cliente):
       Ver `docs/CRM_MODULE.md`.
 - [ ] **Quality Control** (`quality.php`, stub).
 - [ ] **Scripts** (`scripts.php`, stub).
-- [ ] **Inbound / Ingroups / IVR** (`inbound.php`, stub) — enrutamiento de llamadas
-      entrantes y DIDs.
+- [x] **Inbound / Ingroups** (`inbound.php`) — administración de DIDs, AGI de entrada,
+      agentes mixtos y prioridad de la entrante sobre la saliente. Ver `docs/INBOUND.md`.
+      Falta: troncal y contexto de dialplan (fuera del código), reportería de
+      entrantes y decidir si un DID puede pasar por un flujo de IVR antes de la cola.
 - [ ] **Anexos / Teléfonos (UI)**: `includes/Phones.php` existe (usado automáticamente
       al crear un Usuario nivel Agente) pero no hay página para ver/editar extensiones
       directamente.
@@ -93,7 +95,8 @@ Reportes propuestos (a definir alcance exacto con el cliente):
 
 1. **Módulo de Agente real** — sin esto el dialer no marca nada.
 2. **Reportería real de negocio** — pedido explícito, datos fuente ya identificados.
-3. Ingroups / Inbound / IVR (enrutamiento entrante).
+3. ~~Ingroups / Inbound (enrutamiento entrante)~~ — hecho salvo troncal, contexto de
+   dialplan y reportería de entrantes. Ver `docs/INBOUND.md`.
 4. Probar `lists.php` y `wizard.php` end-to-end.
 5. Quality Control, Scripts, roles vacíos (GTR/Supervisor/Backoffice), Anexos UI.
 6. Troncal real hacia mirmidon (depende del proveedor, fuera de nuestro control directo).

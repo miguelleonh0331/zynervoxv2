@@ -6,10 +6,12 @@ class PbxAmi {
     public static $events=[];
     public static $channels='';
     public static $fail=false;
+    public static $waiting='';   // salida de `queue show` sin argumento (encabezados)
     public static function load(): array { return []; }
     public static function command(array $config,string $command): string {
         if (self::$fail) throw new \RuntimeException('Injected PBX failure');
         if ($command==='core show channels concise') return self::$channels;
+        if ($command==='queue show') return self::$waiting;
         $queue=substr($command,strlen('queue show ')); $lines=[];
         foreach (self::$queues[$queue] ?? [] as $interface=>$reason) $lines[]=$interface.' (Not in use)'.($reason!==null ? ' (paused:'.$reason.')' : '');
         return implode("\n",$lines);

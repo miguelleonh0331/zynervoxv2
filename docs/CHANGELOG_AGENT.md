@@ -2717,6 +2717,7 @@ Riesgos:
 - ninguno conocido
 
 ### 2026-10-26 10:23 - core_AGENT - core
+### 2026-10-26 10:47 - dialer_AGENT - dialer
 
 Tipo: feature
 
@@ -2728,6 +2729,13 @@ La pantalla de usuarios solo creaba agentes y un supervisor recien creado caia e
 
 Archivos modificados:
 - app/web/includes/CoreUsers.php,app/web/includes/Auth.php,app/web/modules/admin/users_isolated.php,app/web/modules/sup/sidebar.php,src/features/core/CONTRACT.md,src/features/core/tests/users.php,src/features/core/tests/users-router.php,src/features/core/tests/run-users.sh
+Fase 1 de entrantes: registro de la llamada recibida, con direccion y DID en el call_log
+
+Motivo:
+ADR-0025. La entrante necesita existir en base antes de Queue() para que la ficha del cliente este en pantalla mientras timbra. Reutiliza el lead del telefono y crea uno nuevo en la lista del DID con estado INBOUND, que claimLead() no toma. Ocupar agent_slot con la entrante es lo que frena al marcador, sin tabla de presencia nueva. El cupo saliente y el nivel adaptativo se acotan a direction=OUT para que una entrante no consuma capacidad ni distorsione la histeresis.
+
+Archivos modificados:
+- src/features/dialer/models/017-inbound.sql, app/web/includes/Dialer.php, src/features/dialer/tests/inbound.php, src/features/dialer/tests/run-inbound.sh
 
 Contrato:
 - modificado con ADR-0025
@@ -2736,6 +2744,9 @@ Riesgos:
 Auth.php lo consumen 79 archivos: el cambio es solo la rama aislada de getRedirectPath para 7 y 8. El nivel de una cuenta existente ya no se puede cambiar al editar. run-users.sh dejo de apuntar a /mnt y resuelve su raiz desde la ubicacion del script.
 
 ### 2026-10-26 10:40 - core_AGENT - core
+Dialer.php referencia direction, asi que la migracion 017 debe estar aplicada antes de desplegar; ya se aplico en zynervox_core y las 110 filas previas quedaron OUT. Sin desplegar y sin reiniciar zynervox-dialer, que conserva PHP en memoria. No hay dialplan de entrada ni troncal: nada llama todavia a registerInboundCall(). kpis, reportBreakdown y occupancy no se acotaron por direccion: quedan por campania, asi que si el DID apunta a una lista de campania saliente, sus entrantes apareceran en ese reporte.
+
+### 2026-10-26 11:09 - dialer_AGENT - dialer
 
 Tipo: feature
 
@@ -2755,6 +2766,21 @@ Riesgos:
 campaign_monitor_cache_read() pasa a recortar por sesion: cualquier consumidor que necesite el snapshot entero debe usar campaign_monitor_cache_read_all(). El alcance cierra por defecto, asi que un supervisor sin asignacion no ve campanas. La tabla se aplico a mano y no esta en ningun instalador.
 
 ### 2026-10-26 11:08 - core_AGENT - core
+Entrantes: AGI de entrada, cierre propio, traduccion de interfaz a usuario y sondeo sin reposo con cola entrante
+
+Motivo:
+ADR-0025, fases 2 y 4. El AGI dialer_inbound_agi.php registra la entrante, resuelve la cola y la cierra. No se reutiliza closeCall() porque esa deja el lead en NEW cuando no hubo conversacion, con lo que un cliente entraria al hopper de salientes por haber llamado, y dispara el autodial MANUAL. La cola es la de la campania de la lista del DID: no hace falta modelo de colas aparte, el formato v2dialer_<id> ya lo valida dialplanBody y agentLogin ya mete al agente en ella. answered_at pasa a ser cuando atendemos al que llama y bridged_at cuando el agente toma, para que duration_wait mida la espera en cola. La consola deja de bajar a 12 s en reposo si al agente le puede caer una entrante; el dato viaja una vez, al conectar, para no agregar consulta por sondeo.
+
+Archivos modificados:
+- app/web/modules/admin/dialer_inbound_agi.php, app/web/includes/Dialer.php, app/web/modules/agc/crm.php, app/web/modules/agc/crm.js, src/features/dialer/tests/inbound.php, src/features/dialer/tests/console/console.js
+
+Contrato:
+- modificado con ADR-0025
+
+Riesgos:
+Desplegado y reiniciados zynervox-dialer y zynervoxv2-campaign-monitor, ambos activos y sin errores. Nada invoca aun el AGI: falta el contexto de dialplan y la troncal, que quedan en manos del usuario. Pendiente la regla de cola: hoy se frena al agente que esta en llamada via agent_slot, no el caso de que haya gente esperando en la cola entrante y el marcador le entregue una saliente. kpis, reportBreakdown y occupancy siguen sin filtro de direccion. ABANDONED es vocabulario nuevo en termination_reason y aparecera como categoria propia en los reportes.
+
+### 2026-10-26 11:41 - dialer_AGENT - dialer
 
 Tipo: feature
 
@@ -2810,3 +2836,16 @@ Contrato:
 
 Riesgos:
 sup.js es copia de la maqueta con 23 guardas contra datos vacios y un cambio de arranque; sincronizar cambios de la maqueta exige reaplicarlas. datos.php emite los mismos nombres globales que datos.js: renombrar uno en la maqueta rompe la pantalla real. La prueba run-supervisor.sh necesita Node y no corre en el gate de PHP.
+Entrantes completas: panel de DIDs, prioridad de cola sobre el marcador, tipificacion separada y reporteria acotada
+
+Motivo:
+ADR-0025, cierre de la estructura. El panel inbound.php administra DIDs y entra en IsolatedGate; queda built en el sidebar. queuesWithCallersWaiting() lee los encabezados de un solo queue show y originateNext saca del reparto a los agentes cuya cola entrante tiene gente esperando, salteandolos en PROGRESSIVE y descontandolos del conteo en RATIO/ADAPTIVE; MANUAL queda fuera porque el contrato exige que Llamar funcione siempre. La tipificacion de la entrante usa prefijo tipin_ para no pisar la de la saliente en un lead reutilizado. kpis, reportBreakdown y occupancy se acotan a direction=OUT. Documentado en docs/INBOUND.md con el contrato del dialplan, y registrado como Fase 8 del CONTRACT.md.
+
+Archivos modificados:
+- app/web/modules/admin/inbound.php, app/web/includes/Dialer.php, app/web/includes/IsolatedGate.php, app/web/modules/admin/sidebar.php, app/web/modules/agc/crm.php, app/web/ROADMAP.md, docs/INBOUND.md, src/features/dialer/CONTRACT.md, agents/dialer_AGENT.md, src/features/dialer/tests/inbound.php, src/features/dialer/tests/fixtures/PbxAmi-controls.php
+
+Contrato:
+- modificado con ADR-0025
+
+Riesgos:
+Desplegado con respaldo .bak.20261026-114050 y md5 verificado; zynervox-dialer y zynervoxv2-campaign-monitor reiniciados y activos sin errores. El parseo de queue show es nuevo: si Asterisk cambia el encabezado, la prioridad de la entrante deja de aplicarse en silencio y el marcador volveria a entregar salientes. No se toco el parseo de miembros de availableAgentsCount. Sigue sin haber reporteria de entrantes ni troncal ni contexto de dialplan, asi que nada entra todavia. ABANDONED y tipin_ son vocabulario nuevo: apareceran como categoria y claves propias.

@@ -69,7 +69,7 @@ class Dialer {
         $db = self::database();
         $campaigns = $db->query('SELECT campaign_id,name,engine_state FROM v2_dialer_campaigns WHERE active=1 ORDER BY campaign_id')->fetchAll(PDO::FETCH_ASSOC);
         $totalStmt = $db->prepare('SELECT COUNT(*) FROM v2_dialer_leads d JOIN v2_dialer_lists l ON l.list_id=d.list_id WHERE l.campaign_id=:c AND l.active=1');
-        $callingStmt = $db->prepare('SELECT COUNT(*) FROM v2_dialer_call_log WHERE campaign_id=:c AND ended_at IS NULL');
+        $callingStmt = $db->prepare("SELECT COUNT(*) FROM v2_dialer_call_log WHERE campaign_id=:c AND ended_at IS NULL AND direction='OUT'");
         $stateStmt = $db->prepare("SELECT CASE WHEN ended_at IS NULL THEN 'EN_CURSO' ELSE COALESCE(termination_reason,'SIN_RESULTADO') END estado,COUNT(*) total FROM v2_dialer_call_log WHERE campaign_id=:c GROUP BY estado ORDER BY total DESC");
         $out = [];
         foreach ($campaigns as $c) {
@@ -576,7 +576,9 @@ class Dialer {
     // sigue ocupando capacidad hasta su cierre, aunque dure más que esa ventana.
     public static function inFlightCount(int $campaignId, int $windowSeconds = 0): int {
         $stmt = self::database()->prepare(
-            'SELECT COUNT(*) FROM v2_dialer_call_log WHERE campaign_id=:c AND ended_at IS NULL'
+            // Solo salientes: el cupo mide lo que este motor origina, y una
+            // entrante en curso no consume capacidad de marcado.
+            "SELECT COUNT(*) FROM v2_dialer_call_log WHERE campaign_id=:c AND ended_at IS NULL AND direction='OUT'"
         );
         $stmt->bindValue(':c', $campaignId, PDO::PARAM_INT);
         $stmt->execute();
@@ -689,6 +691,250 @@ class Dialer {
         self::closeUnanswered($callId, 'ORIGINATE_ERROR');
     }
 
+    // ----------------------------------------------------------- Entrantes
+    // La entrante no la origina este motor: Asterisk ya tiene el canal. El AGI
+    // de entrada llama aquí ANTES de Queue(), igual que el patrón saliente
+    // Answer→AGI→Queue, para que la ficha del cliente esté en base mientras
+    // timbra y la consola la encuentre al sondear.
+    //
+    // Reutiliza el lead del teléfono aunque viva en otra lista, porque el
+    // historial es del cliente y no de la lista. Si no existe lo crea en la
+    // lista del DID con estado INBOUND: claimLead() solo toma status='NEW',
+    // así que un cliente que llamó no entra al hopper de salientes por haber
+    // llamado.
+    public static function registerInboundCall(string $did, string $phone, string $channelUniqueId = ''): ?array {
+        if (!preg_match('/^\+?[0-9]{1,20}$/D', $did)) throw new \RuntimeException('DID inválido.');
+        if (!preg_match('/^\+?[0-9]{1,20}$/D', $phone)) throw new \RuntimeException('Teléfono inválido.');
+        $db = self::database();
+        $db->beginTransaction();
+        try {
+            // La cola es la de la campaña de esa lista: no se inventa un modelo
+            // de colas aparte, el formato v2dialer_<id> ya lo valida
+            // dialplanBody() y agentLogin() ya mete al agente en ella.
+            $route = $db->prepare('SELECT i.list_id,l.campaign_id,c.queue_name FROM v2_dialer_inbound_dids i
+                JOIN v2_dialer_lists l ON l.list_id=i.list_id
+                JOIN v2_dialer_campaigns c ON c.campaign_id=l.campaign_id
+                WHERE i.did=:d AND i.active=1 AND l.active=1 AND c.active=1');
+            $route->execute(['d' => $did]);
+            $target = $route->fetch(PDO::FETCH_ASSOC);
+            // DID sin ruta: no se inventa destino, el dialplan decide qué hacer.
+            if (!$target) { $db->commit(); return null; }
+            // El más antiguo gana, para que dos entrantes del mismo número no
+            // elijan fichas distintas.
+            $find = $db->prepare('SELECT lead_id FROM v2_dialer_leads WHERE phone_number=:p ORDER BY lead_id LIMIT 1');
+            $find->execute(['p' => $phone]);
+            $leadId = $find->fetchColumn();
+            if ($leadId === false) {
+                $db->prepare("INSERT INTO v2_dialer_leads (list_id,phone_number,status) VALUES (:l,:p,'INBOUND')")
+                    ->execute(['l' => $target['list_id'], 'p' => $phone]);
+                $leadId = $db->lastInsertId();
+            }
+            // answered_at es cuando atendimos al que llama (el Answer() previo al
+            // AGI), no cuando el agente tomó: eso es bridged_at. Así duration_wait
+            // mide la espera real en cola, igual que en la saliente.
+            $db->prepare("INSERT INTO v2_dialer_call_log (campaign_id,lead_id,phone_number,originated_at,answered_at,direction,inbound_did,channel_uniqueid)
+                VALUES (:c,:l,:p,NOW(),NOW(),'IN',:did,:u)")
+                ->execute(['c' => $target['campaign_id'], 'l' => $leadId, 'p' => $phone, 'did' => $did,
+                    'u' => $channelUniqueId !== '' ? $channelUniqueId : null]);
+            $callId = (int) $db->lastInsertId();
+            $db->commit();
+            self::audit('INBOUND_CALL', (string) $callId);
+            return ['call_id' => $callId, 'lead_id' => (int) $leadId, 'campaign_id' => (int) $target['campaign_id'],
+                'queue_name' => (string) $target['queue_name']];
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            throw $e;
+        }
+    }
+
+    // Asterisk ya eligió al agente con Queue(); aquí solo se estampa quién
+    // atendió. Ocupar agent_slot es lo que frena al marcador: es el mutex
+    // global que agentHasWork() y claimLead() ya consultan, así que la entrante
+    // bloquea las salientes sin tabla de presencia aparte.
+    public static function bindInboundAgent(int $callId, string $agentUser): bool {
+        $db = self::database();
+        $withSlot = "UPDATE v2_dialer_call_log SET agent_user=:u,agent_slot=:s,bridged_at=COALESCE(bridged_at,NOW())
+            WHERE call_id=:id AND direction='IN' AND ended_at IS NULL";
+        $withoutSlot = "UPDATE v2_dialer_call_log SET agent_user=:u,bridged_at=COALESCE(bridged_at,NOW())
+            WHERE call_id=:id AND direction='IN' AND ended_at IS NULL";
+        try {
+            $stmt = $db->prepare($withSlot);
+            $stmt->execute(['u' => $agentUser, 's' => $agentUser, 'id' => $callId]);
+            return $stmt->rowCount() > 0;
+        } catch (\PDOException $e) {
+            // 1062: ese agente ya tenía un intento abierto. La entrante no se
+            // pierde: queda registrada sin slot y el conflicto queda auditado.
+            if (($e->errorInfo[1] ?? null) !== 1062) throw $e;
+            $db->prepare($withoutSlot)->execute(['u' => $agentUser, 'id' => $callId]);
+            self::audit('INBOUND_SLOT_BUSY', (string) $callId);
+            return false;
+        }
+    }
+
+    // ------------------------------------------------- DIDs de entrada (panel)
+    // Un DID apunta a una lista; la campaña de esa lista aporta la cola y el
+    // árbol de tipificación. Sin cola propia en la tabla: el formato
+    // v2dialer_<id> lo valida dialplanBody() y agentLogin() ya mete al agente.
+    public static function inboundDids(): array {
+        return self::database()->query('SELECT i.did,i.list_id,i.name,i.active,l.name list_name,
+                l.campaign_id,c.name campaign_name,c.queue_name,c.active campaign_active,l.active list_active
+             FROM v2_dialer_inbound_dids i
+             JOIN v2_dialer_lists l ON l.list_id=i.list_id
+             JOIN v2_dialer_campaigns c ON c.campaign_id=l.campaign_id
+             ORDER BY i.did')->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Listas disponibles como destino, con su campaña, para el selector.
+    public static function inboundListChoices(): array {
+        return self::database()->query('SELECT l.list_id,l.name,l.active,c.campaign_id,c.name campaign_name,c.queue_name
+             FROM v2_dialer_lists l JOIN v2_dialer_campaigns c ON c.campaign_id=l.campaign_id
+             ORDER BY c.name,l.name')->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public static function inboundDid(string $did): ?array {
+        $stmt = self::database()->prepare('SELECT did,list_id,name,active FROM v2_dialer_inbound_dids WHERE did=:d');
+        $stmt->execute(['d' => $did]);
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    // originalDid vacío = alta. Cambiar el número es reemplazo, no alta nueva:
+    // así no quedan dos filas para el mismo DID.
+    public static function saveInboundDid(string $did, int $listId, string $name, bool $active, string $originalDid = ''): void {
+        if (!preg_match('/^\+?[0-9]{1,20}$/D', $did)) throw new \InvalidArgumentException('El DID admite solo dígitos, con un + opcional al inicio.');
+        $name = trim(preg_replace('/[\x00-\x1f]/u', ' ', $name));
+        if (mb_strlen($name, 'UTF-8') > 120) throw new \InvalidArgumentException('El nombre no puede pasar de 120 caracteres.');
+        $db = self::database();
+        $exists = $db->prepare('SELECT 1 FROM v2_dialer_lists WHERE list_id=:l');
+        $exists->execute(['l' => $listId]);
+        if (!$exists->fetchColumn()) throw new \InvalidArgumentException('La lista de destino no existe.');
+        if ($originalDid !== '' && $originalDid !== $did) {
+            $taken = $db->prepare('SELECT 1 FROM v2_dialer_inbound_dids WHERE did=:d');
+            $taken->execute(['d' => $did]);
+            if ($taken->fetchColumn()) throw new \InvalidArgumentException('Ese DID ya está registrado.');
+            $db->prepare('DELETE FROM v2_dialer_inbound_dids WHERE did=:d')->execute(['d' => $originalDid]);
+        }
+        $db->prepare('INSERT INTO v2_dialer_inbound_dids (did,list_id,name,active) VALUES (:d,:l,:n,:a)
+             ON DUPLICATE KEY UPDATE list_id=VALUES(list_id),name=VALUES(name),active=VALUES(active)')
+            ->execute(['d' => $did, 'l' => $listId, 'n' => $name, 'a' => $active ? 1 : 0]);
+        self::audit('INBOUND_DID_SAVE', $did);
+    }
+
+    // No se borra con entrantes abiertas: la fila de call_log conserva el DID
+    // como texto, pero el cierre y el panel seguirían resolviéndolo.
+    public static function deleteInboundDid(string $did): void {
+        $db = self::database();
+        $open = $db->prepare("SELECT COUNT(*) FROM v2_dialer_call_log WHERE inbound_did=:d AND direction='IN' AND ended_at IS NULL");
+        $open->execute(['d' => $did]);
+        if ((int) $open->fetchColumn() > 0) throw new \RuntimeException('Hay llamadas entrantes abiertas en ese DID. Espera a que cierren.');
+        $db->prepare('DELETE FROM v2_dialer_inbound_dids WHERE did=:d')->execute(['d' => $did]);
+        self::audit('INBOUND_DID_DELETE', $did);
+    }
+
+    // Colas con gente esperando, de un solo `queue show` sin argumento: el
+    // encabezado de cada cola trae "<cola> has N calls". Una consulta AMI por
+    // tick, no una por agente.
+    //
+    // Parseo deliberadamente estrecho: solo el encabezado y solo colas
+    // v2dialer_. No se toca el parseo de miembros de availableAgentsCount(),
+    // del que dependen la reconciliación y el nivel de marcado.
+    public static function queuesWithCallersWaiting(): array {
+        $output = \Includes\PbxAmi::command(\Includes\PbxAmi::load(), 'queue show');
+        $waiting = [];
+        foreach (explode("\n", $output) as $line) {
+            if (strpos($line, 'Output: ') === 0) $line = substr($line, 8);
+            if (preg_match('/^\s*(v2dialer_[A-Za-z0-9_]+) has ([0-9]+) calls\b/', $line, $found) && (int) $found[2] > 0) {
+                $waiting[$found[1]] = (int) $found[2];
+            }
+        }
+        return $waiting;
+    }
+
+    // Colas entrantes de cada agente de la campaña, en una sola consulta: una
+    // por agente dentro del tick del motor sería una regresión.
+    private static function inboundQueuesByAgent(int $campaignId): array {
+        $stmt = self::database()->prepare('SELECT a.agent_user,c.queue_name FROM v2_dialer_agent_campaigns a
+            JOIN v2_dialer_campaigns c ON c.campaign_id=a.campaign_id AND c.active=1
+            JOIN v2_dialer_lists l ON l.campaign_id=a.campaign_id AND l.active=1
+            JOIN v2_dialer_inbound_dids i ON i.list_id=l.list_id AND i.active=1
+            WHERE a.agent_user IN (SELECT agent_user FROM v2_dialer_agent_campaigns WHERE campaign_id=:c)');
+        $stmt->execute(['c' => $campaignId]);
+        $map = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) $map[$row['agent_user']][] = $row['queue_name'];
+        return $map;
+    }
+
+    private static function blockedByInbound(string $user, array $inboundQueues, array $waiting): bool {
+        foreach ($inboundQueues[$user] ?? [] as $queue) if (isset($waiting[$queue])) return true;
+        return false;
+    }
+
+    // ¿Al agente le puede caer una entrante? Se consulta una vez, al conectar,
+    // para que la consola sepa si debe sondear rápido en reposo. Una entrante
+    // no la pide el agente, así que la cadencia de 12 s lo dejaría hablando sin
+    // ficha en pantalla; y preguntarlo en cada sondeo sería la consulta extra
+    // por sondeo que el contrato prohíbe.
+    public static function agentHasInboundQueue(string $user): bool {
+        $stmt = self::database()->prepare('SELECT 1 FROM v2_dialer_agent_campaigns a
+            JOIN v2_dialer_campaigns c ON c.campaign_id=a.campaign_id AND c.active=1
+            JOIN v2_dialer_lists l ON l.campaign_id=a.campaign_id AND l.active=1
+            JOIN v2_dialer_inbound_dids i ON i.list_id=l.list_id AND i.active=1
+            WHERE a.agent_user=:u LIMIT 1');
+        $stmt->execute(['u' => $user]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    // Queue() entrega el canal al miembro y el dialplan solo conoce su interfaz
+    // (SIP/5000). La identidad del agente es el usuario Zynervox, nunca el
+    // anexo: la fila de v2_phones es la que traduce.
+    public static function bindInboundInterface(int $callId, string $interface): bool {
+        if (!preg_match('~^(?:SIP|PJSIP)/([A-Za-z0-9_-]{1,60})$~D', $interface, $member)) throw new \RuntimeException('Interfaz inválida.');
+        $phone = \Includes\Phones::getById($member[1]);
+        if (!$phone || (string) ($phone['login'] ?? '') === '') { self::audit('INBOUND_UNKNOWN_MEMBER', $interface); return false; }
+        return self::bindInboundAgent($callId, (string) $phone['login']);
+    }
+
+    // Cierre de la entrante cuando Queue() devuelve el control. No se reutiliza
+    // closeCall() a propósito: esa deja el lead en NEW cuando no hubo
+    // conversación, con lo que un cliente entraría al hopper de salientes por
+    // haber llamado, y además dispara el autodial MANUAL, que no tiene nada que
+    // ver con una entrante.
+    public static function closeInboundCall(int $callId, string $queueStatus, string $uniqueId): void {
+        $db = self::database();
+        $connection = self::connectionFromQueueLog($uniqueId);
+        $db->beginTransaction();
+        try {
+            $stmt = $db->prepare("SELECT lead_id,agent_user,bridged_at FROM v2_dialer_call_log WHERE call_id=:id AND direction='IN' AND ended_at IS NULL FOR UPDATE");
+            $stmt->execute(['id' => $callId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) { $db->commit(); return; }
+            $agent = $connection['agent'] ?? $row['agent_user'];
+            $attended = (($connection['epoch'] ?? null) !== null || $row['bridged_at'] !== null) && empty($connection['abandoned']);
+            // ABANDONED es el que colgó esperando en cola. Vocabulario propio:
+            // DROPPED ya significa abandono de saliente y lo lee el adaptativo.
+            $reason = $attended ? 'COMPLETED' : 'ABANDONED';
+            $db->prepare('UPDATE v2_dialer_call_log SET ended_at=COALESCE(ended_at,NOW()),termination_reason=:r,agent_user=:a,agent_slot=NULL,
+                bridged_at=COALESCE(FROM_UNIXTIME(:epoch),bridged_at),
+                duration_wait=CASE WHEN bridged_at>=answered_at THEN TIMESTAMPDIFF(SECOND,answered_at,bridged_at) ELSE duration_wait END,
+                duration_talk=CASE WHEN ended_at>=bridged_at THEN TIMESTAMPDIFF(SECOND,bridged_at,ended_at) ELSE duration_talk END
+                WHERE call_id=:id')
+                ->execute(['r' => $reason, 'a' => $agent, 'epoch' => $connection['epoch'] ?? null, 'id' => $callId]);
+            // El lead solo avanza a CONTACTED, nunca vuelve a NEW.
+            if ($row['lead_id'] && $attended) {
+                $db->prepare("UPDATE v2_dialer_leads SET status='CONTACTED' WHERE lead_id=:id")->execute(['id' => $row['lead_id']]);
+            }
+            $db->commit();
+            // La entrante también se tipifica: el agente queda en wrapup hasta
+            // hacerlo, igual que con una saliente.
+            if (!empty($agent)) {
+                try { self::pauseForWrapup($agent); }
+                catch (\Throwable $error) { self::audit('WRAPUP_PAUSE_ERROR', (string) $agent); }
+            }
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            throw $e;
+        }
+    }
+
     private static function carrierEndpoint(array $carrier): string {
         $protocol = $carrier['protocol'];
         $matches = [];
@@ -768,12 +1014,29 @@ class Dialer {
         $level = $campaign['dial_method'] === 'ADAPTIVE' ? self::recalculateDialLevel($campaignId) : (float) $campaign['dial_level'];
         if ($agentUser !== null && (!self::agentWaiting($agentUser, $campaign) || self::agentHasWork($agentUser))) return null;
         $count = self::availableAgentsCount($campaignId, $campaign['level_count_mode']);
+        // La entrante manda: mientras alguien espere en la cola entrante del
+        // agente, el marcador no le entrega salientes. MANUAL queda fuera a
+        // propósito — el contrato exige que el botón Llamar funcione siempre,
+        // porque es cómo el agente devuelve la llamada a un cliente que se cortó.
+        $inboundQueues = $agentUser === null ? self::inboundQueuesByAgent($campaignId) : [];
+        $waiting = $inboundQueues ? self::queuesWithCallersWaiting() : [];
         $reservedAgent = $agentUser;
         if ($campaign['dial_method'] === 'PROGRESSIVE') {
             foreach (self::agentsForCampaign($campaignId) as $candidate) {
+                if (self::blockedByInbound($candidate, $inboundQueues, $waiting)) continue;
                 if (!self::agentHasWork($candidate) && self::agentWaiting($candidate, $campaign)) { $reservedAgent = $candidate; break; }
             }
             if ($reservedAgent === null) return null;
+        }
+        // Sin reserva (RATIO/ADAPTIVE) el cupo sale de agentes x nivel: los
+        // agentes con entrantes en espera no cuentan como capacidad.
+        if ($reservedAgent === null && $waiting) {
+            $blocked = 0;
+            foreach (self::agentsForCampaign($campaignId) as $candidate) {
+                if (self::blockedByInbound($candidate, $inboundQueues, $waiting)) $blocked++;
+            }
+            $count = max(0, $count - $blocked);
+            if ($count === 0) return null;
         }
         $capacity = $reservedAgent !== null ? (int) $campaign['max_concurrent_calls'] : (int) floor($count * $level);
         $lead = self::claimLead($campaignId, $campaign['dial_prefix'], $capacity, $reservedAgent, true, $campaign, $autodialSource, $onlyLeadId);
@@ -1054,7 +1317,7 @@ class Dialer {
             "SELECT COUNT(*) placed,
                     SUM(answered_at IS NOT NULL AND (amd_result IS NULL OR amd_result<>'MACHINE')) answered,
                     SUM(answered_at IS NOT NULL AND COALESCE(amd_result,'')<>'MACHINE' AND termination_reason='DROPPED') dropped
-             FROM v2_dialer_call_log WHERE campaign_id=:c AND originated_at>=CURDATE()"
+             FROM v2_dialer_call_log WHERE campaign_id=:c AND originated_at>=CURDATE() AND direction='OUT'"
         );
         $stmt->execute(['c' => $campaignId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -1135,11 +1398,11 @@ class Dialer {
         $scope=self::reportListScope($campaignId,$listId);
         $bindings=['c'=>$campaignId,'since'=>$dates['since'],'before'=>$dates['before']]+($listId===null ? [] : ['list'=>$listId]);
         $q=self::database()->prepare("SELECT CASE WHEN l.ended_at IS NULL THEN 'EN_CURSO' ELSE COALESCE(l.termination_reason,'SIN_RESULTADO') END result,COUNT(*) calls
-            FROM v2_dialer_call_log l WHERE l.campaign_id=:c AND l.originated_at>=:since AND l.originated_at<:before".$scope.' GROUP BY result ORDER BY calls DESC,result');
+            FROM v2_dialer_call_log l WHERE l.campaign_id=:c AND l.direction='OUT' AND l.originated_at>=:since AND l.originated_at<:before".$scope.' GROUP BY result ORDER BY calls DESC,result');
         $q->execute($bindings); $results=$q->fetchAll(PDO::FETCH_ASSOC);
         $q=self::database()->prepare("SELECT l.disposition_code code,d.label,COUNT(*) calls
             FROM v2_dialer_call_log l LEFT JOIN v2_dialer_dispositions d ON d.campaign_id=l.campaign_id AND d.code=l.disposition_code
-            WHERE l.campaign_id=:c AND l.originated_at>=:since AND l.originated_at<:before AND l.ended_at IS NOT NULL AND l.disposition_code IS NOT NULL".$scope.' GROUP BY l.disposition_code,d.label ORDER BY calls DESC,l.disposition_code');
+            WHERE l.campaign_id=:c AND l.direction='OUT' AND l.originated_at>=:since AND l.originated_at<:before AND l.ended_at IS NOT NULL AND l.disposition_code IS NOT NULL".$scope.' GROUP BY l.disposition_code,d.label ORDER BY calls DESC,l.disposition_code');
         $q->execute($bindings);
         return ['results'=>$results,'dispositions'=>$q->fetchAll(PDO::FETCH_ASSOC)];
     }
@@ -1179,7 +1442,7 @@ class Dialer {
                 AVG(CASE WHEN l.ended_at IS NOT NULL AND l.bridged_at IS NOT NULL AND l.duration_talk>=0 AND l.duration_wrapup>=0 THEN l.duration_talk+l.duration_wrapup END) aht_seconds
              FROM v2_dialer_call_log l
              LEFT JOIN v2_dialer_dispositions d ON d.campaign_id=l.campaign_id AND d.code=l.disposition_code
-             WHERE l.campaign_id=:c AND l.originated_at>=:since AND l.originated_at<:before".$scope
+             WHERE l.campaign_id=:c AND l.direction='OUT' AND l.originated_at>=:since AND l.originated_at<:before".$scope
         );
         $stmt->execute(['c' => $campaignId, 'since' => $dates['since'], 'before' => $dates['before']]+($listId===null ? [] : ['list'=>$listId]));
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
@@ -1244,7 +1507,9 @@ class Dialer {
             $segments[$user]=$merged;
             foreach ($merged as $range) $logged+=$range[1]-$range[0];
         }
-        $stmt=$db->prepare('SELECT agent_user,UNIX_TIMESTAMP(bridged_at) bridge_epoch,UNIX_TIMESTAMP(ended_at) end_epoch,duration_wrapup FROM v2_dialer_call_log WHERE campaign_id=:c AND bridged_at IS NOT NULL AND bridged_at<:b AND ended_at>=:s');
+        // Ocupación saliente: la entrante también ocupa al agente, pero se
+        // reporta aparte para no mezclar dos operaciones en un mismo indicador.
+        $stmt=$db->prepare("SELECT agent_user,UNIX_TIMESTAMP(bridged_at) bridge_epoch,UNIX_TIMESTAMP(ended_at) end_epoch,duration_wrapup FROM v2_dialer_call_log WHERE campaign_id=:c AND direction='OUT' AND bridged_at IS NOT NULL AND bridged_at<:b AND ended_at>=:s");
         $stmt->execute(['c'=>$campaignId,'b'=>$before,'s'=>$since]);
         $busy=0; $historical=false;
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {

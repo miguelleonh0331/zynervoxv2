@@ -165,7 +165,10 @@ function agc_fijo(string $u): array {
     foreach (Dialer::pauseTypes() as $t) {
         if ($t['active']) $motivos[] = ['id' => (int)$t['pause_type_id'], 'label' => (string)$t['label']];
     }
-    return ['campaigns' => $manuales, 'pauseTypes' => $motivos, 'trees' => $arboles];
+    // Si al agente le puede caer una entrante, la consola sondea rápido también
+    // en reposo: la entrante no la pide él, y con 12 s hablaría sin ficha.
+    return ['campaigns' => $manuales, 'pauseTypes' => $motivos, 'trees' => $arboles,
+        'inbound' => Dialer::agentHasInboundQueue($u)];
 }
 
 /**
@@ -225,10 +228,15 @@ function agc_historial(string $u, int $limite = 50): array {
 function agc_tipificar_lead(int $callId, string $agente, string $codigo, string $n1, string $n2, string $n3, string $nota): bool {
     $db = \Includes\Database::getCoreInstance();
 
-    $q = $db->prepare('SELECT lead_id FROM v2_dialer_call_log WHERE call_id=?');
+    $q = $db->prepare('SELECT lead_id,direction FROM v2_dialer_call_log WHERE call_id=?');
     $q->execute([$callId]);
-    $leadId = $q->fetchColumn();
-    if (!$leadId) return false;
+    $call = $q->fetch(\PDO::FETCH_ASSOC);
+    if (!$call || !$call['lead_id']) return false;
+    $leadId = $call['lead_id'];
+    // La entrante reutiliza el lead del cliente, que puede venir de una campaña
+    // saliente con su propia tipificación. Prefijo propio para no pisarla: cada
+    // canal conserva la suya y el historial por llamada sigue en call_log.
+    $prefijo = ($call['direction'] ?? 'OUT') === 'IN' ? 'tipin' : 'tip';
 
     // Recortes defensivos: el campo es compartido y no debe crecer sin límite.
     $corta = static function (string $v, int $max) {
@@ -236,18 +244,20 @@ function agc_tipificar_lead(int $callId, string $agente, string $codigo, string 
         return mb_substr((string)$v, 0, $max, 'UTF-8');
     };
 
+    // El prefijo es literal controlado arriba ('tip' o 'tipin'), nunca entrada
+    // del usuario: no hay forma de inyectar por esta interpolación.
     $sql = 'UPDATE v2_dialer_leads
             SET custom_fields = JSON_SET(
                   CASE WHEN custom_fields IS NULL OR custom_fields = \'\' OR JSON_VALID(custom_fields) = 0
                        THEN \'{}\' ELSE custom_fields END,
-                  \'$.tip_nivel1\', :n1,
-                  \'$.tip_nivel2\', :n2,
-                  \'$.tip_nivel3\', :n3,
-                  \'$.tip_nota\',   :nota,
-                  \'$.tip_codigo\', :codigo,
-                  \'$.tip_agente\', :agente,
-                  \'$.tip_llamada\', :llamada,
-                  \'$.tip_fecha\',  :fecha)
+                  \'$.' . $prefijo . '_nivel1\', :n1,
+                  \'$.' . $prefijo . '_nivel2\', :n2,
+                  \'$.' . $prefijo . '_nivel3\', :n3,
+                  \'$.' . $prefijo . '_nota\',   :nota,
+                  \'$.' . $prefijo . '_codigo\', :codigo,
+                  \'$.' . $prefijo . '_agente\', :agente,
+                  \'$.' . $prefijo . '_llamada\', :llamada,
+                  \'$.' . $prefijo . '_fecha\',  :fecha)
             WHERE lead_id = :lead';
     $u = $db->prepare($sql);
     $u->execute([
