@@ -1299,3 +1299,27 @@ Cambia el contrato del discador: aparece una dimension de direccion en call_log 
 
 Seguimiento:
 Definir el modelo de colas entrantes y el mapeo DID a lista y cola. Resolver el perimetro de telephony, ya abierto como item 11 de docs/AUDITORIA_2026-10-17.md, antes de tocar DialplanOrigins. Decidir si la tipificacion de una entrante sobre un lead saliente reutilizado se guarda en claves aparte de custom_fields. Conseguir troncal propia de zynervox registrada: hoy no hay ninguna, el unico registro saliente es ajeno al proyecto y esta en Request Sent.
+
+### ADR-0028 - La pantalla de supervision lee las tablas del discador en solo lectura
+
+Fecha: 2026-10-26
+
+Estado: aceptada
+
+Contexto:
+El piso en vivo es el corazon del tablero y el motor no lo publica: agentPanelState solo se sirve al propio agente y no hay endpoint que exponga el estado de los agentes de una campana. Los datos existen: 292 intervalos y 44 pausas ya estaban en la base.
+
+Decisión:
+supervisor/datos.php consulta v2_dialer_agent_campaigns, agent_intervals, agent_pauses, pause_types, call_log y leads en SELECT, sin tocar Dialer.php ni escribir una sola fila. El alcance por campana del supervisor se aplica antes de cualquier consulta.
+
+Motivo:
+Agregar metodos a Dialer.php es del especialista del discador y habria bloqueado la entrega. Leer en solo lectura no altera el contrato del motor ni su comportamiento, y el recorte por campana se mantiene.
+
+Alternativas evaluadas:
+- Esperar a que el discador publique un metodo: deja el piso vacio sin fecha. Duplicar los datos en una tabla propia: dos fuentes que se desincronizan.
+
+Impacto:
+Dependencia nueva de core hacia el esquema del discador. Si el discador renombra una columna, esta pantalla se rompe; por eso cada bloque va en su try y degrada a vacio en vez de reventar. Aparecio ademas una inconsistencia preexistente: las tablas del discador guardan el login en utf8mb4_general_ci y v2_zynervox_users en utf8mb4_unicode_ci, asi que el JOIN exige COLLATE explicito.
+
+Seguimiento:
+Pedir al especialista del discador un metodo publico de estado del piso y migrar a el. Unificar el cotejamiento del login entre v2_zynervox_users y las tablas v2_dialer_*.

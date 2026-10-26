@@ -2868,3 +2868,22 @@ Contrato:
 
 Riesgos:
 La fixture de pruebas entra como root y clona en TEMPORARY, asi que nunca ve los permisos reales. Se agrega una comprobacion aparte contra la base de verdad; cualquier tabla nueva necesita sus GRANT ademas de su DDL.
+
+### 2026-10-26 13:18 - core_AGENT - core
+
+Tipo: feature
+
+Resumen:
+El piso en vivo se pinta con datos reales y hay un sembrador de demostracion
+
+Motivo:
+Se pidio llenar la pantalla con informacion para empezar a pintar los datos
+
+Archivos modificados:
+- app/web/supervisor/datos.php,src/features/core/services/demo-piso.php
+
+Contrato:
+- modificado con ADR-0028
+
+Riesgos:
+demo-piso.php escribe sobre zynervox_core: todo lo que siembra lleva marca (campanas con prefijo DEMO, agentes 9001-9006) y 'borrar' se lleva exactamente eso, verificado con ida y vuelta. Las campanas sembradas quedan en STOPPED y los telefonos son del rango de documentacion 555-01xx, no asignable. datos.php pasa a depender del esquema del discador en solo lectura.

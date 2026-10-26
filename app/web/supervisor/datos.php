@@ -157,6 +157,168 @@ if ($CAMPANAS) {
     } catch (\Throwable $exception) { $GRABACIONES = []; }
 }
 
+// --- el piso: agentes, su manana y lo que hablan ahora --------------------
+// Se leen tablas del discador de solo lectura, sin tocar Dialer.php, porque
+// el motor no publica el estado del piso: agentPanelState solo se sirve a si
+// mismo. Autorizado para esta pantalla; ver ADR-0028.
+$AGENTES = [];
+$PISTAS = [];
+$EN_CURSO = [];
+$PAUSAS_HOY = [];
+$PAUSAS_TIPO = [];
+$idsCampana = array_map(function ($c) { return (int) $c['id']; }, $CAMPANAS);
+if ($idsCampana) {
+    try {
+        $db = \Includes\Database::getCoreInstance();
+        $marcas = implode(',', array_fill(0, count($idsCampana), '?'));
+        $hoy = date('Y-m-d');
+        $minutos = function ($fecha) {
+            $t = strtotime((string) $fecha);
+            return $t ? ((int) date('G', $t)) * 60 + (int) date('i', $t) : null;
+        };
+
+        // Quien puede trabajar en estas campanas, y en cual esta ahora.
+        // Las tablas del discador guardan el login en utf8mb4_general_ci y
+        // v2_zynervox_users en utf8mb4_unicode_ci. Sin COLLATE explicito el
+        // JOIN muere con "1267 Illegal mix of collations".
+        $stmt = $db->prepare("SELECT a.agent_user, a.campaign_id, u.full_name
+            FROM v2_dialer_agent_campaigns a
+            JOIN v2_zynervox_users u
+              ON u.user = a.agent_user COLLATE utf8mb4_unicode_ci AND u.active = 'Y'
+            WHERE a.campaign_id IN ($marcas) ORDER BY u.full_name, a.campaign_id");
+        $stmt->execute($idsCampana);
+        foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $fila) {
+            $id = (string) $fila['agent_user'];
+            if (!isset($AGENTES[$id])) {
+                $AGENTES[$id] = ['id' => $id, 'nombre' => (string) $fila['full_name'], 'camps' => [],
+                    'activa' => null, 'estado' => 'off', 'llam' => 0, 'cont' => 0, 'vent' => 0,
+                    'monto' => 0, 'ocup' => 0, 'login' => '', 'pausaMin' => 0, 'punt' => 'ok'];
+            }
+            $AGENTES[$id]['camps'][] = (string) ((int) $fila['campaign_id']);
+        }
+
+        if ($AGENTES) {
+            $logins = array_keys($AGENTES);
+            $marcasAg = implode(',', array_fill(0, count($logins), '?'));
+
+            // La manana: un bloque por intervalo observado.
+            $stmt = $db->prepare("SELECT agent_user, campaign_id, state, started_at,
+                    COALESCE(ended_at, last_seen_at) AS hasta, ended_at
+                FROM v2_dialer_agent_intervals
+                WHERE agent_user IN ($marcasAg) AND DATE(started_at) = ? ORDER BY started_at");
+            $stmt->execute(array_merge($logins, [$hoy]));
+            $mapaEstado = ['ACTIVE' => 'call', 'WRAPUP' => 'wrap', 'PAUSED' => 'pausa'];
+            $segundosActivo = [];
+            $segundosTotal = [];
+            foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $fila) {
+                $id = (string) $fila['agent_user'];
+                if (!isset($AGENTES[$id])) continue;
+                $desde = $minutos($fila['started_at']);
+                $hasta = $minutos($fila['hasta']);
+                if ($desde === null || $hasta === null) continue;
+                $tipo = $mapaEstado[(string) $fila['state']] ?? 'espera';
+                $PISTAS[$id][] = ['t' => $tipo, 'a' => $desde, 'd' => max(1, $hasta - $desde),
+                    'q' => (string) $fila['state']];
+                $largo = max(0, $hasta - $desde) * 60;
+                $segundosTotal[$id] = ($segundosTotal[$id] ?? 0) + $largo;
+                if ($fila['state'] !== 'PAUSED') $segundosActivo[$id] = ($segundosActivo[$id] ?? 0) + $largo;
+                if ($AGENTES[$id]['login'] === '') $AGENTES[$id]['login'] = substr((string) $fila['started_at'], 11, 5);
+                // El intervalo sin cerrar es el estado de ahora mismo.
+                if ($fila['ended_at'] === null) {
+                    $AGENTES[$id]['estado'] = $tipo;
+                    $AGENTES[$id]['activa'] = (string) ((int) $fila['campaign_id']);
+                    if ($tipo === 'pausa') $AGENTES[$id]['desde'] = $desde;
+                }
+            }
+            foreach ($AGENTES as $id => $_) {
+                $AGENTES[$id]['ocup'] = !empty($segundosTotal[$id])
+                    ? (int) round(($segundosActivo[$id] ?? 0) / $segundosTotal[$id] * 100) : 0;
+            }
+
+            // Produccion del dia, por agente.
+            $stmt = $db->prepare("SELECT l.agent_user, COUNT(*) llam,
+                    SUM(d.is_contact) cont, SUM(d.is_sale) vent
+                FROM v2_dialer_call_log l
+                LEFT JOIN v2_dialer_dispositions d
+                       ON d.campaign_id = l.campaign_id AND d.code = l.disposition_code
+                WHERE l.agent_user IN ($marcasAg) AND DATE(l.originated_at) = ?
+                GROUP BY l.agent_user");
+            $stmt->execute(array_merge($logins, [$hoy]));
+            foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $fila) {
+                $id = (string) $fila['agent_user'];
+                if (!isset($AGENTES[$id])) continue;
+                $AGENTES[$id]['llam'] = (int) $fila['llam'];
+                $AGENTES[$id]['cont'] = (int) $fila['cont'];
+                $AGENTES[$id]['vent'] = (int) $fila['vent'];
+            }
+
+            // Pausas de hoy, repartidas por motivo y alineadas al catalogo.
+            $tiposPausa = $db->query('SELECT pause_type_id, label FROM v2_dialer_pause_types WHERE active=1 ORDER BY pause_type_id')->fetchAll(\PDO::FETCH_ASSOC);
+            // Por etiqueta exacta: strtoupper no normaliza la ñ ni los acentos.
+            $topes = ['Refrigerio' => 45, 'Baño' => 10, 'Capacitación' => 60];
+            $colores = ['#2563EB', '#7C3AED', '#0891B2', '#D97706', '#16A34A'];
+            $indice = [];
+            foreach ($tiposPausa as $i => $tp) {
+                $indice[(int) $tp['pause_type_id']] = $i;
+                $etiqueta = (string) $tp['label'];
+                $PAUSAS_TIPO[] = ['t' => $etiqueta, 'min' => 0,
+                    'tope' => $topes[$etiqueta] ?? 30,
+                    'color' => $colores[$i % count($colores)]];
+            }
+            if ($tiposPausa) {
+                $stmt = $db->prepare("SELECT agent_user, pause_type_id,
+                        SUM(TIMESTAMPDIFF(MINUTE, started_at, COALESCE(ended_at, NOW()))) minutos
+                    FROM v2_dialer_agent_pauses
+                    WHERE agent_user IN ($marcasAg) AND DATE(started_at) = ?
+                    GROUP BY agent_user, pause_type_id");
+                $stmt->execute(array_merge($logins, [$hoy]));
+                foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $fila) {
+                    $id = (string) $fila['agent_user'];
+                    $pos = $indice[(int) $fila['pause_type_id']] ?? null;
+                    if (!isset($AGENTES[$id]) || $pos === null) continue;
+                    if (!isset($PAUSAS_HOY[$id])) $PAUSAS_HOY[$id] = array_fill(0, count($tiposPausa), 0);
+                    $PAUSAS_HOY[$id][$pos] = (int) $fila['minutos'];
+                }
+            }
+            foreach ($AGENTES as $id => $agente) {
+                if ($agente['estado'] === 'pausa') {
+                    $AGENTES[$id]['pausaMin'] = array_sum($PAUSAS_HOY[$id] ?? []);
+                    $AGENTES[$id]['motivo'] = 'En pausa';
+                }
+            }
+        }
+
+        // Lo que se esta hablando ahora: el motor deja ended_at en nulo.
+        $stmt = $db->prepare("SELECT l.agent_user, l.campaign_id, l.phone_number, l.bridged_at,
+                   l.originated_at, d.first_name, d.last_name
+            FROM v2_dialer_call_log l
+            LEFT JOIN v2_dialer_leads d ON d.lead_id = l.lead_id
+            WHERE l.campaign_id IN ($marcas) AND l.ended_at IS NULL
+            ORDER BY l.originated_at");
+        $stmt->execute($idsCampana);
+        $ahora = time();
+        foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $fila) {
+            $arranque = strtotime((string) ($fila['bridged_at'] ?: $fila['originated_at']));
+            $nombre = trim(((string) $fila['first_name']) . ' ' . ((string) $fila['last_name']));
+            $EN_CURSO[] = [
+                'ag' => (string) ($fila['agent_user'] ?? ''),
+                'cliente' => $nombre !== '' ? $nombre : (string) $fila['phone_number'],
+                'tel' => (string) $fila['phone_number'],
+                'seg' => $arranque ? max(0, $ahora - $arranque) : 0,
+                'camp' => (string) ((int) $fila['campaign_id']),
+                'etapa' => $fila['bridged_at'] ? 'En conversación' : 'Timbrando',
+                'cola' => $fila['agent_user'] === null,
+            ];
+            if (isset($AGENTES[(string) $fila['agent_user']]) && $fila['bridged_at']) {
+                $AGENTES[(string) $fila['agent_user']]['estado'] = 'call';
+            }
+        }
+        $AGENTES = array_values($AGENTES);
+    } catch (\Throwable $exception) {
+        $AGENTES = []; $PISTAS = []; $EN_CURSO = []; $PAUSAS_HOY = []; $PAUSAS_TIPO = [];
+    }
+}
+
 // --- turno del dia --------------------------------------------------------
 $dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 $meses = ['', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -176,12 +338,12 @@ const HOY = <?php echo supJson($HOY); ?>;
 const reloj = m => String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
 
 /* --------------------------------------------------------------- piso --- */
-/* El motor guarda los intervalos de agente en v2_dialer_agent_intervals,
-   pero no hay forma publica de leerlos: el panel del agente solo se sirve a
-   si mismo. Hasta que exista, el piso llega vacio. */
-const AGENTES = [];
-const PISTAS = {};
-const EN_CURSO = [];
+/* Salen de v2_dialer_agent_campaigns, v2_dialer_agent_intervals y del
+   call_log del dia. El estado de ahora es el intervalo sin cerrar. */
+const AGENTES = <?php echo supJson($AGENTES); ?>;
+const PISTAS = <?php echo supJson((object) $PISTAS); ?>;
+const EN_CURSO = <?php echo supJson($EN_CURSO); ?>;
+/* Las alertas se deducirian de umbrales; todavia no se calculan. */
 const ALERTAS = [];
 
 const porId = id => AGENTES.find(a => a.id === id);
@@ -245,12 +407,10 @@ const CRITERIOS = [];
 /* ------------------------------------------------------------ equipo ---- */
 const SEMANA = [];
 const ASISTENCIA = {};
-const PAUSAS_TIPO = [
-  {t:'Refrigerio',   min:0, tope:45, color:'#2563EB'},
-  {t:'Baño',         min:0, tope:10, color:'#7C3AED'},
-  {t:'Capacitación', min:0, tope:60, color:'#0891B2'},
-];
-const PAUSAS_HOY = {};
+/* Catalogo real de v2_dialer_pause_types; los topes todavia no viven en la
+   base, se declaran aca hasta que exista la columna. */
+const PAUSAS_TIPO = <?php echo supJson($PAUSAS_TIPO); ?>;
+const PAUSAS_HOY = <?php echo supJson((object) $PAUSAS_HOY); ?>;
 const COACHING = {};
 
 /* ----------------------------------------------------- comunicacion ----- */
