@@ -2753,3 +2753,22 @@ Contrato:
 
 Riesgos:
 campaign_monitor_cache_read() pasa a recortar por sesion: cualquier consumidor que necesite el snapshot entero debe usar campaign_monitor_cache_read_all(). El alcance cierra por defecto, asi que un supervisor sin asignacion no ve campanas. La tabla se aplico a mano y no esta en ningun instalador.
+
+### 2026-10-26 11:08 - core_AGENT - core
+
+Tipo: feature
+
+Resumen:
+Caparazon del puesto de supervision en /zynervoxv2/supervisor
+
+Motivo:
+Se pidio una web propia donde entren los supervisores
+
+Archivos modificados:
+- app/web/supervisor/index.php,app/web/includes/IsolatedGate.php,app/web/includes/Auth.php,app/web/modules/sup/sidebar.php,src/features/core/CONTRACT.md,src/features/core/tests/users.php,src/features/core/tests/users-router.php,src/features/core/tests/run-users.sh
+
+Contrato:
+- modificado con ADR-0027
+
+Riesgos:
+Comodin nuevo en IsolatedGate: cualquier .php que se deje caer bajo app/web/supervisor/ queda accesible, asi que esa carpeta no admite archivos sueltos sin Auth propio. El destino de login de los niveles 7 y 8 cambia de campaign_monitor.php a supervisor/index.php.

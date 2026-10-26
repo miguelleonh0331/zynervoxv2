@@ -193,3 +193,20 @@ lectura del snapshot y aplica el recorte según la sesión; los niveles distinto
 de 7 y 8 y los procesos sin sesión leen el snapshot completo mediante
 campaign_monitor_cache_read_all(). Las acciones de arranque y parada del monitor
 siguen exigiendo nivel 9. Prueba: src/features/core/tests/run-users.sh.
+
+
+## 2026-10-26 — Puesto de supervisión (ARCHITECT_AGENT)
+
+IsolatedGate admite el prefijo supervisor/, tercer comodín de la lista junto a
+bot_ivr/ e ivr_builder/. app/web/supervisor/index.php exige Auth::checkAccess
+con niveles 7, 8 y 9, no abre login propio —el único login sigue siendo
+app/web/index.php— y lee el alcance del usuario mediante
+campaign_monitor_cache_read(), que ya recorta por sesión. En aislado
+Auth::getRedirectPath envía los niveles 7 y 8 a supervisor/index.php; legacy
+conserva modules/sup/index.php. La pantalla enlaza sólo destinos ya permitidos
+por la lista blanca y que aceptan 7/8/9: campaign_monitor.php, campaigns.php,
+dialer_list_leads.php, dialer_report.php y whatsapp.php. Las funciones sin
+respaldo en el motor se muestran tachadas, sin enlace y con el motivo escrito;
+no se maquetan datos. Las acciones de arranque y parada del monitor siguen
+exigiendo nivel 9. Prueba: src/features/core/tests/run-users.sh, que verifica
+que el prefijo pasa el gate con nivel 8 y que un nivel 1 es redirigido.

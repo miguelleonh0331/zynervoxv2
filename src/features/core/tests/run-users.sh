@@ -8,6 +8,8 @@ trap 'if [[ -n "$server_pid" ]]; then kill "$server_pid" 2>/dev/null || true; fi
 mkdir -p "$stage/includes" "$stage/config" "$stage/modules/admin" "$stage/sessions"
 for file in Auth.php CoreUsers.php Database.php Audit.php ServerInfo.php IsolatedGate.php; do cp "$source/app/web/includes/$file" "$stage/includes/$file"; php -l "$stage/includes/$file"; done
 for file in users.php users_isolated.php sidebar.php campaign_monitor_cache.php; do cp "$source/app/web/modules/admin/$file" "$stage/modules/admin/$file"; php -l "$stage/modules/admin/$file"; done
+mkdir -p "$stage/supervisor"
+cp "$source/app/web/supervisor/index.php" "$stage/supervisor/index.php"; php -l "$stage/supervisor/index.php"
 cp "$source/app/web/index.php" "$stage/index.php"
 cp "$source/app/web/config/Config.php" "$stage/config/Config.php"
 cp /srv/www/htdocs/zynervoxv2/config/deployment.php "$stage/config/deployment.php"
@@ -53,7 +55,10 @@ assert code==200 and '&lt;script&gt;name&lt;/script&gt;' in body and '<script>na
 code,headers,_=request('login=1',{'username':'90001','password':'test-password-only'})
 assert code==302 and headers['Location']=='modules/admin/dialer_agent.php'
 code,headers,_=request('login=1',{'username':'rvaldez','password':'test-password-only'})
-assert code==302 and headers['Location']=='modules/admin/campaign_monitor.php'
+assert code==302 and headers['Location']=='supervisor/index.php'
 assert request('login=1',{'username':'90001','password':'wrong-password'})[0]==200
+code,_,body=request('role=8&sup=1')
+assert code==200 and 'Supervisi' in body and 'No construido' in body
+assert request('role=1&sup=1')[0]==302
 print('PASS: HTTP admin-only, role refresh, CSRF, direct-view gate, inactive session, escaped names, secret-free forms, level-9 refused over HTTP, per-level login rules and agent/supervisor login redirects.')
 PY

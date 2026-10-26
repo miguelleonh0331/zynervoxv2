@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../config/Config.php';
 
 function renderSupSidebar($activePage = 'campaigns') {
     $items = [
+        ['key' => 'home', 'href' => '../../supervisor/index.php', 'icon' => 'home', 'label' => 'Supervisión'],
         ['key' => 'campaigns', 'href' => '../admin/campaigns.php', 'icon' => 'campaigns', 'label' => 'Campaigns (Campañas)'],
         ['key' => 'users',     'href' => '../admin/users.php',     'icon' => 'users',     'label' => 'Users (Usuarios)'],
         ['key' => 'reports',   'href' => '../admin/reports.php',   'icon' => 'chart',     'label' => 'Reportes'],

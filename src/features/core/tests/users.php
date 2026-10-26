@@ -14,7 +14,7 @@ foreach ([['user'=>'90002','user_level'=>8],['user'=>'Supervisor','user_level'=>
 Includes\CoreUsers::saveUser(array_replace($input,['user'=>'rvaldez','full_name'=>'Rodrigo Valdez','user_level'=>8]));
 usersVerify((int)$db->query("SELECT user_level FROM v2_zynervox_users WHERE user='rvaldez'")->fetchColumn()===8,'Supervisor level stored');
 usersReject(static function() use($input) { Includes\CoreUsers::saveUser(array_replace($input,['user'=>'rvaldez','user_level'=>1,'pass'=>'']),'rvaldez'); });
-usersVerify(Includes\Auth::getRedirectPath(8)==='modules/admin/campaign_monitor.php' && Includes\Auth::getRedirectPath(7)===Includes\Auth::getRedirectPath(8),'Supervisor destination');
+usersVerify(Includes\Auth::getRedirectPath(8)==='supervisor/index.php' && Includes\Auth::getRedirectPath(7)===Includes\Auth::getRedirectPath(8),'Supervisor destination');
 // Alcance de campanas: cierra por defecto y solo aplica a 7 y 8.
 usersVerify(Includes\CoreUsers::campaignsFor('rvaldez')===[],'Scope closed by default');
 foreach ([['x:1'],['agents:0'],['agents:abc'],['agents'],['agents:1:2'],'agents:1',[['agents:1']]] as $bad) usersReject(static function() use($input,$bad) { Includes\CoreUsers::saveUser(array_replace($input,['user'=>'rvaldez2','user_level'=>8,'campaigns'=>$bad])); });

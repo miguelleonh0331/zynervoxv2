@@ -1258,3 +1258,27 @@ Tabla nueva aplicada a mano sobre zynervox_core, como el resto de migraciones de
 
 Seguimiento:
 Las campanas de Bot IVR aparecen en el catalogo por venir del snapshot, pero no se probaron con datos reales. Sumar esta migracion al instalador junto con las 016 del discador, que tampoco estan.
+
+### ADR-0027 - Puesto de supervision en /zynervoxv2/supervisor
+
+Fecha: 2026-10-26
+
+Estado: aceptada
+
+Contexto:
+Se pidio una web propia para supervisores, parecida a la maqueta demo-sup-v2, que es estatica y por eso no pasa por el gate. Una app con sesion si necesita PHP.
+
+Decisión:
+Comodin de prefijo supervisor/ en IsolatedGate y caparazon en app/web/supervisor/index.php con niveles 7, 8 y 9. Los niveles 7 y 8 aterrizan ahi en aislado. Las opciones con respaldo enlazan a paginas ya permitidas; las que no existen se muestran tachadas y sin enlace, con el motivo a la vista.
+
+Motivo:
+Un comodin evita volver a tocar el gate en cada entrega, que es la linea donde un error se paga con un 403 global. No se abre un login propio porque el contrato de core promete index.php como login unico. Tachar en vez de maquetar mantiene el tablero creible: lo que se ve es cierto.
+
+Alternativas evaluadas:
+- Declarar archivo por archivo: mas control, pero obliga a tocar el gate en cada entrega. Montar la pantalla dentro de campaign_monitor.php: evita el gate pero deja una URL que no corresponde. Replicar las once vistas con datos inventados: mezcla producto y escenografia en la pantalla de trabajo diaria.
+
+Impacto:
+Tercer comodin de prefijo en la lista blanca. getRedirectPath cambia el destino de 7 y 8, que hoy apuntaba al monitor de campanas.
+
+Seguimiento:
+El piso en vivo agente por agente necesita al especialista del discador: los datos estan en v2_dialer_agent_intervals, agent_status y agent_pauses, pero no hay metodo publico que los exponga y Dialer.php no es de core. Escucha, calidad y comunicacion no existen en el sistema.

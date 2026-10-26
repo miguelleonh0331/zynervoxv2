@@ -119,10 +119,8 @@ class Auth {
         // Rutas relativas desde la raíz del proyecto (donde está index.php)
         switch ($level) {
             case 1: return \Config\Config::deployment('isolated',false) ? 'modules/admin/dialer_agent.php' : 'modules/agente/index.php';
-            // En aislado modules/sup/ no esta en la lista blanca de IsolatedGate:
-            // aterrizan en el monitor de campanas, que ya acepta 7/8/9.
             case 7:
-            case 8: return \Config\Config::deployment('isolated',false) ? 'modules/admin/campaign_monitor.php' : 'modules/sup/index.php';
+            case 8: return \Config\Config::deployment('isolated',false) ? 'supervisor/index.php' : 'modules/sup/index.php';
             case 9: return 'modules/admin/index.php';
             default: return 'index.php';
         }

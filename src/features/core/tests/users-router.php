@@ -16,6 +16,11 @@ if (isset($_GET['edit'])) {
     Includes\CoreUsers::saveUser(['user'=>'90001','full_name'=>'<script>name</script>','pass'=>'test-password-only','active'=>'Y']);
     $_GET['edit']='90001';
 }
+if (isset($_GET['sup'])) {
+    $_SERVER['SCRIPT_FILENAME']=$web.'/supervisor/index.php';
+    require $web.'/includes/IsolatedGate.php';
+    require $_SERVER['SCRIPT_FILENAME'];exit;
+}
 $entry=isset($_GET['direct']) ? 'users_isolated.php' : 'users.php';
 $_SERVER['SCRIPT_FILENAME']=$web.'/modules/admin/'.$entry;
 require $web.'/includes/IsolatedGate.php';
