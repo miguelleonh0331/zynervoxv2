@@ -857,3 +857,54 @@ button{cursor:pointer;border:0;background:transparent}
 .tv-venta-sube{display:flex;align-items:center;gap:8px;margin-top:7px;font-size:15px;
   font-weight:700;background:rgba(255,255,255,.2);border-radius:999px;padding:4px 13px;
   align-self:flex-start}
+
+/* ===================================================== CHAT FLOTANTE ===
+   El chat vivia apretado en una tarjeta de 166px dentro de Comunicacion.
+   Ahora es una burbuja siempre a mano y un panel grande al abrirla, que es
+   como se usa de verdad: se habla con un agente sin perder la vista. */
+.burbuja{position:fixed;right:22px;bottom:22px;z-index:60;width:56px;height:56px;border-radius:50%;
+  border:0;cursor:pointer;background:var(--primary);color:#fff;box-shadow:0 6px 20px #0f172a33;
+  display:flex;align-items:center;justify-content:center;transition:transform .16s ease,box-shadow .16s ease}
+.burbuja:hover{transform:translateY(-2px);box-shadow:0 10px 26px #0f172a44}
+.burbuja:active{transform:translateY(0)}
+.burbuja:focus-visible{outline:3px solid var(--text);outline-offset:3px}
+.burbuja svg{width:26px;height:26px;fill:currentColor;pointer-events:none}
+.burbuja .burbuja-n{position:absolute;top:-2px;right:-2px;min-width:20px;height:20px;border-radius:10px;
+  background:var(--danger);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;
+  justify-content:center;padding:0 5px;border:2px solid var(--bg-card)}
+.burbuja.is-on{background:var(--text)}
+
+.chatflot{position:fixed;right:22px;bottom:90px;z-index:61;width:min(760px,calc(100vw - 44px));
+  height:min(560px,calc(100vh - 140px));background:var(--bg-card);border:1px solid var(--rule);
+  border-radius:14px;box-shadow:0 18px 50px #0f172a33;display:grid;
+  grid-template-rows:auto minmax(0,1fr);overflow:hidden;animation:chatflot-entra .18s ease-out}
+@keyframes chatflot-entra{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.chatflot{animation:none}.burbuja{transition:none}}
+.chatflot-top{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--rule)}
+.chatflot-top b{font-size:14px}
+.chatflot-top .chatflot-sub{font-size:11px;color:var(--text-muted)}
+.chatflot-x{margin-left:auto;border:0;background:none;cursor:pointer;font-size:20px;line-height:1;
+  color:var(--text-muted);padding:2px 6px;border-radius:6px}
+.chatflot-x:hover{background:var(--glass);color:var(--text)}
+.chatflot-cuerpo{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:0}
+.chatflot-lista{border-right:1px solid var(--rule);overflow:auto;min-height:0;padding:8px}
+.chatflot-ag{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;cursor:pointer;
+  padding:9px 10px;border-radius:9px;text-align:left}
+.chatflot-ag:hover{background:var(--glass)}
+.chatflot-ag.is-on{background:var(--primary);color:#fff}
+.chatflot-ag.is-on .chatflot-ag-est{color:#ffffffc0}
+.chatflot-ag b{font-size:12.5px;display:block}
+.chatflot-ag-est{font-size:10.5px;color:var(--text-muted)}
+.chatflot-ag .side-count{margin-left:auto}
+.chatflot-panel{display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-height:0}
+.chatflot-cab{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--rule)}
+.chatflot-hilo{overflow:auto;min-height:0;padding:14px;display:flex;flex-direction:column;gap:9px;
+  background:var(--bg)}
+.chatflot-pie{border-top:1px solid var(--rule);padding:10px 12px}
+.chatflot-nota{font-size:10.5px;color:var(--text-muted);margin:7px 2px 0}
+@media(max-width:720px){
+  .chatflot{right:12px;left:12px;width:auto;bottom:84px;height:min(70vh,520px)}
+  .chatflot-cuerpo{grid-template-columns:1fr}
+  .chatflot-lista{display:none}
+  .chatflot-lista.is-abierta{display:block}
+}

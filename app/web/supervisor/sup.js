@@ -410,7 +410,7 @@ function tablaEquipo() {
       acc.append(o);
     }
     const ch = el('button', 'mini'); ch.type = 'button'; ch.title = 'Chat interno';
-    ch.append(svg('chat')); ch.onclick = e => { e.stopPropagation(); S.chatCon = a.id; irA('comunica'); };
+    ch.append(svg('chat')); ch.onclick = e => { e.stopPropagation(); abrirChatFlot(a.id); };
     acc.append(ch); td9.append(acc);
 
     tr.append(td1, td2, td3, td4, td5, td6, td7, td8, td9);
@@ -1285,66 +1285,22 @@ function vComunica(c) {
       w.append(el('b', null, (ag ? ag.nombre : x.ag) + ' levantó la mano'));
       w.append(el('p', null, x.motivo + ' · cliente ' + x.cli + ' · ' + x.h));
       f.append(w);
-      f.append(boton('Atender', 'btn--primary btn--mini', () => { S.chatCon = x.ag; irA('comunica'); aviso('Chat abierto con ' + (ag ? ag.nombre : x.ag)); }));
+      f.append(boton('Atender', 'btn--primary btn--mini', () => { abrirChatFlot(x.ag); aviso('Chat abierto con ' + (ag ? ag.nombre : x.ag)); }));
       m.cuerpo.append(f);
     }
     izq.append(m);
   }
 
-  /* -- chat interno -- */
-  const ch = tarjeta('Chat interno', null, {plano:true, id:'cardChat'});
-  const cw = el('div'); cw.style.cssText = 'display:grid;grid-template-columns:166px minmax(0,1fr);height:412px';
-  const lista = el('div', 'chat-lista');
-  for (const a of AGENTES) {
-    const b = el('button', 'chat-ag' + (S.chatCon === a.id ? ' is-on' : '')); b.type = 'button'; b.id = 'chat-' + a.id;
-    const cara = avatar(a.nombre, 'chat-ag-cara');
-    const pt = el('i', 'chat-pt');
-    pt.style.background = a.estado === 'call' ? 'var(--ok)' : a.estado === 'pausa' ? 'var(--warn)'
-      : a.estado === 'off' ? '#94A3B8' : 'var(--primary)';
-    cara.append(pt);
-    b.append(cara);
-    const w = el('div'); w.style.minWidth = '0';
-    const pn = String(a.nombre || '—').split(' ');
-    w.append(el('b', null, pn[0] + (pn[1] ? ' ' + pn[1][0] + '.' : '')));
-    const e = el('div'); e.style.cssText = 'font-size:9.5px;color:var(--text-muted)';
-    e.textContent = (ESTADOS[a.estado] || ESTADOS.off).t; w.append(e);
-    b.append(w);
-    if ((CHAT[a.id] || []).length) { const n2 = el('span', 'side-count', String(CHAT[a.id].length));
-      n2.style.marginLeft = 'auto'; b.append(n2); }
-    b.onclick = () => { S.chatCon = a.id; irA('comunica'); };
-    lista.append(b);
-  }
-  const panel = el('div', 'chat');
-  const ag = porId(S.chatCon) || AGENTES[0] || {id:'', nombre:'—', estado:'off'};
-  const cab = el('div'); cab.style.cssText = 'display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid var(--rule)';
-  cab.append(avatar(ag.nombre, 'chat-ag-cara'));
-  const cw2 = el('div'); cw2.append(el('b', null, ag.nombre));
-  const ce = el('div'); ce.style.cssText = 'font-size:10px;color:var(--text-muted)';
-  ce.textContent = (ESTADOS[ag.estado] || ESTADOS.off).t + (ag.estado === 'call' ? ' · no interrumpir salvo urgencia' : '');
-  cw2.append(ce); cab.append(cw2);
-  const hilo = el('div', 'chat-hilo'); hilo.id = 'chatHilo';
-  for (const m of (CHAT[S.chatCon] || [])) {
-    const b = el('div', 'chat-msg chat-msg--' + (m.de === 'yo' ? 'yo' : 'el'));
-    b.append(document.createTextNode(m.t), el('em', null, m.h));
-    hilo.append(b);
-  }
-  if (!(CHAT[S.chatCon] || []).length) hilo.append(el('div', 'vacio', 'Sin mensajes todavía.'));
-  const red = el('div', 'redactar');
-  const inp = el('input'); inp.id = 'chatTexto'; inp.placeholder = 'Escribir a ' + ag.nombre.split(' ')[0] + '…';
-  const env2 = el('button', 'mini'); env2.type = 'button'; env2.id = 'chatEnviar';
-  env2.style.cssText = 'background:var(--primary);border-color:var(--primary);color:#fff;width:31px;height:31px';
-  env2.append(svg('enviar'));
-  const mandar = () => {
-    const txt = inp.value.trim(); if (!txt) return;
-    (CHAT[S.chatCon] = CHAT[S.chatCon] || []).push({de:'yo', t:txt, h:reloj(HOY.ahora)});
-    inp.value = ''; irA('comunica');
-  };
-  env2.onclick = mandar;
-  inp.onkeydown = e => { if (e.key === 'Enter') mandar(); };
-  red.append(inp, env2);
-  panel.append(cab, hilo, red);
-  cw.append(lista, panel);
-  ch.cuerpo.append(cw);
+  /* -- chat interno: la conversacion vive ahora en la burbuja flotante -- */
+  const ch = tarjeta('Chat interno', 'Disponible desde cualquier vista', {id:'cardChat'});
+  const cajaCh = el('div');
+  cajaCh.style.cssText = 'display:flex;align-items:center;gap:14px;flex-wrap:wrap';
+  const txtCh = el('p');
+  txtCh.style.cssText = 'margin:0;font-size:12px;color:var(--text-muted);flex:1;min-width:210px';
+  txtCh.textContent = 'Se abre en una ventana propia, sin salir de la pantalla que esté mirando. '
+    + 'También está la burbuja de abajo a la derecha, desde cualquier vista.';
+  cajaCh.append(txtCh, boton('Abrir el chat', 'btn--primary', () => abrirChatFlot(), 'chat'));
+  ch.cuerpo.append(cajaCh);
   der.append(ch);
 
   g.append(izq, der);
@@ -1818,7 +1774,7 @@ function fichaAgente(id) {
   const pie = [];
   if (a.estado === 'call') pie.push(boton('Entrar a la llamada', 'btn--primary', () => { cerrarHoja(); abrirEscucha(a.id); }, 'oreja'));
   if (a.estado === 'pausa') pie.push(boton('Sacar de pausa', 'btn--primary', () => { cerrarHoja(); accion('despausar:' + a.id); }));
-  pie.push(boton('Abrir chat', '', () => { cerrarHoja(); S.chatCon = a.id; irA('comunica'); }, 'chat'));
+  pie.push(boton('Abrir chat', '', () => { cerrarHoja(); abrirChatFlot(a.id); }, 'chat'));
   hoja({tit:a.nombre, sub:'Ficha del asesor', ancha:true, cuerpo:cu, pie});
 }
 
@@ -2132,7 +2088,7 @@ function accion(a) {
   } else if (k === 'escuchar') {
     abrirEscucha(arg);
   } else if (k === 'chat') {
-    S.chatCon = arg; irA('comunica');
+    abrirChatFlot(arg);
   } else if (k === 'ir') {
     irA(arg);
   }
@@ -2170,8 +2126,9 @@ function buscarGlobal(q) {
 
 /* ================================================== arranque ========= */
 function arrancar() {
-  $('yoCara').innerHTML = caraSVG('Rodrigo Valdez');
-  $('topYo').innerHTML = caraSVG('Rodrigo Valdez');
+  const yo = (typeof YO === 'object' && YO && YO.nombre) ? YO.nombre : 'Supervisión';
+  $('yoCara').innerHTML = caraSVG(yo);
+  $('topYo').innerHTML = caraSVG(yo);
   $('badgeAlertas').textContent = String(ALERTAS.length);
   $('topReloj').textContent = HOY.fecha + ' · ' + reloj(HOY.ahora);
 
@@ -2191,10 +2148,11 @@ function arrancar() {
 
   document.addEventListener('keydown', e => {
     if (e.key === '/' && document.activeElement !== $('qGlobal')) { e.preventDefault(); $('qGlobal').focus(); }
-    if (e.key === 'Escape') { cerrarHoja(); cerrarTV(); }
+    if (e.key === 'Escape') { cerrarHoja(); cerrarTV(); cerrarChatFlot(); }
   });
 
   pintarNav();
+  pintarBurbuja();
   irA('piso');
 }
 
@@ -2691,4 +2649,141 @@ function monDetalle() {
   act.append(cl, oc);
   env.append(act);
   return env;
+}
+
+/* ==================================================== CHAT FLOTANTE ===
+   Una burbuja siempre visible y un panel grande al abrirla. Reemplaza al
+   chat apretado que vivia dentro de la tarjeta de Comunicacion: desde
+   cualquier vista se le habla a un agente sin perder lo que se estaba
+   mirando.
+
+   No hay transporte: el sistema no tiene canal entre supervisor y agente,
+   asi que el mensaje se queda en la memoria de esta pagina. La nota al pie
+   del panel lo dice, para no prometer lo que no hace. */
+
+function sinLeerChat() {
+  return Object.keys(CHAT).reduce((s, k) => s + (CHAT[k] || []).length, 0);
+}
+
+function pintarBurbuja() {
+  const b = $('burbuja'); if (!b) return;
+  b.innerHTML = '';
+  b.append(svg('chat'));
+  const n = sinLeerChat();
+  if (n) b.append(el('span', 'burbuja-n', String(n)));
+  b.classList.toggle('is-on', !!S.chatAbierto);
+  b.title = S.chatAbierto ? 'Cerrar el chat interno' : 'Chat interno';
+  b.onclick = () => (S.chatAbierto ? cerrarChatFlot() : abrirChatFlot());
+}
+
+function cerrarChatFlot() {
+  S.chatAbierto = false;
+  const p = $('chatFlot'); if (p) { p.hidden = true; p.innerHTML = ''; }
+  pintarBurbuja();
+}
+
+function abrirChatFlot(agId) {
+  if (agId) S.chatCon = agId;
+  if (!porId(S.chatCon)) S.chatCon = (AGENTES[0] || {}).id || null;
+  S.chatAbierto = true;
+  pintarChatFlot();
+  pintarBurbuja();
+}
+
+function pintarChatFlot() {
+  const p = $('chatFlot'); if (!p) return;
+  p.hidden = false;
+  p.innerHTML = '';
+
+  const top = el('div', 'chatflot-top');
+  const tw = el('div');
+  tw.append(el('b', null, 'Chat interno'));
+  tw.append(el('div', 'chatflot-sub', AGENTES.length
+    ? AGENTES.length + (AGENTES.length === 1 ? ' agente en el piso' : ' agentes en el piso')
+    : 'Sin agentes en el piso'));
+  top.append(tw);
+  const x = el('button', 'chatflot-x', '×'); x.type = 'button';
+  x.title = 'Cerrar'; x.setAttribute('aria-label', 'Cerrar el chat');
+  x.onclick = cerrarChatFlot;
+  top.append(x);
+  p.append(top);
+
+  const cuerpo = el('div', 'chatflot-cuerpo');
+
+  /* -- columna izquierda: con quien hablar -- */
+  const lista = el('div', 'chatflot-lista');
+  if (!AGENTES.length) lista.append(el('div', 'vacio', 'No hay agentes asignados a sus campañas.'));
+  for (const a of AGENTES) {
+    const b = el('button', 'chatflot-ag' + (S.chatCon === a.id ? ' is-on' : '')); b.type = 'button';
+    b.id = 'chatflot-' + a.id;
+    const cara = avatar(a.nombre, 'chat-ag-cara');
+    const pt = el('i', 'chat-pt');
+    pt.style.background = a.estado === 'call' ? 'var(--ok)' : a.estado === 'pausa' ? 'var(--warn)'
+      : a.estado === 'off' ? '#94A3B8' : 'var(--primary)';
+    cara.append(pt);
+    b.append(cara);
+    const w = el('div'); w.style.minWidth = '0';
+    w.append(el('b', null, a.nombre));
+    w.append(el('div', 'chatflot-ag-est', (ESTADOS[a.estado] || ESTADOS.off).t));
+    b.append(w);
+    const n = (CHAT[a.id] || []).length;
+    if (n) b.append(el('span', 'side-count', String(n)));
+    b.onclick = () => abrirChatFlot(a.id);
+    lista.append(b);
+  }
+  cuerpo.append(lista);
+
+  /* -- columna derecha: la conversacion -- */
+  const panel = el('div', 'chatflot-panel');
+  const ag = porId(S.chatCon);
+  if (!ag) {
+    panel.append(el('div', 'vacio', 'Elija a alguien de la lista para escribirle.'));
+    cuerpo.append(panel); p.append(cuerpo); return;
+  }
+
+  const cab = el('div', 'chatflot-cab');
+  cab.append(avatar(ag.nombre, 'chat-ag-cara'));
+  const cw = el('div');
+  cw.append(el('b', null, ag.nombre));
+  cw.append(el('div', 'chatflot-ag-est', (ESTADOS[ag.estado] || ESTADOS.off).t
+    + (ag.estado === 'call' ? ' · no interrumpir salvo urgencia' : '')));
+  cab.append(cw);
+  panel.append(cab);
+
+  const hilo = el('div', 'chatflot-hilo'); hilo.id = 'chatHilo';
+  const mensajes = CHAT[S.chatCon] || [];
+  for (const m of mensajes) {
+    const b = el('div', 'chat-msg chat-msg--' + (m.de === 'yo' ? 'yo' : 'el'));
+    b.append(document.createTextNode(m.t), el('em', null, m.h));
+    hilo.append(b);
+  }
+  if (!mensajes.length) hilo.append(el('div', 'vacio', 'Sin mensajes todavía.'));
+  panel.append(hilo);
+
+  const pie = el('div', 'chatflot-pie');
+  const red = el('div', 'redactar');
+  const inp = el('input'); inp.id = 'chatTexto';
+  inp.placeholder = 'Escribir a ' + String(ag.nombre || '').split(' ')[0] + '…';
+  const env = el('button', 'mini'); env.type = 'button'; env.id = 'chatEnviar';
+  env.style.cssText = 'background:var(--primary);border-color:var(--primary);color:#fff;width:31px;height:31px';
+  env.append(svg('enviar'));
+  const mandar = () => {
+    const txt = inp.value.trim(); if (!txt) return;
+    (CHAT[S.chatCon] = CHAT[S.chatCon] || []).push({de:'yo', t:txt, h:reloj(HOY.ahora)});
+    inp.value = '';
+    pintarChatFlot(); pintarBurbuja();
+    const h = $('chatHilo'); if (h) h.scrollTop = h.scrollHeight;
+    const i2 = $('chatTexto'); if (i2) i2.focus();
+  };
+  env.onclick = mandar;
+  inp.onkeydown = e => { if (e.key === 'Enter') mandar(); };
+  red.append(inp, env);
+  pie.append(red);
+  pie.append(el('div', 'chatflot-nota',
+    'Todavía no hay canal con el agente: el mensaje queda en esta pantalla y no le llega.'));
+  panel.append(pie);
+
+  cuerpo.append(panel);
+  p.append(cuerpo);
+  const h = $('chatHilo'); if (h) h.scrollTop = h.scrollHeight;
 }

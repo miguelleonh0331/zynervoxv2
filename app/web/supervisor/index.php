@@ -94,6 +94,10 @@ function supHtml($value) { return htmlspecialchars((string) $value, ENT_QUOTES, 
 <!-- Avisos breves. -->
 <div class="toast" id="toast" hidden></div>
 
+<!-- Chat interno: burbuja siempre a mano y panel grande al abrirla. -->
+<button class="burbuja" id="burbuja" type="button" title="Chat interno" aria-label="Chat interno"></button>
+<div class="chatflot" id="chatFlot" hidden></div>
+
 <script src="datos.php"></script>
 <script src="sup.js"></script>
 </body>

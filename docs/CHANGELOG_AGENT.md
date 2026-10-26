@@ -2906,3 +2906,22 @@ Contrato:
 
 Riesgos:
 Dos consultas nuevas por campana sobre v2_dialer_leads y call_log. El sembrador ya no inventa called_count: lo deriva de las llamadas que genera, asi que resembrar cambia los numeros respecto de la siembra anterior.
+
+### 2026-10-26 13:38 - core_AGENT - core
+
+Tipo: feature
+
+Resumen:
+Chat interno como burbuja flotante, accesible desde cualquier vista
+
+Motivo:
+Vivia apretado en una columna de 166px dentro de Comunicacion y se veia mal
+
+Archivos modificados:
+- app/web/supervisor/sup.js,app/web/supervisor/sup.css,app/web/supervisor/index.php,app/web/supervisor/datos.php,src/features/core/tests/supervisor/run.js
+
+Contrato:
+- modificado con ADR-0027
+
+Riesgos:
+Sigue sin haber canal con el agente: el mensaje se queda en la memoria del navegador y el pie del panel lo dice. La tarjeta de Comunicacion ya no contiene la conversacion, solo el boton que la abre.

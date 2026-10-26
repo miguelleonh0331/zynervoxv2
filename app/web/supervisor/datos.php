@@ -358,6 +358,8 @@ function supJson($value) { return json_encode($value, JSON_UNESCAPED_UNICODE | J
 /* Generado por supervisor/datos.php. No editar a mano. */
 
 /* ------------------------------------------------- turno y utilidades --- */
+/* Quien mira la pantalla: la maqueta tenia el nombre escrito a mano. */
+const YO = <?php echo supJson(['nombre' => (string) ($_SESSION['full_name'] ?? $user), 'id' => $user]); ?>;
 const HOY = <?php echo supJson($HOY); ?>;
 const reloj = m => String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
 

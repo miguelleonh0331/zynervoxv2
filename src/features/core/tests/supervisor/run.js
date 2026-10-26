@@ -16,6 +16,13 @@ for (const v of ['piso','campanas','base','segmentos','clientes','conversa','com
 pasos.push(['abrirTV', () => ctx.abrirTV()]);
 pasos.push(['buscarGlobal', () => ctx.buscarGlobal('a')]);
 pasos.push(["accion(bajarNivel)", () => ctx.accion('bajarNivel')]);
+// chat flotante: burbuja, apertura, envio y cierre
+pasos.push(['pintarBurbuja', () => ctx.pintarBurbuja()]);
+pasos.push(['abrirChatFlot', () => ctx.abrirChatFlot()]);
+pasos.push(['abrirChatFlot(primero)', () => ctx.abrirChatFlot(
+  vm.runInContext('AGENTES.length ? AGENTES[0].id : null', ctx))]);
+pasos.push(['pintarChatFlot', () => ctx.pintarChatFlot()]);
+pasos.push(['cerrarChatFlot', () => ctx.cerrarChatFlot()]);
 for (const [n, f] of pasos) {
   try { f(); } catch (e) { fallos.push(n + ' -> ' + e.constructor.name + ': ' + e.message); }
 }
