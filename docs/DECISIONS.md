@@ -1210,3 +1210,27 @@ No cambia codigo ejecutable ni contratos. Documenta que telephony y core legisla
 
 Seguimiento:
 Resolver el perimetro de telephony, la propiedad del monitor de campanas, contratar el motor de reintentos y la consola del agente, y decidir que hacer con los modulos agent y reporting. Todo requiere escalar.
+
+### ADR-0025 - Inbound: extiende el modulo dialer, sin estado de agente duplicado
+
+Fecha: 2026-10-26
+
+Estado: aceptada
+
+Contexto:
+El sistema solo marca saliente. Se pide atender entrantes: troncal de entrada, colas, agentes mixtos y multi-campana. El sondeo cruzo discador, telefonia, panel y nucleo, asi que la decision es de arquitectura. Verificado: agentes multi-campana ya funcionan (PK compuesta en v2_dialer_agent_campaigns); la generacion de colas ya existe (Dialer::syncQueues escribe queues-zynervoxv2.conf, incluido por queues.conf, con cuatro colas vivas hoy); PbxAmi::rawAction ya acepta QueueAdd sin lista blanca. Falta toda la direccion de entrada: ni v2_dialer_call_log ni v2_carriers ni v2_dialer_campaigns tienen dimension de direccion, y el modelo de dialplan solo admite rutas de prefijo saliente.
+
+Decisión:
+Inbound extiende el modulo dialer existente; no se crea un modulo nuevo. La llamada entrante reutiliza el lead si el telefono ya existe y crea uno nuevo si no, con una lista por DID. El AGI de entrada escribe la fila de v2_dialer_call_log antes de Queue(), igual que el patron saliente Answer-AGI-Queue, de modo que la ficha esta en base durante el timbrado. La asignacion de la llamada la sigue haciendo Asterisk con Queue(); el sistema no elige agente. El estado en vivo del agente se sigue leyendo de Asterisk parseando queue show: no se agregan columnas de estado a v2_dialer_agent_status. La deteccion de trabajo en curso para el blending sale de la fila de call_log via agentHasWork(), no de una tabla de presencia.
+
+Motivo:
+Un modulo nuevo duplicaria leads, call_log, colas, asignacion agente-campana y consola, que es todo lo que inbound reutiliza. Reutilizar el lead mantiene lead_id NOT NULL y su FK, con lo que el screen pop de agentCurrentLead() y la tipificacion en custom_fields funcionan sin migracion destructiva. Escribir la fila antes de Queue() aprovecha el tiempo de timbrado (timeout=15 en la cola generada) como presupuesto, y evita construir un canal de push, que el contrato excluye al fijar MySQL+AMI+AGI sin ARI ni Redis. No duplicar el estado del agente evita la debilidad conocida de vicidial_live_agents: filas rancias cuando el agente cae sin cerrar sesion.
+
+Alternativas evaluadas:
+- Modulo inbound propio con su esquema: descartado por duplicacion. Registro de entrantes aparte de call_log: descartado porque duplica reporteria y tipificacion. Columna de estado en v2_dialer_agent_status y seleccion de agente por SQL al estilo VICIdial: descartado por estado rancio y por reescribir un reparto que Asterisk ya hace. Canal de push WebSocket/SSE para el screen pop: descartado en esta etapa por ser infraestructura nueva fuera del contrato; se revisa si el tiempo de timbrado no alcanza.
+
+Impacto:
+Cambia el contrato del discador: aparece una dimension de direccion en call_log y el motor deja de asumir que toda fila la origino el. Pendiente por fases: columna de direccion y DID en v2_dialer_call_log; modelo de colas entrantes desacoplado del formato v2dialer_<id> que Dialer.php valida por regex; contexto de entrada en el dialplan, que obliga a tocar DialplanOrigins::COMMON comparado por texto exacto; entrada de modules/admin/inbound.php en IsolatedGate.php, hoy 403; agentHasWork() consciente de entrantes; sondeo de la consola a 2.5s solo con el agente logueado en cola entrante, hoy 12s en reposo.
+
+Seguimiento:
+Definir el modelo de colas entrantes y el mapeo DID a lista y cola. Resolver el perimetro de telephony, ya abierto como item 11 de docs/AUDITORIA_2026-10-17.md, antes de tocar DialplanOrigins. Decidir si la tipificacion de una entrante sobre un lead saliente reutilizado se guarda en claves aparte de custom_fields. Conseguir troncal propia de zynervox registrada: hoy no hay ninguna, el unico registro saliente es ajeno al proyecto y esta en Request Sent.
