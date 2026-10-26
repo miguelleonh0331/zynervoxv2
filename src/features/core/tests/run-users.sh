@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
-source=/mnt/zynervoxv2-fuente
+# Raiz del arbol que contiene este script: funciona en la fuente y en worktrees.
+source=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)
 stage=$(mktemp -d /tmp/zynervox-core-users-XXXXXXXX)
 server_pid=''
 trap 'if [[ -n "$server_pid" ]]; then kill "$server_pid" 2>/dev/null || true; fi; rm -rf -- "$stage"' EXIT
@@ -28,7 +29,7 @@ def request(query,values=None):
 for _ in range(30):
     try: code,_,body=request('role=9');break
     except OSError: time.sleep(.1)
-assert code==200 and 'Crear agente' in body
+assert code==200 and 'Crear cuenta' in body
 for role in [1,7,8]: assert request('role='+str(role))[0]==302
 assert request('')[0]==302
 assert request('role=9&inactive=1')[0]==302
@@ -37,11 +38,22 @@ values={'user':'90001','full_name':'HTTP Agent','pass':'test-password-only','act
 assert request('role=9',values)[0]==403
 values['csrf_token']='users-fixture-token'
 code,_,body=request('role=9',values)
+assert code==200 and 'Nivel inv' in body and 'Agente creado.' not in body
+values['user_level']='1'
+code,_,body=request('role=9',values)
 assert code==200 and 'Agente creado.' in body and 'test-password-only' not in body
+values.update({'user':'90002','user_level':'8'})
+code,_,body=request('role=9',values)
+assert code==200 and 'empezar por letra' in body
+values.update({'user':'rvaldez','full_name':'HTTP Supervisor'})
+code,_,body=request('role=9',values)
+assert code==200 and 'Cuenta creada.' in body and 'test-password-only' not in body
 code,_,body=request('role=9&edit=1')
 assert code==200 and '&lt;script&gt;name&lt;/script&gt;' in body and '<script>name</script>' not in body and 'test-password-only' not in body
 code,headers,_=request('login=1',{'username':'90001','password':'test-password-only'})
 assert code==302 and headers['Location']=='modules/admin/dialer_agent.php'
+code,headers,_=request('login=1',{'username':'rvaldez','password':'test-password-only'})
+assert code==302 and headers['Location']=='modules/admin/campaign_monitor.php'
 assert request('login=1',{'username':'90001','password':'wrong-password'})[0]==200
-print('PASS: HTTP admin-only, role refresh, CSRF, direct-view gate, inactive session, escaped names, secret-free forms and agent login redirect.')
+print('PASS: HTTP admin-only, role refresh, CSRF, direct-view gate, inactive session, escaped names, secret-free forms, level-9 refused over HTTP, per-level login rules and agent/supervisor login redirects.')
 PY

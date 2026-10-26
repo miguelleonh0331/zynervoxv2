@@ -155,3 +155,24 @@ IsolatedGate allows exactly modules/admin/meet.php. The page enforces administra
 ## 2026-10-16 - Zynerdesk isolated entrypoint (architect approved)
 
 IsolatedGate permits exactly modules/admin/zynerdesk.php. The existing page retains Auth::checkAccess(9), fixed view selection and signed short-lived SSO; backend/proxy configuration is unchanged. Service-control routes remain blocked.
+
+
+## 2026-10-26 — Perfiles de acceso web (ARCHITECT_AGENT)
+
+Reemplaza la cláusula de saveAgent de 2026-10-11. CoreUsers::saveUser(input,existingUser)
+administra exclusivamente los niveles 1 agente, 7 GTR y 8 supervisor, declarados en
+CoreUsers::levels(); el nivel 9 queda fuera de la web y se sigue dando de alta por SQL.
+El nivel llega por entrada y se valida contra esa lista blanca: ausente vale 1 y cualquier
+otro valor se rechaza, de modo que un POST no puede fabricar un administrador. Nivel 1
+conserva login de 1 a 20 dígitos que debe coincidir con su anexo SIP; niveles 7 y 8 usan
+login de 3 a 20 caracteres en minúscula, iniciado por letra, con letras, dígitos, punto,
+guion o guion bajo, porque no tienen anexo. Login y nivel son inmutables al editar: editar
+exige que el nivel almacenado esté en la lista blanca y coincida con el enviado, así las
+cuentas de administrador siguen protegidas y no se alteran privilegios de una cuenta viva.
+Nombre validado, estado Y/N, contraseña nueva de 8–72 bytes mediante hash; contraseña vacía
+al editar conserva el valor existente y crear exige contraseña. Auditoría
+CORE_AGENT_CREATE/UPDATE contiene únicamente el login y es transaccional. Sin migración,
+borrado de usuarios ni teléfonos automáticos. En aislado los niveles 7 y 8 redirigen a
+modules/admin/campaign_monitor.php, que ya exige 7/8/9 y reserva el control del motor al
+nivel 9; modules/sup/ no se agrega a IsolatedGate y su sidebar oculta en aislado los
+destinos no permitidos. Prueba: src/features/core/tests/run-users.sh.

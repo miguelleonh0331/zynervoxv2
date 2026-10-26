@@ -5,20 +5,23 @@ require_once __DIR__.'/../../includes/CoreUsers.php';
 \Includes\Auth::checkAccess(9);
 $_SESSION['core_users_csrf']=$_SESSION['core_users_csrf'] ?? bin2hex(random_bytes(32));
 $message='';$error='';$editing=null;$rows=[];
-$values=['user'=>'','full_name'=>'','active'=>'Y'];
+$values=['user'=>'','full_name'=>'','active'=>'Y','user_level'=>1];
+$levels=[1=>'Agente',7=>'GTR',8=>'Supervisor',9=>'Administrador'];
 function userHtml($value) { return htmlspecialchars((string)$value,ENT_QUOTES,'UTF-8'); }
 try {
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET')==='POST') {
         if (!is_string($_POST['csrf_token'] ?? null) || !hash_equals($_SESSION['core_users_csrf'],$_POST['csrf_token'])) { http_response_code(403);throw new \InvalidArgumentException('Sesión inválida, recarga la página.'); }
         $old=$_POST['existing_user'] ?? '';
         if (!is_string($old)) throw new \InvalidArgumentException('Usuario inválido.');
-        \Includes\CoreUsers::saveAgent($_POST,$old==='' ? null : $old);
-        $message=$old==='' ? 'Agente creado. Crea su anexo SIP y asígnalo a la campaña.' : 'Agente actualizado.';
+        \Includes\CoreUsers::saveUser($_POST,$old==='' ? null : $old);
+        if ($old!=='') { $message='Cuenta actualizada.'; }
+        elseif ((int)($_POST['user_level'] ?? 1)===1) { $message='Agente creado. Crea su anexo SIP y asígnalo a la campaña.'; }
+        else { $message='Cuenta creada. Entra al monitor de campañas con su propio login.'; }
     }
     if (isset($_GET['edit'])) {
         if (!is_string($_GET['edit'])) throw new \InvalidArgumentException('Usuario inválido.');
         $candidate=\Includes\CoreUsers::getByUser($_GET['edit']);
-        if (!$candidate || (int)$candidate['user_level']!==1) throw new \InvalidArgumentException('Solo se pueden editar cuentas de agente.');
+        if (!$candidate || !in_array((int)$candidate['user_level'],\Includes\CoreUsers::levels(),true)) throw new \InvalidArgumentException('Solo se pueden editar cuentas de agente, GTR o supervisor.');
         $editing=$candidate;$values=$editing;
     }
 } catch (\InvalidArgumentException $exception) { $error=$exception->getMessage(); }
@@ -34,16 +37,19 @@ catch (\Throwable $exception) { http_response_code(503);$error='No se pudo consu
 <?php if ($message): ?><p role="status"><?php echo userHtml($message); ?></p><?php endif; ?>
 <?php if ($error): ?><p role="alert"><?php echo userHtml($error); ?></p><?php endif; ?>
 <div class="card"><h2>Cuentas de acceso</h2><div class="users-table-wrap"><table class="users-table"><thead><tr><th>Login</th><th>Nombre</th><th>Nivel</th><th>Activo</th><th>Acciones</th></tr></thead><tbody>
-<?php $levels=[1=>'Agente',7=>'GTR',8=>'Supervisor',9=>'Administrador'];foreach ($rows as $row): ?>
-<tr><td><?php echo userHtml($row['user']); ?></td><td><?php echo userHtml($row['full_name']); ?></td><td><?php echo userHtml($levels[(int)$row['user_level']] ?? $row['user_level']); ?></td><td><?php echo $row['active']==='Y' ? 'Sí' : 'No'; ?></td><td><?php if ((int)$row['user_level']===1): ?><a href="users.php?edit=<?php echo rawurlencode($row['user']); ?>">Editar</a> · <a href="phones.php?search=<?php echo rawurlencode($row['user']); ?>">Anexo SIP</a><?php endif; ?></td></tr>
+<?php foreach ($rows as $row): ?>
+<tr><td><?php echo userHtml($row['user']); ?></td><td><?php echo userHtml($row['full_name']); ?></td><td><?php echo userHtml($levels[(int)$row['user_level']] ?? $row['user_level']); ?></td><td><?php echo $row['active']==='Y' ? 'Sí' : 'No'; ?></td><td><?php if (in_array((int)$row['user_level'],\Includes\CoreUsers::levels(),true)): ?><a href="users.php?edit=<?php echo rawurlencode($row['user']); ?>">Editar</a><?php if ((int)$row['user_level']===1): ?> · <a href="phones.php?search=<?php echo rawurlencode($row['user']); ?>">Anexo SIP</a><?php endif; ?><?php endif; ?></td></tr>
 <?php endforeach; ?></tbody></table></div></div>
-<div class="card"><h2><?php echo $editing ? 'Editar agente' : 'Crear agente'; ?></h2>
+<div class="card"><h2><?php echo $editing ? 'Editar cuenta' : 'Crear cuenta'; ?></h2>
 <form method="POST"><input type="hidden" name="csrf_token" value="<?php echo userHtml($_SESSION['core_users_csrf']); ?>"><input type="hidden" name="existing_user" value="<?php echo userHtml($editing['user'] ?? ''); ?>">
-<div class="users-grid"><div class="field"><label for="agent-user">Login / extensión SIP</label><input id="agent-user" name="user" inputmode="numeric" pattern="[0-9]{1,20}" maxlength="20" required <?php echo $editing ? 'readonly' : ''; ?> value="<?php echo userHtml($values['user']); ?>"></div>
+<div class="users-grid"><div class="field"><label for="agent-level">Perfil de acceso</label>
+<?php if ($editing): ?><input type="hidden" name="user_level" value="<?php echo (int)$values['user_level']; ?>"><input id="agent-level" type="text" readonly value="<?php echo userHtml($levels[(int)$values['user_level']] ?? $values['user_level']); ?>"><p>El perfil de una cuenta existente no se cambia: dala de baja y créala con el perfil nuevo.</p>
+<?php else: ?><select id="agent-level" name="user_level"><?php foreach (\Includes\CoreUsers::levels() as $lvl): ?><option value="<?php echo (int)$lvl; ?>" <?php echo (int)$values['user_level']===(int)$lvl ? 'selected' : ''; ?>><?php echo userHtml($levels[$lvl]); ?></option><?php endforeach; ?></select><p>Administrador no se crea desde aquí.</p><?php endif; ?></div>
+<div class="field"><label for="agent-user">Login</label><input id="agent-user" name="user" maxlength="20" required <?php echo $editing ? 'readonly' : ''; ?> value="<?php echo userHtml($values['user']); ?>"><p>Agente: sólo dígitos, iguales a su anexo SIP. GTR y supervisor: de 3 a 20 caracteres en minúscula, empezando por letra.</p></div>
 <div class="field"><label for="agent-name">Nombre completo</label><input id="agent-name" name="full_name" maxlength="100" required value="<?php echo userHtml($values['full_name']); ?>"></div>
 <div class="field"><label for="agent-password">Contraseña web</label><input id="agent-password" type="password" name="pass" autocomplete="new-password" minlength="8" maxlength="72" <?php echo $editing ? '' : 'required'; ?>><p><?php echo $editing ? 'Déjala vacía para conservar la contraseña.' : 'Mínimo 8 caracteres.'; ?></p></div>
 <div class="field"><label for="agent-active">Cuenta activa</label><select id="agent-active" name="active"><option value="Y" <?php echo $values['active']==='Y' ? 'selected' : ''; ?>>Sí</option><option value="N" <?php echo $values['active']==='N' ? 'selected' : ''; ?>>No</option></select></div></div>
-<p>Nivel: Agente. Para operar, crea un anexo SIP con el mismo login en <a href="phones.php">Anexos/Teléfonos</a>, registra MicroSIP y asígnalo desde <a href="campaigns.php">Campañas → Agentes asignados</a>.</p>
+<p>Un <strong>agente</strong>, para operar, necesita un anexo SIP con el mismo login en <a href="phones.php">Anexos/Teléfonos</a>, MicroSIP registrado y asignación desde <a href="campaigns.php">Campañas → Agentes asignados</a>. Un <strong>GTR</strong> o <strong>supervisor</strong> no lleva anexo: entra directo al <a href="campaign_monitor.php">monitor de campañas</a>.</p>
 <p>Antes de desactivar una cuenta, el agente debe salir de sus colas. Desactivar bloquea el acceso web; la configuración SIP se administra desde Anexos/Teléfonos.</p>
-<button class="btn-primary" type="submit"><?php echo $editing ? 'Guardar agente' : 'Crear agente'; ?></button> <?php if ($editing): ?><a href="users.php">Nuevo agente</a><?php endif; ?>
+<button class="btn-primary" type="submit"><?php echo $editing ? 'Guardar cuenta' : 'Crear cuenta'; ?></button> <?php if ($editing): ?><a href="users.php">Nueva cuenta</a><?php endif; ?>
 </form></div></main></body></html>

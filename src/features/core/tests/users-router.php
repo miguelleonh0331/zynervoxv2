@@ -8,11 +8,12 @@ if (isset($_GET['role'])) {
 }
 if (isset($_GET['inactive'])) $db->exec("UPDATE v2_zynervox_users SET active='N'");
 if (isset($_GET['login'])) {
-    Includes\CoreUsers::saveAgent(['user'=>'90001','full_name'=>'Agent','pass'=>'test-password-only','active'=>'Y']);
+    Includes\CoreUsers::saveUser(['user'=>'90001','full_name'=>'Agent','pass'=>'test-password-only','active'=>'Y']);
+    Includes\CoreUsers::saveUser(['user'=>'rvaldez','full_name'=>'Supervisor','pass'=>'test-password-only','active'=>'Y','user_level'=>8]);
     require $web.'/index.php';exit;
 }
 if (isset($_GET['edit'])) {
-    Includes\CoreUsers::saveAgent(['user'=>'90001','full_name'=>'<script>name</script>','pass'=>'test-password-only','active'=>'Y']);
+    Includes\CoreUsers::saveUser(['user'=>'90001','full_name'=>'<script>name</script>','pass'=>'test-password-only','active'=>'Y']);
     $_GET['edit']='90001';
 }
 $entry=isset($_GET['direct']) ? 'users_isolated.php' : 'users.php';

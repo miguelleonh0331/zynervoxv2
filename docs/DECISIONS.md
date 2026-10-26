@@ -1210,3 +1210,27 @@ No cambia codigo ejecutable ni contratos. Documenta que telephony y core legisla
 
 Seguimiento:
 Resolver el perimetro de telephony, la propiedad del monitor de campanas, contratar el motor de reintentos y la consola del agente, y decidir que hacer con los modulos agent y reporting. Todo requiere escalar.
+
+### ADR-0025 - Perfiles de acceso web: agente, GTR y supervisor
+
+Fecha: 2026-10-26
+
+Estado: aceptada
+
+Contexto:
+La web solo podia crear agentes (CoreUsers fijaba nivel 1) y los niveles 7 y 8 caian en 403 al entrar, porque getRedirectPath los mandaba a modules/sup/index.php, fuera de la lista blanca de IsolatedGate. La maqueta de supervision demo-sup-v2 necesita una pantalla real con perfiles detras.
+
+Decisión:
+CoreUsers::saveUser administra los niveles 1, 7 y 8 contra una lista blanca, con login numerico para el agente y alfanumerico en minuscula para GTR y supervisor. El nivel 9 se excluye de la web. En aislado 7 y 8 aterrizan en modules/admin/campaign_monitor.php y el sidebar de supervision oculta los destinos bloqueados.
+
+Motivo:
+El monitor de campanas ya aceptaba 7/8/9 y reservaba el control del motor al nivel 9, asi que sirve de aterrizaje sin dar de alta ninguna entrada nueva en IsolatedGate. Excluir el nivel 9 evita que una sesion de administrador fabrique administradores persistentes desde la web.
+
+Alternativas evaluadas:
+- Dar de alta modules/sup/index.php en IsolatedGate: exigia escalamiento y ampliaba la lista blanca sin necesidad. Tabla de perfiles y permisos: migracion nueva y Auth tocado en 79 archivos, sin pedido que lo justifique. Mantener las altas por SQL a mano: no resuelve el pedido.
+
+Impacto:
+Cambia la clausula de saveAgent de 2026-10-11 en src/features/core/CONTRACT.md. El nivel de una cuenta existente pasa a ser inmutable al editar. El renombre saveAgent a saveUser toca sus tres consumidores.
+
+Seguimiento:
+Decidir si GTR y supervisor se diferencian: hoy comparten sidebar y destino. Construir la pantalla de supervision real con datos del motor; no existe endpoint que exponga el piso a un supervisor.

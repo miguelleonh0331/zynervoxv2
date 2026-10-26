@@ -2715,3 +2715,22 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-10-26 10:23 - core_AGENT - core
+
+Tipo: feature
+
+Resumen:
+Perfiles de acceso agente, GTR y supervisor en el panel aislado, y aterrizaje de los niveles 7 y 8
+
+Motivo:
+La pantalla de usuarios solo creaba agentes y un supervisor recien creado caia en 403 al entrar
+
+Archivos modificados:
+- app/web/includes/CoreUsers.php,app/web/includes/Auth.php,app/web/modules/admin/users_isolated.php,app/web/modules/sup/sidebar.php,src/features/core/CONTRACT.md,src/features/core/tests/users.php,src/features/core/tests/users-router.php,src/features/core/tests/run-users.sh
+
+Contrato:
+- modificado con ADR-0025
+
+Riesgos:
+Auth.php lo consumen 79 archivos: el cambio es solo la rama aislada de getRedirectPath para 7 y 8. El nivel de una cuenta existente ya no se puede cambiar al editar. run-users.sh dejo de apuntar a /mnt y resuelve su raiz desde la ubicacion del script.
