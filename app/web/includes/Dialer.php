@@ -69,7 +69,7 @@ class Dialer {
         $db = self::database();
         $campaigns = $db->query('SELECT campaign_id,name,engine_state FROM v2_dialer_campaigns WHERE active=1 ORDER BY campaign_id')->fetchAll(PDO::FETCH_ASSOC);
         $totalStmt = $db->prepare('SELECT COUNT(*) FROM v2_dialer_leads d JOIN v2_dialer_lists l ON l.list_id=d.list_id WHERE l.campaign_id=:c AND l.active=1');
-        $callingStmt = $db->prepare('SELECT COUNT(*) FROM v2_dialer_call_log WHERE campaign_id=:c AND ended_at IS NULL');
+        $callingStmt = $db->prepare("SELECT COUNT(*) FROM v2_dialer_call_log WHERE campaign_id=:c AND ended_at IS NULL AND direction='OUT'");
         $stateStmt = $db->prepare("SELECT CASE WHEN ended_at IS NULL THEN 'EN_CURSO' ELSE COALESCE(termination_reason,'SIN_RESULTADO') END estado,COUNT(*) total FROM v2_dialer_call_log WHERE campaign_id=:c GROUP BY estado ORDER BY total DESC");
         $out = [];
         foreach ($campaigns as $c) {
@@ -576,7 +576,9 @@ class Dialer {
     // sigue ocupando capacidad hasta su cierre, aunque dure más que esa ventana.
     public static function inFlightCount(int $campaignId, int $windowSeconds = 0): int {
         $stmt = self::database()->prepare(
-            'SELECT COUNT(*) FROM v2_dialer_call_log WHERE campaign_id=:c AND ended_at IS NULL'
+            // Solo salientes: el cupo mide lo que este motor origina, y una
+            // entrante en curso no consume capacidad de marcado.
+            "SELECT COUNT(*) FROM v2_dialer_call_log WHERE campaign_id=:c AND ended_at IS NULL AND direction='OUT'"
         );
         $stmt->bindValue(':c', $campaignId, PDO::PARAM_INT);
         $stmt->execute();
@@ -687,6 +689,80 @@ class Dialer {
     // Conservar el intento rechazado para diagnóstico y no dejar DIALING.
     public static function releaseFailedClaim(int $callId, int $leadId): void {
         self::closeUnanswered($callId, 'ORIGINATE_ERROR');
+    }
+
+    // ----------------------------------------------------------- Entrantes
+    // La entrante no la origina este motor: Asterisk ya tiene el canal. El AGI
+    // de entrada llama aquí ANTES de Queue(), igual que el patrón saliente
+    // Answer→AGI→Queue, para que la ficha del cliente esté en base mientras
+    // timbra y la consola la encuentre al sondear.
+    //
+    // Reutiliza el lead del teléfono aunque viva en otra lista, porque el
+    // historial es del cliente y no de la lista. Si no existe lo crea en la
+    // lista del DID con estado INBOUND: claimLead() solo toma status='NEW',
+    // así que un cliente que llamó no entra al hopper de salientes por haber
+    // llamado.
+    public static function registerInboundCall(string $did, string $phone, string $channelUniqueId = ''): ?array {
+        if (!preg_match('/^\+?[0-9]{1,20}$/D', $did)) throw new \RuntimeException('DID inválido.');
+        if (!preg_match('/^\+?[0-9]{1,20}$/D', $phone)) throw new \RuntimeException('Teléfono inválido.');
+        $db = self::database();
+        $db->beginTransaction();
+        try {
+            $route = $db->prepare('SELECT i.list_id,l.campaign_id FROM v2_dialer_inbound_dids i
+                JOIN v2_dialer_lists l ON l.list_id=i.list_id
+                WHERE i.did=:d AND i.active=1 AND l.active=1');
+            $route->execute(['d' => $did]);
+            $target = $route->fetch(PDO::FETCH_ASSOC);
+            // DID sin ruta: no se inventa destino, el dialplan decide qué hacer.
+            if (!$target) { $db->commit(); return null; }
+            // El más antiguo gana, para que dos entrantes del mismo número no
+            // elijan fichas distintas.
+            $find = $db->prepare('SELECT lead_id FROM v2_dialer_leads WHERE phone_number=:p ORDER BY lead_id LIMIT 1');
+            $find->execute(['p' => $phone]);
+            $leadId = $find->fetchColumn();
+            if ($leadId === false) {
+                $db->prepare("INSERT INTO v2_dialer_leads (list_id,phone_number,status) VALUES (:l,:p,'INBOUND')")
+                    ->execute(['l' => $target['list_id'], 'p' => $phone]);
+                $leadId = $db->lastInsertId();
+            }
+            $db->prepare("INSERT INTO v2_dialer_call_log (campaign_id,lead_id,phone_number,originated_at,direction,inbound_did,channel_uniqueid)
+                VALUES (:c,:l,:p,NOW(),'IN',:did,:u)")
+                ->execute(['c' => $target['campaign_id'], 'l' => $leadId, 'p' => $phone, 'did' => $did,
+                    'u' => $channelUniqueId !== '' ? $channelUniqueId : null]);
+            $callId = (int) $db->lastInsertId();
+            $db->commit();
+            self::audit('INBOUND_CALL', (string) $callId);
+            return ['call_id' => $callId, 'lead_id' => (int) $leadId, 'campaign_id' => (int) $target['campaign_id']];
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            throw $e;
+        }
+    }
+
+    // Asterisk ya eligió al agente con Queue(); aquí solo se estampa quién
+    // atendió. Ocupar agent_slot es lo que frena al marcador: es el mutex
+    // global que agentHasWork() y claimLead() ya consultan, así que la entrante
+    // bloquea las salientes sin tabla de presencia aparte.
+    public static function bindInboundAgent(int $callId, string $agentUser): bool {
+        $db = self::database();
+        $withSlot = "UPDATE v2_dialer_call_log SET agent_user=:u,agent_slot=:s,
+            answered_at=COALESCE(answered_at,NOW()),bridged_at=COALESCE(bridged_at,NOW())
+            WHERE call_id=:id AND direction='IN' AND ended_at IS NULL";
+        $withoutSlot = "UPDATE v2_dialer_call_log SET agent_user=:u,
+            answered_at=COALESCE(answered_at,NOW()),bridged_at=COALESCE(bridged_at,NOW())
+            WHERE call_id=:id AND direction='IN' AND ended_at IS NULL";
+        try {
+            $stmt = $db->prepare($withSlot);
+            $stmt->execute(['u' => $agentUser, 's' => $agentUser, 'id' => $callId]);
+            return $stmt->rowCount() > 0;
+        } catch (\PDOException $e) {
+            // 1062: ese agente ya tenía un intento abierto. La entrante no se
+            // pierde: queda registrada sin slot y el conflicto queda auditado.
+            if (($e->errorInfo[1] ?? null) !== 1062) throw $e;
+            $db->prepare($withoutSlot)->execute(['u' => $agentUser, 'id' => $callId]);
+            self::audit('INBOUND_SLOT_BUSY', (string) $callId);
+            return false;
+        }
     }
 
     private static function carrierEndpoint(array $carrier): string {
@@ -1054,7 +1130,7 @@ class Dialer {
             "SELECT COUNT(*) placed,
                     SUM(answered_at IS NOT NULL AND (amd_result IS NULL OR amd_result<>'MACHINE')) answered,
                     SUM(answered_at IS NOT NULL AND COALESCE(amd_result,'')<>'MACHINE' AND termination_reason='DROPPED') dropped
-             FROM v2_dialer_call_log WHERE campaign_id=:c AND originated_at>=CURDATE()"
+             FROM v2_dialer_call_log WHERE campaign_id=:c AND originated_at>=CURDATE() AND direction='OUT'"
         );
         $stmt->execute(['c' => $campaignId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);

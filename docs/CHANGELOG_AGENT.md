@@ -2715,3 +2715,22 @@ Contrato:
 
 Riesgos:
 - ninguno conocido
+
+### 2026-10-26 10:47 - dialer_AGENT - dialer
+
+Tipo: feature
+
+Resumen:
+Fase 1 de entrantes: registro de la llamada recibida, con direccion y DID en el call_log
+
+Motivo:
+ADR-0025. La entrante necesita existir en base antes de Queue() para que la ficha del cliente este en pantalla mientras timbra. Reutiliza el lead del telefono y crea uno nuevo en la lista del DID con estado INBOUND, que claimLead() no toma. Ocupar agent_slot con la entrante es lo que frena al marcador, sin tabla de presencia nueva. El cupo saliente y el nivel adaptativo se acotan a direction=OUT para que una entrante no consuma capacidad ni distorsione la histeresis.
+
+Archivos modificados:
+- src/features/dialer/models/017-inbound.sql, app/web/includes/Dialer.php, src/features/dialer/tests/inbound.php, src/features/dialer/tests/run-inbound.sh
+
+Contrato:
+- modificado con ADR-0025
+
+Riesgos:
+Dialer.php referencia direction, asi que la migracion 017 debe estar aplicada antes de desplegar; ya se aplico en zynervox_core y las 110 filas previas quedaron OUT. Sin desplegar y sin reiniciar zynervox-dialer, que conserva PHP en memoria. No hay dialplan de entrada ni troncal: nada llama todavia a registerInboundCall(). kpis, reportBreakdown y occupancy no se acotaron por direccion: quedan por campania, asi que si el DID apunta a una lista de campania saliente, sus entrantes apareceran en ese reporte.
