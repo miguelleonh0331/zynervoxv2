@@ -4,6 +4,7 @@
 // solo que con un menu acotado a lo que este rol puede ver. Por ahora GTR y
 // Supervisor tienen exactamente el mismo acceso (a diferenciar mas adelante).
 require_once __DIR__ . '/../admin/sidebar.php'; // reutiliza _svgIcon()
+require_once __DIR__ . '/../../config/Config.php';
 
 function renderSupSidebar($activePage = 'campaigns') {
     $items = [
@@ -15,6 +16,14 @@ function renderSupSidebar($activePage = 'campaigns') {
         ['key' => 'whatsapp',  'href' => '../admin/whatsapp.php',  'icon' => 'whatsapp',  'label' => 'WhatsApp'],
         ['key' => 'campaign_monitor', 'href' => '../admin/campaign_monitor.php', 'icon' => 'campaign_monitor', 'label' => 'Monitor Campañas'],
     ];
+    // En aislado: reports/filters/monitor no estan en la lista blanca de
+    // IsolatedGate (403) y users_isolated.php exige nivel 9 (rebota al monitor).
+    if (\Config\Config::deployment('isolated', false)) {
+        $blocked = ['reports', 'filters', 'monitor', 'users'];
+        $items = array_values(array_filter($items, function ($it) use ($blocked) {
+            return !in_array($it['key'], $blocked, true);
+        }));
+    }
     $roleLabel = ($_SESSION['user_level'] ?? 0) == 7 ? 'GTR' : 'Supervisor';
 ?>
 <aside class="sidebar">
