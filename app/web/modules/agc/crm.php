@@ -165,7 +165,10 @@ function agc_fijo(string $u): array {
     foreach (Dialer::pauseTypes() as $t) {
         if ($t['active']) $motivos[] = ['id' => (int)$t['pause_type_id'], 'label' => (string)$t['label']];
     }
-    return ['campaigns' => $manuales, 'pauseTypes' => $motivos, 'trees' => $arboles];
+    // Si al agente le puede caer una entrante, la consola sondea rápido también
+    // en reposo: la entrante no la pide él, y con 12 s hablaría sin ficha.
+    return ['campaigns' => $manuales, 'pauseTypes' => $motivos, 'trees' => $arboles,
+        'inbound' => Dialer::agentHasInboundQueue($u)];
 }
 
 /**

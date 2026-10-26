@@ -2734,3 +2734,22 @@ Contrato:
 
 Riesgos:
 Dialer.php referencia direction, asi que la migracion 017 debe estar aplicada antes de desplegar; ya se aplico en zynervox_core y las 110 filas previas quedaron OUT. Sin desplegar y sin reiniciar zynervox-dialer, que conserva PHP en memoria. No hay dialplan de entrada ni troncal: nada llama todavia a registerInboundCall(). kpis, reportBreakdown y occupancy no se acotaron por direccion: quedan por campania, asi que si el DID apunta a una lista de campania saliente, sus entrantes apareceran en ese reporte.
+
+### 2026-10-26 11:09 - dialer_AGENT - dialer
+
+Tipo: feature
+
+Resumen:
+Entrantes: AGI de entrada, cierre propio, traduccion de interfaz a usuario y sondeo sin reposo con cola entrante
+
+Motivo:
+ADR-0025, fases 2 y 4. El AGI dialer_inbound_agi.php registra la entrante, resuelve la cola y la cierra. No se reutiliza closeCall() porque esa deja el lead en NEW cuando no hubo conversacion, con lo que un cliente entraria al hopper de salientes por haber llamado, y dispara el autodial MANUAL. La cola es la de la campania de la lista del DID: no hace falta modelo de colas aparte, el formato v2dialer_<id> ya lo valida dialplanBody y agentLogin ya mete al agente en ella. answered_at pasa a ser cuando atendemos al que llama y bridged_at cuando el agente toma, para que duration_wait mida la espera en cola. La consola deja de bajar a 12 s en reposo si al agente le puede caer una entrante; el dato viaja una vez, al conectar, para no agregar consulta por sondeo.
+
+Archivos modificados:
+- app/web/modules/admin/dialer_inbound_agi.php, app/web/includes/Dialer.php, app/web/modules/agc/crm.php, app/web/modules/agc/crm.js, src/features/dialer/tests/inbound.php, src/features/dialer/tests/console/console.js
+
+Contrato:
+- modificado con ADR-0025
+
+Riesgos:
+Desplegado y reiniciados zynervox-dialer y zynervoxv2-campaign-monitor, ambos activos y sin errores. Nada invoca aun el AGI: falta el contexto de dialplan y la troncal, que quedan en manos del usuario. Pendiente la regla de cola: hoy se frena al agente que esta en llamada via agent_slot, no el caso de que haya gente esperando en la cola entrante y el marcador le entregue una saliente. kpis, reportBreakdown y occupancy siguen sin filtro de direccion. ABANDONED es vocabulario nuevo en termination_reason y aparecera como categoria propia en los reportes.

@@ -31,7 +31,7 @@ try {
         foreach ($references[1] as $dependency) $clone($dependency);
         $db->exec($ddl); $copied[$table]=true;
     };
-    foreach (['v2_dialer_campaigns','v2_dialer_lists','v2_dialer_leads','v2_dialer_call_log','v2_dialer_agent_status','v2_access_log'] as $table) $clone($table);
+    foreach (['v2_dialer_campaigns','v2_dialer_lists','v2_dialer_leads','v2_dialer_call_log','v2_dialer_agent_status','v2_dialer_agent_pauses','v2_dialer_pause_types','v2_dialer_agent_intervals','v2_phones','v2_access_log'] as $table) $clone($table);
 
     // La migración 017 se aplica aquí mismo: así la prueba también la valida, y
     // no depende de que producción ya la tenga.
@@ -68,14 +68,18 @@ try {
     // 2. Teléfono nuevo: crea el lead en la lista del DID, con estado INBOUND.
     $first=Dialer::registerInboundCall('5551000','111222333','1761500000.1');
     inboundAssert($first!==null && $first['campaign_id']===1,'La entrante no resolvió la campaña del DID');
+    inboundAssert($first['queue_name']==='v2dialer_1','La entrante no resolvió la cola de la campaña de la lista');
     $lead=$db->query('SELECT list_id,status FROM v2_dialer_leads WHERE lead_id='.(int)$first['lead_id'])->fetch(PDO::FETCH_ASSOC);
     inboundAssert((int)$lead['list_id']===1,'El lead nuevo no quedó en la lista del DID');
     inboundAssert($lead['status']==='INBOUND','El lead entrante quedó dialable: claimLead() toma status NEW');
-    $row=$db->query('SELECT direction,inbound_did,channel_uniqueid,agent_slot,dial_level_at_origin FROM v2_dialer_call_log WHERE call_id='.(int)$first['call_id'])->fetch(PDO::FETCH_ASSOC);
+    $row=$db->query('SELECT direction,inbound_did,channel_uniqueid,agent_slot,dial_level_at_origin,answered_at,bridged_at FROM v2_dialer_call_log WHERE call_id='.(int)$first['call_id'])->fetch(PDO::FETCH_ASSOC);
     inboundAssert($row['direction']==='IN','La llamada no quedó marcada como entrante');
     inboundAssert($row['inbound_did']==='5551000','No se conservó el DID de entrada');
     inboundAssert($row['channel_uniqueid']==='1761500000.1','No se conservó el canal real de Asterisk');
     inboundAssert($row['agent_slot']===null && $row['dial_level_at_origin']===null,'La entrante nació con reserva o nivel de marcado');
+    // answered_at al registrar y bridged_at recién al tomar: así duration_wait
+    // mide la espera en cola y no sale en cero.
+    inboundAssert($row['answered_at']!==null && $row['bridged_at']===null,'answered_at/bridged_at no distinguen atender al cliente de que el agente tome');
 
     // 3. El mismo teléfono vuelve a llamar: reutiliza su lead, no crea otro.
     $again=Dialer::registerInboundCall('5551000','111222333');
@@ -104,7 +108,29 @@ try {
     $second=$db->query('SELECT agent_user,agent_slot FROM v2_dialer_call_log WHERE call_id='.(int)$again['call_id'])->fetch(PDO::FETCH_ASSOC);
     inboundAssert($second['agent_user']==='inbound_agent' && $second['agent_slot']===null,'La entrante en conflicto se perdió o robó el slot');
 
-    // 8. Frontera de confianza: el AGI no puede inyectar basura.
+    // 8. El dialplan solo conoce la interfaz: v2_phones traduce a usuario.
+    $db->exec("INSERT INTO v2_phones (extension,login,pass,protocol) VALUES ('5099','inbound_member','synthetic-not-used','SIP')");
+    $byMember=Dialer::registerInboundCall('5551000','444555666');
+    inboundAssert(Dialer::bindInboundInterface((int)$byMember['call_id'],'SIP/5099')===true,'No se resolvió el agente desde la interfaz de cola');
+    inboundAssert($db->query('SELECT agent_user FROM v2_dialer_call_log WHERE call_id='.(int)$byMember['call_id'])->fetchColumn()==='inbound_member','La interfaz no se tradujo al usuario Zynervox');
+    inboundAssert(Dialer::bindInboundInterface((int)$byMember['call_id'],'SIP/9998')===false,'Un anexo sin usuario se aceptó como agente');
+    inboundRejects(static function() { Dialer::bindInboundInterface(1,'Local/x@y'); },'Interfaz inválida');
+
+    // 9. Cierre atendido: COMPLETED y el lead avanza a CONTACTED.
+    Dialer::closeInboundCall((int)$byMember['call_id'],'','');
+    $closed=$db->query('SELECT termination_reason,agent_slot FROM v2_dialer_call_log WHERE call_id='.(int)$byMember['call_id'])->fetch(PDO::FETCH_ASSOC);
+    inboundAssert($closed['termination_reason']==='COMPLETED','La entrante atendida no se cerró como COMPLETED');
+    inboundAssert($closed['agent_slot']===null,'El cierre no liberó agent_slot: el agente queda bloqueado para siempre');
+    inboundAssert($db->query("SELECT status FROM v2_dialer_leads WHERE phone_number='444555666'")->fetchColumn()==='CONTACTED','El lead atendido no quedó CONTACTED');
+
+    // 10. Colgó esperando en cola: ABANDONED, y el lead NO vuelve a NEW. Es la
+    // razón de no reutilizar closeCall(): ahí quedaría dialable.
+    $abandoned=Dialer::registerInboundCall('5551000','777888999');
+    Dialer::closeInboundCall((int)$abandoned['call_id'],'TIMEOUT','');
+    inboundAssert($db->query('SELECT termination_reason FROM v2_dialer_call_log WHERE call_id='.(int)$abandoned['call_id'])->fetchColumn()==='ABANDONED','El abandono en cola no se registró como ABANDONED');
+    inboundAssert($db->query("SELECT status FROM v2_dialer_leads WHERE phone_number='777888999'")->fetchColumn()==='INBOUND','El abandono dejó el lead dialable por salientes');
+
+    // 11. Frontera de confianza: el AGI no puede inyectar basura.
     inboundRejects(static function() { Dialer::registerInboundCall('55 OR 1=1','111222333'); },'DID inválido');
     inboundRejects(static function() { Dialer::registerInboundCall('5551000','abc'); },'Teléfono inválido');
 

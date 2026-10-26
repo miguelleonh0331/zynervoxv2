@@ -30,7 +30,7 @@ const ARBOL55 = [
   {code:'020101', label:'REINTENTAR',       level:3, parent:'020100', contact:false, sale:false, retry:true},
 ];
 const FIJO = {campaigns:[{id:55, name:'carsa0001'}], pauseTypes:[{id:1, label:'Almuerzo'}, {id:2, label:'Baño'}],
-  trees:{'55':ARBOL55}};
+  trees:{'55':ARBOL55}, inbound:false};
 const HISTORIAL = [
   {lead_id:267, call_id:423, campaign_id:55, campaign:'carsa0001', phone:'981641706', name:'alexander', at:'2026-10-17 09:54:13', ended:true, disposition:'01', status:'CONTACTED',
    variables:{apellidos:'Ipanaqué Nizama', documento:'44012345', correo:'alexander.ipanaque@gmail.com',
@@ -71,7 +71,7 @@ vm.createContext(sandbox);
 const code = fs.readFileSync(path.join(WEB, 'modules/agc/crm_demo.js'), 'utf8')
   + '\n'
   + fs.readFileSync(path.join(WEB, 'modules/agc/crm.js'), 'utf8')
-  + '\n;globalThis.__S=S;globalThis.__fn={abrirCliente,asisPreguntar,irA,pintarDetalle,pintarCartera,pintarControl,cerrarGestion,quizaAbrirGestion,accionDiscador,armarArbol,RITMO_ACTIVO,RITMO_REPOSO};globalThis.__arbol=()=>TIPIFICACION;globalThis.__fn.pintarWiki=pintarWiki;globalThis.__demo={wiki:demoWikiEstado,tareas:demoEstadoTareas,ventasMes:()=>DEMO_VENTAS_MES.reduce((a,d)=>a+d.n,0)};\n';
+  + '\n;globalThis.__S=S;globalThis.__fn={abrirCliente,asisPreguntar,irA,pintarDetalle,pintarCartera,pintarControl,cerrarGestion,quizaAbrirGestion,accionDiscador,armarArbol,ritmoDeseado,RITMO_ACTIVO,RITMO_REPOSO};globalThis.__arbol=()=>TIPIFICACION;globalThis.__fn.pintarWiki=pintarWiki;globalThis.__demo={wiki:demoWikiEstado,tareas:demoEstadoTareas,ventasMes:()=>DEMO_VENTAS_MES.reduce((a,d)=>a+d.n,0)};\n';
 try { vm.runInContext(code, sandbox, {filename:'crm.js'}); }
 catch (e) { console.log('FALLO al ejecutar: ' + e.message + '\n' + e.stack); process.exit(1); }
 
@@ -236,6 +236,14 @@ setTimeout(() => {
     sandbox.__fn.pintarControl();
   }
   check('en reposo el sondeo es lento', sandbox.__ritmo === sandbox.__fn.RITMO_REPOSO, sandbox.__ritmo + ' ms');
+  // Con cola entrante no hay reposo que valga: la entrante llega sin que el
+  // agente la pida, y con 12 s estaría hablando con la pantalla en blanco.
+  FIJO.inbound = true;
+  check('con cola entrante el sondeo no baja a reposo',
+    sandbox.__fn.ritmoDeseado() === sandbox.__fn.RITMO_ACTIVO, sandbox.__fn.ritmoDeseado() + ' ms');
+  FIJO.inbound = false;
+  check('sin cola entrante sigue ahorrando en reposo',
+    sandbox.__fn.ritmoDeseado() === sandbox.__fn.RITMO_REPOSO, sandbox.__fn.ritmoDeseado() + ' ms');
 
   console.log('\n== Entra una llamada: se suma sola a la cartera ==');
   const consultasAntes = (sandbox.__acciones || []).length;

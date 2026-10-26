@@ -708,9 +708,13 @@ class Dialer {
         $db = self::database();
         $db->beginTransaction();
         try {
-            $route = $db->prepare('SELECT i.list_id,l.campaign_id FROM v2_dialer_inbound_dids i
+            // La cola es la de la campaña de esa lista: no se inventa un modelo
+            // de colas aparte, el formato v2dialer_<id> ya lo valida
+            // dialplanBody() y agentLogin() ya mete al agente en ella.
+            $route = $db->prepare('SELECT i.list_id,l.campaign_id,c.queue_name FROM v2_dialer_inbound_dids i
                 JOIN v2_dialer_lists l ON l.list_id=i.list_id
-                WHERE i.did=:d AND i.active=1 AND l.active=1');
+                JOIN v2_dialer_campaigns c ON c.campaign_id=l.campaign_id
+                WHERE i.did=:d AND i.active=1 AND l.active=1 AND c.active=1');
             $route->execute(['d' => $did]);
             $target = $route->fetch(PDO::FETCH_ASSOC);
             // DID sin ruta: no se inventa destino, el dialplan decide qué hacer.
@@ -725,14 +729,18 @@ class Dialer {
                     ->execute(['l' => $target['list_id'], 'p' => $phone]);
                 $leadId = $db->lastInsertId();
             }
-            $db->prepare("INSERT INTO v2_dialer_call_log (campaign_id,lead_id,phone_number,originated_at,direction,inbound_did,channel_uniqueid)
-                VALUES (:c,:l,:p,NOW(),'IN',:did,:u)")
+            // answered_at es cuando atendimos al que llama (el Answer() previo al
+            // AGI), no cuando el agente tomó: eso es bridged_at. Así duration_wait
+            // mide la espera real en cola, igual que en la saliente.
+            $db->prepare("INSERT INTO v2_dialer_call_log (campaign_id,lead_id,phone_number,originated_at,answered_at,direction,inbound_did,channel_uniqueid)
+                VALUES (:c,:l,:p,NOW(),NOW(),'IN',:did,:u)")
                 ->execute(['c' => $target['campaign_id'], 'l' => $leadId, 'p' => $phone, 'did' => $did,
                     'u' => $channelUniqueId !== '' ? $channelUniqueId : null]);
             $callId = (int) $db->lastInsertId();
             $db->commit();
             self::audit('INBOUND_CALL', (string) $callId);
-            return ['call_id' => $callId, 'lead_id' => (int) $leadId, 'campaign_id' => (int) $target['campaign_id']];
+            return ['call_id' => $callId, 'lead_id' => (int) $leadId, 'campaign_id' => (int) $target['campaign_id'],
+                'queue_name' => (string) $target['queue_name']];
         } catch (\Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
             throw $e;
@@ -745,11 +753,9 @@ class Dialer {
     // bloquea las salientes sin tabla de presencia aparte.
     public static function bindInboundAgent(int $callId, string $agentUser): bool {
         $db = self::database();
-        $withSlot = "UPDATE v2_dialer_call_log SET agent_user=:u,agent_slot=:s,
-            answered_at=COALESCE(answered_at,NOW()),bridged_at=COALESCE(bridged_at,NOW())
+        $withSlot = "UPDATE v2_dialer_call_log SET agent_user=:u,agent_slot=:s,bridged_at=COALESCE(bridged_at,NOW())
             WHERE call_id=:id AND direction='IN' AND ended_at IS NULL";
-        $withoutSlot = "UPDATE v2_dialer_call_log SET agent_user=:u,
-            answered_at=COALESCE(answered_at,NOW()),bridged_at=COALESCE(bridged_at,NOW())
+        $withoutSlot = "UPDATE v2_dialer_call_log SET agent_user=:u,bridged_at=COALESCE(bridged_at,NOW())
             WHERE call_id=:id AND direction='IN' AND ended_at IS NULL";
         try {
             $stmt = $db->prepare($withSlot);
@@ -762,6 +768,73 @@ class Dialer {
             $db->prepare($withoutSlot)->execute(['u' => $agentUser, 'id' => $callId]);
             self::audit('INBOUND_SLOT_BUSY', (string) $callId);
             return false;
+        }
+    }
+
+    // ¿Al agente le puede caer una entrante? Se consulta una vez, al conectar,
+    // para que la consola sepa si debe sondear rápido en reposo. Una entrante
+    // no la pide el agente, así que la cadencia de 12 s lo dejaría hablando sin
+    // ficha en pantalla; y preguntarlo en cada sondeo sería la consulta extra
+    // por sondeo que el contrato prohíbe.
+    public static function agentHasInboundQueue(string $user): bool {
+        $stmt = self::database()->prepare('SELECT 1 FROM v2_dialer_agent_campaigns a
+            JOIN v2_dialer_campaigns c ON c.campaign_id=a.campaign_id AND c.active=1
+            JOIN v2_dialer_lists l ON l.campaign_id=a.campaign_id AND l.active=1
+            JOIN v2_dialer_inbound_dids i ON i.list_id=l.list_id AND i.active=1
+            WHERE a.agent_user=:u LIMIT 1');
+        $stmt->execute(['u' => $user]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    // Queue() entrega el canal al miembro y el dialplan solo conoce su interfaz
+    // (SIP/5000). La identidad del agente es el usuario Zynervox, nunca el
+    // anexo: la fila de v2_phones es la que traduce.
+    public static function bindInboundInterface(int $callId, string $interface): bool {
+        if (!preg_match('~^(?:SIP|PJSIP)/([A-Za-z0-9_-]{1,60})$~D', $interface, $member)) throw new \RuntimeException('Interfaz inválida.');
+        $phone = \Includes\Phones::getById($member[1]);
+        if (!$phone || (string) ($phone['login'] ?? '') === '') { self::audit('INBOUND_UNKNOWN_MEMBER', $interface); return false; }
+        return self::bindInboundAgent($callId, (string) $phone['login']);
+    }
+
+    // Cierre de la entrante cuando Queue() devuelve el control. No se reutiliza
+    // closeCall() a propósito: esa deja el lead en NEW cuando no hubo
+    // conversación, con lo que un cliente entraría al hopper de salientes por
+    // haber llamado, y además dispara el autodial MANUAL, que no tiene nada que
+    // ver con una entrante.
+    public static function closeInboundCall(int $callId, string $queueStatus, string $uniqueId): void {
+        $db = self::database();
+        $connection = self::connectionFromQueueLog($uniqueId);
+        $db->beginTransaction();
+        try {
+            $stmt = $db->prepare("SELECT lead_id,agent_user,bridged_at FROM v2_dialer_call_log WHERE call_id=:id AND direction='IN' AND ended_at IS NULL FOR UPDATE");
+            $stmt->execute(['id' => $callId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) { $db->commit(); return; }
+            $agent = $connection['agent'] ?? $row['agent_user'];
+            $attended = (($connection['epoch'] ?? null) !== null || $row['bridged_at'] !== null) && empty($connection['abandoned']);
+            // ABANDONED es el que colgó esperando en cola. Vocabulario propio:
+            // DROPPED ya significa abandono de saliente y lo lee el adaptativo.
+            $reason = $attended ? 'COMPLETED' : 'ABANDONED';
+            $db->prepare('UPDATE v2_dialer_call_log SET ended_at=COALESCE(ended_at,NOW()),termination_reason=:r,agent_user=:a,agent_slot=NULL,
+                bridged_at=COALESCE(FROM_UNIXTIME(:epoch),bridged_at),
+                duration_wait=CASE WHEN bridged_at>=answered_at THEN TIMESTAMPDIFF(SECOND,answered_at,bridged_at) ELSE duration_wait END,
+                duration_talk=CASE WHEN ended_at>=bridged_at THEN TIMESTAMPDIFF(SECOND,bridged_at,ended_at) ELSE duration_talk END
+                WHERE call_id=:id')
+                ->execute(['r' => $reason, 'a' => $agent, 'epoch' => $connection['epoch'] ?? null, 'id' => $callId]);
+            // El lead solo avanza a CONTACTED, nunca vuelve a NEW.
+            if ($row['lead_id'] && $attended) {
+                $db->prepare("UPDATE v2_dialer_leads SET status='CONTACTED' WHERE lead_id=:id")->execute(['id' => $row['lead_id']]);
+            }
+            $db->commit();
+            // La entrante también se tipifica: el agente queda en wrapup hasta
+            // hacerlo, igual que con una saliente.
+            if (!empty($agent)) {
+                try { self::pauseForWrapup($agent); }
+                catch (\Throwable $error) { self::audit('WRAPUP_PAUSE_ERROR', (string) $agent); }
+            }
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            throw $e;
         }
     }
 

@@ -1654,6 +1654,9 @@ const RITMO_REPOSO = 12000;
 
 function ritmoDeseado() {
   if (!PUESTO) return RITMO_ACTIVO;
+  // Con cola entrante no hay reposo que valga: la llamada llega sin que el
+  // agente la pida, y en 12 s ya estaría hablando con la pantalla en blanco.
+  if (FIJO.inbound) return RITMO_ACTIVO;
   const lead = PUESTO.lead;
   const ocupado = (lead && !lead.ended) || !!PUESTO.pending || (PUESTO.autodial && PUESTO.autodial.waiting);
   return ocupado ? RITMO_ACTIVO : RITMO_REPOSO;
