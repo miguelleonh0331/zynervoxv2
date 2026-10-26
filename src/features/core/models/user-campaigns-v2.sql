@@ -9,3 +9,11 @@ CREATE TABLE IF NOT EXISTS v2_core_user_campaigns (
   assigned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (user, origin, campaign_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- zynervoxv2_core no tiene privilegios sobre el esquema: se otorgan tabla por
+-- tabla. Sin estas dos lineas la tabla existe pero la aplicacion recibe
+-- "1142 SELECT command denied" y la pantalla del supervisor queda en blanco.
+-- Solo los tres privilegios que el codigo usa: la asignacion se reescribe
+-- borrando e insertando, nunca con UPDATE.
+GRANT SELECT, INSERT, DELETE ON zynervox_core.v2_core_user_campaigns TO 'zynervoxv2_core'@'localhost';
+GRANT SELECT, INSERT, DELETE ON zynervox_core.v2_core_user_campaigns TO 'zynervoxv2_core'@'127.0.0.1';

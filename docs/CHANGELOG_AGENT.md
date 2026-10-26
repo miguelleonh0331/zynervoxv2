@@ -2849,3 +2849,22 @@ Contrato:
 
 Riesgos:
 Desplegado con respaldo .bak.20261026-114050 y md5 verificado; zynervox-dialer y zynervoxv2-campaign-monitor reiniciados y activos sin errores. El parseo de queue show es nuevo: si Asterisk cambia el encabezado, la prioridad de la entrante deja de aplicarse en silencio y el marcador volveria a entregar salientes. No se toco el parseo de miembros de availableAgentsCount. Sigue sin haber reporteria de entrantes ni troncal ni contexto de dialplan, asi que nada entra todavia. ABANDONED y tipin_ son vocabulario nuevo: apareceran como categoria y claves propias.
+
+### 2026-10-26 13:06 - core_AGENT - core
+
+Tipo: fix
+
+Resumen:
+La tabla de alcance existia pero zynervoxv2_core no podia leerla
+
+Motivo:
+Se creo la tabla sin los GRANT por tabla; la pantalla del supervisor quedaba en blanco con 1142 SELECT command denied
+
+Archivos modificados:
+- src/features/core/models/user-campaigns-v2.sql,src/features/core/tests/run-users.sh
+
+Contrato:
+- modificado con ADR-0026
+
+Riesgos:
+La fixture de pruebas entra como root y clona en TEMPORARY, asi que nunca ve los permisos reales. Se agrega una comprobacion aparte contra la base de verdad; cualquier tabla nueva necesita sus GRANT ademas de su DDL.

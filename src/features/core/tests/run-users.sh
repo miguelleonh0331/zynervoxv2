@@ -2,6 +2,19 @@
 set -euo pipefail
 # Raiz del arbol que contiene este script: funciona en la fuente y en worktrees.
 source=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)
+# La fixture entra como root y clona las tablas como TEMPORARY, asi que no ve
+# los permisos reales. zynervoxv2_core los tiene tabla por tabla: una tabla
+# nueva sin GRANT existe, pasa las pruebas y falla en produccion con
+# "1142 ... command denied". Se comprueba aparte, contra la base de verdad.
+for par in "v2_zynervox_users:SELECT" "v2_core_user_campaigns:SELECT" "v2_core_user_campaigns:INSERT" "v2_core_user_campaigns:DELETE"; do
+    tabla=${par%%:*}; privilegio=${par##*:}
+    for maquina in localhost 127.0.0.1; do
+        encontrado=$(mysql -N -B -e "SELECT COUNT(*) FROM information_schema.table_privileges WHERE table_schema='zynervox_core' AND table_name='$tabla' AND privilege_type='$privilegio' AND grantee=\"'zynervoxv2_core'@'$maquina'\"")
+        [ "$encontrado" = "1" ] || { echo "FALTA GRANT $privilegio en $tabla para zynervoxv2_core@$maquina"; exit 1; }
+    done
+done
+echo "PASS: permisos por tabla de zynervoxv2_core."
+
 stage=$(mktemp -d /tmp/zynervox-core-users-XXXXXXXX)
 server_pid=''
 trap 'if [[ -n "$server_pid" ]]; then kill "$server_pid" 2>/dev/null || true; fi; rm -rf -- "$stage"' EXIT
