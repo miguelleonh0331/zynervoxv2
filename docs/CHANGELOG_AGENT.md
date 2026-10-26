@@ -2772,3 +2772,22 @@ Contrato:
 
 Riesgos:
 Comodin nuevo en IsolatedGate: cualquier .php que se deje caer bajo app/web/supervisor/ queda accesible, asi que esa carpeta no admite archivos sueltos sin Auth propio. El destino de login de los niveles 7 y 8 cambia de campaign_monitor.php a supervisor/index.php.
+
+### 2026-10-26 11:14 - core_AGENT - core
+
+Tipo: fix
+
+Resumen:
+checkAccess redirigia fuera del despliegue desde paginas a un solo nivel
+
+Motivo:
+Auth tenia ../../ fijo; desde supervisor/index.php eso sale de /zynervoxv2 y el navegador no llegaba a ningun lado
+
+Archivos modificados:
+- app/web/includes/Auth.php,src/features/core/tests/run-users.sh
+
+Contrato:
+- modificado con ADR-0027
+
+Riesgos:
+Auth lo consumen 79 archivos. El prefijo se calcula por profundidad real y para todo lo que vive en modules/<x>/ devuelve el mismo ../../ de antes; las pruebas verifican las dos profundidades.

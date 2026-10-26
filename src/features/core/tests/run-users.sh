@@ -33,7 +33,8 @@ for _ in range(30):
     except OSError: time.sleep(.1)
 assert code==200 and 'Crear cuenta' in body and 'que puede ver' in body
 for role in [1,7,8]: assert request('role='+str(role))[0]==302
-assert request('')[0]==302
+code,headers,_=request('')
+assert code==302 and headers['Location']=='../../index.php'
 assert request('role=9&inactive=1')[0]==302
 assert request('role=9&direct=1')[0]==403
 values={'user':'90001','full_name':'HTTP Agent','pass':'test-password-only','active':'Y','user_level':'9','existing_user':''}
@@ -59,6 +60,7 @@ assert code==302 and headers['Location']=='supervisor/index.php'
 assert request('login=1',{'username':'90001','password':'wrong-password'})[0]==200
 code,_,body=request('role=8&sup=1')
 assert code==200 and 'Supervisi' in body and 'No construido' in body
-assert request('role=1&sup=1')[0]==302
+code,headers,_=request('role=1&sup=1')
+assert code==302 and headers['Location']=='../modules/admin/dialer_agent.php'
 print('PASS: HTTP admin-only, role refresh, CSRF, direct-view gate, inactive session, escaped names, secret-free forms, level-9 refused over HTTP, per-level login rules and agent/supervisor login redirects.')
 PY

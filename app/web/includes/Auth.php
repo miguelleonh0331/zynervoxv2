@@ -84,6 +84,17 @@ class Auth {
         return false;
     }
 
+    // Cuantos "../" hacen falta para volver a la raiz web desde la pagina en
+    // curso. Antes estaba fijo en "../../", que solo vale a dos niveles
+    // (modules/<x>/pagina.php) y dejaba a supervisor/index.php redirigiendo
+    // fuera del despliegue. Para las paginas de modules/ devuelve lo mismo.
+    private static function webRootPrefix(): string {
+        $root = realpath(dirname(__DIR__));
+        $script = realpath((string) ($_SERVER['SCRIPT_FILENAME'] ?? '')) ?: '';
+        if ($root === false || $script === '' || strpos($script, $root . DIRECTORY_SEPARATOR) !== 0) return '../../';
+        return str_repeat('../', substr_count(str_replace(DIRECTORY_SEPARATOR, '/', substr($script, strlen($root) + 1)), '/'));
+    }
+
     // $requiredLevel acepta un entero (nivel exacto) o un array de niveles
     // permitidos (ej. [7, 8] para paginas compartidas entre GTR y Supervisor).
     public static function checkAccess($requiredLevel) {
@@ -99,7 +110,7 @@ class Auth {
             }
         }
         if (!isset($_SESSION['user'])) {
-            header("Location: ../../index.php");
+            header("Location: " . self::webRootPrefix() . "index.php");
             exit;
         }
 
@@ -107,8 +118,7 @@ class Auth {
         if (!in_array($_SESSION['user_level'], $allowed)) {
             $correctPath = self::getRedirectPath($_SESSION['user_level']);
             // El path de getRedirectPath es relativo a la raíz del proyecto.
-            // Puesto que estamos en /modules/xxx/index.php, necesitamos volver a la raíz.
-            header("Location: ../../" . $correctPath);
+            header("Location: " . self::webRootPrefix() . $correctPath);
             exit;
         }
     }
