@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0F172A">
+<title>[v2] Zynervox · Supervisión — desarrollo</title>
+
+<!--
+  MAQUETA DE SUPERVISIÓN. No es el sistema: es una réplica que corre sola.
+
+  No hay PHP, ni base de datos, ni sesión, ni discador, ni Asterisk. Todo
+  lo que se ve está escrito en datos.js y se dibuja desde sup.js. Ninguna
+  pantalla de producción se carga ni se toca.
+
+  Dos modos desde la portada:
+    · recorrido guiado  — se explica solo, con voz (guion.js)
+    · explorar          — navegación libre, todo responde al clic
+
+  Lo que todavía no existe en el motor va marcado con el sello
+  "próximamente": susurro, coaching, scoring de calidad y broadcast. Se
+  muestran porque son el destino del producto, no porque estén hechos.
+-->
+<link rel="stylesheet" href="sup.css">
+</head>
+<body class="sup-body">
+
+<!-- ======================= PORTADA ======================= -->
+<section class="portada" id="portada">
+  <div class="portada-caja">
+    <span class="portada-marca"><i></i> ZYNERVOX</span>
+    <h1>El piso entero,<br>en una sola pantalla</h1>
+    <p class="portada-bajada">
+      Quién está en llamada y quién en pausa, el marcador en vivo, las
+      conversaciones de WhatsApp, la carga y segmentación de la base, y la
+      posibilidad de entrar en cualquier llamada sin que el cliente lo note.
+    </p>
+    <div class="portada-botones">
+      <button class="portada-play" id="btnTour" type="button">
+        <svg viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z" fill="currentColor"/></svg>
+        Ver el recorrido guiado
+      </button>
+      <button class="portada-libre" id="btnLibre" type="button">Explorar por mi cuenta</button>
+    </div>
+    <p class="portada-pie">Recorrido con voz · <span id="portadaDur">5 minutos</span> · También se puede navegar a mano</p>
+  </div>
+</section>
+
+<!-- ======================= APLICACIÓN ======================= -->
+<div id="app" hidden>
+
+  <!-- --------------------------- menú lateral --------------------------- -->
+  <aside class="side" id="side">
+    <div class="side-brand"><i></i><span>ZYNERVOX <b>SUPERVISIÓN</b></span></div>
+    <nav class="side-nav" id="sideNav"><!-- sup.js --></nav>
+    <div class="side-foot">
+      <div class="side-yo">
+        <span class="side-yo-cara" id="yoCara"></span>
+        <span class="side-yo-txt"><b>Rodrigo Valdez</b><em>Supervisor de piso</em></span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- --------------------------- barra superior ------------------------- -->
+  <header class="topbar">
+    <button class="icon-btn" id="btnPlegar" type="button" title="Plegar el menú" aria-label="Plegar el menú"></button>
+
+    <div class="search" id="buscador">
+      <input id="qGlobal" type="text" placeholder="Buscar cliente, teléfono, agente o campaña…" autocomplete="off">
+      <kbd>/</kbd>
+    </div>
+    <div class="sug" id="sugerencias" hidden></div>
+
+    <div class="top-reloj" id="topReloj">—</div>
+
+    <div class="top-chip" id="chipMotor" data-estado="on">
+      <i class="pulso"></i><span>Marcador <b>activo</b></span>
+    </div>
+
+    <button class="icon-btn icon-btn--badge" id="btnAlertas" type="button" title="Alertas">
+      <b class="badge" id="badgeAlertas">0</b>
+    </button>
+    <!-- Distintivo de la copia de trabajo. Dos pestañas idénticas se
+         confunden solas, y el riesgo real es mostrar ésta en una reunión
+         creyendo que es la buena. En demo-sup este chip no existe. -->
+    <span class="chip-v2" id="chipV2" title="Copia de desarrollo · no es la versión que se presenta">v2 · desarrollo</span>
+
+    <button class="top-btn" id="btnTV" type="button">Modo TV</button>
+    <span class="top-yo" id="topYo"></span>
+  </header>
+
+  <!-- --------------------------- lienzo --------------------------------- -->
+  <main class="canvas" id="canvas"><!-- sup.js dibuja la vista activa --></main>
+
+  <!-- --------------------------- barra de estado ------------------------ -->
+  <footer class="statusbar">
+    <span id="stVista">Piso en vivo</span>
+    <span class="st-sep"></span>
+    <span id="stAgentes">— agentes</span>
+    <span class="st-sep"></span>
+    <span id="stLlamadas">— en curso</span>
+    <span class="st-demo">Maqueta de demostración · datos de ejemplo</span>
+  </footer>
+</div>
+
+<!-- ======================= CAPAS SUPERPUESTAS ======================= -->
+
+<!-- Fichas, confirmaciones y hojas laterales. -->
+<div class="capa" id="capa" hidden></div>
+
+<!-- Escucha en vivo: ocupa la esquina y sigue abierta mientras se navega. -->
+<div class="escucha" id="escucha" hidden></div>
+
+<!-- Wallboard para proyectar. -->
+<div class="tv" id="tv" hidden></div>
+
+<!-- Avisos breves. -->
+<div class="toast" id="toast" hidden></div>
+
+<!-- Recorrido guiado: foco, puntero y la barra de narración. -->
+<div class="foco" id="foco" hidden></div>
+<div class="puntero" id="puntero" hidden>
+  <svg viewBox="0 0 24 24"><path d="M5 2l14 10-6 1 3.5 7-2.5 1.2L10.5 14 5 18z"/></svg>
+</div>
+
+<div class="narra" id="narra" hidden>
+  <div class="narra-izq">
+    <span class="narra-n" id="narraN">1</span>
+    <span class="narra-cap"><b id="narraTit">—</b><em id="narraSub">—</em></span>
+  </div>
+  <p class="narra-txt" id="narraTxt">—</p>
+  <div class="narra-der">
+    <div class="narra-barra"><i id="narraProg"></i></div>
+    <div class="narra-ctl">
+      <button id="ctlAtras" type="button" title="Capítulo anterior">‹</button>
+      <button id="ctlPausa" type="button" title="Pausar">‖</button>
+      <button id="ctlSig" type="button" title="Capítulo siguiente">›</button>
+      <button id="ctlVoz" type="button" title="Silenciar la voz">♪</button>
+      <button id="ctlSalir" type="button" title="Salir del recorrido">✕</button>
+    </div>
+    <span class="narra-reloj" id="narraReloj">0:00</span>
+  </div>
+</div>
+
+<script src="datos.js"></script>
+<script src="datos-monitoreo.js"></script>
+<script src="sup.js"></script>
+<script src="guion.js"></script>
+</body>
+</html>
