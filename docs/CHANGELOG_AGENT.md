@@ -2791,3 +2791,22 @@ Contrato:
 
 Riesgos:
 Auth lo consumen 79 archivos. El prefijo se calcula por profundidad real y para todo lo que vive en modules/<x>/ devuelve el mismo ../../ de antes; las pruebas verifican las dos profundidades.
+
+### 2026-10-26 11:40 - core_AGENT - core
+
+Tipo: feature
+
+Resumen:
+Puesto de supervision con la misma pantalla de la maqueta demo-sup-v2
+
+Motivo:
+Se pidio una copia visual de la maqueta, con datos reales donde existan y el cuadro en blanco donde no
+
+Archivos modificados:
+- app/web/supervisor/index.php,app/web/supervisor/datos.php,app/web/supervisor/sup.js,app/web/supervisor/sup.css,app/web/demo-sup-v2/**,src/features/core/tests/run-supervisor.sh,src/features/core/tests/supervisor/**
+
+Contrato:
+- modificado con ADR-0027
+
+Riesgos:
+sup.js es copia de la maqueta con 23 guardas contra datos vacios y un cambio de arranque; sincronizar cambios de la maqueta exige reaplicarlas. datos.php emite los mismos nombres globales que datos.js: renombrar uno en la maqueta rompe la pantalla real. La prueba run-supervisor.sh necesita Node y no corre en el gate de PHP.
