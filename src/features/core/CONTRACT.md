@@ -176,3 +176,20 @@ borrado de usuarios ni teléfonos automáticos. En aislado los niveles 7 y 8 red
 modules/admin/campaign_monitor.php, que ya exige 7/8/9 y reserva el control del motor al
 nivel 9; modules/sup/ no se agrega a IsolatedGate y su sidebar oculta en aislado los
 destinos no permitidos. Prueba: src/features/core/tests/run-users.sh.
+
+
+## 2026-10-26 — Alcance de campañas por supervisor (ARCHITECT_AGENT)
+
+v2_core_user_campaigns(user,origin,campaign_id) guarda qué campañas del monitor
+puede ver una cuenta de nivel 7 u 8; origin vale agents o bot_ivr y campaign_id
+apunta a la tabla de ese origen, por eso no lleva clave foránea. Sin filas el
+usuario no ve ninguna campaña: el alcance cierra por defecto. Los niveles 1 y 9
+no tienen alcance; guardar una cuenta de nivel 1 borra el suyo. La selección
+llega en input['campaigns'] como claves origin:campaign_id, se valida contra la
+lista de orígenes, se deduplica, se limita a 200 entradas y se escribe en la
+misma transacción que la cuenta, de modo que una selección inválida no deja al
+usuario a medio guardar. campaign_monitor_cache_read() es la puerta única de
+lectura del snapshot y aplica el recorte según la sesión; los niveles distintos
+de 7 y 8 y los procesos sin sesión leen el snapshot completo mediante
+campaign_monitor_cache_read_all(). Las acciones de arranque y parada del monitor
+siguen exigiendo nivel 9. Prueba: src/features/core/tests/run-users.sh.

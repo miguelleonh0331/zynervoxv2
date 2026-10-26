@@ -1234,3 +1234,27 @@ Cambia la clausula de saveAgent de 2026-10-11 en src/features/core/CONTRACT.md. 
 
 Seguimiento:
 Decidir si GTR y supervisor se diferencian: hoy comparten sidebar y destino. Construir la pantalla de supervision real con datos del motor; no existe endpoint que exponga el piso a un supervisor.
+
+### ADR-0026 - Alcance de campanas por supervisor
+
+Fecha: 2026-10-26
+
+Estado: aceptada
+
+Contexto:
+Un supervisor veia el monitor completo. Se pidio que al crearlo se elija que campanas puede ver.
+
+Decisión:
+Tabla v2_core_user_campaigns en core con clave user+origin+campaign_id. El recorte se aplica dentro de campaign_monitor_cache_read(), puerta unica del snapshot, y la seleccion se edita en la pantalla de usuarios con el catalogo del propio monitor.
+
+Motivo:
+El monitor se lee por dos caminos: el render inicial en bot_ivr/campaign_monitor_view.php y el poll de modules/admin/campaign_monitor_api.php. Filtrar en la funcion de lectura cubre los dos, deja el filtro a prueba de olvidos y evita tocar el modulo bot_ivr. No se reutilizo v2_dialer_agent_campaigns porque Dialer la lee para repartir llamadas y un supervisor ahi entraria al reparto.
+
+Alternativas evaluadas:
+- Reutilizar v2_dialer_agent_campaigns: convertiria al supervisor en agente del marcador. Filtrar en cada consumidor: deja la vista de bot_ivr fuera de alcance y se puede olvidar. Alcance abierto por defecto: una cuenta nueva naceria viendo todo.
+
+Impacto:
+Tabla nueva aplicada a mano sobre zynervox_core, como el resto de migraciones del proyecto. campaign_monitor_cache_read() cambia de semantica: ahora recorta por sesion, y los consumidores que necesiten el snapshot completo usan campaign_monitor_cache_read_all().
+
+Seguimiento:
+Las campanas de Bot IVR aparecen en el catalogo por venir del snapshot, pero no se probaron con datos reales. Sumar esta migracion al instalador junto con las 016 del discador, que tampoco estan.

@@ -7,7 +7,7 @@ server_pid=''
 trap 'if [[ -n "$server_pid" ]]; then kill "$server_pid" 2>/dev/null || true; fi; rm -rf -- "$stage"' EXIT
 mkdir -p "$stage/includes" "$stage/config" "$stage/modules/admin" "$stage/sessions"
 for file in Auth.php CoreUsers.php Database.php Audit.php ServerInfo.php IsolatedGate.php; do cp "$source/app/web/includes/$file" "$stage/includes/$file"; php -l "$stage/includes/$file"; done
-for file in users.php users_isolated.php sidebar.php; do cp "$source/app/web/modules/admin/$file" "$stage/modules/admin/$file"; php -l "$stage/modules/admin/$file"; done
+for file in users.php users_isolated.php sidebar.php campaign_monitor_cache.php; do cp "$source/app/web/modules/admin/$file" "$stage/modules/admin/$file"; php -l "$stage/modules/admin/$file"; done
 cp "$source/app/web/index.php" "$stage/index.php"
 cp "$source/app/web/config/Config.php" "$stage/config/Config.php"
 cp /srv/www/htdocs/zynervoxv2/config/deployment.php "$stage/config/deployment.php"
@@ -29,7 +29,7 @@ def request(query,values=None):
 for _ in range(30):
     try: code,_,body=request('role=9');break
     except OSError: time.sleep(.1)
-assert code==200 and 'Crear cuenta' in body
+assert code==200 and 'Crear cuenta' in body and 'que puede ver' in body
 for role in [1,7,8]: assert request('role='+str(role))[0]==302
 assert request('')[0]==302
 assert request('role=9&inactive=1')[0]==302

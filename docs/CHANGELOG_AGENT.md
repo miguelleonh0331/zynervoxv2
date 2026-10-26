@@ -2734,3 +2734,22 @@ Contrato:
 
 Riesgos:
 Auth.php lo consumen 79 archivos: el cambio es solo la rama aislada de getRedirectPath para 7 y 8. El nivel de una cuenta existente ya no se puede cambiar al editar. run-users.sh dejo de apuntar a /mnt y resuelve su raiz desde la ubicacion del script.
+
+### 2026-10-26 10:40 - core_AGENT - core
+
+Tipo: feature
+
+Resumen:
+Alcance de campanas por supervisor y recorte del monitor
+
+Motivo:
+Se pidio que al crear un supervisor se elija que campanas puede ver
+
+Archivos modificados:
+- src/features/core/models/user-campaigns-v2.sql,app/web/includes/CoreUsers.php,app/web/modules/admin/campaign_monitor_cache.php,app/web/modules/admin/users_isolated.php,src/features/core/CONTRACT.md,src/features/core/tests/users.php,src/features/core/tests/users-fixture.php,src/features/core/tests/run-users.sh
+
+Contrato:
+- modificado con ADR-0026
+
+Riesgos:
+campaign_monitor_cache_read() pasa a recortar por sesion: cualquier consumidor que necesite el snapshot entero debe usar campaign_monitor_cache_read_all(). El alcance cierra por defecto, asi que un supervisor sin asignacion no ve campanas. La tabla se aplico a mano y no esta en ningun instalador.

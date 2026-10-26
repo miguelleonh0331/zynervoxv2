@@ -15,6 +15,16 @@ Includes\CoreUsers::saveUser(array_replace($input,['user'=>'rvaldez','full_name'
 usersVerify((int)$db->query("SELECT user_level FROM v2_zynervox_users WHERE user='rvaldez'")->fetchColumn()===8,'Supervisor level stored');
 usersReject(static function() use($input) { Includes\CoreUsers::saveUser(array_replace($input,['user'=>'rvaldez','user_level'=>1,'pass'=>'']),'rvaldez'); });
 usersVerify(Includes\Auth::getRedirectPath(8)==='modules/admin/campaign_monitor.php' && Includes\Auth::getRedirectPath(7)===Includes\Auth::getRedirectPath(8),'Supervisor destination');
+// Alcance de campanas: cierra por defecto y solo aplica a 7 y 8.
+usersVerify(Includes\CoreUsers::campaignsFor('rvaldez')===[],'Scope closed by default');
+foreach ([['x:1'],['agents:0'],['agents:abc'],['agents'],['agents:1:2'],'agents:1',[['agents:1']]] as $bad) usersReject(static function() use($input,$bad) { Includes\CoreUsers::saveUser(array_replace($input,['user'=>'rvaldez2','user_level'=>8,'campaigns'=>$bad])); });
+Includes\CoreUsers::saveUser(array_replace($input,['user'=>'rvaldez','full_name'=>'Rodrigo Valdez','user_level'=>8,'pass'=>'','campaigns'=>['agents:55','bot_ivr:3','agents:55']]),'rvaldez');
+$scope=Includes\CoreUsers::campaignsFor('rvaldez');sort($scope);
+usersVerify($scope===['agents:55','bot_ivr:3'],'Scope stored and deduplicated');
+Includes\CoreUsers::saveUser(array_replace($input,['user'=>'rvaldez','full_name'=>'Rodrigo Valdez','user_level'=>8,'pass'=>'','campaigns'=>[]]),'rvaldez');
+usersVerify(Includes\CoreUsers::campaignsFor('rvaldez')===[],'Scope cleared');
+Includes\CoreUsers::saveUser(array_replace($input,['user'=>'90003','user_level'=>1,'campaigns'=>['agents:55']]));
+usersVerify(Includes\CoreUsers::campaignsFor('90003')===[],'Agent keeps no scope');
 usersVerify(!array_key_exists('pass',Includes\CoreUsers::getByUser('90001')) && !array_key_exists('pass',Includes\CoreUsers::getAll()[0]),'Secret exposed');
 usersReject(static function() use($input) { Includes\CoreUsers::saveUser($input); });
 foreach ([['user'=>'abc'],['user'=>str_repeat('1',21)],['full_name'=>''],['full_name'=>str_repeat('x',101)],['pass'=>'short'],['pass'=>str_repeat('x',73)],['active'=>'bad']] as $invalid) usersReject(static function() use($input,$invalid) { Includes\CoreUsers::saveUser(array_replace($input,$invalid)); });

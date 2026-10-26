@@ -19,13 +19,46 @@ class CoreUsers {
         $stmt=self::database()->prepare('SELECT user,full_name,user_level,active FROM v2_zynervox_users WHERE user=?');$stmt->execute([$user]);
         return $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
     }
+    // Niveles que ven el monitor recortado a sus campanas. El 9 ve todo.
+    private const SCOPED_LEVELS = [7, 8];
+    private const ORIGINS = ['agents', 'bot_ivr'];
+    private const MAX_CAMPAIGNS = 200;
+
     public static function levels(): array { return self::LEVELS; }
+
+    public static function scopedLevels(): array { return self::SCOPED_LEVELS; }
+
+    /** Claves "origin:campaign_id" visibles para el usuario. Vacio = no ve ninguna. */
+    public static function campaignsFor(string $user): array {
+        $stmt=self::database()->prepare('SELECT origin,campaign_id FROM v2_core_user_campaigns WHERE user=?');
+        $stmt->execute([$user]);
+        $out=[];
+        foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) $out[]=$row['origin'].':'.(int)$row['campaign_id'];
+        return $out;
+    }
+
+    /** Normaliza la lista enviada por el formulario; lanza si trae basura. */
+    private static function parseCampaigns($input): array {
+        if ($input===null || $input==='') return [];
+        if (!is_array($input)) throw new \InvalidArgumentException('Selección de campañas inválida.');
+        if (count($input)>self::MAX_CAMPAIGNS) throw new \InvalidArgumentException('Demasiadas campañas seleccionadas.');
+        $out=[];
+        foreach ($input as $key) {
+            if (!is_string($key) || substr_count($key,':')!==1) throw new \InvalidArgumentException('Selección de campañas inválida.');
+            [$origin,$id]=explode(':',$key,2);
+            if (!in_array($origin,self::ORIGINS,true) || !preg_match('/^[0-9]{1,10}$/D',$id) || (int)$id<1) throw new \InvalidArgumentException('Selección de campañas inválida.');
+            $out[$origin.':'.(int)$id]=[$origin,(int)$id];
+        }
+        return array_values($out);
+    }
 
     public static function saveUser(array $input, ?string $existingUser=null): void {
         $user=$input['user'] ?? '';$name=$input['full_name'] ?? '';$password=$input['pass'] ?? '';$active=$input['active'] ?? '';
         $level=$input['user_level'] ?? 1;
         if (!is_scalar($level) || !in_array((int)$level,self::LEVELS,true)) throw new \InvalidArgumentException('Nivel inválido: solo agente, GTR o supervisor.');
         $level=(int)$level;
+        // Solo GTR y supervisor tienen alcance: el agente no mira el monitor.
+        $campaigns=in_array($level,self::SCOPED_LEVELS,true) ? self::parseCampaigns($input['campaigns'] ?? null) : [];
         if (!is_string($user)) throw new \InvalidArgumentException('Login inválido.');
         // El agente se loguea con su anexo SIP; GTR y supervisor no tienen anexo.
         if ($level===1) {
@@ -52,6 +85,11 @@ class CoreUsers {
                 // de una cuenta viva. Se da de baja y se crea con el nivel nuevo.
                 if ($current!==$level) throw new \InvalidArgumentException('El nivel de una cuenta existente no se cambia desde aquí.');
                 $db->prepare('UPDATE v2_zynervox_users SET full_name=?,active=?'.($hash===null ? '' : ',pass=?').' WHERE user=?')->execute($hash===null ? [trim($name),$active,$user] : [trim($name),$active,$hash,$user]);
+            }
+            $db->prepare('DELETE FROM v2_core_user_campaigns WHERE user=?')->execute([$user]);
+            if ($campaigns) {
+                $assign=$db->prepare('INSERT INTO v2_core_user_campaigns (user,origin,campaign_id) VALUES (?,?,?)');
+                foreach ($campaigns as $pair) $assign->execute([$user,$pair[0],$pair[1]]);
             }
             if (!Audit::logAccess($_SESSION['user'] ?? 'system',$existingUser===null ? 'CORE_AGENT_CREATE' : 'CORE_AGENT_UPDATE',$user)) throw new \RuntimeException('No se pudo registrar la operación.');
             $db->commit();

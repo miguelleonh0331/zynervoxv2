@@ -8,7 +8,7 @@ $db=new PDO('mysql:host=localhost;dbname=zynervox_core','root','',[PDO::ATTR_ERR
 $instance=(new ReflectionClass(Includes\Database::class))->newInstanceWithoutConstructor();
 $conn=new ReflectionProperty(Includes\Database::class,'conn');$conn->setAccessible(true);$conn->setValue($instance,$db);
 $core=new ReflectionProperty(Includes\Database::class,'coreInstance');$core->setAccessible(true);$core->setValue(null,$instance);
-foreach (['v2_zynervox_users','v2_access_log'] as $table) {
+foreach (['v2_zynervox_users','v2_access_log','v2_core_user_campaigns'] as $table) {
     $ddl=$db->query('SHOW CREATE TABLE '.$table)->fetch(PDO::FETCH_NUM)[1];
     $db->exec(preg_replace('/^CREATE TABLE /','CREATE TEMPORARY TABLE ',$ddl));
 }
