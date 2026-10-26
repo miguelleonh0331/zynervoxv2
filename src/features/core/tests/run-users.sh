@@ -59,7 +59,7 @@ code,headers,_=request('login=1',{'username':'rvaldez','password':'test-password
 assert code==302 and headers['Location']=='supervisor/index.php'
 assert request('login=1',{'username':'90001','password':'wrong-password'})[0]==200
 code,_,body=request('role=8&sup=1')
-assert code==200 and 'Supervisi' in body and 'No construido' in body
+assert code==200 and 'sup.css' in body and 'datos.php' in body and 'sideNav' in body
 code,headers,_=request('role=1&sup=1')
 assert code==302 and headers['Location']=='../modules/admin/dialer_agent.php'
 print('PASS: HTTP admin-only, role refresh, CSRF, direct-view gate, inactive session, escaped names, secret-free forms, level-9 refused over HTTP, per-level login rules and agent/supervisor login redirects.')
