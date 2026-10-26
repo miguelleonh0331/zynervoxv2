@@ -408,3 +408,59 @@ fallos MANUAL; contactos/ventas conservan requisito COMPLETED+catálogo actual.
 Cerradas sin código no significa necesariamente un pendiente asignado a agente.
 Con lista, ocupación/tiempo logueado son NULL/N/D, porque sesiones son por campaña.
 Roles7/8/9 conservados; UI valida ID de lista, escapa etiquetas y conserva filtro.
+
+## Fase 8 (2026-10-26) — Entrantes
+
+Decisión `ADR-0025`. Inbound extiende este módulo; no hay módulo nuevo. Detalle
+operativo y contrato con el dialplan en `docs/INBOUND.md`.
+
+`v2_dialer_call_log` gana `direction ENUM('OUT','IN') NOT NULL DEFAULT 'OUT'` e
+`inbound_did`. Migración `017-inbound.sql`, aditiva: las filas previas quedan
+`OUT`. Nueva tabla `v2_dialer_inbound_dids` (did PK, list_id FK, name, active).
+
+La cola entrante **es** la de la campaña de la lista a la que apunta el DID: no
+hay tabla de colas entrantes. El formato `v2dialer_<id>` sigue validado por
+`dialplanBody()` y `agentLogin()` sigue siendo quien mete al agente en la cola.
+Tampoco hay columna de estado de agente: el estado vivo se sigue parseando de
+`queue show`.
+
+`registerInboundCall()` se invoca desde el AGI **antes** de `Queue()`, así la
+ficha está en base durante el timbrado. Reutiliza el lead del teléfono aunque
+pertenezca a otra lista, con el `lead_id` más antiguo; si el número es nuevo crea
+el lead en la lista del DID con estado `INBOUND`, que `claimLead()` no toma.
+`answered_at` es cuando se atendió a quien llama y `bridged_at` cuando el agente
+tomó, de modo que `duration_wait` mide la espera en cola.
+
+`bindInboundAgent()` ocupa `agent_slot`, el mutex global ya existente: es lo que
+impide que el marcador entregue una saliente al agente que está atendiendo. Si el
+slot estaba tomado la entrante se conserva sin slot y se audita
+`INBOUND_SLOT_BUSY`. `bindInboundInterface()` traduce `${MEMBERINTERFACE}` a
+usuario Zynervox por `v2_phones`: la identidad del agente nunca es el anexo.
+
+`closeInboundCall()` es propia y no reutiliza `closeCall()`: esa deja el lead en
+`NEW` sin conversación —lo que metería al cliente al hopper de salientes por
+haber llamado— y dispara el autodial MANUAL. El lead entrante solo avanza a
+`CONTACTED`. El abandono en cola es `ABANDONED`, no `DROPPED`, que es el abandono
+de saliente que lee el nivel adaptativo.
+
+La tipificación de la entrante usa prefijo `tipin_` en `custom_fields`, separado
+del `tip_` de la saliente, para no pisarla en un lead reutilizado.
+
+`queuesWithCallersWaiting()` lee los encabezados de un `queue show` sin
+argumento. `originateNext()` saca del reparto a los agentes cuya cola entrante
+tiene gente esperando: en `PROGRESSIVE` los salta como candidatos, en
+`RATIO`/`ADAPTIVE` los descuenta del conteo que multiplica el nivel. `MANUAL`
+queda fuera: el botón Llamar debe funcionar siempre.
+
+`inFlightCount()`, `recalculateDialLevel()`, `kpis`, `reportBreakdown`,
+`occupancy` y el conteo de `campaignMonitor()` quedan acotados a
+`direction='OUT'`. `reconcileUnanswered()` no cambió: ya se limita a canales con
+prefijo `zv2dialer-`. No hay reportería de entrantes todavía.
+
+`fixed.inbound` se agrega a la respuesta de `bootstrap` de la consola: con cola
+entrante el sondeo no baja a reposo. Viaja una vez, al conectar, para no agregar
+una consulta por sondeo.
+
+`modules/admin/inbound.php` entra en `IsolatedGate` y queda `built`. Administra
+DIDs; no escribe dialplan ni troncales. Borrar un DID con entrantes abiertas está
+bloqueado.

@@ -9,8 +9,10 @@ use Includes\Dialer;
 use Includes\Database;
 
 function inboundAssert(bool $ok,string $message): void { if (!$ok) throw new RuntimeException($message); }
+// Exception y no RuntimeException: la validación del panel lanza
+// InvalidArgumentException, que no hereda de RuntimeException.
 function inboundRejects(callable $run,string $expected): void {
-    try { $run(); } catch (RuntimeException $error) {
+    try { $run(); } catch (Exception $error) {
         inboundAssert(strpos($error->getMessage(),$expected)!==false,$error->getMessage()); return;
     }
     throw new RuntimeException('Se aceptó una entrada inválida: '.$expected);
@@ -31,7 +33,7 @@ try {
         foreach ($references[1] as $dependency) $clone($dependency);
         $db->exec($ddl); $copied[$table]=true;
     };
-    foreach (['v2_dialer_campaigns','v2_dialer_lists','v2_dialer_leads','v2_dialer_call_log','v2_dialer_agent_status','v2_dialer_agent_pauses','v2_dialer_pause_types','v2_dialer_agent_intervals','v2_phones','v2_access_log'] as $table) $clone($table);
+    foreach (['v2_dialer_campaigns','v2_dialer_lists','v2_dialer_leads','v2_dialer_call_log','v2_dialer_agent_status','v2_dialer_agent_pauses','v2_dialer_pause_types','v2_dialer_agent_intervals','v2_dialer_agent_campaigns','v2_phones','v2_access_log'] as $table) $clone($table);
 
     // La migración 017 se aplica aquí mismo: así la prueba también la valida, y
     // no depende de que producción ya la tenga.
@@ -133,6 +135,44 @@ try {
     // 11. Frontera de confianza: el AGI no puede inyectar basura.
     inboundRejects(static function() { Dialer::registerInboundCall('55 OR 1=1','111222333'); },'DID inválido');
     inboundRejects(static function() { Dialer::registerInboundCall('5551000','abc'); },'Teléfono inválido');
+
+    // 12. Cola con gente esperando: se lee del encabezado de `queue show`, no
+    // del parseo de miembros del que dependen reconciliación y nivel.
+    Includes\PbxAmi::$waiting="v2dialer_1 has 3 calls (max unlimited) in 'leastrecent' strategy (0s holdtime, 0s talktime), W:0, C:1, A:0\n"
+        ."v2dialer_2 has 0 calls (max unlimited) in 'leastrecent' strategy (0s holdtime, 0s talktime), W:0, C:0, A:0\n"
+        ."v2dialer_1_a_deadbeefdeadbeef has 0 calls (max unlimited) in 'leastrecent' strategy\n";
+    $esperando=Dialer::queuesWithCallersWaiting();
+    inboundAssert($esperando===['v2dialer_1'=>3],'No se leyó bien quién tiene gente esperando: '.json_encode($esperando));
+
+    // 13. El agente de la cola entrante con gente esperando queda fuera del
+    // reparto de salientes; el que no tiene entrantes sigue disponible.
+    $db->exec("INSERT INTO v2_dialer_agent_campaigns (agent_user,campaign_id) VALUES ('mixto',1),('mixto',2),('solo_saliente',2)");
+    $porAgente=new ReflectionMethod(Dialer::class,'inboundQueuesByAgent'); $porAgente->setAccessible(true);
+    $bloqueado=new ReflectionMethod(Dialer::class,'blockedByInbound'); $bloqueado->setAccessible(true);
+    $mapa=$porAgente->invoke(null,2);   // la campaña saliente es la 2
+    inboundAssert(($mapa['mixto'] ?? [])===['v2dialer_1'],'El agente mixto no resolvió su cola entrante: '.json_encode($mapa));
+    inboundAssert(!isset($mapa['solo_saliente']),'Un agente sin entrantes apareció con cola entrante');
+    inboundAssert($bloqueado->invoke(null,'mixto',$mapa,$esperando)===true,'La entrante en espera no frena las salientes del agente mixto');
+    inboundAssert($bloqueado->invoke(null,'solo_saliente',$mapa,$esperando)===false,'Se frenó a un agente que no atiende entrantes');
+    inboundAssert($bloqueado->invoke(null,'mixto',$mapa,[])===false,'Se frenó al mixto con la cola entrante vacía');
+
+    // 14. DIDs desde el panel: validación, renombrado y borrado protegido.
+    inboundRejects(static function() { Dialer::saveInboundDid('55-A',1,'Malo',true); },'solo dígitos');
+    inboundRejects(static function() { Dialer::saveInboundDid('5552000',99999,'Lista fantasma',true); },'no existe');
+    Dialer::saveInboundDid('5552000',1,'Ventas',true);
+    inboundAssert(Dialer::inboundDid('5552000')!==null,'El DID nuevo no se guardó');
+    Dialer::saveInboundDid('5552001',1,'Ventas',true,'5552000');
+    inboundAssert(Dialer::inboundDid('5552000')===null && Dialer::inboundDid('5552001')!==null,'Cambiar el número dejó dos filas o perdió el DID');
+    inboundRejects(static function() { Dialer::saveInboundDid('5552001',1,'Choque',true,'5551000'); },'ya está registrado');
+    $abierta=Dialer::registerInboundCall('5551000','555000111');
+    inboundRejects(static function() { Dialer::deleteInboundDid('5551000'); },'entrantes abiertas');
+    // Quedan abiertas las de los pasos anteriores: se cierran todas, que es la
+    // condición real para poder borrar el DID.
+    foreach ($db->query("SELECT call_id FROM v2_dialer_call_log WHERE inbound_did='5551000' AND direction='IN' AND ended_at IS NULL")->fetchAll(PDO::FETCH_COLUMN) as $pendiente) {
+        Dialer::closeInboundCall((int)$pendiente,'TIMEOUT','');
+    }
+    Dialer::deleteInboundDid('5551000');
+    inboundAssert(Dialer::inboundDid('5551000')===null,'El DID no se eliminó tras cerrar la entrante');
 
     echo "inbound: OK\n";
 } finally {

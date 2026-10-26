@@ -16,7 +16,9 @@ Debe leer antes de trabajar:
 1. `src/features/dialer/README.md`
 2. `src/features/dialer/CONTRACT.md`
 3. `docs/CRM_MODULE.md` — sólo si toca la consola del agente (`modules/agc`).
-4. `docs/AUDITORIA_2026-10-17.md` — divergencias y defectos abiertos.
+4. `docs/INBOUND.md` — sólo si toca entrantes: contrato con el dialplan, modelo
+   de datos, reglas del lead y del blending. Decisión: `ADR-0025`.
+5. `docs/AUDITORIA_2026-10-17.md` — divergencias y defectos abiertos.
 
 ## Dónde vive el código
 
@@ -30,9 +32,18 @@ app/web/modules/agc/crm.js               toda la lógica de la consola
 app/web/modules/agc/crm.css              hoja propia
 app/web/modules/admin/dialer_agent.php   panel de agente clásico
 app/web/modules/admin/dialer_campaign_edit.php  campañas y disposiciones
+app/web/modules/admin/dialer_inbound_agi.php    AGI de la llamada entrante
+app/web/modules/admin/inbound.php        panel de DIDs de entrada
 src/features/dialer/models/*.sql         migraciones numeradas
 src/features/dialer/tests/               pruebas
 ```
+
+Entrantes: `registerInboundCall()`, `bindInboundInterface()`,
+`closeInboundCall()`, `queuesWithCallersWaiting()` y el CRUD `inboundDid*`. El
+detalle está en `docs/INBOUND.md`; lo que no se ve leyendo el código es que la
+cola entrante **es** la de la campaña de la lista del DID, que no hay tabla de
+colas ni de presencia de agente, y que el lead entrante nace con estado
+`INBOUND` justamente para que `claimLead()` no lo tome.
 
 `Dialer.php` pasa de las cien funciones. Para el ciclo del agente importan seis:
 
@@ -54,7 +65,10 @@ app/web/modules/agc/**
 app/web/modules/admin/dialer_agent.php
 app/web/modules/admin/dialer_campaign_edit.php
 app/web/modules/admin/dialer_report.php
+app/web/modules/admin/dialer_inbound_agi.php
+app/web/modules/admin/inbound.php
 docs/CRM_MODULE.md
+docs/INBOUND.md
 docs/CHANGELOG_AGENT.md
 ```
 

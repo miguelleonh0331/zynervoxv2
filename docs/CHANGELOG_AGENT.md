@@ -2753,3 +2753,22 @@ Contrato:
 
 Riesgos:
 Desplegado y reiniciados zynervox-dialer y zynervoxv2-campaign-monitor, ambos activos y sin errores. Nada invoca aun el AGI: falta el contexto de dialplan y la troncal, que quedan en manos del usuario. Pendiente la regla de cola: hoy se frena al agente que esta en llamada via agent_slot, no el caso de que haya gente esperando en la cola entrante y el marcador le entregue una saliente. kpis, reportBreakdown y occupancy siguen sin filtro de direccion. ABANDONED es vocabulario nuevo en termination_reason y aparecera como categoria propia en los reportes.
+
+### 2026-10-26 11:41 - dialer_AGENT - dialer
+
+Tipo: feature
+
+Resumen:
+Entrantes completas: panel de DIDs, prioridad de cola sobre el marcador, tipificacion separada y reporteria acotada
+
+Motivo:
+ADR-0025, cierre de la estructura. El panel inbound.php administra DIDs y entra en IsolatedGate; queda built en el sidebar. queuesWithCallersWaiting() lee los encabezados de un solo queue show y originateNext saca del reparto a los agentes cuya cola entrante tiene gente esperando, salteandolos en PROGRESSIVE y descontandolos del conteo en RATIO/ADAPTIVE; MANUAL queda fuera porque el contrato exige que Llamar funcione siempre. La tipificacion de la entrante usa prefijo tipin_ para no pisar la de la saliente en un lead reutilizado. kpis, reportBreakdown y occupancy se acotan a direction=OUT. Documentado en docs/INBOUND.md con el contrato del dialplan, y registrado como Fase 8 del CONTRACT.md.
+
+Archivos modificados:
+- app/web/modules/admin/inbound.php, app/web/includes/Dialer.php, app/web/includes/IsolatedGate.php, app/web/modules/admin/sidebar.php, app/web/modules/agc/crm.php, app/web/ROADMAP.md, docs/INBOUND.md, src/features/dialer/CONTRACT.md, agents/dialer_AGENT.md, src/features/dialer/tests/inbound.php, src/features/dialer/tests/fixtures/PbxAmi-controls.php
+
+Contrato:
+- modificado con ADR-0025
+
+Riesgos:
+Desplegado con respaldo .bak.20261026-114050 y md5 verificado; zynervox-dialer y zynervoxv2-campaign-monitor reiniciados y activos sin errores. El parseo de queue show es nuevo: si Asterisk cambia el encabezado, la prioridad de la entrante deja de aplicarse en silencio y el marcador volveria a entregar salientes. No se toco el parseo de miembros de availableAgentsCount. Sigue sin haber reporteria de entrantes ni troncal ni contexto de dialplan, asi que nada entra todavia. ABANDONED y tipin_ son vocabulario nuevo: apareceran como categoria y claves propias.

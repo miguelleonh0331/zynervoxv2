@@ -60,7 +60,7 @@ function renderSidebar($activePage = 'home', $rootPrefix = '../../') {
         ['key' => 'quality',     'href' => 'modules/admin/quality.php',      'icon' => 'quality',    'label' => 'Quality Control (Calidad)', 'built' => false],
         ['key' => 'scripts',     'href' => 'modules/admin/scripts.php',      'icon' => 'scripts',    'label' => 'Scripts (Guiones)',  'built' => false],
         ['key' => 'filters',     'href' => 'modules/admin/filters.php',      'icon' => 'filters',    'label' => 'Filters',            'built' => true],
-        ['key' => 'inbound',     'href' => 'modules/admin/inbound.php',      'icon' => 'inbound',    'label' => 'Inbound (Entrantes / DIDs)', 'built' => false],
+        ['key' => 'inbound',     'href' => 'modules/admin/inbound.php',      'icon' => 'inbound',    'label' => 'Inbound (Entrantes / DIDs)', 'built' => true],
         ['key' => 'bot_ivr',     'href' => 'bot_ivr/index.php',              'icon' => 'bot',        'label' => 'Bot IVR',            'built' => true],
         ['key' => 'ivr_builder', 'href' => 'ivr_builder/index.php',          'icon' => 'bot',        'label' => 'IVR Builder',        'built' => true],
         ['key' => 'whatsapp',    'href' => 'modules/admin/whatsapp.php',     'icon' => 'whatsapp',   'label' => 'WhatsApp',           'built' => true],
