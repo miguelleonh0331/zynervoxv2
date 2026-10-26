@@ -53,17 +53,41 @@ foreach ($campaigns as $row) {
         $kpis = $k;
         try { $breakdown = Dialer::reportBreakdown($id); } catch (\Throwable $exception) { $breakdown = null; }
     }
+    // La tarjeta habla de LEADS recorridos, no de llamadas marcadas: un lead
+    // con tres intentos es un lead, no tres. Por eso sale de v2_dialer_leads
+    // y no de los KPI, que cuentan al nivel de la llamada.
+    $base = ['total' => 0, 'sin_llamar' => 0, 'cont' => 0, 'vent' => 0];
+    try {
+        $db = \Includes\Database::getCoreInstance();
+        $stmt = $db->prepare('SELECT COUNT(*) total, SUM(called_count = 0) sin_llamar
+            FROM v2_dialer_leads
+            WHERE list_id IN (SELECT list_id FROM v2_dialer_lists WHERE campaign_id = ?)');
+        $stmt->execute([$id]);
+        $base = array_merge($base, (array) $stmt->fetch(\PDO::FETCH_ASSOC));
+        $stmt = $db->prepare('SELECT
+                COUNT(DISTINCT CASE WHEN d.is_contact = 1 THEN l.lead_id END) cont,
+                COUNT(DISTINCT CASE WHEN d.is_sale = 1 THEN l.lead_id END) vent
+            FROM v2_dialer_call_log l
+            JOIN v2_dialer_dispositions d
+              ON d.campaign_id = l.campaign_id AND d.code = l.disposition_code
+            WHERE l.campaign_id = ?');
+        $stmt->execute([$id]);
+        $base = array_merge($base, (array) $stmt->fetch(\PDO::FETCH_ASSOC));
+    } catch (\Throwable $exception) { /* queda en cero y la tarjeta se ve vacia */ }
+
+    $total = (int) $base['total'];
+    $sinLlamar = (int) $base['sin_llamar'];
     $CAMPANAS[] = [
         'id' => (string) $id,
         'nombre' => (string) $row['name'],
         'tipo' => 'out',
         'estado' => strtoupper((string) ($row['engine_state'] ?? '')) === 'RUNNING' ? 'on' : 'off',
         'nivel' => (float) ($row['dial_level'] ?? 1),
-        'leads' => (int) ($k['placed'] ?? 0),
-        'pend' => 0,
-        'hechas' => (int) ($k['closed'] ?? 0),
-        'cont' => (int) ($k['contacted'] ?? 0),
-        'vent' => (int) ($k['sales'] ?? 0),
+        'leads' => $total,
+        'pend' => $sinLlamar,
+        'hechas' => max(0, $total - $sinLlamar),
+        'cont' => (int) $base['cont'],
+        'vent' => (int) $base['vent'],
         'abandono' => (float) ($k['abandon_pct'] ?? 0),
         'canales' => (int) ($row['max_concurrent_calls'] ?? 0),
     ];

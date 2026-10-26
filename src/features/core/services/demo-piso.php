@@ -143,8 +143,7 @@ function sembrar(PDO $db): void {
                     DEMO_TELEFONO_BASE . str_pad((string) $azar(0, 99), 2, '0', STR_PAD_LEFT),
                     $nombres[$n % count($nombres)],
                     $apellidos[$n % count($apellidos)],
-                    $n < $cuantos * 0.45 ? 'NEW' : 'DONE',
-                    $n < $cuantos * 0.45 ? 0 : $azar(1, 3),
+                    'NEW', 0,
                 ]);
             }
         }
@@ -256,6 +255,15 @@ function sembrar(PDO $db): void {
                     null, 6, 0, 0, 'HUMAN', null, null, 2.4, 'zv2demo-' . (++$serie)]);
             }
         }
+
+        // El lead tiene que contar lo que de verdad se le llamo. Si se inventa
+        // aparte, la tarjeta dice "0 sin llamar" sobre una lista a medio hacer.
+        $lista = implode(',', $campanas);
+        $db->exec("UPDATE v2_dialer_leads d
+            JOIN (SELECT lead_id, COUNT(*) n, MAX(originated_at) ultima
+                    FROM v2_dialer_call_log WHERE campaign_id IN ($lista) GROUP BY lead_id) c
+              ON c.lead_id = d.lead_id
+            SET d.called_count = c.n, d.last_call_time = c.ultima, d.status = 'DONE'");
 
         $db->commit();
         echo "Piso sembrado.\n";

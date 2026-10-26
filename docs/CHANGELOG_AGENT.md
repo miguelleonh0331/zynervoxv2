@@ -2887,3 +2887,22 @@ Contrato:
 
 Riesgos:
 demo-piso.php escribe sobre zynervox_core: todo lo que siembra lleva marca (campanas con prefijo DEMO, agentes 9001-9006) y 'borrar' se lleva exactamente eso, verificado con ida y vuelta. Las campanas sembradas quedan en STOPPED y los telefonos son del rango de documentacion 555-01xx, no asignable. datos.php pasa a depender del esquema del discador en solo lectura.
+
+### 2026-10-26 13:32 - core_AGENT - core
+
+Tipo: fix
+
+Resumen:
+La tarjeta de campana contaba llamadas donde debia contar leads
+
+Motivo:
+Mostraba 242 leads y 0 sin llamar sobre una lista de 260 con 100 sin tocar
+
+Archivos modificados:
+- app/web/supervisor/datos.php,src/features/core/services/demo-piso.php
+
+Contrato:
+- modificado con ADR-0028
+
+Riesgos:
+Dos consultas nuevas por campana sobre v2_dialer_leads y call_log. El sembrador ya no inventa called_count: lo deriva de las llamadas que genera, asi que resembrar cambia los numeros respecto de la siembra anterior.
